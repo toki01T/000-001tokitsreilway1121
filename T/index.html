@@ -336,7 +336,7 @@
                     const paperHeight = Math.round(paperWidth / aspectRatio);
                     const isDateTimeEnabled = selectedChip === 'with';
                     const totalHeight = isDateTimeEnabled ? paperHeight + 30 : paperHeight + 17;
-                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
+                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
                     if (isDateTimeEnabled) {
                         const dateTimeString = `${formattedDate}\n${formattedTime}`;
                         printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
@@ -535,7 +535,7 @@ function printText() {
                         (isDateTimeEnabled ? spaceBetweenTextAndDate + dateTimeHeight : 0) + 
                         bottomMargin;
     
-    let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0`;
+    let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0`;
     
     wrappedLines.forEach((line, index) => {
         const encodedLine = safeEncodeURIComponent(line);
