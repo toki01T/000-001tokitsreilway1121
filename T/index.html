@@ -386,7 +386,10 @@
                         window.location.href = printUrlImage;
 
                         if (copyNumber < selectedCopies) {
-                            setTimeout(() => printSingleCopy(copyNumber + 1), 4000);
+                            setTimeout(() => {
+                                window.location.href = 'https://toki01t.github.io/000-001tokitsreilway1121/T/';
+                                setTimeout(() => printSingleCopy(copyNumber + 1), 4000);
+                            }, 1000);
                         }
                     }
 
@@ -472,7 +475,10 @@
                 window.location.href = printUrlText;
 
                 if (copyNumber < selectedTextCopies) {
-                    setTimeout(() => printSingleCopy(copyNumber + 1), 4000);
+                    setTimeout(() => {
+                        window.location.href = 'https://toki01t.github.io/000-001tokitsreilway1121/T/';
+                        setTimeout(() => printSingleCopy(copyNumber + 1), 4000);
+                    }, 1000);
                 }
             }
 
