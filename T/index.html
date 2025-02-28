@@ -161,6 +161,11 @@
             color: #00A3ED;
             font-size: 1rem;
         }
+        .print-options.disabled select,
+        .print-options.disabled button {
+            opacity: 0.5;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -227,6 +232,8 @@
         let formattedTime = '';
         let selectedChip = '';
         let selectedTextChip = '';
+        let remainingCopies = 0;
+        let currentPrintData = null;
 
         function displayDate() {
             const today = new Date();
@@ -251,6 +258,7 @@
             document.getElementById('textInput').addEventListener('input', function() {
                 autoWrap(this);
             });
+            window.addEventListener('message', handlePrintCallback);
         };
 
         function toggleMode() {
@@ -353,7 +361,7 @@
             if (textInput.value.trim() === '' || selectedTextChip === '') {
                 textPrintButton.classList.add('disabled');
                 textPrintOptions.classList.add('disabled');
-                        } else {
+            } else {
                 textPrintButton.classList.remove('disabled');
                 textPrintOptions.classList.remove('disabled');
             }
@@ -375,29 +383,46 @@
                     const paperHeight = Math.round(paperWidth / aspectRatio);
                     const isDateTimeEnabled = selectedChip === 'with';
                     const totalHeight = isDateTimeEnabled ? paperHeight + 30 : paperHeight + 17;
-                    const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
+                    remainingCopies = parseInt(document.getElementById('copiesSelect').value);
 
-                    function printSingleCopy(copyNumber) {
-                        let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
-                        if (isDateTimeEnabled) {
-                            const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                            printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-                        }
-                        window.location.href = printUrlImage;
+                    currentPrintData = {
+                        base64Image: base64Image,
+                        paperWidth: paperWidth,
+                        paperHeight: paperHeight,
+                        totalHeight: totalHeight,
+                        isDateTimeEnabled: isDateTimeEnabled
+                    };
 
-                        if (copyNumber < selectedCopies) {
-                            setTimeout(() => {
-                                window.location.href = 'https://toki01t.github.io/000-001tokitsreilway1121/T/';
-                                setTimeout(() => printSingleCopy(copyNumber + 1), 4000);
-                            }, 1000);
-                        }
-                    }
-
-                    printSingleCopy(1);
+                    printNextCopy();
                 };
                 img.src = reader.result;
             };
             reader.readAsDataURL(file);
+        }
+
+        function printNextCopy() {
+            if (remainingCopies > 0) {
+                const { base64Image, paperWidth, paperHeight, totalHeight, isDateTimeEnabled } = currentPrintData;
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
+                if (isDateTimeEnabled) {
+                    const dateTimeString = `${formattedDate}\n${formattedTime}`;
+                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                }
+                window.location.href = printUrlImage;
+            } else {
+                currentPrintData = null;
+            }
+        }
+
+        function handlePrintCallback(event) {
+            if (event.origin === "https://toki01t.github.io" && remainingCopies > 0) {
+                remainingCopies--;
+                if (remainingCopies > 0) {
+                    setTimeout(printNextCopy, 4000);
+                } else {
+                    currentPrintData = null;
+                }
+            }
         }
 
         function wrapText(text) {
@@ -455,9 +480,26 @@
                                 (isDateTimeEnabled ? spaceBetweenTextAndDate + dateTimeHeight : 0) + 
                                 bottomMargin;
             
-            const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+            remainingCopies = parseInt(document.getElementById('textCopiesSelect').value);
 
-            function printSingleCopy(copyNumber) {
+            currentPrintData = {
+                wrappedLines: wrappedLines,
+                paperWidth: paperWidth,
+                totalHeight: totalHeight,
+                isDateTimeEnabled: isDateTimeEnabled,
+                lineHeight: lineHeight,
+                topMargin: topMargin,
+                dateTimeHeight: dateTimeHeight,
+                spaceBetweenTextAndDate: spaceBetweenTextAndDate,
+                leftMargin: leftMargin
+            };
+
+            printNextTextCopy();
+        }
+
+        function printNextTextCopy() {
+            if (remainingCopies > 0) {
+                const { wrappedLines, paperWidth, totalHeight, isDateTimeEnabled, lineHeight, topMargin, dateTimeHeight, spaceBetweenTextAndDate, leftMargin } = currentPrintData;
                 let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0`;
                 
                 wrappedLines.forEach((line, index) => {
@@ -473,16 +515,9 @@
                 }
 
                 window.location.href = printUrlText;
-
-                if (copyNumber < selectedTextCopies) {
-                    setTimeout(() => {
-                        window.location.href = 'https://toki01t.github.io/000-001tokitsreilway1121/T/';
-                        setTimeout(() => printSingleCopy(copyNumber + 1), 4000);
-                    }, 1000);
-                }
+            } else {
+                currentPrintData = null;
             }
-
-            printSingleCopy(1);
         }
 
         function toggleClearButton() {
