@@ -248,6 +248,17 @@
             setTimeout(updateTime, 1000);
         }
 
+        function toggleClearButton() {
+            const textInput = document.getElementById('textInput');
+            const clearTextButton = document.getElementById('clearTextButton');
+            
+            if (textInput.value.trim() !== '') {
+                clearTextButton.style.display = 'block';
+            } else {
+                clearTextButton.style.display = 'none';
+            }
+        }
+
         window.onload = function() {
             displayDate();
             updateTime();
@@ -258,7 +269,6 @@
             document.getElementById('textInput').addEventListener('input', function() {
                 autoWrap(this);
             });
-            window.addEventListener('message', handlePrintCallback);
         };
 
         function toggleMode() {
@@ -342,7 +352,7 @@
             updateTextPrintButtonState();
         }
 
-        function updatePrintButtonState() {
+                function updatePrintButtonState() {
             const printButton = document.getElementById('printButton');
             const imagePrintOptions = document.getElementById('imagePrintOptions');
             if (selectedChip === '') {
@@ -374,11 +384,11 @@
             const file = fileInput.files[0];
             if (!file || selectedChip === '') return;
             const reader = new FileReader();
-            reader.onloadend = function() {
+            reader.onloadend = function () {
                 const base64Image = reader.result.split(',')[1];
                 const paperWidth = 58;
                 const img = new Image();
-                img.onload = function() {
+                img.onload = function () {
                     const aspectRatio = img.width / img.height;
                     const paperHeight = Math.round(paperWidth / aspectRatio);
                     const isDateTimeEnabled = selectedChip === 'with';
@@ -386,10 +396,10 @@
                     remainingCopies = parseInt(document.getElementById('copiesSelect').value);
 
                     currentPrintData = {
-                        base64Image: base64Image,
                         paperWidth: paperWidth,
-                        paperHeight: paperHeight,
                         totalHeight: totalHeight,
+                        base64Image: base64Image,
+                        paperHeight: paperHeight,
                         isDateTimeEnabled: isDateTimeEnabled
                     };
 
@@ -402,96 +412,35 @@
 
         function printNextCopy() {
             if (remainingCopies > 0) {
-                const { base64Image, paperWidth, paperHeight, totalHeight, isDateTimeEnabled } = currentPrintData;
+                const { paperWidth, totalHeight, base64Image, paperHeight, isDateTimeEnabled } = currentPrintData;
                 let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
                 if (isDateTimeEnabled) {
                     const dateTimeString = `${formattedDate}\n${formattedTime}`;
                     printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 window.location.href = printUrlImage;
-            } else {
-                currentPrintData = null;
-            }
-        }
-
-        function handlePrintCallback(event) {
-            if (event.origin === "https://toki01t.github.io" && remainingCopies > 0) {
                 remainingCopies--;
-                if (remainingCopies > 0) {
-                    setTimeout(printNextCopy, 4000);
-                } else {
-                    currentPrintData = null;
-                }
+                
+                // 次の印刷を2秒後に実行
+                setTimeout(() => {
+                    printNextCopy();
+                }, 2000);
+            } else {
+                // 印刷が完了したら画像選択画面に戻る
+                toggleMode();
             }
-        }
-
-        function wrapText(text) {
-            const lines = [];
-            const maxWidth = 16;
-            const paragraphs = text.split('\n');
-            
-            for (let paragraph of paragraphs) {
-                if (paragraph.length === 0) {
-                    lines.push('');
-                    continue;
-                }
-                let remainingText = paragraph;
-                while (remainingText.length > 0) {
-                    if (remainingText.length <= maxWidth) {
-                        lines.push(remainingText);
-                        break;
-                    }
-                    let line = remainingText.substring(0, maxWidth);
-                    lines.push(line);
-                    remainingText = remainingText.substring(maxWidth);
-                }
-            }
-            return lines;
-        }
-
-        function safeEncodeURIComponent(str) {
-            return encodeURIComponent(str)
-                .replace(/!/g, '%21')
-                .replace(/'/g, '%27')
-                .replace(/\(/g, '%28')
-                .replace(/\)/g, '%29')
-                .replace(/\*/g, '%2A')
-                .replace(/%20/g, '%20');
         }
 
         function printText() {
-            const textInput = document.getElementById('textInput');
-            const text = textInput.value;
-            if (text.trim() === '' || selectedTextChip === '') return;
+            const textInput = document.getElementById("textInput");
             
-            const paperWidth = 58;
-            const isDateTimeEnabled = selectedTextChip === 'with';
-            const wrappedLines = wrapText(text);
-            
-            const lineHeight = 4;
-            const topMargin = 5;
-            const dateTimeHeight = 16;
-            const spaceBetweenTextAndDate = 9;
-            const bottomMargin = 17;
-            const leftMargin = 2;
-            
-            const totalHeight = topMargin + 
-                                (wrappedLines.length * lineHeight) + 
-                                (isDateTimeEnabled ? spaceBetweenTextAndDate + dateTimeHeight : 0) + 
-                                bottomMargin;
-            
-            remainingCopies = parseInt(document.getElementById('textCopiesSelect').value);
+            if (!textInput.value.trim() || !document.querySelector("#textDateTimeChoice .chip.selected")) return;
+
+            remainingCopies = parseInt(document.getElementById("textCopiesSelect").value);
 
             currentPrintData = {
-                wrappedLines: wrappedLines,
-                paperWidth: paperWidth,
-                totalHeight: totalHeight,
-                isDateTimeEnabled: isDateTimeEnabled,
-                lineHeight: lineHeight,
-                topMargin: topMargin,
-                dateTimeHeight: dateTimeHeight,
-                spaceBetweenTextAndDate: spaceBetweenTextAndDate,
-                leftMargin: leftMargin
+                text: textInput.value,
+                isDateTimeEnabled: document.querySelector("#textDateTimeChoice .chip.selected").textContent === "日付・時刻あり"
             };
 
             printNextTextCopy();
@@ -499,64 +448,62 @@
 
         function printNextTextCopy() {
             if (remainingCopies > 0) {
-                const { wrappedLines, paperWidth, totalHeight, isDateTimeEnabled, lineHeight, topMargin, dateTimeHeight, spaceBetweenTextAndDate, leftMargin } = currentPrintData;
-                let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0`;
+                const { text, isDateTimeEnabled } = currentPrintData;
+
+                let wrappedLines = wrapText(text);
                 
+                let printUrlText =
+                    `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&copies=1&quality=3&monochrome=0`;
+
                 wrappedLines.forEach((line, index) => {
-                    const encodedLine = safeEncodeURIComponent(line);
-                    const xPosition = leftMargin;
-                    printUrlText += `&${index + 1}=${encodedLine},${xPosition},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
+                    printUrlText += `&${index + 1}=${safeEncodeURIComponent(line)},2,${5 + index * 4},58,4,機械彫刻用標準書体 M,3.2,0,0,1`;
                 });
-                
+
                 if (isDateTimeEnabled) {
                     const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                    const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-                    printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},2,${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+                    printUrlText += `&${wrappedLines.length + 1}=${safeEncodeURIComponent(dateTimeString)},2,${
+                        5 + wrappedLines.length * 4 + 9
+                    },58,16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
 
                 window.location.href = printUrlText;
+                remainingCopies--;
+
+                // 次の印刷を2秒後に実行
+                setTimeout(() => {
+                    printNextTextCopy();
+                }, 2000);
             } else {
-                currentPrintData = null;
+                // 印刷が完了したらテキスト入力画面に戻る
+                toggleMode();
             }
         }
 
-        function toggleClearButton() {
-            const textInput = document.getElementById('textInput');
-            const clearTextButton = document.getElementById('clearTextButton');
+        // テキスト自動折り返し処理
+        function wrapText(text) {
+            const maxWidth = 16; // 全角16文字で折り返す
+            const lines = [];
             
-            if (textInput.value.trim() !== '') {
-                clearTextButton.style.display = 'block';
-            } else {
-                clearTextButton.style.display = 'none';
-            }
-        }
-
-        function handleClearButtonClick() {
-            const textInput = document.getElementById('textInput');
-            
-            const confirmClear = confirm('テキストをクリアしますか？');
-            
-            if (confirmClear) {
-                textInput.value = '';
-                document.getElementById('clearTextButton').style.display = 'none';
-                updateTextPrintButtonState();
-            }
-        }
-
-        function autoWrap(textarea) {
-            const text = textarea.value;
-            const wrappedLines = wrapText(text);
-            textarea.value = wrappedLines.join('\n');
-        }
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('service-worker.js').then(function(registration) {
-                    console.log('Service Worker登録成功:', registration);
-                }).catch(function(error) {
-                    console.log('Service Worker登録失敗:', error);
-                });
+            text.split("\n").forEach(paragraph => {
+                while (paragraph.length > maxWidth) {
+                    lines.push(paragraph.slice(0, maxWidth));
+                    paragraph = paragraph.slice(maxWidth);
+                }
+                
+                lines.push(paragraph);
             });
+
+            return lines;
+        }
+
+        // 安全なエンコード処理
+        function safeEncodeURIComponent(str) {
+            return encodeURIComponent(str)
+                .replace(/!/g, "%21")
+                .replace(/'/g, "%27")
+                .replace(/\(/g, "%28")
+                .replace(/\)/g, "%29")
+                .replace(/\*/g, "%2A");
         }
     </script>
 </body>
