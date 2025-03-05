@@ -176,7 +176,7 @@
         </div>
     </header>
     <main>
-        <section id="imageSection" class="image-selection">
+       <section id="imageSection" class="image-selection">
             <form id="imageForm" enctype="multipart/form-data" onsubmit="sendToPrintAssist(event)">
                 <div class="file-upload">
                     <label for="imageUpload" class="file-upload-label">
@@ -259,6 +259,29 @@
             }
         }
 
+        function handleClearButtonClick() {
+            document.getElementById('textInput').value = '';
+            toggleClearButton();
+            updateTextPrintButtonState();
+        }
+
+        function autoWrap(textarea) {
+            const maxWidth = 16;
+            let text = textarea.value;
+            let lines = text.split('\n');
+            let wrappedLines = [];
+
+            lines.forEach(line => {
+                while (line.length > maxWidth) {
+                    wrappedLines.push(line.slice(0, maxWidth));
+                    line = line.slice(maxWidth);
+                }
+                wrappedLines.push(line);
+            });
+
+            textarea.value = wrappedLines.join('\n');
+        }
+
         window.onload = function() {
             displayDate();
             updateTime();
@@ -328,7 +351,7 @@
             }
         }
 
-        function selectChip(type) {
+                function selectChip(type) {
             selectedChip = type;
             const chips = document.querySelectorAll('#dateTimeChoice .chip');
             chips.forEach(chip => chip.classList.remove('selected'));
@@ -352,7 +375,7 @@
             updateTextPrintButtonState();
         }
 
-                function updatePrintButtonState() {
+        function updatePrintButtonState() {
             const printButton = document.getElementById('printButton');
             const imagePrintOptions = document.getElementById('imagePrintOptions');
             if (selectedChip === '') {
@@ -421,10 +444,10 @@
                 window.location.href = printUrlImage;
                 remainingCopies--;
                 
-                // 次の印刷を2秒後に実行
+                // 次の印刷を5秒後に実行
                 setTimeout(() => {
                     printNextCopy();
-                }, 2000);
+                }, 5000);
             } else {
                 // 印刷が完了したら画像選択画面に戻る
                 toggleMode();
@@ -469,12 +492,12 @@
                 window.location.href = printUrlText;
                 remainingCopies--;
 
-                // 次の印刷を2秒後に実行
+                // 次の印刷を5秒後に実行
                 setTimeout(() => {
                     printNextTextCopy();
-                }, 2000);
+                }, 5000);
             } else {
-                // 印刷が完了したらテキスト入力画面に戻る
+                // 印刷が完了したら画像選択画面に戻る
                 toggleMode();
             }
         }
@@ -504,6 +527,17 @@
                 .replace(/\(/g, "%28")
                 .replace(/\)/g, "%29")
                 .replace(/\*/g, "%2A");
+        }
+
+        // Service Workerの登録
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('service-worker.js').then(function(registration) {
+                    console.log('Service Worker登録成功:', registration);
+                }).catch(function(error) {
+                    console.log('Service Worker登録失敗:', error);
+                });
+            });
         }
     </script>
 </body>
