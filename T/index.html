@@ -77,7 +77,7 @@
           color: white;
         }
         #textInput {
-            width: calc(16 * 1em);
+            width: 16em;
             max-width: 450px;
             height: 300px;
             margin-top: 1rem;
@@ -266,19 +266,16 @@
         }
 
         function autoWrap(textarea) {
-            const maxWidth = 16;
-            let text = textarea.value;
-            let lines = text.split('\n');
-            let wrappedLines = [];
-
-            lines.forEach(line => {
-                while (line.length > maxWidth) {
-                    wrappedLines.push(line.slice(0, maxWidth));
-                    line = line.slice(maxWidth);
+            const maxWidth = 23;
+            const lines = textarea.value.split('\n');
+            const wrappedLines = lines.map(line => {
+                if (line.length <= maxWidth) return line;
+                const wrappedLine = [];
+                for (let i = 0; i < line.length; i += maxWidth) {
+                    wrappedLine.push(line.slice(i, i + maxWidth));
                 }
-                wrappedLines.push(line);
+                return wrappedLine.join('\n');
             });
-
             textarea.value = wrappedLines.join('\n');
         }
 
@@ -351,7 +348,7 @@
             }
         }
 
-                function selectChip(type) {
+        function selectChip(type) {
             selectedChip = type;
             const chips = document.querySelectorAll('#dateTimeChoice .chip');
             chips.forEach(chip => chip.classList.remove('selected'));
@@ -363,7 +360,7 @@
             updatePrintButtonState();
         }
 
-        function selectTextChip(type) {
+                function selectTextChip(type) {
             selectedTextChip = type;
             const chips = document.querySelectorAll('#textDateTimeChoice .chip');
             chips.forEach(chip => chip.classList.remove('selected'));
@@ -436,18 +433,13 @@
         function printNextCopy() {
             if (remainingCopies > 0) {
                 const { paperWidth, totalHeight, base64Image, paperHeight, isDateTimeEnabled } = currentPrintData;
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=${remainingCopies}&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
                 if (isDateTimeEnabled) {
                     const dateTimeString = `${formattedDate}\n${formattedTime}`;
                     printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 window.location.href = printUrlImage;
-                remainingCopies--;
-                
-                // 次の印刷を5秒後に実行
-                setTimeout(() => {
-                    printNextCopy();
-                }, 5000);
+                remainingCopies = 0;
             } else {
                 // 印刷が完了したら画像選択画面に戻る
                 toggleMode();
@@ -476,7 +468,7 @@
                 let wrappedLines = wrapText(text);
                 
                 let printUrlText =
-                    `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&copies=1&quality=3&monochrome=0`;
+                    `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&copies=1&quality=3&monochrome=0&pages=${remainingCopies}`;
 
                 wrappedLines.forEach((line, index) => {
                     printUrlText += `&${index + 1}=${safeEncodeURIComponent(line)},2,${5 + index * 4},58,4,機械彫刻用標準書体 M,3.2,0,0,1`;
@@ -490,12 +482,7 @@
                 }
 
                 window.location.href = printUrlText;
-                remainingCopies--;
-
-                // 次の印刷を5秒後に実行
-                setTimeout(() => {
-                    printNextTextCopy();
-                }, 5000);
+                remainingCopies = 0;
             } else {
                 // 印刷が完了したら画像選択画面に戻る
                 toggleMode();
@@ -504,7 +491,7 @@
 
         // テキスト自動折り返し処理
         function wrapText(text) {
-            const maxWidth = 16; // 全角16文字で折り返す
+            const maxWidth = 23; // 半角23文字で折り返す
             const lines = [];
             
             text.split("\n").forEach(paragraph => {
