@@ -41,8 +41,9 @@
             color: #fff;
             font-size: 1rem;
             cursor: pointer;
+            display: none;
             transition: .3s ease-in-out all;
-            margin-left: 0.5rem;
+            margin-top: .5rem;
         }
         #printButton.disabled, #textPrintButton.disabled {
           background-color: #ccc;
@@ -77,7 +78,7 @@
           color: white;
         }
         #textInput {
-            width: 16em;
+            width: calc(13 * 1em);
             max-width: 450px;
             height: 300px;
             margin-top: 1rem;
@@ -87,16 +88,15 @@
             resize: vertical;
             font-family: monospace;
             font-size: 17px;
-            white-space: pre-wrap;
-            text-align: center;
-            line-height: 1.5;
         }
+
         .text-input-container {
             position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
+
         .clear-button {
             position: absolute;
             top: -30px;
@@ -109,6 +109,7 @@
             display: none;
             z-index: 10;
         }
+
         .clear-button:hover {
             background-color: #0080BF;
         }
@@ -123,16 +124,19 @@
             color: #00A3ED;
             cursor: pointer;
         }
+
         body {
           display: flex;
           flex-direction: column;
           min-height: 100vh;
           margin: 0;
         }
+
         main {
           flex: 1;
-          padding-bottom: 60px;
+          padding-bottom: 60px; /* フッターの高さ分の余白を追加 */
         }
+
         footer {
           position: fixed;
           bottom: 0;
@@ -142,29 +146,11 @@
           background-color: #E6F3FF;
           text-align: center;
         }
+
         footer p {
           margin: 0;
           color: #00A3ED;
           font-size: 14px;
-        }
-        .print-options {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            margin-top: 1rem;
-        }
-        #copiesSelect, #textCopiesSelect {
-            padding: 0.5rem;
-            border: 1px solid #00A3ED;
-            border-radius: 5px;
-            background-color: #fff;
-            color: #00A3ED;
-            font-size: 1rem;
-        }
-        .print-options.disabled select,
-        .print-options.disabled button {
-            opacity: 0.5;
-            pointer-events: none;
         }
     </style>
 </head>
@@ -176,7 +162,7 @@
         </div>
     </header>
     <main>
-       <section id="imageSection" class="image-selection">
+        <section id="imageSection" class="image-selection">
             <form id="imageForm" enctype="multipart/form-data" onsubmit="sendToPrintAssist(event)">
                 <div class="file-upload">
                     <label for="imageUpload" class="file-upload-label">
@@ -189,16 +175,7 @@
                     <div class="chip" onclick="selectChip('with')">日付・時刻あり</div>
                     <div class="chip" onclick="selectChip('without')">日付・時刻なし</div>
                 </div>
-                <div class="print-options disabled" id="imagePrintOptions">
-                    <select id="copiesSelect">
-                        <option value="1">1枚</option>
-                        <option value="2">2枚</option>
-                        <option value="3">3枚</option>
-                        <option value="4">4枚</option>
-                        <option value="5">5枚</option>
-                    </select>
-                    <button type="submit" id="printButton" class="disabled">発行</button>
-                </div>
+                <button type="submit" id="printButton" class="disabled">発行</button>
             </form>
         </section>
         <section id="textSection" style="display:none;">
@@ -210,16 +187,7 @@
                 <div class="chip" onclick="selectTextChip('with')">日付・時刻あり</div>
                 <div class="chip" onclick="selectTextChip('without')">日付・時刻なし</div>
             </div>
-            <div class="print-options disabled" id="textPrintOptions">
-                <select id="textCopiesSelect">
-                    <option value="1">1枚</option>
-                    <option value="2">2枚</option>
-                    <option value="3">3枚</option>
-                    <option value="4">4枚</option>
-                    <option value="5">5枚</option>
-                </select>
-                <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
-            </div>
+            <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
         </section>
         <div id="dateDisplay"></div>
         <div id="timeDisplay"></div>
@@ -232,8 +200,6 @@
         let formattedTime = '';
         let selectedChip = '';
         let selectedTextChip = '';
-        let remainingCopies = 0;
-        let currentPrintData = null;
 
         function displayDate() {
             const today = new Date();
@@ -248,37 +214,6 @@
             setTimeout(updateTime, 1000);
         }
 
-        function toggleClearButton() {
-            const textInput = document.getElementById('textInput');
-            const clearTextButton = document.getElementById('clearTextButton');
-            
-            if (textInput.value.trim() !== '') {
-                clearTextButton.style.display = 'block';
-            } else {
-                clearTextButton.style.display = 'none';
-            }
-        }
-
-        function handleClearButtonClick() {
-            document.getElementById('textInput').value = '';
-            toggleClearButton();
-            updateTextPrintButtonState();
-        }
-
-        function autoWrap(textarea) {
-            const maxWidth = 23;
-            const lines = textarea.value.split('\n');
-            const wrappedLines = lines.map(line => {
-                if (line.length <= maxWidth) return line;
-                const wrappedLine = [];
-                for (let i = 0; i < line.length; i += maxWidth) {
-                    wrappedLine.push(line.slice(i, i + maxWidth));
-                }
-                return wrappedLine.join('\n');
-            });
-            textarea.value = wrappedLines.join('\n');
-        }
-
         window.onload = function() {
             displayDate();
             updateTime();
@@ -286,9 +221,6 @@
             document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
             document.getElementById('textInput').addEventListener('input', toggleClearButton);
             document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
-            document.getElementById('textInput').addEventListener('input', function() {
-                autoWrap(this);
-            });
         };
 
         function toggleMode() {
@@ -300,8 +232,6 @@
             const imagePreviewContainer = document.getElementById('imagePreviewContainer');
             const printButton = document.getElementById('printButton');
             const textPrintButton = document.getElementById('textPrintButton');
-            const imagePrintOptions = document.getElementById('imagePrintOptions');
-            const textPrintOptions = document.getElementById('textPrintOptions');
 
             if (imageSection.style.display === 'none') {
                 imageSection.style.display = 'block';
@@ -309,7 +239,7 @@
                 modeToggle.textContent = 'テキスト入力';
                 textInput.value = '';
                 textPrintButton.classList.add('disabled');
-                textPrintOptions.style.display = 'none';
+                textPrintButton.style.display = 'none';
                 document.getElementById('textDateTimeChoice').style.display = 'none';
                 const textChips = document.querySelectorAll('#textDateTimeChoice .chip');
                 textChips.forEach(chip => chip.classList.remove('selected'));
@@ -321,7 +251,7 @@
                 imageUpload.value = '';
                 imagePreviewContainer.innerHTML = '';
                 printButton.classList.add('disabled');
-                imagePrintOptions.style.display = 'none';
+                printButton.style.display = 'none';
                 document.getElementById('dateTimeChoice').style.display = 'none';
                 const imageChips = document.querySelectorAll('#dateTimeChoice .chip');
                 imageChips.forEach(chip => chip.classList.remove('selected'));
@@ -339,9 +269,8 @@
                 const previewContainer = document.getElementById('imagePreviewContainer');
                 previewContainer.innerHTML = '';
                 previewContainer.appendChild(img);
+                document.getElementById('printButton').style.display = 'inline-block';
                 document.getElementById('dateTimeChoice').style.display = 'block';
-                document.getElementById('imagePrintOptions').style.display = 'flex';
-                document.getElementById('imagePrintOptions').classList.add('disabled');
             };
             if (file) {
                 reader.readAsDataURL(file);
@@ -360,7 +289,7 @@
             updatePrintButtonState();
         }
 
-                function selectTextChip(type) {
+        function selectTextChip(type) {
             selectedTextChip = type;
             const chips = document.querySelectorAll('#textDateTimeChoice .chip');
             chips.forEach(chip => chip.classList.remove('selected'));
@@ -374,28 +303,24 @@
 
         function updatePrintButtonState() {
             const printButton = document.getElementById('printButton');
-            const imagePrintOptions = document.getElementById('imagePrintOptions');
             if (selectedChip === '') {
                 printButton.classList.add('disabled');
-                imagePrintOptions.classList.add('disabled');
+                printButton.style.display = 'none';
             } else {
                 printButton.classList.remove('disabled');
-                imagePrintOptions.classList.remove('disabled');
+                printButton.style.display = 'inline-block';
             }
         }
 
         function updateTextPrintButtonState() {
             const textPrintButton = document.getElementById('textPrintButton');
-            const textPrintOptions = document.getElementById('textPrintOptions');
             const textInput = document.getElementById('textInput');
             if (textInput.value.trim() === '' || selectedTextChip === '') {
                 textPrintButton.classList.add('disabled');
-                textPrintOptions.classList.add('disabled');
             } else {
                 textPrintButton.classList.remove('disabled');
-                textPrintOptions.classList.remove('disabled');
             }
-            textPrintOptions.style.display = 'flex';
+            textPrintButton.style.display = 'inline-block';
         }
 
         function sendToPrintAssist(event) {
@@ -404,119 +329,128 @@
             const file = fileInput.files[0];
             if (!file || selectedChip === '') return;
             const reader = new FileReader();
-            reader.onloadend = function () {
+            reader.onloadend = function() {
                 const base64Image = reader.result.split(',')[1];
                 const paperWidth = 58;
                 const img = new Image();
-                img.onload = function () {
+                img.onload = function() {
                     const aspectRatio = img.width / img.height;
                     const paperHeight = Math.round(paperWidth / aspectRatio);
                     const isDateTimeEnabled = selectedChip === 'with';
                     const totalHeight = isDateTimeEnabled ? paperHeight + 30 : paperHeight + 17;
-                    remainingCopies = parseInt(document.getElementById('copiesSelect').value);
-
-                    currentPrintData = {
-                        paperWidth: paperWidth,
-                        totalHeight: totalHeight,
-                        base64Image: base64Image,
-                        paperHeight: paperHeight,
-                        isDateTimeEnabled: isDateTimeEnabled
-                    };
-
-                    printNextCopy();
+                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway1121t.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
+                    if (isDateTimeEnabled) {
+                        const dateTimeString = `${formattedDate}\n${formattedTime}`;
+                        printUrlImage += `&2=${encodeURIComponent(dateTimeString)},0,${paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                    }
+                    window.location.href = printUrlImage;
                 };
                 img.src = reader.result;
             };
             reader.readAsDataURL(file);
         }
 
-        function printNextCopy() {
-            if (remainingCopies > 0) {
-                const { paperWidth, totalHeight, base64Image, paperHeight, isDateTimeEnabled } = currentPrintData;
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=${remainingCopies}&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
-                if (isDateTimeEnabled) {
-                    const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-                }
-                window.location.href = printUrlImage;
-                remainingCopies = 0;
-            } else {
-                // 印刷が完了したら画像選択画面に戻る
-                toggleMode();
-            }
-        }
-
-        function printText() {
-            const textInput = document.getElementById("textInput");
-            
-            if (!textInput.value.trim() || !document.querySelector("#textDateTimeChoice .chip.selected")) return;
-
-            remainingCopies = parseInt(document.getElementById("textCopiesSelect").value);
-
-            currentPrintData = {
-                text: textInput.value,
-                isDateTimeEnabled: document.querySelector("#textDateTimeChoice .chip.selected").textContent === "日付・時刻あり"
-            };
-
-            printNextTextCopy();
-        }
-
-        function printNextTextCopy() {
-            if (remainingCopies > 0) {
-                const { text, isDateTimeEnabled } = currentPrintData;
-
-                let wrappedLines = wrapText(text);
-                
-                let printUrlText =
-                    `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&copies=1&quality=3&monochrome=0&pages=${remainingCopies}`;
-
-                wrappedLines.forEach((line, index) => {
-                    printUrlText += `&${index + 1}=${safeEncodeURIComponent(line)},2,${5 + index * 4},58,4,機械彫刻用標準書体 M,3.2,0,0,1`;
-                });
-
-                if (isDateTimeEnabled) {
-                    const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                    printUrlText += `&${wrappedLines.length + 1}=${safeEncodeURIComponent(dateTimeString)},2,${
-                        5 + wrappedLines.length * 4 + 9
-                    },58,16,機械彫刻用標準書体 M,4,0,0,1`;
-                }
-
-                window.location.href = printUrlText;
-                remainingCopies = 0;
-            } else {
-                // 印刷が完了したら画像選択画面に戻る
-                toggleMode();
-            }
-        }
-
-        // テキスト自動折り返し処理
-        function wrapText(text) {
-            const maxWidth = 23; // 半角23文字で折り返す
+        function wrapText(text, maxWidth) {
             const lines = [];
+            const paragraphs = text.split('\n');
             
-            text.split("\n").forEach(paragraph => {
-                while (paragraph.length > maxWidth) {
-                    lines.push(paragraph.slice(0, maxWidth));
-                    paragraph = paragraph.slice(maxWidth);
+            for (let paragraph of paragraphs) {
+                let remainingText = paragraph;
+                while (remainingText.length > 0) {
+                    if (remainingText.length <= maxWidth) {
+                        lines.push(remainingText.padEnd(maxWidth, '　'));
+                        break;
+                    }
+                    
+                    let line = remainingText.substring(0, maxWidth);
+                    lines.push(line.padEnd(maxWidth, '　'));
+                    remainingText = remainingText.substring(maxWidth);
                 }
-                
-                lines.push(paragraph);
-            });
-
+            }
+            
             return lines;
         }
 
-        // 安全なエンコード処理
         function safeEncodeURIComponent(str) {
             return encodeURIComponent(str)
-                .replace(/!/g, "%21")
-                .replace(/'/g, "%27")
-                .replace(/\(/g, "%28")
-                .replace(/\)/g, "%29")
-                .replace(/\*/g, "%2A");
+                .replace(/[!'()*]/g, function(c) {
+                    return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+                });
         }
 
-        // Service Workerの登録
+        function printText() {
+            const textInput = document.getElementById('textInput');
+            const text = textInput.value.trim();
+            if (text === '' || selectedTextChip === '') return;
+            
+            const paperWidth = 58;
+            const isDateTimeEnabled = selectedTextChip === 'with';
+            const wrappedLines = wrapText(text, 13);
+            
+            const lineHeight = 4;
+            const topMargin = 5;
+            const dateTimeHeight = 16;
+            const spaceBetweenTextAndDate = 9;
+            const bottomMargin = 17;
+            
+            const totalHeight = topMargin + 
+                                (wrappedLines.length * lineHeight) + 
+                                (isDateTimeEnabled ? spaceBetweenTextAndDate + dateTimeHeight : 0) + 
+                                bottomMargin;
+            
+            let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway1121t.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0`;
+            
+            wrappedLines.forEach((line, index) => {
+                const encodedLine = safeEncodeURIComponent(line);
+                printUrlText += `&${index + 1}=${encodedLine},2,${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,4,0,0,1`;
+            });
+            
+            if (isDateTimeEnabled) {
+                const dateTimeString = `${formattedDate}\n${formattedTime}`;
+                const encodedDateTime = safeEncodeURIComponent(dateTimeString);
+                printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},2,${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+            }
+            
+            window.location.href = printUrlText;
+        }
+
+        function toggleClearButton() {
+            const textInput = document.getElementById('textInput');
+            const clearTextButton = document.getElementById('clearTextButton');
+            
+            if (textInput.value.trim() !== '') {
+                clearTextButton.style.display = 'block';
+            } else {
+                clearTextButton.style.display = 'none';
+            }
+        }
+
+        function handleClearButtonClick() {
+            const textInput = document.getElementById('textInput');
+            
+            const confirmClear = confirm('テキストをクリアしますか？');
+            
+            if (confirmClear) {
+                textInput.value = '';
+                document.getElementById('clearTextButton').style.display = 'none';
+                updateTextPrintButtonState();
+            }
+        }
+
+        function convertToFullWidth(text) {
+            return text.replace(/[A-Za-z0-9]/g, function(s) {
+                return String.fromCharCode(s.charCodeAt(0) + 65248);
+            });
+        }
+
+        function autoConvertToFullWidth(event) {
+            const input = event.target;
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            input.value = convertToFullWidth(input.value);
+            input.setSelectionRange(start, end);
+        }
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('service-worker.js').then(function(registration) {
