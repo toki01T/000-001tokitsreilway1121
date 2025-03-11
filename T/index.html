@@ -41,9 +41,8 @@
             color: #fff;
             font-size: 1rem;
             cursor: pointer;
-            display: none;
             transition: .3s ease-in-out all;
-            margin-top: .5rem;
+            margin-left: 0.5rem;
         }
         #printButton.disabled, #textPrintButton.disabled {
           background-color: #ccc;
@@ -72,6 +71,7 @@
             cursor: pointer;
             margin-right: .5rem;
             transition: .3s ease-in-out all;
+            border: 1px solid #00A3ED;
         }
         .chip.selected {
           background-color: #00A3ED;
@@ -147,6 +147,20 @@
           color: #00A3ED;
           font-size: 14px;
         }
+        .print-options {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        #copiesSelect, #textCopiesSelect {
+            padding: 0.5rem;
+            border: 1px solid #00A3ED;
+            border-radius: 5px;
+            background-color: #fff;
+            color: #00A3ED;
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -170,7 +184,16 @@
                     <div class="chip" onclick="selectChip('with')">日付・時刻あり</div>
                     <div class="chip" onclick="selectChip('without')">日付・時刻なし</div>
                 </div>
-                <button type="submit" id="printButton" class="disabled">発行</button>
+                <div class="print-options" id="imagePrintOptions">
+                    <select id="copiesSelect">
+                        <option value="1">1枚</option>
+                        <option value="2">2枚</option>
+                        <option value="3">3枚</option>
+                        <option value="4">4枚</option>
+                        <option value="5">5枚</option>
+                    </select>
+                    <button type="submit" id="printButton" class="disabled">発行</button>
+                </div>
             </form>
         </section>
         <section id="textSection" style="display:none;">
@@ -182,7 +205,16 @@
                 <div class="chip" onclick="selectTextChip('with')">日付・時刻あり</div>
                 <div class="chip" onclick="selectTextChip('without')">日付・時刻なし</div>
             </div>
-            <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
+            <div class="print-options" id="textPrintOptions">
+                <select id="textCopiesSelect">
+                    <option value="1">1枚</option>
+                    <option value="2">2枚</option>
+                    <option value="3">3枚</option>
+                    <option value="4">4枚</option>
+                    <option value="5">5枚</option>
+                </select>
+                <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
+            </div>
         </section>
         <div id="dateDisplay"></div>
         <div id="timeDisplay"></div>
@@ -230,6 +262,8 @@
             const imagePreviewContainer = document.getElementById('imagePreviewContainer');
             const printButton = document.getElementById('printButton');
             const textPrintButton = document.getElementById('textPrintButton');
+            const imagePrintOptions = document.getElementById('imagePrintOptions');
+            const textPrintOptions = document.getElementById('textPrintOptions');
 
             if (imageSection.style.display === 'none') {
                 imageSection.style.display = 'block';
@@ -237,7 +271,7 @@
                 modeToggle.textContent = 'テキスト入力';
                 textInput.value = '';
                 textPrintButton.classList.add('disabled');
-                textPrintButton.style.display = 'none';
+                textPrintOptions.style.display = 'none';
                 document.getElementById('textDateTimeChoice').style.display = 'none';
                 const textChips = document.querySelectorAll('#textDateTimeChoice .chip');
                 textChips.forEach(chip => chip.classList.remove('selected'));
@@ -249,12 +283,11 @@
                 imageUpload.value = '';
                 imagePreviewContainer.innerHTML = '';
                 printButton.classList.add('disabled');
-                printButton.style.display = 'none';
+                imagePrintOptions.style.display = 'none';
                 document.getElementById('dateTimeChoice').style.display = 'none';
                 const imageChips = document.querySelectorAll('#dateTimeChoice .chip');
                 imageChips.forEach(chip => chip.classList.remove('selected'));
                 selectedChip = '';
-                document.getElementById('textDateTimeChoice').style.display = 'block';
             }
         }
 
@@ -267,7 +300,6 @@
                 const previewContainer = document.getElementById('imagePreviewContainer');
                 previewContainer.innerHTML = '';
                 previewContainer.appendChild(img);
-                document.getElementById('printButton').style.display = 'inline-block';
                 document.getElementById('dateTimeChoice').style.display = 'block';
             };
             if (file) {
@@ -301,24 +333,35 @@
 
         function updatePrintButtonState() {
             const printButton = document.getElementById('printButton');
+            const imagePrintOptions = document.getElementById('imagePrintOptions');
             if (selectedChip === '') {
                 printButton.classList.add('disabled');
-                printButton.style.display = 'none';
+                imagePrintOptions.style.display = 'none';
             } else {
                 printButton.classList.remove('disabled');
-                printButton.style.display = 'inline-block';
+                imagePrintOptions.style.display = 'flex';
             }
         }
 
         function updateTextPrintButtonState() {
             const textPrintButton = document.getElementById('textPrintButton');
+            const textPrintOptions = document.getElementById('textPrintOptions');
             const textInput = document.getElementById('textInput');
-            if (textInput.value.trim() === '' || selectedTextChip === '') {
+            const textDateTimeChoice = document.getElementById('textDateTimeChoice');
+                        if (textInput.value.trim() === '') {
+                textDateTimeChoice.style.display = 'none';
                 textPrintButton.classList.add('disabled');
+                textPrintOptions.style.display = 'none';
             } else {
-                textPrintButton.classList.remove('disabled');
+                textDateTimeChoice.style.display = 'block';
+                if (selectedTextChip !== '') {
+                    textPrintButton.classList.remove('disabled');
+                    textPrintOptions.style.display = 'flex';
+                } else {
+                    textPrintButton.classList.add('disabled');
+                    textPrintOptions.style.display = 'none';
+                }
             }
-            textPrintButton.style.display = 'inline-block';
         }
 
         function sendToPrintAssist(event) {
@@ -336,7 +379,9 @@
                     const paperHeight = Math.round(paperWidth / aspectRatio);
                     const isDateTimeEnabled = selectedChip === 'with';
                     const totalHeight = isDateTimeEnabled ? paperHeight + 30 : paperHeight + 17;
-                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
+                    const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
+
+                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedCopies}&quality=3&monochrome=0&pages=${selectedCopies}&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
                     if (isDateTimeEnabled) {
                         const dateTimeString = `${formattedDate}\n${formattedTime}`;
                         printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
@@ -344,7 +389,7 @@
                     window.location.href = printUrlImage;
                 };
                 img.src = reader.result;
-                    };
+            };
             reader.readAsDataURL(file);
         }
 
@@ -376,7 +421,7 @@
 
                         let currentMaxWidth;
                         if (mixedCharacters) {
-                            currentMaxWidth = 14;
+                            currentMaxWidth = 16;
                         } else if (hasFullWidth) {
                             currentMaxWidth = 16;
                         } else {
@@ -406,157 +451,51 @@
                 .replace(/%20/g, '%20');
         }
 
-        function safeEncodeURIComponent(str) {
-    return encodeURIComponent(str).replace(/[!'()*]/g, function(c) {
-        return '%' + c.charCodeAt(0).toString(16);
-    });
-}
+        function printText() {
+            const textInput = document.getElementById('textInput');
+            const text = textInput.value;
+            if (text.trim() === '' || selectedTextChip === '') return;
 
-function wrapText(text) {
-    const lines = text.split('\n');
-    const wrappedLines = [];
+            const paperWidth = 58;
+            const isDateTimeEnabled = selectedTextChip === 'with';
+            const wrappedLines = wrapText(text);
 
-    lines.forEach(line => {
-        if (line.length === 0) {
-            wrappedLines.push('');
-            return;
+            const lineHeight = 4;
+            const topMargin = 5;
+            const dateTimeHeight = 16;
+            const spaceBetweenTextAndDate = 9;
+            const bottomMargin = 17;
+
+            const totalHeight =
+                topMargin +
+                wrappedLines.length * lineHeight +
+                (isDateTimeEnabled ? spaceBetweenTextAndDate + dateTimeHeight : 0) +
+                bottomMargin;
+
+            const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+
+            let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedTextCopies}&quality=3&monochrome=0&pages=${selectedTextCopies}`;
+
+            wrappedLines.forEach((line, index) => {
+                const encodedLine = safeEncodeURIComponent(line);
+                printUrlText += `&${index + 1}=${encodedLine},2,${topMargin + index * lineHeight},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
+            });
+
+            if (isDateTimeEnabled) {
+                const dateTimeString = `${formattedDate}\n${formattedTime}`;
+                const encodedDateTime = safeEncodeURIComponent(dateTimeString);
+                printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},2,${
+                    topMargin + wrappedLines.length * lineHeight + spaceBetweenTextAndDate
+                },${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+            }
+
+            window.location.href = printUrlText;
         }
-
-        let currentLine = '';
-        let fullWidthCount = 0;
-        let halfWidthCount = 0;
-
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
-            const isFullWidthChar = isFullWidth(char);
-
-            if (isFullWidthChar) {
-                fullWidthCount++;
-            } else {
-                halfWidthCount++;
-            }
-
-            if ((fullWidthCount > 0 && halfWidthCount > 0 && (fullWidthCount + halfWidthCount) > 13) ||
-                (fullWidthCount === 0 && halfWidthCount > 23) ||
-                (halfWidthCount === 0 && fullWidthCount > 16)) {
-                wrappedLines.push(currentLine);
-                currentLine = char;
-                fullWidthCount = isFullWidthChar ? 1 : 0;
-                halfWidthCount = isFullWidthChar ? 0 : 1;
-            } else {
-                currentLine += char;
-            }
-
-            if (i === line.length - 1) {
-                wrappedLines.push(currentLine);
-            }
-        }
-    });
-
-    return wrappedLines;
-}
-
-function isFullWidth(char) {
-    return char.match(/[^\x00-\xff]/);
-}
-
-function safeEncodeURIComponent(str) {
-    return encodeURIComponent(str).replace(/[!'()*]/g, function(c) {
-        return '%' + c.charCodeAt(0).toString(16);
-    });
-}
-
-function isFullWidth(char) {
-    return char.match(/[^\x00-\xff]/);
-}
-
-function wrapText(text) {
-    const lines = text.split('\n');
-    const wrappedLines = [];
-
-    lines.forEach(line => {
-        if (line.length === 0) {
-            wrappedLines.push('');
-            return;
-        }
-
-        let currentLine = '';
-        let fullWidthCount = 0;
-        let halfWidthCount = 0;
-
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
-            const isFullWidthChar = isFullWidth(char);
-
-            if (isFullWidthChar) {
-                fullWidthCount++;
-            } else {
-                halfWidthCount++;
-            }
-
-            if ((fullWidthCount > 0 && halfWidthCount > 0 && (fullWidthCount + halfWidthCount) > 13) ||
-                (fullWidthCount === 0 && halfWidthCount > 23) ||
-                (halfWidthCount === 0 && fullWidthCount > 16)) {
-                wrappedLines.push(currentLine);
-                currentLine = char;
-                fullWidthCount = isFullWidthChar ? 1 : 0;
-                halfWidthCount = isFullWidthChar ? 0 : 1;
-            } else {
-                currentLine += char;
-            }
-
-            if (i === line.length - 1) {
-                wrappedLines.push(currentLine);
-            }
-        }
-    });
-
-    return wrappedLines;
-}
-
-function printText() {
-    const textInput = document.getElementById('textInput');
-    const text = textInput.value;
-    if (text.trim() === '' || selectedTextChip === '') return;
-    
-    const paperWidth = 58;
-    const isDateTimeEnabled = selectedTextChip === 'with';
-    const wrappedLines = wrapText(text);
-    
-    const lineHeight = 4;
-    const topMargin = 5;
-    const dateTimeHeight = 16;
-    const spaceBetweenTextAndDate = 9;
-    const bottomMargin = 17;
-    const leftMargin = 2; // 左マージンを2に設定
-    
-    const totalHeight = topMargin + 
-                        (wrappedLines.length * lineHeight) + 
-                        (isDateTimeEnabled ? spaceBetweenTextAndDate + dateTimeHeight : 0) + 
-                        bottomMargin;
-    
-    let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0`;
-    
-    wrappedLines.forEach((line, index) => {
-        const encodedLine = safeEncodeURIComponent(line);
-        // xPositionを左マージンに設定
-        const xPosition = leftMargin;
-        printUrlText += `&${index + 1}=${encodedLine},${xPosition},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-    });
-    
-    if (isDateTimeEnabled) {
-        const dateTimeString = `${formattedDate}\n${formattedTime}`;
-        const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-        printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},2,${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
-    }
-    
-    window.location.href = printUrlText;
-}
 
         function toggleClearButton() {
             const textInput = document.getElementById('textInput');
             const clearTextButton = document.getElementById('clearTextButton');
-            
+
             if (textInput.value.trim() !== '') {
                 clearTextButton.style.display = 'block';
             } else {
@@ -566,9 +505,9 @@ function printText() {
 
         function handleClearButtonClick() {
             const textInput = document.getElementById('textInput');
-            
+
             const confirmClear = confirm('テキストをクリアしますか？');
-            
+
             if (confirmClear) {
                 textInput.value = '';
                 document.getElementById('clearTextButton').style.display = 'none';
@@ -578,17 +517,20 @@ function printText() {
 
         function autoWrap(textarea) {
             const text = textarea.value;
-            const wrappedLines = wrapText(text, 23);
+            const wrappedLines = wrapText(text);
             textarea.value = wrappedLines.join('\n');
         }
 
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('service-worker.js').then(function(registration) {
-                    console.log('Service Worker登録成功:', registration);
-                }).catch(function(error) {
-                    console.log('Service Worker登録失敗:', error);
-                });
+            window.addEventListener('load', function () {
+                navigator.serviceWorker
+                    .register('service-worker.js')
+                    .then(function (registration) {
+                        console.log('Service Worker登録成功:', registration);
+                    })
+                    .catch(function (error) {
+                        console.log('Service Worker登録失敗:', error);
+                    });
             });
         }
     </script>
