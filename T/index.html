@@ -352,10 +352,10 @@
                 textDateTimeChoice.style.display = 'none';
                 textPrintButton.classList.add('disabled');
                 textPrintOptions.style.display = 'none';
-                        } else {
+            } else {
                 textDateTimeChoice.style.display = 'block';
                 if (selectedTextChip !== '') {
-                    textPrintButton.classList.remove('disabled');
+                                        textPrintButton.classList.remove('disabled');
                     textPrintOptions.style.display = 'flex';
                 } else {
                     textPrintButton.classList.add('disabled');
@@ -378,7 +378,7 @@
                     const aspectRatio = img.width / img.height;
                     const paperHeight = Math.round(paperWidth / aspectRatio);
                     const isDateTimeEnabled = selectedChip === 'with';
-                    const totalHeight = isDateTimeEnabled ? paperHeight + 30 : paperHeight + 17;
+                    const totalHeight = isDateTimeEnabled ? paperHeight + 30 : paperHeight;
                     const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
 
                     let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedCopies}&quality=3&monochrome=0&pages=${selectedCopies}&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
@@ -464,7 +464,7 @@
             const topMargin = 5;
             const dateTimeHeight = 16;
             const spaceBetweenTextAndDate = 9;
-            const bottomMargin = 17;
+            const bottomMargin = 0;
 
             const totalHeight =
                 topMargin +
