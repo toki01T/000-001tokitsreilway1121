@@ -344,195 +344,167 @@
         }
 
         function updateTextPrintButtonState() {
-    const textPrintButton = document.getElementById('textPrintButton');
-    const textPrintOptions = document.getElementById('textPrintOptions');
-    const textInput = document.getElementById('textInput');
-    const textDateTimeChoice = document.getElementById('textDateTimeChoice');
-    if (textInput.value.trim() === '') {
-        textDateTimeChoice.style.display = 'none';
-        textPrintButton.classList.add('disabled');
-        textPrintOptions.style.display = 'none';
-    } else {
-        textDateTimeChoice.style.display = 'block';
-        if (selectedTextChip !== '') {
-            textPrintButton.classList.remove('disabled');
-            textPrintOptions.style.display = 'flex';
-        } else {
-            textPrintButton.classList.add('disabled');
-            textPrintOptions.style.display = 'none';
+            const textPrintButton = document.getElementById('textPrintButton');
+            const textPrintOptions = document.getElementById('textPrintOptions');
+            const textInput = document.getElementById('textInput');
+            const textDateTimeChoice = document.getElementById('textDateTimeChoice');
+            if (textInput.value.trim() === '') {
+                textDateTimeChoice.style.display = 'none';
+                textPrintButton.classList.add('disabled');
+                textPrintOptions.style.display = 'none';
+            } else {
+                textDateTimeChoice.style.display = 'block';
+                if (selectedTextChip !== '') {
+                    textPrintButton.classList.remove('disabled');
+                    textPrintOptions.style.display = 'flex';
+                } else {
+                    textPrintButton.classList.add('disabled');
+                    textPrintOptions.style.display = 'none';
+                }
+            }
         }
-    }
-}
 
-function sendToPrintAssist(event) {
-    event.preventDefault();
-    const fileInput = document.getElementById('imageUpload');
-    const file = fileInput.files[0];
-    if (!file || selectedChip === '') return;
-    const reader = new FileReader();
-    reader.onloadend = function() {
-        const base64Image = reader.result.split(',')[1];
-        const paperWidth = 58;
-        const img = new Image();
-        img.onload = function() {
-            const aspectRatio = img.width / img.height;
-            const paperHeight = Math.round(paperWidth / aspectRatio);
-            const isDateTimeEnabled = selectedChip === 'with';
-            const totalHeight = isDateTimeEnabled ? paperHeight + 16 : paperHeight;
-            const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
+        function sendToPrintAssist(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('imageUpload');
+            const file = fileInput.files[0];
+            if (!file || selectedChip === '') return;
 
-            let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedCopies}&quality=3&monochrome=0&pages=${selectedCopies}&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                const base64Image = reader.result.split(',')[1];
+                const paperWidth = 58;
+                const img = new Image();
+                img.onload = function() {
+                    const aspectRatio = img.width / img.height;
+                    const paperHeight = Math.round(paperWidth / aspectRatio);
+                    const isDateTimeEnabled = selectedChip === 'with';
+                    let totalHeight = paperHeight;
+                    let dateTimeYOffset = 0;  // 日付・時刻のYオフセット
+
+                    if (isDateTimeEnabled) {
+                        totalHeight += 16; // 日付・時刻の高さ
+                        dateTimeYOffset = paperHeight; // 画像の下に日付・時刻を配置
+                    }
+
+                    const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
+
+                     // ベースURLを作成
+                    let baseUrl = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedCopies}&quality=3&monochrome=0&pages=${selectedCopies}`;
+
+                    // 画像の描画コマンド
+                    baseUrl += `&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
+
+                    // 日付・時刻が有効な場合
+                    if (isDateTimeEnabled) {
+                        const dateTimeString = `${formattedDate}\n${formattedTime}`;
+                        baseUrl += `&2=${safeEncodeURIComponent(dateTimeString)},0,${dateTimeYOffset},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                    }
+
+                    window.location.href = baseUrl;
+                };
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function wrapText(text) {
+            const lines = [];
+            const paragraphs = text.split('\n');
+            
+            for (let paragraph of paragraphs) {
+                let remainingText = paragraph;
+                while (remainingText.length > 0) {
+                    let lineLength = 0;
+                    let currentLine = '';
+                    let maxWidth = 23;
+
+                    for (let char of remainingText) {
+                        const charWidth = char.match(/[^\x01-\x7E]/) ? 2 : 1;
+                        if (lineLength + charWidth > maxWidth) break;
+                        currentLine += char;
+                        lineLength += charWidth;
+                    }
+                    lines.push(currentLine);
+                    remainingText = remainingText.slice(currentLine.length);
+                }
+            }
+            return lines;
+        }
+
+        function safeEncodeURIComponent(str) {
+            return encodeURIComponent(str)
+                .replace(/!/g, '%21')
+                .replace(/'/g, '%27')
+                .replace(/\(/g, '%28')
+                .replace(/\)/g, '%29')
+                .replace(/\*/g, '%2A')
+                .replace(/%20/g, '%20');
+        }
+
+        function printText() {
+            const textInput = document.getElementById('textInput');
+            const text = textInput.value;
+            if (text.trim() === '' || selectedTextChip === '') return;
+
+            const paperWidth = 58;
+            const isDateTimeEnabled = selectedTextChip === 'with';
+            const wrappedLines = wrapText(text);
+
+            let totalHeight = 5; // 初期マージン
+            totalHeight += wrappedLines.length * 4; // 各行の高さ
+
+            if (isDateTimeEnabled) {
+                totalHeight += 9 + 16; // 日付・時刻のスペースと高さ
+            }
+
+            const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+
+            let baseUrl = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedTextCopies}&quality=3&monochrome=0&pages=${selectedTextCopies}`;
+
+            let currentY = 5; // 現在のY座標
+
+            for (let i = 0; i < wrappedLines.length; i++) {
+                const line = wrappedLines[i];
+                const encodedLine = safeEncodeURIComponent(line);
+                baseUrl += `&${i + 1}=${encodedLine},2,${currentY},${paperWidth - 4},4,機械彫刻用標準書体 M,3.2,0,0,1`;
+                currentY += 4; // 次の行のためにY座標を更新
+            }
+
             if (isDateTimeEnabled) {
                 const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                const encodedDateTime = safeEncodeURIComponent(dateTimeString);
+                baseUrl += `&${wrappedLines.length + 1}=${encodedDateTime},2,${currentY + 9},${paperWidth - 4},16,機械彫刻用標準書体 M,4,0,0,1`;
             }
-            window.location.href = printUrlImage;
-        };
-        img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-}
 
-function wrapText(text, maxWidth) {
-    const lines = [];
-    const paragraphs = text.split('\n');
-    
-    for (let paragraph of paragraphs) {
-        if (paragraph.length === 0) {
-            lines.push('');
-            continue;
+            window.location.href = baseUrl;
         }
-        let remainingText = paragraph;
-        while (remainingText.length > 0) {
-            let lineLength = 0;
-            let currentLine = '';
-            let mixedCharacters = false;
-            let hasFullWidth = false;
-            let hasHalfWidth = false;
 
-            for (let i = 0; i < remainingText.length; i++) {
-                const char = remainingText[i];
-                const charWidth = char.match(/[^\x01-\x7E]/) ? 2 : 1;
-                
-                if (charWidth === 2) hasFullWidth = true;
-                if (charWidth === 1) hasHalfWidth = true;
+        function toggleClearButton() {
+            const textInput = document.getElementById('textInput');
+            const clearTextButton = document.getElementById('clearTextButton');
+            clearTextButton.style.display = textInput.value.trim() !== '' ? 'block' : 'none';
+        }
 
-                if (hasFullWidth && hasHalfWidth) mixedCharacters = true;
-
-                let currentMaxWidth;
-                if (mixedCharacters) {
-                    currentMaxWidth = 16;
-                } else if (hasFullWidth) {
-                    currentMaxWidth = 16;
-                } else {
-                    currentMaxWidth = 23;
-                }
-
-                if (lineLength + charWidth > currentMaxWidth) {
-                    break;
-                }
-                currentLine += char;
-                lineLength += charWidth;
+        function handleClearButtonClick() {
+            if (confirm('テキストをクリアしますか？')) {
+                document.getElementById('textInput').value = '';
+                document.getElementById('clearTextButton').style.display = 'none';
+                updateTextPrintButtonState();
             }
-            lines.push(currentLine);
-            remainingText = remainingText.substring(currentLine.length);
         }
-    }
-    return lines;
-}
 
-function safeEncodeURIComponent(str) {
-    return encodeURIComponent(str)
-        .replace(/!/g, '%21')
-        .replace(/'/g, '%27')
-        .replace(/\(/g, '%28')
-        .replace(/\)/g, '%29')
-        .replace(/\*/g, '%2A')
-        .replace(/%20/g, '%20');
-}
+        function autoWrap(textarea) {
+            textarea.value = wrapText(textarea.value).join('\n');
+        }
 
-function printText() {
-    const textInput = document.getElementById('textInput');
-    const text = textInput.value;
-    if (text.trim() === '' || selectedTextChip === '') return;
-
-    const paperWidth = 58;
-    const isDateTimeEnabled = selectedTextChip === 'with';
-    const wrappedLines = wrapText(text);
-
-    const lineHeight = 4;
-    const topMargin = 5;
-    const dateTimeHeight = 16;
-    const spaceBetweenTextAndDate = 9;
-    const bottomMargin = 0;
-
-    const totalHeight =
-        topMargin +
-        wrappedLines.length * lineHeight +
-        (isDateTimeEnabled ? spaceBetweenTextAndDate + dateTimeHeight : 0) +
-        bottomMargin;
-
-    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-
-    let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedTextCopies}&quality=3&monochrome=0&pages=${selectedTextCopies}`;
-
-    wrappedLines.forEach((line, index) => {
-        const encodedLine = safeEncodeURIComponent(line);
-        printUrlText += `&${index + 1}=${encodedLine},2,${topMargin + index * lineHeight},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-    });
-
-    if (isDateTimeEnabled) {
-        const dateTimeString = `${formattedDate}\n${formattedTime}`;
-        const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-        printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},2,${
-            topMargin + wrappedLines.length * lineHeight + spaceBetweenTextAndDate
-        },${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
-    }
-
-    window.location.href = printUrlText;
-}
-
-function toggleClearButton() {
-    const textInput = document.getElementById('textInput');
-    const clearTextButton = document.getElementById('clearTextButton');
-
-    if (textInput.value.trim() !== '') {
-        clearTextButton.style.display = 'block';
-    } else {
-        clearTextButton.style.display = 'none';
-    }
-}
-
-function handleClearButtonClick() {
-    const textInput = document.getElementById('textInput');
-
-    const confirmClear = confirm('テキストをクリアしますか？');
-
-    if (confirmClear) {
-        textInput.value = '';
-        document.getElementById('clearTextButton').style.display = 'none';
-        updateTextPrintButtonState();
-    }
-}
-
-function autoWrap(textarea) {
-    const text = textarea.value;
-    const wrappedLines = wrapText(text);
-    textarea.value = wrappedLines.join('\n');
-}
-
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () {
-        navigator.serviceWorker
-            .register('service-worker.js')
-            .then(function (registration) {
-                console.log('Service Worker登録成功:', registration);
-            })
-            .catch(function (error) {
-                console.log('Service Worker登録失敗:', error);
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('ServiceWorker登録成功:', reg))
+                    .catch(err => console.log('ServiceWorker登録失敗:', err));
             });
-    });
-}
-</script>
+        }
+    </script>
 </body>
 </html>
