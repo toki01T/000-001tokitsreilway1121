@@ -380,22 +380,19 @@
                     const paperHeight = Math.round(paperWidth / aspectRatio);
                     const isDateTimeEnabled = selectedChip === 'with';
                     let totalHeight = paperHeight;
-                    let dateTimeYOffset = 0;  // 日付・時刻のYオフセット
+                    let dateTimeYOffset = 0;
 
                     if (isDateTimeEnabled) {
-                        totalHeight += 16; // 日付・時刻の高さ
-                        dateTimeYOffset = paperHeight; // 画像の下に日付・時刻を配置
+                        totalHeight += 16;
+                        dateTimeYOffset = paperHeight;
                     }
 
                     const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
 
-                     // ベースURLを作成
-                    let baseUrl = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedCopies}&quality=3&monochrome=0&pages=${selectedCopies}`;
+                    let baseUrl = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedCopies}&quality=3&monochrome=0&pages=${selectedCopies}&topmargin=0&bottommargin=0`;
 
-                    // 画像の描画コマンド
                     baseUrl += `&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
 
-                    // 日付・時刻が有効な場合
                     if (isDateTimeEnabled) {
                         const dateTimeString = `${formattedDate}\n${formattedTime}`;
                         baseUrl += `&2=${safeEncodeURIComponent(dateTimeString)},0,${dateTimeYOffset},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
@@ -451,8 +448,14 @@
             const isDateTimeEnabled = selectedTextChip === 'with';
             const wrappedLines = wrapText(text);
 
-            let totalHeight = 5; // 初期マージン
-            totalHeight += wrappedLines.length * 4; // 各行の高さ
+            let totalHeight = 0;
+            let currentY = 0; // 現在のY座標
+
+            totalHeight += 5; // 初期マージン
+
+            for (let i = 0; i < wrappedLines.length; i++) {
+                totalHeight += 4; // 各行の高さ
+            }
 
             if (isDateTimeEnabled) {
                 totalHeight += 9 + 16; // 日付・時刻のスペースと高さ
@@ -460,9 +463,9 @@
 
             const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
 
-            let baseUrl = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedTextCopies}&quality=3&monochrome=0&pages=${selectedTextCopies}`;
+            let baseUrl = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedTextCopies}&quality=3&monochrome=0&pages=${selectedTextCopies}&topmargin=0&bottommargin=0`;
 
-            let currentY = 5; // 現在のY座標
+            currentY = 5; // Y座標を初期化
 
             for (let i = 0; i < wrappedLines.length; i++) {
                 const line = wrappedLines[i];
