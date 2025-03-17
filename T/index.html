@@ -366,29 +366,34 @@
             }
         }
 
-        function sendToPrintAssist(event) {
+        async function sendToPrintAssist(event) {
             event.preventDefault();
             const fileInput = document.getElementById('imageUpload');
             const file = fileInput.files[0];
             if (!file || selectedChip === '') return;
             const reader = new FileReader();
-            reader.onloadend = function() {
+            reader.onloadend = async function() {
                 const base64Image = reader.result.split(',')[1];
                 const paperWidth = 58;
                 const img = new Image();
-                img.onload = function() {
+                img.onload = async function() {
                     const aspectRatio = img.width / img.height;
                     const paperHeight = Math.round(paperWidth / aspectRatio);
                     const isDateTimeEnabled = selectedChip === 'with';
-                    const totalHeight = isDateTimeEnabled ? paperHeight + 16 : paperHeight;
+                    const totalHeight = isDateTimeEnabled ? paperHeight + 22 : paperHeight + 6; // 上下に3mmの余白を追加
                     const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
 
-                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedCopies}&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,0,${paperWidth},${paperHeight},${base64Image}`;
-                    if (isDateTimeEnabled) {
-                        const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                        printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                    for (let i = 0; i < selectedCopies; i++) {
+                        let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,3,${paperWidth},${paperHeight},${base64Image}`;
+                        if (isDateTimeEnabled) {
+                            const dateTimeString = `${formattedDate}\n${formattedTime}`;
+                            printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${paperHeight + 3},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                        }
+                        window.location.href = printUrlImage;
+                        if (i < selectedCopies - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 3000));
+                        }
                     }
-                    window.location.href = printUrlImage;
                 };
                 img.src = reader.result;
             };
@@ -418,6 +423,7 @@
                         
                         if (charWidth === 2) hasFullWidth = true;
                         if (charWidth === 1) hasHalfWidth = true;
+
                         if (hasFullWidth && hasHalfWidth) mixedCharacters = true;
 
                         let currentMaxWidth;
@@ -452,7 +458,7 @@
                 .replace(/%20/g, '%20');
         }
 
-        function printText() {
+        async function printText() {
             const textInput = document.getElementById('textInput');
             const text = textInput.value;
             if (text.trim() === '' || selectedTextChip === '') return;
@@ -462,32 +468,37 @@
             const wrappedLines = wrapText(text);
 
             const lineHeight = 4;
-            const topMargin = 2;
+            const topMargin = 3; // 上部に3mmの余白を追加
             const dateTimeHeight = 16;
             const spaceBetweenTextAndDate = 4;
             const leftMargin = 2;
             
-            let totalHeight = topMargin + (wrappedLines.length * lineHeight);
+            let totalHeight = topMargin + (wrappedLines.length * lineHeight) + 3; // 下部に3mmの余白を追加
             if (isDateTimeEnabled) {
                 totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
             }
             
             const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
             
-            let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedTextCopies}&quality=3&monochrome=0&pages=1`;
-            
-            wrappedLines.forEach((line, index) => {
-                const encodedLine = safeEncodeURIComponent(line);
-                printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-            });
-            
-            if (isDateTimeEnabled) {
-                const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-                printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+            for (let i = 0; i < selectedTextCopies; i++) {
+                let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
+                
+                wrappedLines.forEach((line, index) => {
+                    const encodedLine = safeEncodeURIComponent(line);
+                    printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
+                });
+                
+                if (isDateTimeEnabled) {
+                    const dateTimeString = `${formattedDate}\n${formattedTime}`;
+                    const encodedDateTime = safeEncodeURIComponent(dateTimeString);
+                    printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+                }
+                
+                window.location.href = printUrlText;
+                if (i < selectedTextCopies - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                }
             }
-            
-            window.location.href = printUrlText;
         }
 
         function toggleClearButton() {
