@@ -380,8 +380,8 @@
                     const aspectRatio = img.width / img.height;
                     const paperHeight = Math.round(paperWidth / aspectRatio);
                     const isDateTimeEnabled = selectedChip === 'with';
-                    const topMargin = 5; // 3mm上部マージン
-                    const bottomMargin = isDateTimeEnabled ? 5 : 5; // 3mm下部マージン
+                    const topMargin = 7; // 3mm上部マージン
+                    const bottomMargin = isDateTimeEnabled ? 7 : 7; // 3mm下部マージン
                     const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
                     const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
 
@@ -465,10 +465,10 @@
             const wrappedLines = wrapText(text);
 
             const lineHeight = 4;
-            const topMargin = 5; // 3mm上部マージン
+            const topMargin = 7; // 3mm上部マージン
             const dateTimeHeight = 16;
             const spaceBetweenTextAndDate = 4;
-            const bottomMargin = 5; // 3mm下部マージン
+            const bottomMargin = 7; // 3mm下部マージン
             const leftMargin = 2;
             
             let totalHeight = topMargin + (wrappedLines.length * lineHeight);
