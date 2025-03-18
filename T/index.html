@@ -380,7 +380,7 @@
                     const aspectRatio = img.width / img.height;
                     const paperHeight = Math.round(paperWidth / aspectRatio);
                     const isDateTimeEnabled = selectedChip === 'with';
-                    const topMargin = 5; // 3mm上部マージン
+                    const topMargin = 3; // 3mm上部マージン
                     const bottomMargin = isDateTimeEnabled ? 10 : 19; // 3mm下部マージン
                     const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
                     const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
