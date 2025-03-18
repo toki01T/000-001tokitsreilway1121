@@ -381,11 +381,11 @@
                     const paperHeight = Math.round(paperWidth / aspectRatio);
                     const isDateTimeEnabled = selectedChip === 'with';
                     const topMargin = 6; // 3mm上部マージン
-                    const bottomMargin = isDateTimeEnabled ? 10 : 17; // 3mm下部マージン
+                    const bottomMargin = isDateTimeEnabled ? 10 : 19; // 3mm下部マージン
                     const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
                     const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
 
-                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedCopies}&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
+                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedCopies}&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
                     if (isDateTimeEnabled) {
                         const dateTimeString = `${formattedDate}\n${formattedTime}`;
                         printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
@@ -468,7 +468,7 @@
             const topMargin = 6; // 3mm上部マージン
             const dateTimeHeight = 16;
             const spaceBetweenTextAndDate = 4;
-            const bottomMargin = isDateTimeEnabled ? 10 : 17; // 3mm下部マージン
+            const bottomMargin = isDateTimeEnabled ? 10 : 19; // 3mm下部マージン
             const leftMargin = 2;
             
             let totalHeight = topMargin + (wrappedLines.length * lineHeight);
@@ -479,7 +479,7 @@
             
             const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
             
-            let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://000-001tokitsreilway01s.on.drv.tw/www.mypege.jp/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedTextCopies}&quality=3&monochrome=0&pages=1`;
+            let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedTextCopies}&quality=3&monochrome=0&pages=1`;
             
             wrappedLines.forEach((line, index) => {
                 const encodedLine = safeEncodeURIComponent(line);
