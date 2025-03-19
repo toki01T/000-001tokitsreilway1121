@@ -192,7 +192,7 @@
                         <option value="3">3枚</option>
                         <option value="4">4枚</option>
                         <option value="5">5枚</option>
-　　　　　　　　　　　　　　 <option value="6">6枚</option>
+                        <option value="6">6枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
                 </div>
@@ -214,7 +214,7 @@
                     <option value="3">3枚</option>
                     <option value="4">4枚</option>
                     <option value="5">5枚</option>
-　　　　　　　　　　　　<option value="6">6枚</option>
+                    <option value="6">6枚</option>
                 </select>
                 <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
             </div>
@@ -386,24 +386,25 @@
                     const bottomMargin = isDateTimeEnabled ? 16 : 18; // 画像下部マージン
                     const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
                     const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
+                    const callbackUrl = 'https://toki01t.github.io/000-001tokitsreilway1121/T/';
 
-                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&quality=3&monochrome=0&pages=1`;
-                    
-                    // 印刷枚数に応じてURLスキームを生成
-                    for (let i = 0; i < selectedCopies; i++) {
-                        let pageNum = i + 1;
-                        printUrlImage += `&${pageNum}=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
-                        if (isDateTimeEnabled) {
-                            const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                            printUrlImage += `&${selectedCopies + pageNum}=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-                        }
-                        // 最終ページ以外にdelayを追加
-                        if (i < selectedCopies - 1) {
-                            printUrlImage += `&delay=${3}`; // 3秒の遅延
-                        }
+                    // 複数枚印刷の場合、最後の1枚だけコールバックURLを付与
+                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
+
+                    if (isDateTimeEnabled) {
+                        const dateTimeString = `${formattedDate}\n${formattedTime}`;
+                        printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                     }
-                     printUrlImage += `&copies=1`;
-                    window.location.href = printUrlImage;
+
+                    // 印刷枚数に応じてURLを生成し、最後のURLにのみコールバックを付与
+                    for (let i = 0; i < selectedCopies; i++) {
+                        let currentPrintUrl = printUrlImage;
+                        if (i === selectedCopies - 1) {
+                            currentPrintUrl += `&x-success=${encodeURIComponent(callbackUrl)}`;
+                        }
+                         // URLスキームを直接呼び出す
+                         window.location.href = currentPrintUrl;
+                    }
                 };
                 img.src = reader.result;
             };
@@ -491,29 +492,30 @@
             totalHeight += bottomMargin;
             
             const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+            const callbackUrl = 'https://toki01t.github.io/000-001tokitsreilway1121/T/';
             
-            let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&quality=3&monochrome=0&pages=1`;
+            let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&quality=3&monochrome=0&pages=1`;
             
-            // テキスト行を追加
             wrappedLines.forEach((line, index) => {
                 const encodedLine = safeEncodeURIComponent(line);
                 printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
             });
             
-            // 日付と時刻を追加
             if (isDateTimeEnabled) {
                 const dateTimeString = `${formattedDate}\n${formattedTime}`;
                 const encodedDateTime = safeEncodeURIComponent(dateTimeString);
                 printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
             }
 
-            // 印刷枚数に応じてdelayを追加
-            if(selectedTextCopies > 1){
-                 printUrlText += `&delay=${3}`; // 3秒の遅延
+            // 印刷枚数に応じてURLを生成し、最後のURLにのみコールバックを付与
+            for (let i = 0; i < selectedTextCopies; i++) {
+                let currentPrintUrl = printUrlText;
+                if (i === selectedTextCopies - 1) {
+                    currentPrintUrl += `&x-success=${encodeURIComponent(callbackUrl)}`;
+                }
+                // URLスキームを直接呼び出す
+                window.location.href = currentPrintUrl;
             }
-            printUrlText += `&copies=${selectedTextCopies}`;
-            
-            window.location.href = printUrlText;
         }
 
         function toggleClearButton() {
