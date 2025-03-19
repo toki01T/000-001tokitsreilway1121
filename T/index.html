@@ -192,7 +192,6 @@
                         <option value="3">3枚</option>
                         <option value="4">4枚</option>
                         <option value="5">5枚</option>
-　　　　　　　　　　　　　　 <option value="6">6枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
                 </div>
@@ -214,7 +213,6 @@
                     <option value="3">3枚</option>
                     <option value="4">4枚</option>
                     <option value="5">5枚</option>
-　　　　　　　　　　　　<option value="6">6枚</option>
                 </select>
                 <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
             </div>
@@ -470,7 +468,7 @@
             const topMargin = 6; // テキスト上部マージン
             const dateTimeHeight = 16;
             const spaceBetweenTextAndDate = 4;
-            const bottomMargin = isDateTimeEnabled ? 15 : 19; // テキスト下部マージン
+            const bottomMargin = isDateTimeEnabled ? 10 : 19; // テキスト下部マージン
             const leftMargin = 2;
             
             let totalHeight = topMargin + (wrappedLines.length * lineHeight);
