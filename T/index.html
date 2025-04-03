@@ -434,7 +434,7 @@
                             currentMaxWidth = 23;
                         }
 
-                        if (lineLength + charWidth > 23) { // 全角16桁に変更（幅32）
+                        if ((charWidth === 2 && lineLength + charWidth > 32) || (charWidth === 1 && lineLength + charWidth > 23)) {
                             break;
                         }
                         currentLine += char;
