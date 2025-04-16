@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>toki 01Ⓣ 発券</title>
-    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="icon" href="favicon.png" type="image/png" />
     <style>
         html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; }
         header { background-color: #00A3ED; color: #fff; padding: 1rem; display: flex; align-items: center; }
@@ -177,7 +177,7 @@
                 <div class="file-upload">
                     <label for="imageUpload" class="file-upload-label">
                         <span>画像・T❜s券</span>
-                        <input type="file" id="imageUpload" name="image" accept="image/jpeg, image/png" onchange="previewImage(event)">
+                        <input type="file" id="imageUpload" name="image" accept="image/jpeg, image/png" onchange="previewImage(event)" />
                     </label>
                 </div>
                 <div class="image-preview" id="imagePreviewContainer"></div>
@@ -192,7 +192,7 @@
                         <option value="3">3枚</option>
                         <option value="4">4枚</option>
                         <option value="5">5枚</option>
-　　　　　　　　　　　　　　 <option value="6">6枚</option>
+                        <option value="6">6枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
                 </div>
@@ -214,7 +214,7 @@
                     <option value="3">3枚</option>
                     <option value="4">4枚</option>
                     <option value="5">5枚</option>
-　　　　　　　　　　　　<option value="6">6枚</option>
+                    <option value="6">6枚</option>
                 </select>
                 <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
             </div>
@@ -457,6 +457,7 @@
                 .replace(/%20/g, '%20');
         }
 
+        // ここにご提供のprintText()関数を省略せずにそのまま配置します
         function printText() {
             const textInput = document.getElementById('textInput');
             const text = textInput.value;
@@ -465,36 +466,52 @@
             const paperWidth = 58;
             const isDateTimeEnabled = selectedTextChip === 'with';
             const wrappedLines = wrapText(text);
+            const fontSize = 4;
+            const lineHeight = 16;
+            const topMargin = 2;
+            const bottomMargin = isDateTimeEnabled ? 32 : 16;
+            const textHeight = wrappedLines.length * lineHeight;
+            const totalHeight = topMargin + textHeight + bottomMargin;
+            const selectedCopies = parseInt(document.getElementById('textCopiesSelect').value);
 
-            const lineHeight = 4;
-            const topMargin = 6; // テキスト上部マージン
-            const dateTimeHeight = 16;
-            const spaceBetweenTextAndDate = 4;
-            const bottomMargin = isDateTimeEnabled ? 15 : 19; // テキスト下部マージン
-            const leftMargin = 2;
-            
-            let totalHeight = topMargin + (wrappedLines.length * lineHeight);
-            if (isDateTimeEnabled) {
-                totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
+            const baseText = wrappedLines.join('\n');
+            const encodedText = safeEncodeURIComponent(baseText);
+            const dateTimeString = `${formattedDate}\n${formattedTime}`;
+            const encodedDateTime = safeEncodeURIComponent(dateTimeString);
+
+            const printUrls = [];
+
+            for (let i = 0; i < selectedCopies; i++) {
+                let printUrl = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
+                printUrl += `&1=${encodedText},0,${topMargin},${paperWidth},${textHeight},機械彫刻用標準書体 M,${fontSize},0,0,1`;
+
+                if (isDateTimeEnabled) {
+                    printUrl += `&2=${encodedDateTime},0,${topMargin + textHeight},${paperWidth},16,機械彫刻用標準書体 M,${fontSize},0,0,1`;
+                }
+
+                // 最後の1枚にだけx-successを追加（コールバックURL）
+                if (i === selectedCopies - 1) {
+                    printUrl = printUrl.replace("open?", `open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&`);
+                }
+
+                printUrls.push(printUrl);
             }
-            totalHeight += bottomMargin;
-            
-            const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-            
-            let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedTextCopies}&quality=3&monochrome=0&pages=1`;
-            
-            wrappedLines.forEach((line, index) => {
-                const encodedLine = safeEncodeURIComponent(line);
-                printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-            });
-            
-            if (isDateTimeEnabled) {
-                const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-                printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+
+            // 1枚ずつ順番に実行（間隔は3秒）
+            let currentIndex = 0;
+            const delayBetweenPrints = 3000;
+
+            function printNext() {
+                if (currentIndex < printUrls.length) {
+                    window.location.href = printUrls[currentIndex];
+                    currentIndex++;
+                    if (currentIndex < printUrls.length) {
+                        setTimeout(printNext, delayBetweenPrints);
+                    }
+                }
             }
-            
-            window.location.href = printUrlText;
+
+            printNext(); // 最初の印刷スタート
         }
 
         function toggleClearButton() {
