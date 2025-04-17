@@ -369,36 +369,57 @@
         }
 
         function sendToPrintAssist(event) {
-            event.preventDefault();
-            const fileInput = document.getElementById('imageUpload');
-            const file = fileInput.files[0];
-            if (!file || selectedChip === '') return;
-            const reader = new FileReader();
-            reader.onloadend = function() {
-                const base64Image = reader.result.split(',')[1];
-                const paperWidth = 58;
-                const img = new Image();
-                img.onload = function() {
-                    const aspectRatio = img.width / img.height;
-                    const paperHeight = Math.round(paperWidth / aspectRatio);
-                    const isDateTimeEnabled = selectedChip === 'with';
-                    const topMargin = 2; // 画像上部マージン
-                    const bottomMargin = isDateTimeEnabled ? 16 : 18; // 画像下部マージン
-                    const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
-                    const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
+    event.preventDefault();
+    const fileInput = document.getElementById('imageUpload');
+    const file = fileInput.files[0];
+    if (!file || selectedChip === '') return;
+    const reader = new FileReader();
+    reader.onloadend = function() {
+        const base64Image = reader.result.split(',')[1];
+        const paperWidth = 58;
+        const img = new Image();
+        img.onload = function() {
+            const aspectRatio = img.width / img.height;
+            const paperHeight = Math.round(paperWidth / aspectRatio);
+            const isDateTimeEnabled = selectedChip === 'with';
+            const topMargin = 2;
+            const bottomMargin = isDateTimeEnabled ? 16 : 18;
+            const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
+            const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
 
-                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedCopies}&quality=3&monochrome=0&pages=1&papercut=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}
-`;
-                    if (isDateTimeEnabled) {
-                        const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                        printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-                    }
-                    window.location.href = printUrlImage;
-                };
-                img.src = reader.result;
-            };
-            reader.readAsDataURL(file);
-        }
+            // 1枚ずつ印刷
+            function printImageCopy(copyIndex) {
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
+                if (isDateTimeEnabled) {
+                    const dateTimeString = `${formattedDate}\n${formattedTime}`;
+                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                }
+                // 最後の1枚だけx-successを付与
+                if (copyIndex === selectedCopies) {
+                    printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+                }
+                window.location.href = printUrlImage;
+            }
+
+            // 再帰的に1枚ずつ印刷
+            let currentCopy = 1;
+            function printNext() {
+                printImageCopy(currentCopy);
+                if (currentCopy < selectedCopies) {
+                    currentCopy++;
+                    // 印刷アプリから戻ってきたら次を実行
+                    window.onfocus = function handler() {
+                        window.onfocus = null;
+                        setTimeout(printNext, 3000); // 3秒待ち
+                    };
+                }
+            }
+            printNext();
+        };
+        img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+}
 
         function wrapText(text) {
             const lines = [];
@@ -459,44 +480,61 @@
         }
 
         function printText() {
-            const textInput = document.getElementById('textInput');
-            const text = textInput.value;
-            if (text.trim() === '' || selectedTextChip === '') return;
+    const textInput = document.getElementById('textInput');
+    const text = textInput.value;
+    if (text.trim() === '' || selectedTextChip === '') return;
 
-            const paperWidth = 58;
-            const isDateTimeEnabled = selectedTextChip === 'with';
-            const wrappedLines = wrapText(text);
+    const paperWidth = 58;
+    const isDateTimeEnabled = selectedTextChip === 'with';
+    const wrappedLines = wrapText(text);
 
-            const lineHeight = 4;
-            const topMargin = 6; // テキスト上部マージン
-            const dateTimeHeight = 16;
-            const spaceBetweenTextAndDate = 4;
-            const bottomMargin = isDateTimeEnabled ? 15 : 19; // テキスト下部マージン
-            const leftMargin = 2;
-            
-            let totalHeight = topMargin + (wrappedLines.length * lineHeight);
-            if (isDateTimeEnabled) {
-                totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
-            }
-            totalHeight += bottomMargin;
-            
-            const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-            
-            let printUrlText = `printassist-x-callback-url://x-callback-url/open?x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/&orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=${selectedTextCopies}&quality=3&monochrome=0&pages=1`;
-            
-            wrappedLines.forEach((line, index) => {
-                const encodedLine = safeEncodeURIComponent(line);
-                printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-            });
-            
-            if (isDateTimeEnabled) {
-                const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-                printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
-            }
-            
-            window.location.href = printUrlText;
+    const lineHeight = 4;
+    const topMargin = 6;
+    const dateTimeHeight = 16;
+    const spaceBetweenTextAndDate = 4;
+    const bottomMargin = isDateTimeEnabled ? 15 : 19;
+    const leftMargin = 2;
+
+    let totalHeight = topMargin + (wrappedLines.length * lineHeight);
+    if (isDateTimeEnabled) {
+        totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
+    }
+    totalHeight += bottomMargin;
+
+    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+
+    function printTextCopy(copyIndex) {
+        let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
+        wrappedLines.forEach((line, index) => {
+            const encodedLine = safeEncodeURIComponent(line);
+            printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
+        });
+        if (isDateTimeEnabled) {
+            const dateTimeString = `${formattedDate}\n${formattedTime}`;
+            const encodedDateTime = safeEncodeURIComponent(dateTimeString);
+            printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
         }
+        // 最後の1枚だけx-successを付与
+        if (copyIndex === selectedTextCopies) {
+            printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+        }
+        window.location.href = printUrlText;
+    }
+
+    // 再帰的に1枚ずつ印刷
+    let currentCopy = 1;
+    function printNext() {
+        printTextCopy(currentCopy);
+        if (currentCopy < selectedTextCopies) {
+            currentCopy++;
+            window.onfocus = function handler() {
+                window.onfocus = null;
+                setTimeout(printNext, 3000); // 3秒待ち
+            };
+        }
+    }
+    printNext();
+}
 
         function toggleClearButton() {
             const textInput = document.getElementById('textInput');
