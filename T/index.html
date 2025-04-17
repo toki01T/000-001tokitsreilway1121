@@ -230,20 +230,20 @@
         let formattedTime = '';
         let selectedChip = '';
         let selectedTextChip = '';
-        
+
         function displayDate() {
             const today = new Date();
             formattedDate = `${today.getFullYear()}年${String(today.getMonth() + 1).padStart(2, '0')}月${String(today.getDate()).padStart(2, '0')}日`;
             document.getElementById('dateDisplay').textContent = `${formattedDate}`;
         }
-        
+
         function updateTime() {
             const now = new Date();
             formattedTime = `${String(now.getHours()).padStart(2, '0')}時${String(now.getMinutes()).padStart(2, '0')}分${String(now.getSeconds()).padStart(2, '0')}秒`;
             document.getElementById('timeDisplay').textContent = formattedTime;
             setTimeout(updateTime, 1000);
         }
-        
+
         window.onload = function() {
             displayDate();
             updateTime();
@@ -254,18 +254,8 @@
             document.getElementById('textInput').addEventListener('input', function() {
                 autoWrap(this);
             });
-        
-            // ハッシュとlocalStorageで印刷状態を自動復元
-            if (location.hash === "#printing" && localStorage.getItem("printState")) {
-                const state = JSON.parse(localStorage.getItem("printState"));
-                if (state.mode === "image") {
-                    printImageJob();
-                } else if (state.mode === "text") {
-                    printTextJob();
-                }
-            }
         };
-        
+
         function toggleMode() {
             const imageSection = document.getElementById('imageSection');
             const textSection = document.getElementById('textSection');
@@ -277,7 +267,7 @@
             const textPrintButton = document.getElementById('textPrintButton');
             const imagePrintOptions = document.getElementById('imagePrintOptions');
             const textPrintOptions = document.getElementById('textPrintOptions');
-        
+
             if (imageSection.style.display === 'none') {
                 imageSection.style.display = 'block';
                 textSection.style.display = 'none';
@@ -303,7 +293,7 @@
                 selectedChip = '';
             }
         }
-        
+
         function previewImage(event) {
             const file = event.target.files[0];
             const reader = new FileReader();
@@ -320,7 +310,7 @@
                 reader.readAsDataURL(file);
             }
         }
-        
+
         function selectChip(type) {
             selectedChip = type;
             const chips = document.querySelectorAll('#dateTimeChoice .chip');
@@ -332,7 +322,7 @@
             }
             updatePrintButtonState();
         }
-        
+
         function selectTextChip(type) {
             selectedTextChip = type;
             const chips = document.querySelectorAll('#textDateTimeChoice .chip');
@@ -344,7 +334,7 @@
             }
             updateTextPrintButtonState();
         }
-        
+
         function updatePrintButtonState() {
             const printButton = document.getElementById('printButton');
             const imagePrintOptions = document.getElementById('imagePrintOptions');
@@ -356,7 +346,7 @@
                 imagePrintOptions.style.display = 'flex';
             }
         }
-        
+
         function updateTextPrintButtonState() {
             const textPrintButton = document.getElementById('textPrintButton');
             const textPrintOptions = document.getElementById('textPrintOptions');
@@ -377,183 +367,64 @@
                 }
             }
         }
-        
-        // 画像印刷（状態保存＋ハッシュ付与）
+
         function sendToPrintAssist(event) {
-            event.preventDefault();
-            const fileInput = document.getElementById('imageUpload');
-            const file = fileInput.files[0];
-            if (!file || selectedChip === '') return;
-            const reader = new FileReader();
-            reader.onloadend = function() {
-                const base64Image = reader.result.split(',')[1];
-                const paperWidth = 58;
-                const img = new Image();
-                img.onload = function() {
-                    const aspectRatio = img.width / img.height;
-                    const paperHeight = Math.round(paperWidth / aspectRatio);
-                    const isDateTimeEnabled = selectedChip === 'with';
-                    const topMargin = 2;
-                    const bottomMargin = isDateTimeEnabled ? 16 : 18;
-                    const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
-                    const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
-        
-                    // 印刷状態を保存
-                    const printState = {
-                        mode: "image",
-                        base64Image,
-                        paperWidth,
-                        paperHeight,
-                        isDateTimeEnabled,
-                        topMargin,
-                        totalHeight,
-                        selectedCopies,
-                        currentCopy: 1,
-                        formattedDate,
-                        formattedTime
-                    };
-                    localStorage.setItem("printState", JSON.stringify(printState));
-                    location.hash = "#printing";
-        
-                    printImageJob();
-                };
-                img.src = reader.result;
-            };
-            reader.readAsDataURL(file);
-        }
-        
-        // 画像印刷ジョブの再開・継続
-        function printImageJob() {
-            const state = JSON.parse(localStorage.getItem("printState"));
-            if (!state) return;
-        
+    event.preventDefault();
+    const fileInput = document.getElementById('imageUpload');
+    const file = fileInput.files[0];
+    if (!file || selectedChip === '') return;
+    const reader = new FileReader();
+    reader.onloadend = function() {
+        const base64Image = reader.result.split(',')[1];
+        const paperWidth = 58;
+        const img = new Image();
+        img.onload = function() {
+            const aspectRatio = img.width / img.height;
+            const paperHeight = Math.round(paperWidth / aspectRatio);
+            const isDateTimeEnabled = selectedChip === 'with';
+            const topMargin = 2;
+            const bottomMargin = isDateTimeEnabled ? 16 : 18;
+            const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
+            const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
+
+            // 1枚ずつ印刷
             function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${state.paperWidth}&height=${state.totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${state.topMargin},${state.paperWidth},${state.paperHeight},${state.base64Image}`;
-                if (state.isDateTimeEnabled) {
-                    const dateTimeString = `${state.formattedDate}\n${state.formattedTime}`;
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${state.topMargin + state.paperHeight},${state.paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
+                if (isDateTimeEnabled) {
+                    const dateTimeString = `${formattedDate}\n${formattedTime}`;
+                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 // 最後の1枚だけx-successを付与
-                if (copyIndex === state.selectedCopies) {
-                    printUrlImage += `&x-success=${encodeURIComponent(window.location.origin + window.location.pathname + "#printing")}`;
+                if (copyIndex === selectedCopies) {
+                    printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
                 }
                 window.location.href = printUrlImage;
             }
-        
-            let currentCopy = state.currentCopy;
+
+            // 再帰的に1枚ずつ印刷
+            let currentCopy = 1;
             function printNext() {
                 printImageCopy(currentCopy);
-                if (currentCopy < state.selectedCopies) {
+                if (currentCopy < selectedCopies) {
                     currentCopy++;
-                    // 状態を保存
-                    state.currentCopy = currentCopy;
-                    localStorage.setItem("printState", JSON.stringify(state));
+                    // 印刷アプリから戻ってきたら次を実行
                     window.onfocus = function handler() {
                         window.onfocus = null;
-                        setTimeout(printNext, 3000);
+                        setTimeout(printNext, 3000); // 3秒待ち
                     };
-                } else {
-                    // 完了時
-                    localStorage.removeItem("printState");
-                    location.hash = "";
                 }
             }
             printNext();
-        }
-        
-        // テキスト印刷（状態保存＋ハッシュ付与）
-        function printText() {
-            const textInput = document.getElementById('textInput');
-            const text = textInput.value;
-            if (text.trim() === '' || selectedTextChip === '') return;
-        
-            const paperWidth = 58;
-            const isDateTimeEnabled = selectedTextChip === 'with';
-            const wrappedLines = wrapText(text);
-        
-            const lineHeight = 4;
-            const topMargin = 6;
-            const dateTimeHeight = 16;
-            const spaceBetweenTextAndDate = 4;
-            const bottomMargin = isDateTimeEnabled ? 15 : 19;
-            const leftMargin = 2;
-        
-            let totalHeight = topMargin + (wrappedLines.length * lineHeight);
-            if (isDateTimeEnabled) {
-                totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
-            }
-            totalHeight += bottomMargin;
-        
-            const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-        
-            // 印刷状態を保存
-            const printState = {
-                mode: "text",
-                wrappedLines,
-                paperWidth,
-                isDateTimeEnabled,
-                lineHeight,
-                topMargin,
-                dateTimeHeight,
-                spaceBetweenTextAndDate,
-                bottomMargin,
-                leftMargin,
-                totalHeight,
-                selectedTextCopies,
-                currentCopy: 1,
-                formattedDate,
-                formattedTime
-            };
-            localStorage.setItem("printState", JSON.stringify(printState));
-            location.hash = "#printing";
-            printTextJob();
-        }
-        
-        // テキスト印刷ジョブの再開・継続
-        function printTextJob() {
-            const state = JSON.parse(localStorage.getItem("printState"));
-            if (!state) return;
-        
-            function printTextCopy(copyIndex) {
-                let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${state.paperWidth}&height=${state.totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
-                state.wrappedLines.forEach((line, index) => {
-                    const encodedLine = safeEncodeURIComponent(line);
-                    printUrlText += `&${index + 1}=${encodedLine},${state.leftMargin},${state.topMargin + (index * state.lineHeight)},${state.paperWidth - 4},${state.lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-                });
-                if (state.isDateTimeEnabled) {
-                    const dateTimeString = `${state.formattedDate}\n${state.formattedTime}`;
-                    const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-                    printUrlText += `&${state.wrappedLines.length + 1}=${encodedDateTime},${state.leftMargin},${state.topMargin + (state.wrappedLines.length * state.lineHeight) + state.spaceBetweenTextAndDate},${state.paperWidth - 4},${state.dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
-                }
-                // 最後の1枚だけx-successを付与
-                if (copyIndex === state.selectedTextCopies) {
-                    printUrlText += `&x-success=${encodeURIComponent(window.location.origin + window.location.pathname + "#printing")}`;
-                }
-                window.location.href = printUrlText;
-            }
-        
-            let currentCopy = state.currentCopy;
-            function printNext() {
-                printTextCopy(currentCopy);
-                if (currentCopy < state.selectedTextCopies) {
-                    currentCopy++;
-                    state.currentCopy = currentCopy;
-                    localStorage.setItem("printState", JSON.stringify(state));
-                    window.onfocus = function handler() {
-                        window.onfocus = null;
-                        setTimeout(printNext, 3000);
-                    };
-                } else {
-                    localStorage.removeItem("printState");
-                    location.hash = "";
-                }
-            }
-            printNext();
-        }
-        
+        };
+        img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+}
+
         function wrapText(text) {
             const lines = [];
             const paragraphs = text.split('\n');
+            
             for (let paragraph of paragraphs) {
                 if (paragraph.length === 0) {
                     lines.push('');
@@ -566,13 +437,16 @@
                     let mixedCharacters = false;
                     let hasFullWidth = false;
                     let hasHalfWidth = false;
-        
+
                     for (let i = 0; i < remainingText.length; i++) {
                         const char = remainingText[i];
                         const charWidth = char.match(/[^\x01-\x7E]/) ? 2 : 1;
+                        
                         if (charWidth === 2) hasFullWidth = true;
                         if (charWidth === 1) hasHalfWidth = true;
+
                         if (hasFullWidth && hasHalfWidth) mixedCharacters = true;
+
                         let currentMaxWidth;
                         if (mixedCharacters) {
                             currentMaxWidth = 14;
@@ -581,7 +455,8 @@
                         } else {
                             currentMaxWidth = 23;
                         }
-                        if (lineLength + charWidth > 32) {
+
+                        if (lineLength + charWidth > 32) { // 全角16桁に変更（幅32）
                             break;
                         }
                         currentLine += char;
@@ -593,7 +468,7 @@
             }
             return lines;
         }
-        
+
         function safeEncodeURIComponent(str) {
             return encodeURIComponent(str)
                 .replace(/!/g, '%21')
@@ -603,33 +478,93 @@
                 .replace(/\*/g, '%2A')
                 .replace(/%20/g, '%20');
         }
-        
+
+        function printText() {
+    const textInput = document.getElementById('textInput');
+    const text = textInput.value;
+    if (text.trim() === '' || selectedTextChip === '') return;
+
+    const paperWidth = 58;
+    const isDateTimeEnabled = selectedTextChip === 'with';
+    const wrappedLines = wrapText(text);
+
+    const lineHeight = 4;
+    const topMargin = 6;
+    const dateTimeHeight = 16;
+    const spaceBetweenTextAndDate = 4;
+    const bottomMargin = isDateTimeEnabled ? 15 : 19;
+    const leftMargin = 2;
+
+    let totalHeight = topMargin + (wrappedLines.length * lineHeight);
+    if (isDateTimeEnabled) {
+        totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
+    }
+    totalHeight += bottomMargin;
+
+    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+
+    function printTextCopy(copyIndex) {
+        let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
+        wrappedLines.forEach((line, index) => {
+            const encodedLine = safeEncodeURIComponent(line);
+            printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
+        });
+        if (isDateTimeEnabled) {
+            const dateTimeString = `${formattedDate}\n${formattedTime}`;
+            const encodedDateTime = safeEncodeURIComponent(dateTimeString);
+            printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+        }
+        // 最後の1枚だけx-successを付与
+        if (copyIndex === selectedTextCopies) {
+            printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+        }
+        window.location.href = printUrlText;
+    }
+
+    // 再帰的に1枚ずつ印刷
+    let currentCopy = 1;
+    function printNext() {
+        printTextCopy(currentCopy);
+        if (currentCopy < selectedTextCopies) {
+            currentCopy++;
+            window.onfocus = function handler() {
+                window.onfocus = null;
+                setTimeout(printNext, 3000); // 3秒待ち
+            };
+        }
+    }
+    printNext();
+}
+
         function toggleClearButton() {
             const textInput = document.getElementById('textInput');
             const clearTextButton = document.getElementById('clearTextButton');
+            
             if (textInput.value.trim() !== '') {
                 clearTextButton.style.display = 'block';
             } else {
                 clearTextButton.style.display = 'none';
             }
         }
-        
+
         function handleClearButtonClick() {
             const textInput = document.getElementById('textInput');
+            
             const confirmClear = confirm('テキストをクリアしますか？');
+            
             if (confirmClear) {
                 textInput.value = '';
                 document.getElementById('clearTextButton').style.display = 'none';
                 updateTextPrintButtonState();
             }
         }
-        
+
         function autoWrap(textarea) {
             const text = textarea.value;
             const wrappedLines = wrapText(text);
             textarea.value = wrappedLines.join('\n');
         }
-        
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('service-worker.js').then(function(registration) {
@@ -639,6 +574,6 @@
                 });
             });
         }
-        </script>
-    </body>
+    </script>
+</body>
 </html>
