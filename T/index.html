@@ -246,12 +246,10 @@ window.onload = function() {
     displayDate();
     updateTime();
     document.getElementById('modeToggle').addEventListener('click', toggleMode);
+    document.getElementById('textInput').addEventListener('input', handleTextInputLimit);
     document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
     document.getElementById('textInput').addEventListener('input', toggleClearButton);
     document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
-    document.getElementById('textInput').addEventListener('input', function() {
-        autoWrap(this);
-    });
 };
 
 function toggleMode() {
@@ -269,7 +267,7 @@ function toggleMode() {
     if (imageSection.style.display === 'none') {
         imageSection.style.display = 'block';
         textSection.style.display = 'none';
-        modeToggle.textContent = 'テキスト';
+        modeToggle.textContent = 'テキスト入力';
         textInput.value = '';
         textPrintButton.classList.add('disabled');
         textPrintOptions.style.display = 'none';
@@ -424,11 +422,11 @@ function printText() {
     const isDateTimeEnabled = selectedTextChip === 'with';
     const wrappedLines = wrapText(text);
 
-    const lineHeight = 16;
-    const topMargin = 2;
+    const lineHeight = 4;
+    const topMargin = 6;
     const dateTimeHeight = 16;
     const spaceBetweenTextAndDate = 4;
-    const bottomMargin = isDateTimeEnabled ? 32 : 16;
+    const bottomMargin = isDateTimeEnabled ? 15 : 19;
     const leftMargin = 2;
 
     let totalHeight = topMargin + (wrappedLines.length * lineHeight);
@@ -468,6 +466,7 @@ function printText() {
     printNext();
 }
 
+// 半角23/全角16/混在14文字で自動折り返し＆制限
 function wrapText(text) {
     const lines = [];
     const paragraphs = text.split('\n');
@@ -502,7 +501,7 @@ function wrapText(text) {
                     currentMaxWidth = 23;
                 }
 
-                if (lineLength + charWidth > 32) {
+                if (lineLength + charWidth > currentMaxWidth) {
                     break;
                 }
                 currentLine += char;
@@ -513,6 +512,14 @@ function wrapText(text) {
         }
     }
     return lines;
+}
+
+// 入力時に自動で1行23半角/16全角/混在14字で制限
+function handleTextInputLimit(e) {
+    const textarea = e.target;
+    const originalValue = textarea.value;
+    const wrappedLines = wrapText(originalValue);
+    textarea.value = wrappedLines.join('\n');
 }
 
 function safeEncodeURIComponent(str) {
@@ -545,12 +552,6 @@ function handleClearButtonClick() {
     }
 }
 
-function autoWrap(textarea) {
-    const text = textarea.value;
-    const wrappedLines = wrapText(text);
-    textarea.value = wrappedLines.join('\n');
-}
-
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
         navigator.serviceWorker.register('service-worker.js').then(function(registration) {
@@ -560,7 +561,6 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
-
     </script>
 </body>
 </html>
