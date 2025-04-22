@@ -1,4 +1,3 @@
-枚数選択機能 試験コード
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -227,11 +226,10 @@
         <p>&copy; 2025 とき T's 鉄道部 toki</p>
     </footer>
     <script>
-        let formattedDate = '';
+let formattedDate = '';
 let formattedTime = '';
 let selectedChip = '';
 let selectedTextChip = '';
-
 
 function displayDate() {
     const today = new Date();
@@ -370,9 +368,7 @@ function updateTextPrintButtonState() {
     }
 }
 
-// ==== ここから修正版 ====
-
-// 画像印刷（window.onfocusを使わずsetTimeoutのみで連続印刷）
+// 画像印刷（onfocusを使わずsetTimeoutのみ！）
 function sendToPrintAssist(event) {
     event.preventDefault();
     const fileInput = document.getElementById('imageUpload');
@@ -410,7 +406,7 @@ function sendToPrintAssist(event) {
                 printImageCopy(currentCopy);
                 if (currentCopy < selectedCopies) {
                     currentCopy++;
-                    setTimeout(printNext, 3000); // 3秒待ち
+                    setTimeout(printNext, 3500); // 3.5秒待ち（必要に応じて調整）
                 }
             }
             printNext();
@@ -420,7 +416,7 @@ function sendToPrintAssist(event) {
     reader.readAsDataURL(file);
 }
 
-// テキスト印刷（window.onfocusを使わずsetTimeoutのみで連続印刷）
+// テキスト印刷（onfocusを使わずsetTimeoutのみ！）
 function printText() {
     const textInput = document.getElementById('textInput');
     const text = textInput.value;
@@ -468,19 +464,15 @@ function printText() {
         printTextCopy(currentCopy);
         if (currentCopy < selectedTextCopies) {
             currentCopy++;
-            setTimeout(printNext, 3000); // 3秒待ち
+            setTimeout(printNext, 3500); // 3.5秒待ち（必要に応じて調整）
         }
     }
     printNext();
 }
 
-// ==== ここまで修正版 ====
-
-
 function wrapText(text) {
     const lines = [];
     const paragraphs = text.split('\n');
-    
     for (let paragraph of paragraphs) {
         if (paragraph.length === 0) {
             lines.push('');
@@ -497,7 +489,7 @@ function wrapText(text) {
             for (let i = 0; i < remainingText.length; i++) {
                 const char = remainingText[i];
                 const charWidth = char.match(/[^\x01-\x7E]/) ? 2 : 1;
-                
+
                 if (charWidth === 2) hasFullWidth = true;
                 if (charWidth === 1) hasHalfWidth = true;
 
@@ -512,7 +504,7 @@ function wrapText(text) {
                     currentMaxWidth = 23;
                 }
 
-                if (lineLength + charWidth > 32) { // 全角16桁に変更（幅32）
+                if (lineLength + charWidth > 32) {
                     break;
                 }
                 currentLine += char;
@@ -538,7 +530,6 @@ function safeEncodeURIComponent(str) {
 function toggleClearButton() {
     const textInput = document.getElementById('textInput');
     const clearTextButton = document.getElementById('clearTextButton');
-    
     if (textInput.value.trim() !== '') {
         clearTextButton.style.display = 'block';
     } else {
@@ -548,9 +539,7 @@ function toggleClearButton() {
 
 function handleClearButtonClick() {
     const textInput = document.getElementById('textInput');
-    
     const confirmClear = confirm('テキストをクリアしますか？');
-    
     if (confirmClear) {
         textInput.value = '';
         document.getElementById('clearTextButton').style.display = 'none';
@@ -572,7 +561,8 @@ if ('serviceWorker' in navigator) {
             console.log('Service Worker登録失敗:', error);
         });
     });
-　}
+}
+
     </script>
 </body>
 </html>
