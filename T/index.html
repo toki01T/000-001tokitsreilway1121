@@ -246,10 +246,12 @@ window.onload = function() {
     displayDate();
     updateTime();
     document.getElementById('modeToggle').addEventListener('click', toggleMode);
-    document.getElementById('textInput').addEventListener('input', handleTextInputLimit);
     document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
     document.getElementById('textInput').addEventListener('input', toggleClearButton);
     document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
+    document.getElementById('textInput').addEventListener('input', function() {
+        autoWrap(this);
+    });
 };
 
 function toggleMode() {
@@ -267,7 +269,7 @@ function toggleMode() {
     if (imageSection.style.display === 'none') {
         imageSection.style.display = 'block';
         textSection.style.display = 'none';
-        modeToggle.textContent = 'テキスト';
+        modeToggle.textContent = 'テキスト入力';
         textInput.value = '';
         textPrintButton.classList.add('disabled');
         textPrintOptions.style.display = 'none';
@@ -391,7 +393,6 @@ function sendToPrintAssist(event) {
                     const dateTimeString = `${formattedDate}\n${formattedTime}`;
                     printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
-                // 最後の1枚だけx-successを付与
                 if (copyIndex === selectedCopies) {
                     printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
                 }
@@ -402,7 +403,7 @@ function sendToPrintAssist(event) {
                 printImageCopy(currentCopy);
                 if (currentCopy < selectedCopies) {
                     currentCopy++;
-                    setTimeout(printNext, 3500); // 3.5秒待ち（必要に応じて調整）
+                    setTimeout(printNext, 3500);
                 }
             }
             printNext();
@@ -426,7 +427,7 @@ function printText() {
     const topMargin = 6;
     const dateTimeHeight = 16;
     const spaceBetweenTextAndDate = 4;
-    const bottomMargin = isDateTimeEnabled ? 32 : 16;
+    const bottomMargin = isDateTimeEnabled ? 15 : 19;
     const leftMargin = 2;
 
     let totalHeight = topMargin + (wrappedLines.length * lineHeight);
@@ -449,7 +450,6 @@ function printText() {
             const encodedDateTime = safeEncodeURIComponent(dateTimeString);
             printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
         }
-        // 最後の1枚だけx-successを付与
         if (copyIndex === selectedTextCopies) {
             printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
         }
@@ -460,16 +460,17 @@ function printText() {
         printTextCopy(currentCopy);
         if (currentCopy < selectedTextCopies) {
             currentCopy++;
-            setTimeout(printNext, 3500); // 3.5秒待ち（必要に応じて調整）
+            setTimeout(printNext, 3500);
         }
     }
     printNext();
 }
 
-// 半角23/全角16/混在14文字で自動折り返し＆制限
+// ★ここが重要！折り返し仕様を厳密に実装★
 function wrapText(text) {
     const lines = [];
     const paragraphs = text.split('\n');
+
     for (let paragraph of paragraphs) {
         if (paragraph.length === 0) {
             lines.push('');
@@ -479,31 +480,43 @@ function wrapText(text) {
         while (remainingText.length > 0) {
             let lineLength = 0;
             let currentLine = '';
-            let mixedCharacters = false;
             let hasFullWidth = false;
             let hasHalfWidth = false;
 
+            // 1文字ずつ判定
             for (let i = 0; i < remainingText.length; i++) {
                 const char = remainingText[i];
-                const charWidth = char.match(/[^\x01-\x7E]/) ? 2 : 1;
+                const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
+                const charWidth = isFullWidth ? 2 : 1;
+                if (isFullWidth) hasFullWidth = true;
+                else hasHalfWidth = true;
 
-                if (charWidth === 2) hasFullWidth = true;
-                if (charWidth === 1) hasHalfWidth = true;
-
-                if (hasFullWidth && hasHalfWidth) mixedCharacters = true;
-
-                let currentMaxWidth;
-                if (mixedCharacters) {
-                    currentMaxWidth = 14;
+                // 混在判定
+                let maxLen;
+                if (hasFullWidth && hasHalfWidth) {
+                    maxLen = 14;
                 } else if (hasFullWidth) {
-                    currentMaxWidth = 16;
+                    maxLen = 16;
                 } else {
-                    currentMaxWidth = 23;
+                    maxLen = 23;
                 }
 
-                if (lineLength + charWidth > currentMaxWidth) {
+                // 文字数カウント（半角1, 全角2で合計）
+                if ((hasFullWidth && hasHalfWidth && currentLine.length >= maxLen) ||
+                    (!hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen) ||
+                    (hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen) ||
+                    (!hasFullWidth && hasHalfWidth && currentLine.length >= maxLen)) {
                     break;
                 }
+
+                // 文字幅でカウント
+                if ((hasFullWidth && hasHalfWidth && lineLength + charWidth > maxLen * 2) ||
+                    (!hasFullWidth && !hasHalfWidth && lineLength + charWidth > maxLen) ||
+                    (hasFullWidth && !hasHalfWidth && lineLength + charWidth > maxLen * 2) ||
+                    (!hasFullWidth && hasHalfWidth && lineLength + charWidth > maxLen)) {
+                    break;
+                }
+
                 currentLine += char;
                 lineLength += charWidth;
             }
@@ -512,14 +525,6 @@ function wrapText(text) {
         }
     }
     return lines;
-}
-
-// 入力時に自動で1行23半角/16全角/混在14字で制限
-function handleTextInputLimit(e) {
-    const textarea = e.target;
-    const originalValue = textarea.value;
-    const wrappedLines = wrapText(originalValue);
-    textarea.value = wrappedLines.join('\n');
 }
 
 function safeEncodeURIComponent(str) {
@@ -550,6 +555,14 @@ function handleClearButtonClick() {
         document.getElementById('clearTextButton').style.display = 'none';
         updateTextPrintButtonState();
     }
+}
+
+function autoWrap(textarea) {
+    // 入力値をwrapTextで折り返し
+    const text = textarea.value;
+    const wrappedLines = wrapText(text);
+    // 入力値を更新（カーソル位置は維持できませんが仕様上仕方ありません）
+    textarea.value = wrappedLines.join('\n');
 }
 
 if ('serviceWorker' in navigator) {
