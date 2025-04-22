@@ -192,7 +192,6 @@
                         <option value="3">3枚</option>
                         <option value="4">4枚</option>
                         <option value="5">5枚</option>
-　　　　　　　　　　　　　　 <option value="6">6枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
                 </div>
@@ -214,7 +213,6 @@
                     <option value="3">3枚</option>
                     <option value="4">4枚</option>
                     <option value="5">5枚</option>
-　　　　　　　　　　　　<option value="6">6枚</option>
                 </select>
                 <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
             </div>
@@ -271,7 +269,7 @@ function toggleMode() {
     if (imageSection.style.display === 'none') {
         imageSection.style.display = 'block';
         textSection.style.display = 'none';
-        modeToggle.textContent = 'テキスト入力';
+        modeToggle.textContent = 'テキスト';
         textInput.value = '';
         textPrintButton.classList.add('disabled');
         textPrintOptions.style.display = 'none';
