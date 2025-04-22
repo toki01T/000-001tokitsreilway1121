@@ -228,148 +228,152 @@
     </footer>
     <script>
         let formattedDate = '';
-        let formattedTime = '';
-        let selectedChip = '';
-        let selectedTextChip = '';
+let formattedTime = '';
+let selectedChip = '';
+let selectedTextChip = '';
 
-        function displayDate() {
-            const today = new Date();
-            formattedDate = `${today.getFullYear()}年${String(today.getMonth() + 1).padStart(2, '0')}月${String(today.getDate()).padStart(2, '0')}日`;
-            document.getElementById('dateDisplay').textContent = `${formattedDate}`;
+
+function displayDate() {
+    const today = new Date();
+    formattedDate = `${today.getFullYear()}年${String(today.getMonth() + 1).padStart(2, '0')}月${String(today.getDate()).padStart(2, '0')}日`;
+    document.getElementById('dateDisplay').textContent = `${formattedDate}`;
+}
+
+function updateTime() {
+    const now = new Date();
+    formattedTime = `${String(now.getHours()).padStart(2, '0')}時${String(now.getMinutes()).padStart(2, '0')}分${String(now.getSeconds()).padStart(2, '0')}秒`;
+    document.getElementById('timeDisplay').textContent = formattedTime;
+    setTimeout(updateTime, 1000);
+}
+
+window.onload = function() {
+    displayDate();
+    updateTime();
+    document.getElementById('modeToggle').addEventListener('click', toggleMode);
+    document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
+    document.getElementById('textInput').addEventListener('input', toggleClearButton);
+    document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
+    document.getElementById('textInput').addEventListener('input', function() {
+        autoWrap(this);
+    });
+};
+
+function toggleMode() {
+    const imageSection = document.getElementById('imageSection');
+    const textSection = document.getElementById('textSection');
+    const modeToggle = document.getElementById('modeToggle');
+    const imageUpload = document.getElementById('imageUpload');
+    const textInput = document.getElementById('textInput');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const printButton = document.getElementById('printButton');
+    const textPrintButton = document.getElementById('textPrintButton');
+    const imagePrintOptions = document.getElementById('imagePrintOptions');
+    const textPrintOptions = document.getElementById('textPrintOptions');
+
+    if (imageSection.style.display === 'none') {
+        imageSection.style.display = 'block';
+        textSection.style.display = 'none';
+        modeToggle.textContent = 'テキスト入力';
+        textInput.value = '';
+        textPrintButton.classList.add('disabled');
+        textPrintOptions.style.display = 'none';
+        document.getElementById('textDateTimeChoice').style.display = 'none';
+        const textChips = document.querySelectorAll('#textDateTimeChoice .chip');
+        textChips.forEach(chip => chip.classList.remove('selected'));
+        selectedTextChip = '';
+    } else {
+        imageSection.style.display = 'none';
+        textSection.style.display = 'block';
+        modeToggle.textContent = '画像・T❜s券選択';
+        imageUpload.value = '';
+        imagePreviewContainer.innerHTML = '';
+        printButton.classList.add('disabled');
+        imagePrintOptions.style.display = 'none';
+        document.getElementById('dateTimeChoice').style.display = 'none';
+        const imageChips = document.querySelectorAll('#dateTimeChoice .chip');
+        imageChips.forEach(chip => chip.classList.remove('selected'));
+        selectedChip = '';
+    }
+}
+
+function previewImage(event) {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+    reader.onloadend = function() {
+        const img = new Image();
+        img.src = reader.result;
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        previewContainer.innerHTML = '';
+        previewContainer.appendChild(img);
+        document.getElementById('dateTimeChoice').style.display = 'block';
+        document.getElementById('imagePrintOptions').style.display = 'flex';
+    };
+    if (file) {
+        reader.readAsDataURL(file);
+    }
+}
+
+function selectChip(type) {
+    selectedChip = type;
+    const chips = document.querySelectorAll('#dateTimeChoice .chip');
+    chips.forEach(chip => chip.classList.remove('selected'));
+    if (type === 'with') {
+        chips[0].classList.add('selected');
+    } else if (type === 'without') {
+        chips[1].classList.add('selected');
+    }
+    updatePrintButtonState();
+}
+
+function selectTextChip(type) {
+    selectedTextChip = type;
+    const chips = document.querySelectorAll('#textDateTimeChoice .chip');
+    chips.forEach(chip => chip.classList.remove('selected'));
+    if (type === 'with') {
+        chips[0].classList.add('selected');
+    } else if (type === 'without') {
+        chips[1].classList.add('selected');
+    }
+    updateTextPrintButtonState();
+}
+
+function updatePrintButtonState() {
+    const printButton = document.getElementById('printButton');
+    const imagePrintOptions = document.getElementById('imagePrintOptions');
+    if (selectedChip === '') {
+        printButton.classList.add('disabled');
+        imagePrintOptions.style.display = 'none';
+    } else {
+        printButton.classList.remove('disabled');
+        imagePrintOptions.style.display = 'flex';
+    }
+}
+
+function updateTextPrintButtonState() {
+    const textPrintButton = document.getElementById('textPrintButton');
+    const textPrintOptions = document.getElementById('textPrintOptions');
+    const textInput = document.getElementById('textInput');
+    const textDateTimeChoice = document.getElementById('textDateTimeChoice');
+    if (textInput.value.trim() === '') {
+        textDateTimeChoice.style.display = 'none';
+        textPrintButton.classList.add('disabled');
+        textPrintOptions.style.display = 'none';
+    } else {
+        textDateTimeChoice.style.display = 'block';
+        if (selectedTextChip !== '') {
+            textPrintButton.classList.remove('disabled');
+            textPrintOptions.style.display = 'flex';
+        } else {
+            textPrintButton.classList.add('disabled');
+            textPrintOptions.style.display = 'none';
         }
+    }
+}
 
-        function updateTime() {
-            const now = new Date();
-            formattedTime = `${String(now.getHours()).padStart(2, '0')}時${String(now.getMinutes()).padStart(2, '0')}分${String(now.getSeconds()).padStart(2, '0')}秒`;
-            document.getElementById('timeDisplay').textContent = formattedTime;
-            setTimeout(updateTime, 1000);
-        }
+// ==== ここから修正版 ====
 
-        window.onload = function() {
-            displayDate();
-            updateTime();
-            document.getElementById('modeToggle').addEventListener('click', toggleMode);
-            document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
-            document.getElementById('textInput').addEventListener('input', toggleClearButton);
-            document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
-            document.getElementById('textInput').addEventListener('input', function() {
-                autoWrap(this);
-            });
-        };
-
-        function toggleMode() {
-            const imageSection = document.getElementById('imageSection');
-            const textSection = document.getElementById('textSection');
-            const modeToggle = document.getElementById('modeToggle');
-            const imageUpload = document.getElementById('imageUpload');
-            const textInput = document.getElementById('textInput');
-            const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-            const printButton = document.getElementById('printButton');
-            const textPrintButton = document.getElementById('textPrintButton');
-            const imagePrintOptions = document.getElementById('imagePrintOptions');
-            const textPrintOptions = document.getElementById('textPrintOptions');
-
-            if (imageSection.style.display === 'none') {
-                imageSection.style.display = 'block';
-                textSection.style.display = 'none';
-                modeToggle.textContent = 'テキスト入力';
-                textInput.value = '';
-                textPrintButton.classList.add('disabled');
-                textPrintOptions.style.display = 'none';
-                document.getElementById('textDateTimeChoice').style.display = 'none';
-                const textChips = document.querySelectorAll('#textDateTimeChoice .chip');
-                textChips.forEach(chip => chip.classList.remove('selected'));
-                selectedTextChip = '';
-            } else {
-                imageSection.style.display = 'none';
-                textSection.style.display = 'block';
-                modeToggle.textContent = '画像・T❜s券選択';
-                imageUpload.value = '';
-                imagePreviewContainer.innerHTML = '';
-                printButton.classList.add('disabled');
-                imagePrintOptions.style.display = 'none';
-                document.getElementById('dateTimeChoice').style.display = 'none';
-                const imageChips = document.querySelectorAll('#dateTimeChoice .chip');
-                imageChips.forEach(chip => chip.classList.remove('selected'));
-                selectedChip = '';
-            }
-        }
-
-        function previewImage(event) {
-            const file = event.target.files[0];
-            const reader = new FileReader();
-            reader.onloadend = function() {
-                const img = new Image();
-                img.src = reader.result;
-                const previewContainer = document.getElementById('imagePreviewContainer');
-                previewContainer.innerHTML = '';
-                previewContainer.appendChild(img);
-                document.getElementById('dateTimeChoice').style.display = 'block';
-                document.getElementById('imagePrintOptions').style.display = 'flex';
-            };
-            if (file) {
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function selectChip(type) {
-            selectedChip = type;
-            const chips = document.querySelectorAll('#dateTimeChoice .chip');
-            chips.forEach(chip => chip.classList.remove('selected'));
-            if (type === 'with') {
-                chips[0].classList.add('selected');
-            } else if (type === 'without') {
-                chips[1].classList.add('selected');
-            }
-            updatePrintButtonState();
-        }
-
-        function selectTextChip(type) {
-            selectedTextChip = type;
-            const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-            chips.forEach(chip => chip.classList.remove('selected'));
-            if (type === 'with') {
-                chips[0].classList.add('selected');
-            } else if (type === 'without') {
-                chips[1].classList.add('selected');
-            }
-            updateTextPrintButtonState();
-        }
-
-        function updatePrintButtonState() {
-            const printButton = document.getElementById('printButton');
-            const imagePrintOptions = document.getElementById('imagePrintOptions');
-            if (selectedChip === '') {
-                printButton.classList.add('disabled');
-                imagePrintOptions.style.display = 'none';
-            } else {
-                printButton.classList.remove('disabled');
-                imagePrintOptions.style.display = 'flex';
-            }
-        }
-
-        function updateTextPrintButtonState() {
-            const textPrintButton = document.getElementById('textPrintButton');
-            const textPrintOptions = document.getElementById('textPrintOptions');
-            const textInput = document.getElementById('textInput');
-            const textDateTimeChoice = document.getElementById('textDateTimeChoice');
-            if (textInput.value.trim() === '') {
-                textDateTimeChoice.style.display = 'none';
-                textPrintButton.classList.add('disabled');
-                textPrintOptions.style.display = 'none';
-            } else {
-                textDateTimeChoice.style.display = 'block';
-                if (selectedTextChip !== '') {
-                    textPrintButton.classList.remove('disabled');
-                    textPrintOptions.style.display = 'flex';
-                } else {
-                    textPrintButton.classList.add('disabled');
-                    textPrintOptions.style.display = 'none';
-                }
-            }
-        }
-
-        function sendToPrintAssist(event) {
+// 画像印刷（window.onfocusを使わずsetTimeoutのみで連続印刷）
+function sendToPrintAssist(event) {
     event.preventDefault();
     const fileInput = document.getElementById('imageUpload');
     const file = fileInput.files[0];
@@ -388,7 +392,7 @@
             const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
 
-            // 1枚ずつ印刷
+            let currentCopy = 1;
             function printImageCopy(copyIndex) {
                 let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
                 if (isDateTimeEnabled) {
@@ -402,17 +406,11 @@
                 window.location.href = printUrlImage;
             }
 
-            // 再帰的に1枚ずつ印刷
-            let currentCopy = 1;
             function printNext() {
                 printImageCopy(currentCopy);
                 if (currentCopy < selectedCopies) {
                     currentCopy++;
-                    // 印刷アプリから戻ってきたら次を実行
-                    window.onfocus = function handler() {
-                        window.onfocus = null;
-                        setTimeout(printNext, 3000); // 3秒待ち
-                    };
+                    setTimeout(printNext, 3000); // 3秒待ち
                 }
             }
             printNext();
@@ -422,65 +420,8 @@
     reader.readAsDataURL(file);
 }
 
-        function wrapText(text) {
-            const lines = [];
-            const paragraphs = text.split('\n');
-            
-            for (let paragraph of paragraphs) {
-                if (paragraph.length === 0) {
-                    lines.push('');
-                    continue;
-                }
-                let remainingText = paragraph;
-                while (remainingText.length > 0) {
-                    let lineLength = 0;
-                    let currentLine = '';
-                    let mixedCharacters = false;
-                    let hasFullWidth = false;
-                    let hasHalfWidth = false;
-
-                    for (let i = 0; i < remainingText.length; i++) {
-                        const char = remainingText[i];
-                        const charWidth = char.match(/[^\x01-\x7E]/) ? 2 : 1;
-                        
-                        if (charWidth === 2) hasFullWidth = true;
-                        if (charWidth === 1) hasHalfWidth = true;
-
-                        if (hasFullWidth && hasHalfWidth) mixedCharacters = true;
-
-                        let currentMaxWidth;
-                        if (mixedCharacters) {
-                            currentMaxWidth = 14;
-                        } else if (hasFullWidth) {
-                            currentMaxWidth = 16;
-                        } else {
-                            currentMaxWidth = 23;
-                        }
-
-                        if (lineLength + charWidth > 32) { // 全角16桁に変更（幅32）
-                            break;
-                        }
-                        currentLine += char;
-                        lineLength += charWidth;
-                    }
-                    lines.push(currentLine);
-                    remainingText = remainingText.substring(currentLine.length);
-                }
-            }
-            return lines;
-        }
-
-        function safeEncodeURIComponent(str) {
-            return encodeURIComponent(str)
-                .replace(/!/g, '%21')
-                .replace(/'/g, '%27')
-                .replace(/\(/g, '%28')
-                .replace(/\)/g, '%29')
-                .replace(/\*/g, '%2A')
-                .replace(/%20/g, '%20');
-        }
-
-        function printText() {
+// テキスト印刷（window.onfocusを使わずsetTimeoutのみで連続印刷）
+function printText() {
     const textInput = document.getElementById('textInput');
     const text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
@@ -504,6 +445,7 @@
 
     const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
 
+    let currentCopy = 1;
     function printTextCopy(copyIndex) {
         let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
         wrappedLines.forEach((line, index) => {
@@ -522,59 +464,115 @@
         window.location.href = printUrlText;
     }
 
-    // 再帰的に1枚ずつ印刷
-    let currentCopy = 1;
     function printNext() {
         printTextCopy(currentCopy);
         if (currentCopy < selectedTextCopies) {
             currentCopy++;
-            window.onfocus = function handler() {
-                window.onfocus = null;
-                setTimeout(printNext, 3000); // 3秒待ち
-            };
+            setTimeout(printNext, 3000); // 3秒待ち
         }
     }
     printNext();
 }
 
-        function toggleClearButton() {
-            const textInput = document.getElementById('textInput');
-            const clearTextButton = document.getElementById('clearTextButton');
-            
-            if (textInput.value.trim() !== '') {
-                clearTextButton.style.display = 'block';
-            } else {
-                clearTextButton.style.display = 'none';
+// ==== ここまで修正版 ====
+
+
+function wrapText(text) {
+    const lines = [];
+    const paragraphs = text.split('\n');
+    
+    for (let paragraph of paragraphs) {
+        if (paragraph.length === 0) {
+            lines.push('');
+            continue;
+        }
+        let remainingText = paragraph;
+        while (remainingText.length > 0) {
+            let lineLength = 0;
+            let currentLine = '';
+            let mixedCharacters = false;
+            let hasFullWidth = false;
+            let hasHalfWidth = false;
+
+            for (let i = 0; i < remainingText.length; i++) {
+                const char = remainingText[i];
+                const charWidth = char.match(/[^\x01-\x7E]/) ? 2 : 1;
+                
+                if (charWidth === 2) hasFullWidth = true;
+                if (charWidth === 1) hasHalfWidth = true;
+
+                if (hasFullWidth && hasHalfWidth) mixedCharacters = true;
+
+                let currentMaxWidth;
+                if (mixedCharacters) {
+                    currentMaxWidth = 14;
+                } else if (hasFullWidth) {
+                    currentMaxWidth = 16;
+                } else {
+                    currentMaxWidth = 23;
+                }
+
+                if (lineLength + charWidth > 32) { // 全角16桁に変更（幅32）
+                    break;
+                }
+                currentLine += char;
+                lineLength += charWidth;
             }
+            lines.push(currentLine);
+            remainingText = remainingText.substring(currentLine.length);
         }
+    }
+    return lines;
+}
 
-        function handleClearButtonClick() {
-            const textInput = document.getElementById('textInput');
-            
-            const confirmClear = confirm('テキストをクリアしますか？');
-            
-            if (confirmClear) {
-                textInput.value = '';
-                document.getElementById('clearTextButton').style.display = 'none';
-                updateTextPrintButtonState();
-            }
-        }
+function safeEncodeURIComponent(str) {
+    return encodeURIComponent(str)
+        .replace(/!/g, '%21')
+        .replace(/'/g, '%27')
+        .replace(/\(/g, '%28')
+        .replace(/\)/g, '%29')
+        .replace(/\*/g, '%2A')
+        .replace(/%20/g, '%20');
+}
 
-        function autoWrap(textarea) {
-            const text = textarea.value;
-            const wrappedLines = wrapText(text);
-            textarea.value = wrappedLines.join('\n');
-        }
+function toggleClearButton() {
+    const textInput = document.getElementById('textInput');
+    const clearTextButton = document.getElementById('clearTextButton');
+    
+    if (textInput.value.trim() !== '') {
+        clearTextButton.style.display = 'block';
+    } else {
+        clearTextButton.style.display = 'none';
+    }
+}
 
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('service-worker.js').then(function(registration) {
-                    console.log('Service Worker登録成功:', registration);
-                }).catch(function(error) {
-                    console.log('Service Worker登録失敗:', error);
-                });
-            });
-        }
+function handleClearButtonClick() {
+    const textInput = document.getElementById('textInput');
+    
+    const confirmClear = confirm('テキストをクリアしますか？');
+    
+    if (confirmClear) {
+        textInput.value = '';
+        document.getElementById('clearTextButton').style.display = 'none';
+        updateTextPrintButtonState();
+    }
+}
+
+function autoWrap(textarea) {
+    const text = textarea.value;
+    const wrappedLines = wrapText(text);
+    textarea.value = wrappedLines.join('\n');
+}
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('service-worker.js').then(function(registration) {
+            console.log('Service Worker登録成功:', registration);
+        }).catch(function(error) {
+            console.log('Service Worker登録失敗:', error);
+        });
+    });
+　}
     </script>
 </body>
 </html>
