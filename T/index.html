@@ -50,46 +50,10 @@ header {
     padding: 1rem;
     display: flex;
     align-items: center;
-    position: relative; /* 追加：modeToggleの絶対位置の基準に */
-    min-height: 64px;
 }
 
-.navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    position: relative;
-}
-.navbar-brand {
-    color: #fff !important;
-    text-decoration: none;
-    font-size: 1.5rem;
-    margin: 0 auto;
-    z-index: 1;
-}
-
-#modeToggle {
-    position: absolute;
-    top: 50%;
-    right: 1rem;
-    transform: translateY(-50%);
-    padding: 0.5rem 1rem;
-    border: 1.5px solid #fff;
-    border-radius: 5px;
-    background-color: transparent;
-    color: #fff;
-    cursor: pointer;
-    transition: background 0.3s, color 0.3s, border 0.3s;
-    font-weight: bold;
-    z-index: 2;
-}
-#modeToggle:hover, #modeToggle:focus {
-    background-color: #fff;
-    color: var(--primary-color);
-    border-color: var(--primary-color);
-    outline: none;
-}
+.navbar { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+.navbar-brand { color: #fff !important; text-decoration: none; font-size: 1.5rem; margin: 0 auto; }
 
 main {
     display: flex;
@@ -218,6 +182,23 @@ main {
 }
 .clear-button:hover {
     background-color: var(--primary-hover);
+}
+
+#modeToggle {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 5px;
+    background-color: var(--background-color);
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s, border 0.3s;
+}
+#modeToggle:hover {
+    background-color: var(--primary-color);
+    color: #fff;
 }
 
 body {
