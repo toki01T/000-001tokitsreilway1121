@@ -7,6 +7,7 @@
     <link rel="icon" href="favicon.png" type="image/png">
     <style>
 :root {
+    /* ライトモード（スイレン色） */
     --primary-color: #00A3ED;    /* スイレン色（青） */
     --primary-hover: #0080BF;
     --background-color: #ffffff;
@@ -19,11 +20,12 @@
     --input-text: #222;
 }
 
+/* ダークモード（イーブイ色） */
 @media (prefers-color-scheme: dark) {
     :root {
         --primary-color: #A67843;      /* イーブイ色（ブラウン系） */
         --primary-hover: #7C5832;
-        --background-color: #2D2D2D;
+        --background-color: #2D2D2D;   /* 薄グレー */
         --text-color: #F3E9D2;
         --footer-bg: #232323;
         --chip-bg: #3B3631;
@@ -48,43 +50,45 @@ header {
     padding: 1rem;
     display: flex;
     align-items: center;
-    position: relative;
-    z-index: 100;
+    position: relative; /* 追加：modeToggleの絶対位置の基準に */
+    min-height: 64px;
 }
 
-.navbar { display: flex; justify-content: space-between; align-items: center; width: 100%; position: relative; }
-.navbar-brand { color: #fff !important; text-decoration: none; font-size: 1.5rem; margin: 0 auto; }
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    position: relative;
+}
+.navbar-brand {
+    color: #fff !important;
+    text-decoration: none;
+    font-size: 1.5rem;
+    margin: 0 auto;
+    z-index: 1;
+}
 
-/* モード切替ボタンのデザイン・配置修正 */
 #modeToggle {
     position: absolute;
     top: 50%;
-    right: 1.5rem;
+    right: 1rem;
     transform: translateY(-50%);
-    padding: 0.5rem 1.2rem;
-    border: 2px solid var(--primary-color);
-    border-radius: 6px;
-    background-color: #fff;
-    color: var(--primary-color);
-    font-weight: bold;
-    font-size: 1rem;
+    padding: 0.5rem 1rem;
+    border: 1.5px solid #fff;
+    border-radius: 5px;
+    background-color: transparent;
+    color: #fff;
     cursor: pointer;
-    transition: background 0.3s, color 0.3s, border 0.3s, box-shadow 0.2s;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    z-index: 200;
-    outline: none;
-}
-@media (prefers-color-scheme: dark) {
-    #modeToggle {
-        background-color: var(--background-color);
-        color: var(--primary-color);
-        border: 2px solid var(--primary-color);
-    }
+    transition: background 0.3s, color 0.3s, border 0.3s;
+    font-weight: bold;
+    z-index: 2;
 }
 #modeToggle:hover, #modeToggle:focus {
-    background-color: var(--primary-color);
-    color: #fff;
-    border: 2px solid var(--primary-color);
+    background-color: #fff;
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    outline: none;
 }
 
 main {
