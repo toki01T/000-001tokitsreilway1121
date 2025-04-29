@@ -6,156 +6,243 @@
     <title>toki 01Ⓣ 発券</title>
     <link rel="icon" href="favicon.png" type="image/png">
     <style>
-        :root {
-            --primary-color: #00A3ED;
-            --primary-hover: #0080BF;
-            --background-color: #ffffff;
-            --text-color: #333333;
-            --footer-bg: #E6F3FF;
-            --chip-bg: #F8F9FA;
-            --border-color: #cccccc;
-        }
+:root {
+    /* ライトモード（スイレン色） */
+    --primary-color: #00A3ED;    /* スイレン色（青） */
+    --primary-hover: #0080BF;
+    --background-color: #ffffff;
+    --text-color: #222;
+    --footer-bg: #E6F3FF;
+    --chip-bg: #F8F9FA;
+    --border-color: #cccccc;
+    --input-bg: #fff;
+    --input-border: #ccc;
+    --input-text: #222;
+}
 
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --primary-color: #7D5BA6; /* イーブイ色 */
-                --primary-hover: #634A84;
-                --background-color: #2D2D2D;
-                --text-color: #E0E0E0;
-                --footer-bg: #1A1A1A;
-                --chip-bg: #3D3D3D;
-                --border-color: #555555;
-            }
+/* ダークモード（イーブイ色） */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --primary-color: #A67843;      /* イーブイ色（ブラウン系） */
+        --primary-hover: #7C5832;
+        --background-color: #2D2D2D;   /* 薄グレー */
+        --text-color: #F3E9D2;
+        --footer-bg: #232323;
+        --chip-bg: #3B3631;
+        --border-color: #7C5832;
+        --input-bg: #232323;
+        --input-border: #A67843;
+        --input-text: #F3E9D2;
+    }
+}
 
-            .image-preview img {
-                filter: brightness(0.9);
-            }
-        }
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
 
-        html, body {
-            height: 100%;
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: var(--background-color);
-            color: var(--text-color);
-        }
+header {
+    background-color: var(--primary-color);
+    color: #fff;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+}
 
-        header {
-            background-color: var(--primary-color);
-            color: #fff;
-            padding: 1rem;
-            display: flex;
-            align-items: center;
-        }
+.navbar { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+.navbar-brand { color: #fff !important; text-decoration: none; font-size: 1.5rem; margin: 0 auto; }
 
-        .navbar-brand {
-            color: #fff !important;
-        }
+main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: calc(100vh - 80px);
+    padding: 1rem;
+    text-align: center;
+    background: var(--background-color);
+    color: var(--text-color);
+}
 
-        main {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: calc(100vh - 80px);
-            padding: 1rem;
-            text-align: center;
-        }
+.file-upload { margin: 1rem 0; text-align: center; }
+.file-upload-label {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--primary-color);
+    border-radius: 5px;
+    background-color: var(--chip-bg);
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--primary-color);
+    transition: background-color 0.3s, color 0.3s;
+}
+.file-upload-label:hover {
+    background-color: var(--primary-hover);
+    color: #fff;
+}
+.file-upload input[type="file"] { display: none; }
 
-        .file-upload-label {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            border: 2px solid var(--primary-color);
-            border-radius: 5px;
-            background-color: var(--chip-bg);
-            cursor: pointer;
-            font-size: 1rem;
-            color: var(--primary-color);
-            transition: background-color 0.3s;
-        }
+.image-preview { margin-top: 10px; text-align: center; max-width: 100%; }
+.image-preview img {
+    max-width: 100%;
+    max-height: 400px;
+    height: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    object-fit: contain;
+    background: var(--input-bg);
+}
 
-        .file-upload-label:hover {
-            background-color: var(--primary-hover);
-            color: white;
-        }
+#printButton, #textPrintButton {
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    background-color: var(--primary-color);
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: .3s;
+    margin-left: 0.5rem;
+    display: inline-block;
+    border: none;
+}
+#printButton.disabled, #textPrintButton.disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
+}
 
-        .image-preview img {
-            max-width: 100%;
-            max-height: 400px;
-            height: auto;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            object-fit: contain;
-            background: white;
-        }
+#dateDisplay {
+    margin-top: 1rem;
+    font-size: 1.2rem;
+    color: var(--text-color);
+}
+#timeDisplay {
+    margin-top: -10px;
+    font-size: 1.2rem;
+    color: var(--text-color);
+}
 
-        #printButton, #textPrintButton {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-        }
+.choice-chips {
+    display: none;
+    margin-top: 1rem;
+}
+.chip {
+    display: inline-block;
+    padding: .5rem 1rem;
+    border-radius: .5rem;
+    background-color: var(--chip-bg);
+    color: var(--primary-color);
+    cursor: pointer;
+    margin-right: .5rem;
+    transition: .3s;
+    border: 1px solid var(--primary-color);
+}
+.chip.selected {
+    background-color: var(--primary-color);
+    color: #fff;
+}
 
-        #printButton.disabled, #textPrintButton.disabled {
-            background-color: #666666;
-        }
+#textInput {
+    width: calc(16 * 1em);
+    max-width: 450px;
+    height: 300px;
+    margin-top: 1rem;
+    padding: 0.5rem;
+    border: 1px solid var(--input-border);
+    border-radius: 5px;
+    resize: vertical;
+    font-family: monospace;
+    font-size: 17px;
+    white-space: pre-wrap;
+    text-align: center;
+    background: var(--input-bg);
+    color: var(--input-text);
+}
 
-        #dateDisplay, #timeDisplay {
-            color: var(--text-color);
-        }
+.text-input-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
 
-        .chip {
-            background-color: var(--chip-bg);
-            color: var(--primary-color);
-            border: 1px solid var(--primary-color);
-        }
+.clear-button {
+    position: absolute;
+    top: -30px;
+    background-color: var(--primary-color);
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    display: none;
+    z-index: 10;
+}
+.clear-button:hover {
+    background-color: var(--primary-hover);
+}
 
-        .chip.selected {
-            background-color: var(--primary-color);
-            color: white;
-        }
+#modeToggle {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 5px;
+    background-color: var(--background-color);
+    color: var(--primary-color);
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s, border 0.3s;
+}
+#modeToggle:hover {
+    background-color: var(--primary-color);
+    color: #fff;
+}
 
-        #textInput {
-            border: 1px solid var(--border-color);
-            background-color: var(--background-color);
-            color: var(--text-color);
-        }
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+    background: var(--background-color);
+}
 
-        .clear-button {
-            background-color: var(--primary-color);
-        }
+main {
+    flex: 1;
+    padding-bottom: 60px;
+}
 
-        #modeToggle {
-            background-color: var(--background-color);
-            color: var(--primary-color);
-            border: 1px solid var(--primary-color);
-        }
+footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 10px 0;
+    background-color: var(--footer-bg);
+    text-align: center;
+}
+footer p {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 14px;
+}
 
-        footer {
-            background-color: var(--footer-bg);
-        }
-
-        footer p {
-            color: var(--primary-color);
-        }
-
-        #copiesSelect, #textCopiesSelect {
-            border: 1px solid var(--primary-color);
-            background-color: var(--background-color);
-            color: var(--primary-color);
-        }
-
-        /* 共通スタイル（変更なし） */
-        .navbar { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .file-upload { margin: 1rem 0; text-align: center; }
-        .file-upload input[type="file"] { display: none; }
-        .image-preview { margin-top: 10px; text-align: center; max-width: 100%; }
-        #printButton, #textPrintButton { padding: 0.5rem 1rem; border-radius: 5px; font-size: 1rem; transition: .3s ease-in-out all; margin-left: 0.5rem; display: inline-block; }
-        .choice-chips { display: none; margin-top: 1rem; }
-        .text-input-container { position: relative; display: flex; flex-direction: column; align-items: center; }
-        .clear-button { position: absolute; top: -30px; padding: 5px 10px; border-radius: 3px; cursor: pointer; display: none; z-index: 10; }
-        body { display: flex; flex-direction: column; min-height: 100vh; margin: 0; }
-        main { flex: 1; padding-bottom: 60px; }
-        .print-options { display: none; align-items: center; justify-content: center; margin-top: 1rem; }
+.print-options {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1rem;
+}
+#copiesSelect, #textCopiesSelect {
+    padding: 0.5rem;
+    border: 1px solid var(--primary-color);
+    border-radius: 5px;
+    background-color: var(--background-color);
+    color: var(--primary-color);
+    font-size: 1rem;
+}
 </style>
 </head>
 <body>
