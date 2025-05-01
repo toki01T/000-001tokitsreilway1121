@@ -107,17 +107,40 @@ header {
 
 main {
     flex: 1;
+    min-height: 100vh;
+    width: 100vw;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
     align-items: center;
-    padding: 90px 1rem 70px 1rem; /* header高+余白, footer分下余白 */
-    text-align: center;
+    /* 中央よりやや下に配置 */
+    justify-content: center;
+    padding-top: 120px; /* header高さ+α */
+    padding-bottom: 80px; /* footer分 */
     background: var(--background-color);
     color: var(--text-color);
-    min-height: 0;
-    width: 100%;
     box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+    main {
+        padding-top: 90px;
+        padding-bottom: 80px;
+    }
+}
+
+@media (orientation: landscape) {
+    main {
+        padding-top: 40px;
+        min-height: 100vw; /* 横画面でも中央よりやや下 */
+    }
+}
+
+.section-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 500px;
 }
 
 .file-upload { margin: 1rem 0; text-align: center; }
@@ -167,7 +190,7 @@ main {
 }
 
 #dateDisplay {
-    margin-top: 1rem;
+    margin-top: 2.2rem;
     font-size: 1.2rem;
     color: var(--text-color);
 }
@@ -275,53 +298,55 @@ footer p {
     </div>
 </header>
 <main>
-    <section id="imageSection" class="image-selection">
-        <form id="imageForm" enctype="multipart/form-data" onsubmit="sendToPrintAssist(event)">
-            <div class="file-upload">
-                <label for="imageUpload" class="file-upload-label">
-                    <span>画像・T❜s券</span>
-                    <input type="file" id="imageUpload" name="image" accept="image/jpeg, image/png" onchange="previewImage(event)">
-                </label>
+    <div class="section-content">
+        <section id="imageSection" class="image-selection">
+            <form id="imageForm" enctype="multipart/form-data" onsubmit="sendToPrintAssist(event)">
+                <div class="file-upload">
+                    <label for="imageUpload" class="file-upload-label">
+                        <span>画像・T❜s券</span>
+                        <input type="file" id="imageUpload" name="image" accept="image/jpeg, image/png" onchange="previewImage(event)">
+                    </label>
+                </div>
+                <div class="image-preview" id="imagePreviewContainer"></div>
+                <div class="choice-chips" id="dateTimeChoice">
+                    <div class="chip" onclick="selectChip('with')">日付・時刻あり</div>
+                    <div class="chip" onclick="selectChip('without')">日付・時刻なし</div>
+                </div>
+                <div class="print-options" id="imagePrintOptions">
+                    <select id="copiesSelect">
+                        <option value="1">1枚</option>
+                        <option value="2">2枚</option>
+                        <option value="3">3枚</option>
+                        <option value="4">4枚</option>
+                        <option value="5">5枚</option>
+                    </select>
+                    <button type="submit" id="printButton" class="disabled">発行</button>
+                </div>
+            </form>
+        </section>
+        <section id="textSection" style="display:none;">
+            <div class="text-input-container">
+                <button id="clearTextButton" class="clear-button" style="display:none;">クリア</button>
+                <textarea id="textInput" rows="4" placeholder="テキストを入力してください"></textarea>
             </div>
-            <div class="image-preview" id="imagePreviewContainer"></div>
-            <div class="choice-chips" id="dateTimeChoice">
-                <div class="chip" onclick="selectChip('with')">日付・時刻あり</div>
-                <div class="chip" onclick="selectChip('without')">日付・時刻なし</div>
+            <div class="choice-chips" id="textDateTimeChoice">
+                <div class="chip" onclick="selectTextChip('with')">日付・時刻あり</div>
+                <div class="chip" onclick="selectTextChip('without')">日付・時刻なし</div>
             </div>
-            <div class="print-options" id="imagePrintOptions">
-                <select id="copiesSelect">
+            <div class="print-options" id="textPrintOptions">
+                <select id="textCopiesSelect">
                     <option value="1">1枚</option>
                     <option value="2">2枚</option>
                     <option value="3">3枚</option>
                     <option value="4">4枚</option>
                     <option value="5">5枚</option>
                 </select>
-                <button type="submit" id="printButton" class="disabled">発行</button>
+                <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
             </div>
-        </form>
-    </section>
-    <section id="textSection" style="display:none;">
-        <div class="text-input-container">
-            <button id="clearTextButton" class="clear-button" style="display:none;">クリア</button>
-            <textarea id="textInput" rows="4" placeholder="テキストを入力してください"></textarea>
-        </div>
-        <div class="choice-chips" id="textDateTimeChoice">
-            <div class="chip" onclick="selectTextChip('with')">日付・時刻あり</div>
-            <div class="chip" onclick="selectTextChip('without')">日付・時刻なし</div>
-        </div>
-        <div class="print-options" id="textPrintOptions">
-            <select id="textCopiesSelect">
-                <option value="1">1枚</option>
-                <option value="2">2枚</option>
-                <option value="3">3枚</option>
-                <option value="4">4枚</option>
-                <option value="5">5枚</option>
-            </select>
-            <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
-        </div>
-    </section>
-    <div id="dateDisplay"></div>
-    <div id="timeDisplay"></div>
+        </section>
+        <div id="dateDisplay"></div>
+        <div id="timeDisplay"></div>
+    </div>
 </main>
     <footer>
         <p>&copy; 2025 とき T's 鉄道部 toki</p>
