@@ -134,7 +134,7 @@ main {
     flex-direction: column;
     align-items: center;
     width: 100%;
-    max-width: 600px;
+    max-width: 500px;
 }
 .file-upload { margin: 1rem 0; text-align: center; }
 .file-upload-label {
@@ -156,32 +156,24 @@ main {
 .image-preview {
     margin-top: 10px;
     text-align: center;
-    width: 100%;
-    max-width: 98vw;
+    width: 100vw;
+    max-width: 400px;
     margin-left: auto;
     margin-right: auto;
     padding: 0;
 }
 .image-preview img {
     width: 100%;
-    max-width: 480px;
-    min-width: 180px;
-    max-height: 320px;
+    max-width: 400px;
+    max-height: 250px;
     height: auto;
     border: 1px solid var(--border-color);
     border-radius: 5px;
     object-fit: contain;
     background: var(--input-bg);
     display: block;
-    margin-left: auto;
-    margin-right: auto;
+    margin: 0 auto;
     box-sizing: border-box;
-}
-@media (max-width: 600px) {
-    .image-preview img {
-        max-width: 98vw;
-        max-height: 220px;
-    }
 }
 #printButton, #textPrintButton {
     padding: 0.4rem 1rem;
@@ -198,6 +190,14 @@ main {
 #printButton.disabled, #textPrintButton.disabled {
     background-color: #aaa;
     cursor: not-allowed;
+}
+#shrinkCheckbox {
+    vertical-align: middle;
+    margin-left: 0.5em;
+    accent-color: var(--primary-color);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
 }
 #dateDisplay {
     margin-top: 2.2rem;
@@ -297,21 +297,6 @@ footer p {
     margin-top: 1rem;
     gap: 0.5rem;
 }
-.print-options label {
-    margin-left: 0.7em;
-    font-size: 0.95em;
-    color: var(--primary-color);
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    user-select: none;
-}
-.print-options input[type="checkbox"] {
-    margin-right: 0.3em;
-    accent-color: var(--primary-color);
-    width: 1em;
-    height: 1em;
-}
 #copiesSelect, #textCopiesSelect {
     padding: 0.4rem;
     border: 1px solid var(--primary-color);
@@ -353,10 +338,7 @@ footer p {
                         <option value="5">5枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
-                    <label>
-                        <input type="checkbox" id="shrinkCheckbox">
-                        拡小して印刷
-                    </label>
+                    <input type="checkbox" id="shrinkCheckbox" title="縮小印刷" />
                 </div>
             </form>
         </section>
@@ -392,7 +374,6 @@ let formattedDate = '';
 let formattedTime = '';
 let selectedChip = '';
 let selectedTextChip = '';
-let isPrinting = false;
 
 function displayDate() {
     const today = new Date();
@@ -462,8 +443,7 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            // レスポンシブ: 画像幅480px以下、高さ320px以下
-            let maxW = 480, maxH = 320;
+            let maxW = 400, maxH = 250;
             let ratio = Math.min(maxW / img.width, maxH / img.height, 1);
             img.width = img.width * ratio;
             img.height = img.height * ratio;
@@ -553,38 +533,42 @@ function setTextChipsEnabled(enabled) {
     });
 }
 
-// 画像印刷：必ず指定枚数印刷＆拡小オプション対応
+// 印刷アプリ連携時の連続印刷を厳密制御
 function sendToPrintAssist(event) {
     event.preventDefault();
-    if (isPrinting) return; // 多重防止
-    isPrinting = true;
     const fileInput = document.getElementById('imageUpload');
     const file = fileInput.files[0];
-    if (!file || selectedChip === '') { isPrinting = false; return; }
-    const shrink = document.getElementById('shrinkCheckbox').checked;
+    if (!file || selectedChip === '') return;
+    const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
     const reader = new FileReader();
     reader.onloadend = function() {
         const base64Image = reader.result.split(',')[1];
         const paperWidth = 58;
         const img = new Image();
         img.onload = function() {
-            // 拡小チェック時は90%、未チェック時は100%
-            const shrinkRatio = shrink ? 0.9 : 1.0;
-            const aspectRatio = img.width / img.height;
-            const paperHeight = Math.round((paperWidth / aspectRatio) * shrinkRatio);
+            // 縮小チェック時は90%に
+            let imgWidth = img.width;
+            let imgHeight = img.height;
+            let scale = 1.0;
+            if (shrinkChecked) scale = 0.90;
+            imgWidth = imgWidth * scale;
+            imgHeight = imgHeight * scale;
+            const aspectRatio = imgWidth / imgHeight;
+            // 印刷領域いっぱいに（左右余白なし）
+            const printWidth = paperWidth;
+            const printHeight = Math.round(printWidth / aspectRatio);
             const isDateTimeEnabled = selectedChip === 'with';
-            const topMargin = 2;
+            const topMargin = 2 + (shrinkChecked ? Math.round((paperWidth / aspectRatio - printHeight) / 2) : 0);
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
-            const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
+            const totalHeight = topMargin + printHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
-
             let currentCopy = 1;
-            let lastPrintTime = Date.now();
+            let lastPrintTime = 0;
             function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${printWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${printWidth},${printHeight},${base64Image}`;
                 if (isDateTimeEnabled) {
                     const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + printHeight},${printWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 if (copyIndex === selectedCopies) {
                     printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
@@ -596,22 +580,10 @@ function sendToPrintAssist(event) {
                 printImageCopy(currentCopy);
                 if (currentCopy < selectedCopies) {
                     currentCopy++;
-                    // 印刷アプリによって戻るまでの時間が異なるため、最短4秒、最大8秒まで待つ
-                    let waitMs = 4000;
-                    const checkFocus = () => {
-                        // ユーザーがアプリから戻ったら次へ
-                        if (document.hasFocus()) {
-                            setTimeout(printNext, 300); // 0.3秒後に次
-                        } else if (Date.now() - lastPrintTime > 8000) {
-                            // 8秒経過しても戻らなければ強制的に次へ
-                            setTimeout(printNext, 0);
-                        } else {
-                            setTimeout(checkFocus, 500);
-                        }
-                    };
-                    setTimeout(checkFocus, waitMs);
-                } else {
-                    isPrinting = false;
+                    // 最低4.5秒空ける
+                    const now = Date.now();
+                    const wait = Math.max(4500 - (now - lastPrintTime), 800);
+                    setTimeout(printNext, wait);
                 }
             }
             printNext();
@@ -620,7 +592,6 @@ function sendToPrintAssist(event) {
     };
     reader.readAsDataURL(file);
 }
-
 function wrapText(text) {
     const lines = [];
     const paragraphs = text.split('\n');
