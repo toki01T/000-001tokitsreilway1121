@@ -134,8 +134,7 @@ main {
     flex-direction: column;
     align-items: center;
     width: 100%;
-    max-width: 400px;
-    margin: 0 auto;
+    max-width: 500px;
 }
 .file-upload { margin: 1rem 0; text-align: center; }
 .file-upload-label {
@@ -157,11 +156,10 @@ main {
 .image-preview {
     margin-top: 10px;
     text-align: center;
-    width: 100%;
+    width: 95vw;
     max-width: 400px;
-    margin-left: 0;
-    margin-right: 0;
-    padding: 0;
+    margin-left: auto;
+    margin-right: auto;
 }
 .image-preview img {
     width: 100%;
@@ -173,8 +171,8 @@ main {
     object-fit: contain;
     background: var(--input-bg);
     display: block;
-    margin: 0 auto;
-    box-sizing: border-box;
+    margin-left: auto;
+    margin-right: auto;
 }
 #printButton, #textPrintButton {
     padding: 0.4rem 1rem;
@@ -192,12 +190,12 @@ main {
     background-color: #aaa;
     cursor: not-allowed;
 }
-#shrinkCheckbox {
+#shrinkCheck {
     margin-left: 0.7rem;
-    accent-color: var(--primary-color);
-    width: 18px;
-    height: 18px;
+    margin-right: 0.1rem;
+    transform: scale(1.2);
     vertical-align: middle;
+    accent-color: var(--primary-color);
 }
 #dateDisplay {
     margin-top: 2.2rem;
@@ -338,7 +336,7 @@ footer p {
                         <option value="5">5枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
-                    <input type="checkbox" id="shrinkCheckbox" title="縮小印刷">
+                    <input type="checkbox" id="shrinkCheck" title="縮小印刷" />
                 </div>
             </form>
         </section>
@@ -453,7 +451,6 @@ function previewImage(event) {
         previewContainer.innerHTML = '';
         previewContainer.appendChild(img);
         document.getElementById('dateTimeChoice').style.display = 'flex';
-        // チップをリセット
         const imageChips = document.querySelectorAll('#dateTimeChoice .chip');
         imageChips.forEach(chip => chip.classList.remove('selected'));
         selectedChip = '';
@@ -540,35 +537,30 @@ function sendToPrintAssist(event) {
     const fileInput = document.getElementById('imageUpload');
     const file = fileInput.files[0];
     if (!file || selectedChip === '') return;
-    const shrink = document.getElementById('shrinkCheckbox').checked;
     const reader = new FileReader();
     reader.onloadend = function() {
         const base64Image = reader.result.split(',')[1];
-        const paperWidth = 58;
+        // 印刷用紙幅
+        let paperWidth = 58;
+        // 縮小チェック時は3cm分(約30px)縮小
+        const shrink = document.getElementById('shrinkCheck').checked;
+        let shrinkOffset = shrink ? 30 : 0;
+        let printWidth = paperWidth - shrinkOffset;
         const img = new Image();
         img.onload = function() {
-            let aspectRatio = img.width / img.height;
-            let paperHeight = Math.round(paperWidth / aspectRatio);
-
-            // 縮小チェック時は幅・高さを約85%に
-            let shrinkRatio = 1.0;
-            if (shrink) {
-                shrinkRatio = 0.85;
-            }
-            let printWidth = Math.round(paperWidth * shrinkRatio);
-            let printHeight = Math.round(paperHeight * shrinkRatio);
-
+            const aspectRatio = img.width / img.height;
+            const paperHeight = Math.round(printWidth / aspectRatio);
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
-            const totalHeight = topMargin + printHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
+            const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${Math.floor((paperWidth-printWidth)/2)},${topMargin},${printWidth},${printHeight},${base64Image}`;
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${printWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${printWidth},${paperHeight},${base64Image}`;
                 if (isDateTimeEnabled) {
                     const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + printHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${printWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 if (copyIndex === selectedCopies) {
                     printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
@@ -579,7 +571,7 @@ function sendToPrintAssist(event) {
                 printImageCopy(currentCopy);
                 if (currentCopy < selectedCopies) {
                     currentCopy++;
-                    setTimeout(printNext, 5500); // 5.5秒待ちに拡大
+                    setTimeout(printNext, 5000); // 5秒待ち
                 }
             }
             printNext();
@@ -637,14 +629,31 @@ function wrapText(text) {
     }
     return lines;
 }
+// 記号も正しく印刷されるようにエンコード
 function safeEncodeURIComponent(str) {
     return encodeURIComponent(str)
-        .replace(/!/g, '%21')
-        .replace(/'/g, '%27')
-        .replace(/\(/g, '%28')
-        .replace(/\)/g, '%29')
-        .replace(/\*/g, '%2A')
-        .replace(/%20/g, '%20');
+        .replace(/%20/g, '%20')
+        .replace(/%21/g, '!')
+        .replace(/%23/g, '#')
+        .replace(/%24/g, '$')
+        .replace(/%25/g, '%')
+        .replace(/%26/g, '&')
+        .replace(/%27/g, "'")
+        .replace(/%28/g, '(')
+        .replace(/%29/g, ')')
+        .replace(/%2A/g, '*')
+        .replace(/%2B/g, '+')
+        .replace(/%2C/g, ',')
+        .replace(/%2D/g, '-')
+        .replace(/%2E/g, '.')
+        .replace(/%2F/g, '/')
+        .replace(/%3A/g, ':')
+        .replace(/%3B/g, ';')
+        .replace(/%3D/g, '=')
+        .replace(/%3F/g, '?')
+        .replace(/%40/g, '@')
+        .replace(/%5F/g, '_')
+        .replace(/%22/g, '"');
 }
 function printText() {
     const textInput = document.getElementById('textInput');
@@ -686,7 +695,7 @@ function printText() {
         printTextCopy(currentCopy);
         if (currentCopy < selectedTextCopies) {
             currentCopy++;
-            setTimeout(printNext, 3500);
+            setTimeout(printNext, 5000);
         }
     }
     printNext();
