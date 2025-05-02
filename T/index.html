@@ -156,10 +156,11 @@ main {
 .image-preview {
     margin-top: 10px;
     text-align: center;
-    width: 95vw;
+    width: 100%;
     max-width: 400px;
     margin-left: auto;
     margin-right: auto;
+    padding: 0;
 }
 .image-preview img {
     width: 100%;
@@ -171,8 +172,9 @@ main {
     object-fit: contain;
     background: var(--input-bg);
     display: block;
-    margin-left: auto;
-    margin-right: auto;
+    margin-left: 0;
+    margin-right: 0;
+    box-sizing: border-box;
 }
 #printButton, #textPrintButton {
     padding: 0.4rem 1rem;
@@ -190,11 +192,11 @@ main {
     background-color: #aaa;
     cursor: not-allowed;
 }
-#shrinkCheck {
-    margin-left: 0.7rem;
-    margin-right: 0.1rem;
-    transform: scale(1.2);
+#shrinkCheckbox {
     vertical-align: middle;
+    margin-left: 0.5em;
+    width: 18px;
+    height: 18px;
     accent-color: var(--primary-color);
 }
 #dateDisplay {
@@ -336,7 +338,7 @@ footer p {
                         <option value="5">5枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
-                    <input type="checkbox" id="shrinkCheck" title="縮小印刷" />
+                    <input type="checkbox" id="shrinkCheckbox" title="縮小して印刷">
                 </div>
             </form>
         </section>
@@ -368,11 +370,19 @@ footer p {
     <p>&copy; 2025 とき T's 鉄道部 toki</p>
 </footer>
 <script>
+// 全角変換用マップ
+const symbolMap = {
+    '@': '＠', '#': '＃', '&': '＆', '-': '－', '/': '／', '$': '＄', '%': '％',
+    '(': '（', ')': '）', '!': '！', '?': '？', "'": '’', '"': '”', ':': '：',
+    ';': '；', '_': '＿', '+': '＋'
+};
+function toZenkaku(str) {
+    return str.replace(/[@#&\-\/\$%\(\)!?'"_:;_+]/g, s => symbolMap[s] || s);
+}
 let formattedDate = '';
 let formattedTime = '';
 let selectedChip = '';
 let selectedTextChip = '';
-
 function displayDate() {
     const today = new Date();
     formattedDate = `${today.getFullYear()}年${String(today.getMonth() + 1).padStart(2, '0')}月${String(today.getDate()).padStart(2, '0')}日`;
@@ -441,7 +451,6 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            // レスポンシブ: 画像幅400px以下、高さ260px以下
             let maxW = 400, maxH = 260;
             let ratio = Math.min(maxW / img.width, maxH / img.height, 1);
             img.width = img.width * ratio;
@@ -459,8 +468,7 @@ function previewImage(event) {
     };
     if (file) {
         reader.readAsDataURL(file);
-    }
-    else {
+    } else {
         document.getElementById('dateTimeChoice').style.display = 'none';
         document.getElementById('imagePrintOptions').style.display = 'none';
         selectedChip = '';
@@ -537,19 +545,15 @@ function sendToPrintAssist(event) {
     const fileInput = document.getElementById('imageUpload');
     const file = fileInput.files[0];
     if (!file || selectedChip === '') return;
+    const shrink = document.getElementById('shrinkCheckbox').checked;
     const reader = new FileReader();
     reader.onloadend = function() {
         const base64Image = reader.result.split(',')[1];
-        // 印刷用紙幅
-        let paperWidth = 58;
-        // 縮小チェック時は3cm分(約30px)縮小
-        const shrink = document.getElementById('shrinkCheck').checked;
-        let shrinkOffset = shrink ? 30 : 0;
-        let printWidth = paperWidth - shrinkOffset;
+        const paperWidth = shrink ? Math.round(58 * 0.7) : 58;
         const img = new Image();
         img.onload = function() {
             const aspectRatio = img.width / img.height;
-            const paperHeight = Math.round(printWidth / aspectRatio);
+            const paperHeight = Math.round((paperWidth) / aspectRatio);
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
@@ -557,10 +561,10 @@ function sendToPrintAssist(event) {
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${printWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${printWidth},${paperHeight},${base64Image}`;
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
                 if (isDateTimeEnabled) {
                     const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${printWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 if (copyIndex === selectedCopies) {
                     printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
@@ -571,7 +575,7 @@ function sendToPrintAssist(event) {
                 printImageCopy(currentCopy);
                 if (currentCopy < selectedCopies) {
                     currentCopy++;
-                    setTimeout(printNext, 5000); // 5秒待ち
+                    setTimeout(printNext, 4500); // 4.5秒待ち
                 }
             }
             printNext();
@@ -595,7 +599,9 @@ function wrapText(text) {
             let hasFullWidth = false;
             let hasHalfWidth = false;
             for (let i = 0; i < remainingText.length; i++) {
-                const char = remainingText[i];
+                let char = remainingText[i];
+                // 記号を全角に
+                char = toZenkaku(char);
                 const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
                 const charWidth = isFullWidth ? 2 : 1;
                 if (isFullWidth) hasFullWidth = true;
@@ -629,36 +635,21 @@ function wrapText(text) {
     }
     return lines;
 }
-// 記号も正しく印刷されるようにエンコード
 function safeEncodeURIComponent(str) {
     return encodeURIComponent(str)
-        .replace(/%20/g, '%20')
-        .replace(/%21/g, '!')
-        .replace(/%23/g, '#')
-        .replace(/%24/g, '$')
-        .replace(/%25/g, '%')
-        .replace(/%26/g, '&')
-        .replace(/%27/g, "'")
-        .replace(/%28/g, '(')
-        .replace(/%29/g, ')')
-        .replace(/%2A/g, '*')
-        .replace(/%2B/g, '+')
-        .replace(/%2C/g, ',')
-        .replace(/%2D/g, '-')
-        .replace(/%2E/g, '.')
-        .replace(/%2F/g, '/')
-        .replace(/%3A/g, ':')
-        .replace(/%3B/g, ';')
-        .replace(/%3D/g, '=')
-        .replace(/%3F/g, '?')
-        .replace(/%40/g, '@')
-        .replace(/%5F/g, '_')
-        .replace(/%22/g, '"');
+        .replace(/!/g, '%21')
+        .replace(/'/g, '%27')
+        .replace(/\(/g, '%28')
+        .replace(/\)/g, '%29')
+        .replace(/\*/g, '%2A')
+        .replace(/%20/g, '%20');
 }
 function printText() {
     const textInput = document.getElementById('textInput');
-    const text = textInput.value;
+    let text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
+    // 記号を全角に変換
+    text = toZenkaku(text);
     const paperWidth = 58;
     const isDateTimeEnabled = selectedTextChip === 'with';
     const wrappedLines = wrapText(text);
@@ -695,7 +686,7 @@ function printText() {
         printTextCopy(currentCopy);
         if (currentCopy < selectedTextCopies) {
             currentCopy++;
-            setTimeout(printNext, 5000);
+            setTimeout(printNext, 4500);
         }
     }
     printNext();
@@ -719,7 +710,8 @@ function handleClearButtonClick() {
     }
 }
 function autoWrap(textarea) {
-    const text = textarea.value;
+    let text = textarea.value;
+    text = toZenkaku(text);
     const wrappedLines = wrapText(text);
     textarea.value = wrappedLines.join('\n');
 }
