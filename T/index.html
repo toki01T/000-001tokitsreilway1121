@@ -112,8 +112,8 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-top: 70px; /* header高さ+α */
-    padding-bottom: 80px; /* footer分 */
+    padding-top: 70px;
+    padding-bottom: 80px;
     background: var(--background-color);
     color: var(--text-color);
     box-sizing: border-box;
@@ -218,9 +218,10 @@ main {
     text-align: center;
 }
 .choice-chips {
-    display: flex;
+    display: flex !important;
     justify-content: center;
-    gap: 1rem;
+    align-items: center;
+    gap: 1.2rem;
     margin-top: 1.2rem;
     margin-bottom: 0.5rem;
     width: 100%;
@@ -238,6 +239,8 @@ main {
     border: 1px solid var(--primary-color);
     text-align: center;
     min-width: 90px;
+    opacity: 1;
+    pointer-events: auto;
 }
 .chip.disabled {
     background-color: #eee;
@@ -245,6 +248,7 @@ main {
     border: 1px solid #ccc;
     cursor: not-allowed;
     pointer-events: none;
+    opacity: 0.6;
 }
 .chip.selected {
     background-color: var(--primary-color);
@@ -318,6 +322,8 @@ footer p {
     font-size: 1rem;
 }
 </style>
+</head>
+<body>
 <header>
   <div class="navbar">
     <a class="navbar-brand" href="#">toki01Ⓣ</a>
@@ -337,8 +343,8 @@ footer p {
         </div>
         <div class="image-preview" id="imagePreviewContainer"></div>
         <div class="choice-chips" id="dateTimeChoice" style="display:none;">
-          <button type="button" class="chip chip-disabled" id="chipWith" onclick="selectChip('with')" disabled>日付・時刻あり</button>
-          <button type="button" class="chip chip-disabled" id="chipWithout" onclick="selectChip('without')" disabled>日付・時刻なし</button>
+          <button type="button" class="chip disabled" id="chipWith" onclick="selectChip('with')" disabled>日付・時刻あり</button>
+          <button type="button" class="chip disabled" id="chipWithout" onclick="selectChip('without')" disabled>日付・時刻なし</button>
         </div>
         <div class="print-options" id="imagePrintOptions" style="display:none;">
           <select id="copiesSelect">
@@ -359,8 +365,8 @@ footer p {
         <textarea id="textInput" rows="4" placeholder="テキストを入力してください"></textarea>
       </div>
       <div class="choice-chips" id="textDateTimeChoice" style="display:none;">
-        <button type="button" class="chip chip-disabled" id="textChipWith" onclick="selectTextChip('with')" disabled>日付・時刻あり</button>
-        <button type="button" class="chip chip-disabled" id="textChipWithout" onclick="selectTextChip('without')" disabled>日付・時刻なし</button>
+        <button type="button" class="chip disabled" id="textChipWith" onclick="selectTextChip('with')" disabled>日付・時刻あり</button>
+        <button type="button" class="chip disabled" id="textChipWithout" onclick="selectTextChip('without')" disabled>日付・時刻なし</button>
       </div>
       <div class="print-options" id="textPrintOptions" style="display:none;">
         <select id="textCopiesSelect">
@@ -377,10 +383,10 @@ footer p {
     <div id="timeDisplay"></div>
   </div>
 </main>
-    <footer>
-        <p>&copy; 2025 とき T's 鉄道部 toki</p>
-    </footer>
-    <script>
+<footer>
+    <p>&copy; 2025 とき T's 鉄道部 toki</p>
+</footer>
+<script>
 let formattedDate = '';
 let formattedTime = '';
 let selectedChip = '';
@@ -403,50 +409,59 @@ window.onload = function() {
     displayDate();
     updateTime();
     document.getElementById('modeToggle').addEventListener('click', toggleMode);
-    document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
+    document.getElementById('textInput').addEventListener('input', handleTextInput);
     document.getElementById('textInput').addEventListener('input', toggleClearButton);
     document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
     document.getElementById('textInput').addEventListener('input', function() {
         autoWrap(this);
     });
+    resetImageMode();
+    resetTextMode();
 };
 
 function toggleMode() {
     const imageSection = document.getElementById('imageSection');
     const textSection = document.getElementById('textSection');
     const modeToggle = document.getElementById('modeToggle');
-    const imageUpload = document.getElementById('imageUpload');
-    const textInput = document.getElementById('textInput');
-    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-    const printButton = document.getElementById('printButton');
-    const textPrintButton = document.getElementById('textPrintButton');
-    const imagePrintOptions = document.getElementById('imagePrintOptions');
-    const textPrintOptions = document.getElementById('textPrintOptions');
-
     if (imageSection.style.display === 'none') {
         imageSection.style.display = 'block';
         textSection.style.display = 'none';
         modeToggle.textContent = 'テキスト';
-        textInput.value = '';
-        textPrintButton.classList.add('disabled');
-        textPrintOptions.style.display = 'none';
-        document.getElementById('textDateTimeChoice').style.display = 'none';
-        const textChips = document.querySelectorAll('#textDateTimeChoice .chip');
-        textChips.forEach(chip => chip.classList.remove('selected'));
-        selectedTextChip = '';
+        resetImageMode();
+        resetTextMode();
     } else {
         imageSection.style.display = 'none';
         textSection.style.display = 'block';
         modeToggle.textContent = '画像・T❜s券選択';
-        imageUpload.value = '';
-        imagePreviewContainer.innerHTML = '';
-        printButton.classList.add('disabled');
-        imagePrintOptions.style.display = 'none';
-        document.getElementById('dateTimeChoice').style.display = 'none';
-        const imageChips = document.querySelectorAll('#dateTimeChoice .chip');
-        imageChips.forEach(chip => chip.classList.remove('selected'));
-        selectedChip = '';
+        resetImageMode();
+        resetTextMode();
     }
+}
+
+// 画像モード初期化
+function resetImageMode() {
+    document.getElementById('dateTimeChoice').style.display = 'none';
+    document.getElementById('chipWith').className = 'chip disabled';
+    document.getElementById('chipWith').disabled = true;
+    document.getElementById('chipWithout').className = 'chip disabled';
+    document.getElementById('chipWithout').disabled = true;
+    document.getElementById('imagePrintOptions').style.display = 'none';
+    document.getElementById('printButton').classList.add('disabled');
+    document.getElementById('printButton').disabled = true;
+    selectedChip = '';
+}
+
+// テキストモード初期化
+function resetTextMode() {
+    document.getElementById('textDateTimeChoice').style.display = 'none';
+    document.getElementById('textChipWith').className = 'chip disabled';
+    document.getElementById('textChipWith').disabled = true;
+    document.getElementById('textChipWithout').className = 'chip disabled';
+    document.getElementById('textChipWithout').disabled = true;
+    document.getElementById('textPrintOptions').style.display = 'none';
+    document.getElementById('textPrintButton').classList.add('disabled');
+    document.getElementById('textPrintButton').disabled = true;
+    selectedTextChip = '';
 }
 
 function previewImage(event) {
@@ -458,8 +473,17 @@ function previewImage(event) {
         const previewContainer = document.getElementById('imagePreviewContainer');
         previewContainer.innerHTML = '';
         previewContainer.appendChild(img);
-        document.getElementById('dateTimeChoice').style.display = 'block';
-        document.getElementById('imagePrintOptions').style.display = 'flex';
+
+        // 日付・時刻ボタンを中央で表示＆有効化
+        document.getElementById('dateTimeChoice').style.display = 'flex';
+        document.getElementById('chipWith').className = 'chip';
+        document.getElementById('chipWith').disabled = false;
+        document.getElementById('chipWithout').className = 'chip';
+        document.getElementById('chipWithout').disabled = false;
+        document.getElementById('imagePrintOptions').style.display = 'none';
+        document.getElementById('printButton').classList.add('disabled');
+        document.getElementById('printButton').disabled = true;
+        selectedChip = '';
     };
     if (file) {
         reader.readAsDataURL(file);
@@ -468,62 +492,70 @@ function previewImage(event) {
 
 function selectChip(type) {
     selectedChip = type;
-    const chips = document.querySelectorAll('#dateTimeChoice .chip');
-    chips.forEach(chip => chip.classList.remove('selected'));
+    const chipWith = document.getElementById('chipWith');
+    const chipWithout = document.getElementById('chipWithout');
+    chipWith.classList.remove('selected');
+    chipWithout.classList.remove('selected');
     if (type === 'with') {
-        chips[0].classList.add('selected');
+        chipWith.classList.add('selected');
     } else if (type === 'without') {
-        chips[1].classList.add('selected');
+        chipWithout.classList.add('selected');
     }
-    updatePrintButtonState();
+    // 発行ボタン有効化
+    document.getElementById('printButton').classList.remove('disabled');
+    document.getElementById('printButton').disabled = false;
+    document.getElementById('imagePrintOptions').style.display = 'flex';
+}
+
+function handleTextInput() {
+    const val = document.getElementById('textInput').value.trim();
+    const chipWith = document.getElementById('textChipWith');
+    const chipWithout = document.getElementById('textChipWithout');
+    if (val.length > 0) {
+        document.getElementById('textDateTimeChoice').style.display = 'flex';
+        chipWith.className = 'chip';
+        chipWith.disabled = false;
+        chipWithout.className = 'chip';
+        chipWithout.disabled = false;
+        document.getElementById('textPrintOptions').style.display = 'none';
+        document.getElementById('textPrintButton').classList.add('disabled');
+        document.getElementById('textPrintButton').disabled = true;
+        selectedTextChip = '';
+        chipWith.classList.remove('selected');
+        chipWithout.classList.remove('selected');
+    } else {
+        document.getElementById('textDateTimeChoice').style.display = 'none';
+        chipWith.className = 'chip disabled';
+        chipWith.disabled = true;
+        chipWithout.className = 'chip disabled';
+        chipWithout.disabled = true;
+        document.getElementById('textPrintOptions').style.display = 'none';
+        document.getElementById('textPrintButton').classList.add('disabled');
+        document.getElementById('textPrintButton').disabled = true;
+        selectedTextChip = '';
+        chipWith.classList.remove('selected');
+        chipWithout.classList.remove('selected');
+    }
 }
 
 function selectTextChip(type) {
     selectedTextChip = type;
-    const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-    chips.forEach(chip => chip.classList.remove('selected'));
+    const chipWith = document.getElementById('textChipWith');
+    const chipWithout = document.getElementById('textChipWithout');
+    chipWith.classList.remove('selected');
+    chipWithout.classList.remove('selected');
     if (type === 'with') {
-        chips[0].classList.add('selected');
+        chipWith.classList.add('selected');
     } else if (type === 'without') {
-        chips[1].classList.add('selected');
+        chipWithout.classList.add('selected');
     }
-    updateTextPrintButtonState();
+    // 発行ボタン有効化
+    document.getElementById('textPrintButton').classList.remove('disabled');
+    document.getElementById('textPrintButton').disabled = false;
+    document.getElementById('textPrintOptions').style.display = 'flex';
 }
 
-function updatePrintButtonState() {
-    const printButton = document.getElementById('printButton');
-    const imagePrintOptions = document.getElementById('imagePrintOptions');
-    if (selectedChip === '') {
-        printButton.classList.add('disabled');
-        imagePrintOptions.style.display = 'none';
-    } else {
-        printButton.classList.remove('disabled');
-        imagePrintOptions.style.display = 'flex';
-    }
-}
-
-function updateTextPrintButtonState() {
-    const textPrintButton = document.getElementById('textPrintButton');
-    const textPrintOptions = document.getElementById('textPrintOptions');
-    const textInput = document.getElementById('textInput');
-    const textDateTimeChoice = document.getElementById('textDateTimeChoice');
-    if (textInput.value.trim() === '') {
-        textDateTimeChoice.style.display = 'none';
-        textPrintButton.classList.add('disabled');
-        textPrintOptions.style.display = 'none';
-    } else {
-        textDateTimeChoice.style.display = 'block';
-        if (selectedTextChip !== '') {
-            textPrintButton.classList.remove('disabled');
-            textPrintOptions.style.display = 'flex';
-        } else {
-            textPrintButton.classList.add('disabled');
-            textPrintOptions.style.display = 'none';
-        }
-    }
-}
-
-// 画像印刷（onfocusを使わずsetTimeoutのみ！）
+// ---- 以降は印刷・wrapTextなど従来通り ----
 function sendToPrintAssist(event) {
     event.preventDefault();
     const fileInput = document.getElementById('imageUpload');
@@ -570,7 +602,6 @@ function sendToPrintAssist(event) {
     reader.readAsDataURL(file);
 }
 
-// テキスト印刷（onfocusを使わずsetTimeoutのみ！）
 function printText() {
     const textInput = document.getElementById('textInput');
     const text = textInput.value;
@@ -623,7 +654,6 @@ function printText() {
     printNext();
 }
 
-// ★ここが重要！折り返し仕様を厳密に実装★
 function wrapText(text) {
     const lines = [];
     const paragraphs = text.split('\n');
@@ -640,7 +670,6 @@ function wrapText(text) {
             let hasFullWidth = false;
             let hasHalfWidth = false;
 
-            // 1文字ずつ判定
             for (let i = 0; i < remainingText.length; i++) {
                 const char = remainingText[i];
                 const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
@@ -648,7 +677,6 @@ function wrapText(text) {
                 if (isFullWidth) hasFullWidth = true;
                 else hasHalfWidth = true;
 
-                // 混在判定
                 let maxLen;
                 if (hasFullWidth && hasHalfWidth) {
                     maxLen = 14;
@@ -658,7 +686,6 @@ function wrapText(text) {
                     maxLen = 23;
                 }
 
-                // 文字数カウント（半角1, 全角2で合計）
                 if ((hasFullWidth && hasHalfWidth && currentLine.length >= maxLen) ||
                     (!hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen) ||
                     (hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen) ||
@@ -666,7 +693,6 @@ function wrapText(text) {
                     break;
                 }
 
-                // 文字幅でカウント
                 if ((hasFullWidth && hasHalfWidth && lineLength + charWidth > maxLen * 2) ||
                     (!hasFullWidth && !hasHalfWidth && lineLength + charWidth > maxLen) ||
                     (hasFullWidth && !hasHalfWidth && lineLength + charWidth > maxLen * 2) ||
@@ -710,15 +736,13 @@ function handleClearButtonClick() {
     if (confirmClear) {
         textInput.value = '';
         document.getElementById('clearTextButton').style.display = 'none';
-        updateTextPrintButtonState();
+        handleTextInput();
     }
 }
 
 function autoWrap(textarea) {
-    // 入力値をwrapTextで折り返し
     const text = textarea.value;
     const wrappedLines = wrapText(text);
-    // 入力値を更新（カーソル位置は維持できませんが仕様上仕方ありません）
     textarea.value = wrappedLines.join('\n');
 }
 
@@ -731,6 +755,6 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
-    </script>
+</script>
 </body>
 </html>
