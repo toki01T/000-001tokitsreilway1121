@@ -156,24 +156,24 @@ main {
 .image-preview {
     margin-top: 10px;
     text-align: center;
-    width: 100%;
-    max-width: 100vw;
-    margin-left: 0;
-    margin-right: 0;
+    width: 100vw;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
     padding: 0;
-    box-sizing: border-box;
 }
 .image-preview img {
-    width: 100%;
+    width: 100vw;
     max-width: 500px;
-    max-height: 320px;
+    max-height: 300px;
     height: auto;
     border: 1px solid var(--border-color);
     border-radius: 5px;
     object-fit: contain;
     background: var(--input-bg);
     display: block;
-    margin: 0 auto;
+    margin-left: 0;
+    margin-right: 0;
     box-sizing: border-box;
 }
 #printButton, #textPrintButton {
@@ -366,6 +366,7 @@ let formattedDate = '';
 let formattedTime = '';
 let selectedChip = '';
 let selectedTextChip = '';
+let printImageState = { total: 0, current: 0, timer: null, onfocusHandler: null };
 
 function displayDate() {
     const today = new Date();
@@ -435,8 +436,8 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            // レスポンシブ: 画像幅500px以下、高さ320px以下
-            let maxW = 500, maxH = 320;
+            // レスポンシブ: 画像幅500px以下、高さ300px以下、左右余白なし
+            let maxW = 500, maxH = 300;
             let ratio = Math.min(maxW / img.width, maxH / img.height, 1);
             img.width = img.width * ratio;
             img.height = img.height * ratio;
@@ -527,7 +528,7 @@ function setTextChipsEnabled(enabled) {
     });
 }
 
-// 修正版：currentCopyを引数で管理し、正確にN回印刷
+// --- 画像印刷: onfocus+setTimeout併用で確実に全枚数印刷 ---
 function sendToPrintAssist(event) {
     event.preventDefault();
     const fileInput = document.getElementById('imageUpload');
@@ -547,6 +548,10 @@ function sendToPrintAssist(event) {
             const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
 
+            // 状態管理
+            printImageState.total = selectedCopies;
+            printImageState.current = 1;
+
             function printImageCopy(copyIndex) {
                 let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
                 if (isDateTimeEnabled) {
@@ -559,23 +564,51 @@ function sendToPrintAssist(event) {
                 window.location.href = printUrlImage;
             }
 
-            function printNext(copyIndex) {
-                if (copyIndex > selectedCopies) return;
-                printImageCopy(copyIndex);
-                if (copyIndex < selectedCopies) {
-                    setTimeout(function() {
-                        printNext(copyIndex + 1);
-                    }, 3500);
+            function clearPrintImageState() {
+                if (printImageState.timer) {
+                    clearTimeout(printImageState.timer);
+                    printImageState.timer = null;
+                }
+                if (printImageState.onfocusHandler) {
+                    window.removeEventListener('focus', printImageState.onfocusHandler);
+                    printImageState.onfocusHandler = null;
                 }
             }
-            printNext(1);
+
+            function printNext() {
+                printImageCopy(printImageState.current);
+                if (printImageState.current < printImageState.total) {
+                    printImageState.current++;
+                    // onfocusで次を実行
+                    printImageState.onfocusHandler = function() {
+                        window.removeEventListener('focus', printImageState.onfocusHandler);
+                        printImageState.onfocusHandler = null;
+                        if (printImageState.current <= printImageState.total) {
+                            printImageState.timer = setTimeout(printNext, 200); // onfocus優先
+                        }
+                    };
+                    window.addEventListener('focus', printImageState.onfocusHandler);
+
+                    // 念のため6秒後にも実行（onfocus失敗対策）
+                    printImageState.timer = setTimeout(function() {
+                        if (printImageState.onfocusHandler) {
+                            window.removeEventListener('focus', printImageState.onfocusHandler);
+                            printImageState.onfocusHandler = null;
+                        }
+                        printNext();
+                    }, 6000);
+                } else {
+                    clearPrintImageState();
+                }
+            }
+            printNext();
         };
         img.src = reader.result;
     };
     reader.readAsDataURL(file);
 }
 
-// --- 以降は変更なし ---
+// --- 以下はテキスト印刷・入力系 ---
 function wrapText(text) {
     const lines = [];
     const paragraphs = text.split('\n');
