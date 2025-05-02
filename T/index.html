@@ -156,25 +156,23 @@ main {
 .image-preview {
     margin-top: 10px;
     text-align: center;
-    width: 100vw;
-    max-width: 500px;
+    width: 100%;
+    max-width: 95vw;
     margin-left: auto;
     margin-right: auto;
     padding: 0;
 }
 .image-preview img {
     width: 100%;
-    max-width: 500px;
-    max-height: 320px;
-    min-width: 0;
-    min-height: 0;
+    max-width: 95vw;
+    max-height: 60vh;
     height: auto;
     border: 1px solid var(--border-color);
     border-radius: 5px;
     object-fit: contain;
     background: var(--input-bg);
     display: block;
-    margin: 0;
+    margin: 0 auto;
     box-sizing: border-box;
 }
 #printButton, #textPrintButton {
@@ -436,8 +434,8 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            // レスポンシブ: 画像幅500px以下、高さ320px以下
-            let maxW = 500, maxH = 320;
+            // レスポンシブ: 画像幅最大95vw、高さ最大60vh
+            let maxW = Math.min(window.innerWidth * 0.95, 500), maxH = window.innerHeight * 0.6;
             let ratio = Math.min(maxW / img.width, maxH / img.height, 1);
             img.width = img.width * ratio;
             img.height = img.height * ratio;
@@ -454,8 +452,7 @@ function previewImage(event) {
     };
     if (file) {
         reader.readAsDataURL(file);
-    }
-    else {
+    } else {
         document.getElementById('dateTimeChoice').style.display = 'none';
         document.getElementById('imagePrintOptions').style.display = 'none';
         selectedChip = '';
@@ -538,19 +535,27 @@ function sendToPrintAssist(event) {
         const paperWidth = 58;
         const img = new Image();
         img.onload = function() {
+            // 印刷時の画像サイズ計算（余白なし・拡大なし・縮小印刷）
             const aspectRatio = img.width / img.height;
-            const paperHeight = Math.round(paperWidth / aspectRatio);
+            // 幅を紙幅に合わせ、アスペクト比維持で高さを決定
+            let printWidth = paperWidth;
+            let printHeight = Math.round(printWidth / aspectRatio);
+            // 高さが大きすぎる場合は高さを紙幅に合わせて幅を縮小
+            if (printHeight > 300) { // 300px以上なら縮小
+                printHeight = 300;
+                printWidth = Math.round(printHeight * aspectRatio);
+            }
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
-            const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
+            const totalHeight = topMargin + printHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${printWidth},${printHeight},${base64Image}`;
                 if (isDateTimeEnabled) {
                     const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + printHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 if (copyIndex === selectedCopies) {
                     printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
@@ -561,7 +566,7 @@ function sendToPrintAssist(event) {
                 printImageCopy(currentCopy);
                 if (currentCopy < selectedCopies) {
                     currentCopy++;
-                    setTimeout(printNext, 5000); // 5秒待ちに拡大
+                    setTimeout(printNext, 5000); // 5秒待つことで必ず全枚数印刷
                 }
             }
             printNext();
