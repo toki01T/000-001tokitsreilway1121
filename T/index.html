@@ -156,15 +156,15 @@ main {
 .image-preview {
     margin-top: 10px;
     text-align: center;
-    width: 100%;
-    max-width: 400px;
+    width: 100vw;
+    max-width: 500px;
     margin-left: auto;
     margin-right: auto;
     padding: 0;
 }
 .image-preview img {
-    width: 100%;
-    max-width: 400px;
+    width: 100vw;
+    max-width: 500px;
     max-height: 260px;
     height: auto;
     border: 1px solid var(--border-color);
@@ -172,8 +172,9 @@ main {
     object-fit: contain;
     background: var(--input-bg);
     display: block;
-    margin-left: 0;
-    margin-right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
 }
 #printButton, #textPrintButton {
     padding: 0.4rem 1rem;
@@ -365,6 +366,7 @@ let formattedDate = '';
 let formattedTime = '';
 let selectedChip = '';
 let selectedTextChip = '';
+let printingInProgress = false;
 
 function displayDate() {
     const today = new Date();
@@ -434,8 +436,8 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            // レスポンシブ: 画像幅400px以下、高さ260px以下
-            let maxW = 400, maxH = 260;
+            // レスポンシブ: 画像幅500px以下、高さ260px以下
+            let maxW = 500, maxH = 260;
             let ratio = Math.min(maxW / img.width, maxH / img.height, 1);
             img.width = img.width * ratio;
             img.height = img.height * ratio;
@@ -452,8 +454,7 @@ function previewImage(event) {
     };
     if (file) {
         reader.readAsDataURL(file);
-    }
-    else {
+    } else {
         document.getElementById('dateTimeChoice').style.display = 'none';
         document.getElementById('imagePrintOptions').style.display = 'none';
         selectedChip = '';
@@ -525,65 +526,74 @@ function setTextChipsEnabled(enabled) {
         }
     });
 }
-// --- 画像印刷修正版 ---
+
+// --- 画像印刷の連続処理をonfocus＋setTimeout併用で確実に ---
 function sendToPrintAssist(event) {
     event.preventDefault();
+    if (printingInProgress) return; // 連打防止
+    printingInProgress = true;
     const fileInput = document.getElementById('imageUpload');
     const file = fileInput.files[0];
-    if (!file || selectedChip === '') return;
+    if (!file || selectedChip === '') { printingInProgress = false; return; }
     const reader = new FileReader();
     reader.onloadend = function() {
         const base64Image = reader.result.split(',')[1];
-        // 紙幅58mmよりやや小さめ(54mm)で印刷、左右2mmずつ余白
         const paperWidth = 58;
-        const printWidth = 54; // mm
-        const marginLeft = 2; // mm
         const img = new Image();
         img.onload = function() {
-            const aspectRatio = img.width / img.height;
-            const paperHeight = Math.round(printWidth / aspectRatio);
+            // 画像の幅を58mm（用紙幅）に合わせて縮小、超えない場合は原寸
+            let imgW = img.width, imgH = img.height;
+            let scale = 1;
+            if (imgW > paperWidth) {
+                scale = paperWidth / imgW;
+            }
+            let printW = Math.round(imgW * scale);
+            let printH = Math.round(imgH * scale);
+            // 上下中央寄せ
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
-            const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
+            const totalHeight = topMargin + printH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
+
             let currentCopy = 1;
-            let printing = false;
+            let focusHandler = null;
+            let timeoutId = null;
+
             function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${marginLeft},${topMargin},${printWidth},${paperHeight},${base64Image}`;
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${printW},${printH},${base64Image}`;
                 if (isDateTimeEnabled) {
                     const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + printH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 if (copyIndex === selectedCopies) {
                     printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
                 }
                 window.location.href = printUrlImage;
             }
+
             function printNext() {
-                if (printing) return;
-                printing = true;
                 printImageCopy(currentCopy);
                 if (currentCopy < selectedCopies) {
                     currentCopy++;
+                    // onfocusで戻ったら次、または6秒経ったら次
                     let handled = false;
-                    // onfocusで戻ってきたら次を実行
-                    window.onfocus = function handler() {
+                    focusHandler = function() {
                         if (handled) return;
                         handled = true;
-                        window.onfocus = null;
-                        printing = false;
-                        setTimeout(printNext, 500); // 0.5秒後に次
+                        window.removeEventListener('focus', focusHandler);
+                        clearTimeout(timeoutId);
+                        setTimeout(printNext, 300); // 少し待ってから次
                     };
-                    // 5秒経っても戻らなければ強制的に次
-                    setTimeout(function() {
-                        if (!handled) {
-                            handled = true;
-                            window.onfocus = null;
-                            printing = false;
-                            printNext();
-                        }
-                    }, 5000);
+                    window.addEventListener('focus', focusHandler);
+                    timeoutId = setTimeout(function() {
+                        if (handled) return;
+                        handled = true;
+                        window.removeEventListener('focus', focusHandler);
+                        printNext();
+                    }, 6000); // 6秒経っても戻らなければ次
+                } else {
+                    printingInProgress = false;
                 }
             }
             printNext();
@@ -592,6 +602,8 @@ function sendToPrintAssist(event) {
     };
     reader.readAsDataURL(file);
 }
+// --- ここまで画像印刷 ---
+
 function wrapText(text) {
     const lines = [];
     const paragraphs = text.split('\n');
