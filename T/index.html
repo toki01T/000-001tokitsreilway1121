@@ -156,24 +156,23 @@ main {
 .image-preview {
     margin-top: 10px;
     text-align: center;
-    width: 100vw;
-    max-width: 100vw;
-    margin-left: 0;
-    margin-right: 0;
-    padding: 0;
+    width: 100%;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
 }
 .image-preview img {
-    width: 100vw;
-    max-width: 100vw;
-    max-height: 300px;
+    width: 100%;
+    max-width: 400px;
+    max-height: 270px;
     height: auto;
     border: 1px solid var(--border-color);
     border-radius: 5px;
     object-fit: contain;
     background: var(--input-bg);
     display: block;
-    margin: 0 auto;
-    box-sizing: border-box;
+    margin-left: auto;
+    margin-right: auto;
 }
 #printButton, #textPrintButton {
     padding: 0.4rem 1rem;
@@ -191,12 +190,12 @@ main {
     background-color: #aaa;
     cursor: not-allowed;
 }
-#shrinkCheckbox {
-    margin-left: 0.4rem;
-    margin-right: 0.1rem;
-    width: 18px;
-    height: 18px;
+#reduceCheckbox {
+    margin-left: 0.7em;
+    margin-right: 0.2em;
     vertical-align: middle;
+    width: 16px;
+    height: 16px;
     accent-color: var(--primary-color);
 }
 #dateDisplay {
@@ -338,7 +337,7 @@ footer p {
                         <option value="5">5枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
-                    <input type="checkbox" id="shrinkCheckbox" title="80%縮小印刷">
+                    <input type="checkbox" id="reduceCheckbox" title="縮小印刷">
                 </div>
             </form>
         </section>
@@ -370,6 +369,15 @@ footer p {
     <p>&copy; 2025 とき T's 鉄道部 toki</p>
 </footer>
 <script>
+// --- 全角変換用マップ
+const toZenkakuMap = {
+    '@':'＠','#':'＃','&':'＆','-':'－','/':'／','$':'＄','%':'％',
+    '(':'（',')':'）','!':'！','?':'？',"'":'＇','"':'＂',':':'：',';':'；','_':'＿','+':'＋'
+};
+function toZenkaku(str) {
+    return str.replace(/[@#&\-\/\$%\(\)!?'"_:;+]/g, ch => toZenkakuMap[ch] || ch);
+}
+
 let formattedDate = '';
 let formattedTime = '';
 let selectedChip = '';
@@ -443,8 +451,8 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            // レスポンシブ: 画像幅100vw、高さ最大300px
-            let maxW = window.innerWidth, maxH = 300;
+            // レスポンシブ: 画像幅400px以下、高さ270px以下
+            let maxW = 400, maxH = 270;
             let ratio = Math.min(maxW / img.width, maxH / img.height, 1);
             img.width = img.width * ratio;
             img.height = img.height * ratio;
@@ -461,7 +469,8 @@ function previewImage(event) {
     };
     if (file) {
         reader.readAsDataURL(file);
-    } else {
+    }
+    else {
         document.getElementById('dateTimeChoice').style.display = 'none';
         document.getElementById('imagePrintOptions').style.display = 'none';
         selectedChip = '';
@@ -533,30 +542,23 @@ function setTextChipsEnabled(enabled) {
         }
     });
 }
-// 指定記号を全角変換
-function toFullWidthSymbols(str) {
-    const map = {
-        '@': '＠', '#': '＃', '&': '＆', '-': '－', '/': '／', '$': '＄', '%': '％', '(': '（', ')': '）',
-        '!': '！', '?': '？', "'": '＇', '"': '＂', ':': '：', ';': '；', '_': '＿', '+': '＋'
-    };
-    return str.replace(/[@#&\-\/\$\%\(\)!?'"_:;+]/g, m => map[m] || m);
-}
 function sendToPrintAssist(event) {
     event.preventDefault();
     const fileInput = document.getElementById('imageUpload');
     const file = fileInput.files[0];
     if (!file || selectedChip === '') return;
-    const shrink = document.getElementById('shrinkCheckbox').checked;
     const reader = new FileReader();
     reader.onloadend = function() {
-        let base64Image = reader.result.split(',')[1];
-        const paperWidth = 58;
-        const img = new Image();
+        const base64Image = reader.result.split(',')[1];
+        let paperWidth = 58;
+        let reduceFlag = document.getElementById('reduceCheckbox').checked;
+        let img = new Image();
         img.onload = function() {
             let aspectRatio = img.width / img.height;
             let paperHeight = Math.round(paperWidth / aspectRatio);
-            // 縮小チェック時は80%に
-            if (shrink) {
+            // ③ 縮小チェック時は80%縮小
+            if (reduceFlag) {
+                paperWidth = Math.round(paperWidth * 0.8);
                 paperHeight = Math.round(paperHeight * 0.8);
             }
             const isDateTimeEnabled = selectedChip === 'with';
@@ -568,7 +570,7 @@ function sendToPrintAssist(event) {
             function printImageCopy(copyIndex) {
                 let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
                 if (isDateTimeEnabled) {
-                    const dateTimeString = toFullWidthSymbols(`${formattedDate}\n${formattedTime}`);
+                    const dateTimeString = `${formattedDate}\n${formattedTime}`;
                     printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 if (copyIndex === selectedCopies) {
@@ -580,7 +582,7 @@ function sendToPrintAssist(event) {
                 printImageCopy(currentCopy);
                 if (currentCopy < selectedCopies) {
                     currentCopy++;
-                    setTimeout(printNext, 5000); // 5秒間隔で確実にn回
+                    setTimeout(printNext, 5000); // 5秒待ちで確実に
                 }
             }
             printNext();
@@ -590,6 +592,8 @@ function sendToPrintAssist(event) {
     reader.readAsDataURL(file);
 }
 function wrapText(text) {
+    // ④ 記号を全角化
+    text = toZenkaku(text);
     const lines = [];
     const paragraphs = text.split('\n');
     for (let paragraph of paragraphs) {
@@ -604,9 +608,7 @@ function wrapText(text) {
             let hasFullWidth = false;
             let hasHalfWidth = false;
             for (let i = 0; i < remainingText.length; i++) {
-                let char = remainingText[i];
-                // 記号を全角に変換
-                char = toFullWidthSymbols(char);
+                const char = remainingText[i];
                 const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
                 const charWidth = isFullWidth ? 2 : 1;
                 if (isFullWidth) hasFullWidth = true;
@@ -653,8 +655,7 @@ function printText() {
     const textInput = document.getElementById('textInput');
     let text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
-    // 記号を全角に変換
-    text = toFullWidthSymbols(text);
+    text = toZenkaku(text);
     const paperWidth = 58;
     const isDateTimeEnabled = selectedTextChip === 'with';
     const wrappedLines = wrapText(text);
@@ -678,7 +679,7 @@ function printText() {
             printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
         });
         if (isDateTimeEnabled) {
-            const dateTimeString = toFullWidthSymbols(`${formattedDate}\n${formattedTime}`);
+            const dateTimeString = `${formattedDate}\n${formattedTime}`;
             const encodedDateTime = safeEncodeURIComponent(dateTimeString);
             printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
         }
@@ -691,7 +692,7 @@ function printText() {
         printTextCopy(currentCopy);
         if (currentCopy < selectedTextCopies) {
             currentCopy++;
-            setTimeout(printNext, 3500);
+            setTimeout(printNext, 5000);
         }
     }
     printNext();
