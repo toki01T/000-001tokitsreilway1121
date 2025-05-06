@@ -609,7 +609,7 @@ function sendToPrintAssist(event) {
             }
             function printNext() {
                 if (currentCopy < selectedCopies) {
-                    setTimeout(printNext, 5500); // 5.5秒待機
+                    setTimeout(printNext, 6000); // ←ここを6秒に変更
                 }
                 printImageCopy(currentCopy);
                 currentCopy++;
@@ -719,7 +719,7 @@ function printText() {
     }
     function printNext() {
         if (currentCopy < selectedTextCopies) {
-            setTimeout(printNext, 5500);
+            setTimeout(printNext, 6000); // ←ここを6秒に変更
         }
         printTextCopy(currentCopy);
         currentCopy++;
