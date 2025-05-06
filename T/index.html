@@ -160,19 +160,21 @@ main {
     max-width: 350px;
     margin-left: auto;
     margin-right: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 .image-preview img {
-    width: 100%;
-    max-width: 350px;
-    max-height: 220px;
-    height: auto;
+    display: block;
+    margin: 0 auto;
     border: 1px solid var(--border-color);
     border-radius: 5px;
     object-fit: contain;
     background: var(--input-bg);
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 220px;
 }
 @media (max-width: 500px) {
     .image-preview {
@@ -392,6 +394,8 @@ let formattedDate = '';
 let formattedTime = '';
 let selectedChip = '';
 let selectedTextChip = '';
+let lastPreviewImageNaturalWidth = 0;
+let lastPreviewImageNaturalHeight = 0;
 
 function displayDate() {
     const today = new Date();
@@ -462,11 +466,19 @@ function previewImage(event) {
         img.src = reader.result;
         img.onload = function() {
             // レスポンシブ: 画像幅350px以下、高さ220px以下、左右1cm余白
-            let maxW = Math.min(window.innerWidth - 76, 350); // 1cm=38px
-            let maxH = 220;
-            let ratio = Math.min(maxW / img.width, maxH / img.height, 1);
-            img.width = img.width * ratio;
-            img.height = img.height * ratio;
+            let containerW = Math.min(window.innerWidth - 76, 350);
+            let containerH = 220;
+            let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
+            let displayW = Math.round(img.naturalWidth * ratio);
+            let displayH = Math.round(img.naturalHeight * ratio);
+            img.style.width = displayW + "px";
+            img.style.height = displayH + "px";
+            img.style.maxWidth = "100%";
+            img.style.maxHeight = "220px";
+            img.style.display = "block";
+            img.style.margin = "0 auto";
+            lastPreviewImageNaturalWidth = img.naturalWidth;
+            lastPreviewImageNaturalHeight = img.naturalHeight;
         };
         const previewContainer = document.getElementById('imagePreviewContainer');
         previewContainer.innerHTML = '';
@@ -567,20 +579,28 @@ function sendToPrintAssist(event) {
         img.onload = function() {
             // 縮小指定時は80%に
             let scale = shrinkChecked ? 0.8 : 1.0;
-            const aspectRatio = img.width / img.height;
-            let paperHeight = Math.round(paperWidth / aspectRatio * scale);
-            let paperW = Math.round(paperWidth * scale);
+            // 印刷画像サイズ（mm単位）
+            let origW = img.naturalWidth;
+            let origH = img.naturalHeight;
+            let aspectRatio = origW / origH;
+            let maxW = paperWidth * scale;
+            let maxH = Math.round(paperWidth / aspectRatio * scale);
+            // 実際の画像サイズ（mm単位）
+            let imgW = maxW, imgH = maxH;
+            // 印刷画像のX座標（中央揃え）
+            let x = Math.round((paperWidth - imgW) / 2);
+            let y = 2;
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
-            const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
+            const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperW}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperW},${paperHeight},${base64Image}`;
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${base64Image}`;
                 if (isDateTimeEnabled) {
                     const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperW},16,機械彫刻用標準書体 M,4,0,0,1`;
+                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 if (copyIndex === selectedCopies) {
                     printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
@@ -588,7 +608,6 @@ function sendToPrintAssist(event) {
                 window.location.href = printUrlImage;
             }
             function printNext() {
-                // 次回印刷を先に予約
                 if (currentCopy < selectedCopies) {
                     setTimeout(printNext, 5500); // 5.5秒待機
                 }
