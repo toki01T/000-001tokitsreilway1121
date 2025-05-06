@@ -17,7 +17,6 @@
     --input-bg: #fff;
     --input-border: #ccc;
     --input-text: #222;
-    --preview-side-margin: 1.5cm;
 }
 @media (prefers-color-scheme: dark) {
     :root {
@@ -157,13 +156,14 @@ main {
 .image-preview {
     margin-top: 10px;
     text-align: center;
-    width: 100%;
-    max-width: calc(100vw - 3cm);
+    width: calc(100vw - 2cm);
+    max-width: 350px;
+    min-width: 180px;
     margin-left: auto;
     margin-right: auto;
     box-sizing: border-box;
-    padding-left: var(--preview-side-margin);
-    padding-right: var(--preview-side-margin);
+    padding-left: 1cm;
+    padding-right: 1cm;
 }
 .image-preview img {
     width: 100%;
@@ -177,6 +177,14 @@ main {
     display: block;
     margin-left: auto;
     margin-right: auto;
+}
+@media (max-width: 500px) {
+    .image-preview {
+        width: 100vw;
+        padding-left: 0.5cm;
+        padding-right: 0.5cm;
+        max-width: 100vw;
+    }
 }
 #printButton, #textPrintButton {
     padding: 0.4rem 1rem;
@@ -196,8 +204,7 @@ main {
 }
 #reduceCheckbox {
     margin-left: 0.7rem;
-    margin-right: 0.1rem;
-    transform: scale(1.1);
+    transform: scale(1.2);
     vertical-align: middle;
 }
 #dateDisplay {
@@ -339,7 +346,7 @@ footer p {
                         <option value="5">5枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
-                    <input type="checkbox" id="reduceCheckbox" title="縮小して印刷">
+                    <input type="checkbox" id="reduceCheckbox" title="縮小印刷">
                 </div>
             </form>
         </section>
@@ -444,10 +451,8 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            // レスポンシブ: 画像幅最大、左右1.5cm余白
-            let maxW = document.body.clientWidth - 2 * 56; // 1.5cm=56px
-            if (maxW > 350) maxW = 350;
-            let maxH = 220;
+            // レスポンシブ: 画像幅350px以下、高さ220px以下
+            let maxW = 350, maxH = 220;
             let ratio = Math.min(maxW / img.width, maxH / img.height, 1);
             img.width = img.width * ratio;
             img.height = img.height * ratio;
@@ -537,28 +542,35 @@ function setTextChipsEnabled(enabled) {
     });
 }
 
-// 画像印刷（縮小チェック対応・setTimeout 5秒・全角記号変換）
+// 全角変換（記号も含む）
+function toZenkaku(str) {
+    // 英数字
+    str = str.replace(/[A-Za-z0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
+    // 記号
+    const map = {
+        '@': '＠', '#': '＃', '&': '＆', '-': '－', '/': '／', '$': '＄',
+        '%': '％', '(': '（', ')': '）', '!': '！', '?': '？', '\'': '＇',
+        '"': '＂', ':': '：', ';': '；', '_': '＿', '+': '＋'
+    };
+    return str.replace(/[@#&\-\/\$\%\(\)!?'"_:;+]/g, s => map[s] || s);
+}
+
 function sendToPrintAssist(event) {
     event.preventDefault();
     const fileInput = document.getElementById('imageUpload');
     const file = fileInput.files[0];
     if (!file || selectedChip === '') return;
-    const reduceChecked = document.getElementById('reduceCheckbox').checked;
+    const reduce = document.getElementById('reduceCheckbox').checked;
     const reader = new FileReader();
     reader.onloadend = function() {
         const base64Image = reader.result.split(',')[1];
-        let paperWidth = 58;
-        let scale = 1.0;
-        if (reduceChecked) {
-            scale = 0.8;
-            paperWidth = Math.round(paperWidth * scale);
-        }
+        const paperWidth = 58;
         const img = new Image();
         img.onload = function() {
-            const aspectRatio = img.width / img.height;
-            let paperHeight = Math.round((paperWidth) / aspectRatio);
-            if (reduceChecked) {
-                paperHeight = Math.round(paperHeight * scale);
+            let aspectRatio = img.width / img.height;
+            let paperHeight = Math.round(paperWidth / aspectRatio);
+            if (reduce) {
+                paperHeight = Math.round(paperHeight * 0.8);
             }
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
@@ -566,11 +578,11 @@ function sendToPrintAssist(event) {
             const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
+            let printing = false;
             function printImageCopy(copyIndex) {
                 let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
                 if (isDateTimeEnabled) {
-                    let dateTimeString = `${formattedDate}\n${formattedTime}`;
-                    dateTimeString = toZenkakuSymbols(dateTimeString);
+                    const dateTimeString = `${toZenkaku(formattedDate)}\n${toZenkaku(formattedTime)}`;
                     printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 if (copyIndex === selectedCopies) {
@@ -579,10 +591,19 @@ function sendToPrintAssist(event) {
                 window.location.href = printUrlImage;
             }
             function printNext() {
+                if (printing) return;
+                printing = true;
                 printImageCopy(currentCopy);
                 if (currentCopy < selectedCopies) {
                     currentCopy++;
-                    setTimeout(printNext, 5000); // 5秒待ち
+                    let waitTime = 4600; // 4.6秒
+                    window.onfocus = function handler() {
+                        window.onfocus = null;
+                        setTimeout(() => {
+                            printing = false;
+                            printNext();
+                        }, waitTime);
+                    };
                 }
             }
             printNext();
@@ -590,15 +611,6 @@ function sendToPrintAssist(event) {
         img.src = reader.result;
     };
     reader.readAsDataURL(file);
-}
-
-// 全角記号変換
-function toZenkakuSymbols(str) {
-    const map = {
-        '@': '＠', '#': '＃', '&': '＆', '-': '－', '/': '／', '$': '＄', '%': '％', '(': '（', ')': '）',
-        '!': '！', '?': '？', "'": '＇', '"': '＂', ':': '：', ';': '；', '_': '＿', '+': '＋'
-    };
-    return str.replace(/[@#&\-\/$%\(\)!?'"_:;+]/g, m => map[m] || m);
 }
 function wrapText(text) {
     const lines = [];
@@ -616,7 +628,7 @@ function wrapText(text) {
             let hasHalfWidth = false;
             for (let i = 0; i < remainingText.length; i++) {
                 let char = remainingText[i];
-                char = toZenkakuSymbols(char); // ←ここで全角記号変換
+                char = toZenkaku(char); // 全角変換
                 const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
                 const charWidth = isFullWidth ? 2 : 1;
                 if (isFullWidth) hasFullWidth = true;
@@ -663,8 +675,7 @@ function printText() {
     const textInput = document.getElementById('textInput');
     let text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
-    // 全角記号変換
-    text = toZenkakuSymbols(text);
+    text = toZenkaku(text);
     const paperWidth = 58;
     const isDateTimeEnabled = selectedTextChip === 'with';
     const wrappedLines = wrapText(text);
@@ -688,8 +699,7 @@ function printText() {
             printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
         });
         if (isDateTimeEnabled) {
-            let dateTimeString = `${formattedDate}\n${formattedTime}`;
-            dateTimeString = toZenkakuSymbols(dateTimeString);
+            const dateTimeString = `${toZenkaku(formattedDate)}\n${toZenkaku(formattedTime)}`;
             const encodedDateTime = safeEncodeURIComponent(dateTimeString);
             printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
         }
