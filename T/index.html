@@ -157,22 +157,17 @@ main {
     margin-top: 10px;
     text-align: center;
     width: calc(100vw - 2cm);
-    max-width: 350px;
-    min-width: 160px;
+    max-width: 500px;
     margin-left: auto;
     margin-right: auto;
     box-sizing: border-box;
 }
-@media (max-width: 400px) {
-    .image-preview {
-        max-width: 95vw;
-        min-width: 100px;
-    }
-}
 .image-preview img {
     width: 100%;
-    max-width: 100%;
-    max-height: 220px;
+    max-width: 500px;
+    max-height: 280px;
+    min-width: 0;
+    min-height: 0;
     height: auto;
     border: 1px solid var(--border-color);
     border-radius: 5px;
@@ -200,7 +195,9 @@ main {
 }
 #shrinkCheckbox {
     margin-left: 0.7em;
-    transform: scale(1.2);
+    margin-right: 0.1em;
+    width: 1.1em;
+    height: 1.1em;
     vertical-align: middle;
 }
 #dateDisplay {
@@ -342,7 +339,7 @@ footer p {
                         <option value="5">5枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
-                    <input type="checkbox" id="shrinkCheckbox">
+                    <input type="checkbox" id="shrinkCheckbox" title="縮小して印刷">
                 </div>
             </form>
         </section>
@@ -374,21 +371,20 @@ footer p {
     <p>&copy; 2025 とき T's 鉄道部 toki</p>
 </footer>
 <script>
+// 記号全角変換用マップ
+const toZenkakuMap = {
+    '@': '＠', '#': '＃', '&': '＆', '-': '－', '/': '／', '$': '＄', '%': '％',
+    '(': '（', ')': '）', '!': '！', '?': '？', "'": '＇', '"': '＂', ':': '：',
+    ';': '；', '_': '＿', '+': '＋'
+};
+function toZenkaku(str) {
+    return str.replace(/[@#&\-\/\$%\(\)!?'"_:;_+]/g, c => toZenkakuMap[c] || c);
+}
+
 let formattedDate = '';
 let formattedTime = '';
 let selectedChip = '';
 let selectedTextChip = '';
-let printingLock = false; // 印刷中ロック
-
-// 全角変換用
-const toZenkakuMap = {
-    '@': '＠', '#': '＃', '&': '＆', '-': '－', '/': '／', '$': '＄',
-    '%': '％', '(': '（', ')': '）', '!': '！', '?': '？', "'": '＇',
-    '"': '＂', ':': '：', ';': '；', '_': '＿', '+': '＋'
-};
-function toZenkaku(str) {
-    return str.replace(/[@#&\-\/\$\%\(\)!?'"_:;+]/g, c => toZenkakuMap[c] || c);
-}
 
 function displayDate() {
     const today = new Date();
@@ -458,8 +454,9 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            // レスポンシブ: 画像幅350px以下、高さ220px以下
-            let maxW = 350, maxH = 220;
+            // レスポンシブ: 画像幅max500px, 高さmax280px, 画面幅-2cm
+            let maxW = Math.min(500, window.innerWidth - 20 * 2); // 20px=約0.5cm
+            let maxH = 280;
             let ratio = Math.min(maxW / img.width, maxH / img.height, 1);
             img.width = img.width * ratio;
             img.height = img.height * ratio;
@@ -551,15 +548,11 @@ function setTextChipsEnabled(enabled) {
         }
     });
 }
-
-// 画像印刷（n枚確実に印刷・80%縮小対応・全角変換対応）
 function sendToPrintAssist(event) {
     event.preventDefault();
-    if (printingLock) return; // 印刷中は2重実行防止
-    printingLock = true;
     const fileInput = document.getElementById('imageUpload');
     const file = fileInput.files[0];
-    if (!file || selectedChip === '') { printingLock = false; return; }
+    if (!file || selectedChip === '') return;
     const shrink = document.getElementById('shrinkCheckbox').checked;
     const reader = new FileReader();
     reader.onloadend = function() {
@@ -569,7 +562,6 @@ function sendToPrintAssist(event) {
         img.onload = function() {
             let aspectRatio = img.width / img.height;
             let paperHeight = Math.round(paperWidth / aspectRatio);
-            // 80%縮小
             if (shrink) {
                 paperHeight = Math.round(paperHeight * 0.8);
             }
@@ -578,15 +570,11 @@ function sendToPrintAssist(event) {
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
             const totalHeight = topMargin + paperHeight + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
-
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
-                let width = shrink ? Math.round(paperWidth * 0.8) : paperWidth;
-                let xOffset = shrink ? Math.round((paperWidth - width) / 2) : 0;
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${xOffset},${topMargin},${width},${paperHeight},${base64Image}`;
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
                 if (isDateTimeEnabled) {
-                    // 日付・時刻も全角変換
-                    const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
+                    const dateTimeString = `${formattedDate}\n${formattedTime}`;
                     printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 if (copyIndex === selectedCopies) {
@@ -599,8 +587,6 @@ function sendToPrintAssist(event) {
                 if (currentCopy < selectedCopies) {
                     currentCopy++;
                     setTimeout(printNext, 5000); // 5秒待ち
-                } else {
-                    setTimeout(()=>{printingLock=false;}, 1000);
                 }
             }
             printNext();
@@ -609,55 +595,9 @@ function sendToPrintAssist(event) {
     };
     reader.readAsDataURL(file);
 }
-
-// テキスト印刷（全角変換対応）
-function printText() {
-    const textInput = document.getElementById('textInput');
-    let text = textInput.value;
-    if (text.trim() === '' || selectedTextChip === '') return;
-    text = toZenkaku(text);
-    const paperWidth = 58;
-    const isDateTimeEnabled = selectedTextChip === 'with';
-    const wrappedLines = wrapText(text);
-    const lineHeight = 4;
-    const topMargin = 6;
-    const dateTimeHeight = 16;
-    const spaceBetweenTextAndDate = 4;
-    const bottomMargin = isDateTimeEnabled ? 15 : 19;
-    const leftMargin = 2;
-    let totalHeight = topMargin + (wrappedLines.length * lineHeight);
-    if (isDateTimeEnabled) {
-        totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
-    }
-    totalHeight += bottomMargin;
-    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-    let currentCopy = 1;
-    function printTextCopy(copyIndex) {
-        let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
-        wrappedLines.forEach((line, index) => {
-            const encodedLine = safeEncodeURIComponent(line);
-            printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-        });
-        if (isDateTimeEnabled) {
-            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-            const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-            printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
-        }
-        if (copyIndex === selectedTextCopies) {
-            printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-        }
-        window.location.href = printUrlText;
-    }
-    function printNext() {
-        printTextCopy(currentCopy);
-        if (currentCopy < selectedTextCopies) {
-            currentCopy++;
-            setTimeout(printNext, 5000); // 5秒待ち
-        }
-    }
-    printNext();
-}
 function wrapText(text) {
+    // 記号を全角変換
+    text = toZenkaku(text);
     const lines = [];
     const paragraphs = text.split('\n');
     for (let paragraph of paragraphs) {
@@ -715,6 +655,53 @@ function safeEncodeURIComponent(str) {
         .replace(/\*/g, '%2A')
         .replace(/%20/g, '%20');
 }
+function printText() {
+    const textInput = document.getElementById('textInput');
+    let text = textInput.value;
+    if (text.trim() === '' || selectedTextChip === '') return;
+    // 記号を全角変換
+    text = toZenkaku(text);
+    const paperWidth = 58;
+    const isDateTimeEnabled = selectedTextChip === 'with';
+    const wrappedLines = wrapText(text);
+    const lineHeight = 4;
+    const topMargin = 6;
+    const dateTimeHeight = 16;
+    const spaceBetweenTextAndDate = 4;
+    const bottomMargin = isDateTimeEnabled ? 15 : 19;
+    const leftMargin = 2;
+    let totalHeight = topMargin + (wrappedLines.length * lineHeight);
+    if (isDateTimeEnabled) {
+        totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
+    }
+    totalHeight += bottomMargin;
+    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+    let currentCopy = 1;
+    function printTextCopy(copyIndex) {
+        let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
+        wrappedLines.forEach((line, index) => {
+            const encodedLine = safeEncodeURIComponent(line);
+            printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
+        });
+        if (isDateTimeEnabled) {
+            const dateTimeString = `${formattedDate}\n${formattedTime}`;
+            const encodedDateTime = safeEncodeURIComponent(dateTimeString);
+            printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+        }
+        if (copyIndex === selectedTextCopies) {
+            printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+        }
+        window.location.href = printUrlText;
+    }
+    function printNext() {
+        printTextCopy(currentCopy);
+        if (currentCopy < selectedTextCopies) {
+            currentCopy++;
+            setTimeout(printNext, 5000);
+        }
+    }
+    printNext();
+}
 function toggleClearButton() {
     const textInput = document.getElementById('textInput');
     const clearTextButton = document.getElementById('clearTextButton');
@@ -734,7 +721,8 @@ function handleClearButtonClick() {
     }
 }
 function autoWrap(textarea) {
-    const text = textarea.value;
+    // 記号を全角変換
+    const text = toZenkaku(textarea.value);
     const wrappedLines = wrapText(text);
     textarea.value = wrappedLines.join('\n');
 }
