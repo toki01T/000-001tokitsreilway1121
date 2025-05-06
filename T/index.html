@@ -156,7 +156,7 @@ main {
 .image-preview {
     margin-top: 10px;
     text-align: center;
-    width: 100%;
+    width: calc(100vw - 76px); /* 1cm=約38px、左右2cm余白 */
     max-width: 350px;
     margin-left: auto;
     margin-right: auto;
@@ -174,6 +174,15 @@ main {
     margin-left: auto;
     margin-right: auto;
 }
+@media (max-width: 500px) {
+    .image-preview {
+        width: calc(100vw - 38px * 2); /* 1cm左右余白 */
+        max-width: 100vw;
+    }
+    .image-preview img {
+        max-width: 100vw;
+    }
+}
 #printButton, #textPrintButton {
     padding: 0.4rem 1rem;
     border-radius: 5px;
@@ -189,6 +198,14 @@ main {
 #printButton.disabled, #textPrintButton.disabled {
     background-color: #aaa;
     cursor: not-allowed;
+}
+#shrinkCheckbox {
+    margin-left: 0.5rem;
+    margin-right: 0;
+    accent-color: var(--primary-color);
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
 }
 #dateDisplay {
     margin-top: 2.2rem;
@@ -329,6 +346,7 @@ footer p {
                         <option value="5">5枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
+                    <input type="checkbox" id="shrinkCheckbox" title="縮小印刷" />
                 </div>
             </form>
         </section>
@@ -360,6 +378,16 @@ footer p {
     <p>&copy; 2025 とき T's 鉄道部 toki</p>
 </footer>
 <script>
+// --- 記号全角変換マップ
+const toZenkakuMap = {
+    '@': '＠', '#': '＃', '&': '＆', '-': '－', '/': '／', '$': '＄', '%': '％',
+    '(': '（', ')': '）', '!': '！', '?': '？', "'": '＇', '"': '＂', ':': '：',
+    ';': '；', '_': '＿', '+': '＋'
+};
+function toZenkaku(str) {
+    return str.replace(/[@#&\-\/\$%\(\)!?'"_:;_+]/g, c => toZenkakuMap[c] || c);
+}
+
 let formattedDate = '';
 let formattedTime = '';
 let selectedChip = '';
@@ -386,7 +414,6 @@ window.onload = function() {
     document.getElementById('textInput').addEventListener('input', function() {
         autoWrap(this);
     });
-    // 初期状態でテキストモードのチップをグレーアウト
     setTextChipsEnabled(false);
 };
 function toggleMode() {
@@ -434,8 +461,9 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            // レスポンシブ: 画像幅350px以下、高さ220px以下
-            let maxW = 350, maxH = 220;
+            // レスポンシブ: 画像幅350px以下、高さ220px以下、左右1cm余白
+            let maxW = Math.min(window.innerWidth - 76, 350); // 1cm=38px
+            let maxH = 220;
             let ratio = Math.min(maxW / img.width, maxH / img.height, 1);
             img.width = img.width * ratio;
             img.height = img.height * ratio;
@@ -444,7 +472,6 @@ function previewImage(event) {
         previewContainer.innerHTML = '';
         previewContainer.appendChild(img);
         document.getElementById('dateTimeChoice').style.display = 'flex';
-        // チップをリセット
         const imageChips = document.querySelectorAll('#dateTimeChoice .chip');
         imageChips.forEach(chip => chip.classList.remove('selected'));
         selectedChip = '';
@@ -454,7 +481,6 @@ function previewImage(event) {
     if (file) {
         reader.readAsDataURL(file);
     }
-    // 画像未選択時は日付・時刻チップを非表示
     else {
         document.getElementById('dateTimeChoice').style.display = 'none';
         document.getElementById('imagePrintOptions').style.display = 'none';
@@ -532,14 +558,18 @@ function sendToPrintAssist(event) {
     const fileInput = document.getElementById('imageUpload');
     const file = fileInput.files[0];
     if (!file || selectedChip === '') return;
+    const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
     const reader = new FileReader();
     reader.onloadend = function() {
         const base64Image = reader.result.split(',')[1];
         const paperWidth = 58;
         const img = new Image();
         img.onload = function() {
+            // 縮小指定時は80%に
+            let scale = shrinkChecked ? 0.8 : 1.0;
             const aspectRatio = img.width / img.height;
-            const paperHeight = Math.round(paperWidth / aspectRatio);
+            let paperHeight = Math.round(paperWidth / aspectRatio * scale);
+            let paperW = Math.round(paperWidth * scale);
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
@@ -547,10 +577,10 @@ function sendToPrintAssist(event) {
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperWidth},${paperHeight},${base64Image}`;
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperW}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,0,${topMargin},${paperW},${paperHeight},${base64Image}`;
                 if (isDateTimeEnabled) {
-                    const dateTimeString = `${formattedDate}\n${formattedTime}`;
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                    const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
+                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + paperHeight},${paperW},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
                 if (copyIndex === selectedCopies) {
                     printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
@@ -558,11 +588,12 @@ function sendToPrintAssist(event) {
                 window.location.href = printUrlImage;
             }
             function printNext() {
-                printImageCopy(currentCopy);
+                // 次回印刷を先に予約
                 if (currentCopy < selectedCopies) {
-                    currentCopy++;
-                    setTimeout(printNext, 3500);
+                    setTimeout(printNext, 5500); // 5.5秒待機
                 }
+                printImageCopy(currentCopy);
+                currentCopy++;
             }
             printNext();
         };
@@ -571,6 +602,8 @@ function sendToPrintAssist(event) {
     reader.readAsDataURL(file);
 }
 function wrapText(text) {
+    // 記号を全角化
+    text = toZenkaku(text);
     const lines = [];
     const paragraphs = text.split('\n');
     for (let paragraph of paragraphs) {
@@ -630,8 +663,9 @@ function safeEncodeURIComponent(str) {
 }
 function printText() {
     const textInput = document.getElementById('textInput');
-    const text = textInput.value;
+    let text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
+    text = toZenkaku(text);
     const paperWidth = 58;
     const isDateTimeEnabled = selectedTextChip === 'with';
     const wrappedLines = wrapText(text);
@@ -655,7 +689,7 @@ function printText() {
             printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
         });
         if (isDateTimeEnabled) {
-            const dateTimeString = `${formattedDate}\n${formattedTime}`;
+            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
             const encodedDateTime = safeEncodeURIComponent(dateTimeString);
             printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
         }
@@ -665,11 +699,11 @@ function printText() {
         window.location.href = printUrlText;
     }
     function printNext() {
-        printTextCopy(currentCopy);
         if (currentCopy < selectedTextCopies) {
-            currentCopy++;
-            setTimeout(printNext, 3500);
+            setTimeout(printNext, 5500);
         }
+        printTextCopy(currentCopy);
+        currentCopy++;
     }
     printNext();
 }
