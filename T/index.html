@@ -83,7 +83,7 @@ header {
 }
 #modeToggle {
     position: absolute;
-    right: 1rem;
+    right: 3.0rem;
     top: 50%;
     transform: translateY(-50%);
     padding: 0.18rem 0.9rem;
@@ -102,6 +102,116 @@ header {
     background-color: #fff;
     color: var(--primary-color);
     border: 1px solid var(--primary-color);
+}
+#historyMenuButton {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 1.7rem;
+    cursor: pointer;
+    z-index: 11;
+    padding: 0;
+    margin: 0;
+}
+#historyMenuButton:focus { outline: none; }
+#historySidebar {
+    position: fixed;
+    top: 0;
+    right: -370px;
+    width: 350px;
+    max-width: 90vw;
+    height: 100vh;
+    background: var(--background-color);
+    color: var(--text-color);
+    box-shadow: -2px 0 8px rgba(0,0,0,0.18);
+    z-index: 999;
+    transition: right 0.3s;
+    display: flex;
+    flex-direction: column;
+    padding: 18px 12px 12px 16px;
+}
+#historySidebar.open {
+    right: 0;
+}
+#historySidebar h2 {
+    margin: 0 0 12px 0;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+#historyList {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 8px;
+}
+.history-item {
+    border-bottom: 1px solid var(--border-color);
+    padding: 8px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.history-item:last-child { border-bottom: none; }
+.history-thumb {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: 6px;
+    background: #eee;
+    border: 1px solid var(--border-color);
+}
+.history-text-preview {
+    width: 48px;
+    height: 48px;
+    background: var(--chip-bg);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    color: var(--primary-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.history-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.history-type {
+    font-size: 0.85rem;
+    color: var(--primary-color);
+}
+.history-meta {
+    font-size: 0.85rem;
+    color: var(--text-color);
+}
+.history-delete {
+    background: none;
+    border: none;
+    color: #d44;
+    font-size: 1.2rem;
+    cursor: pointer;
+    margin-left: 8px;
+}
+#historySidebar .close-btn {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: none;
+    border: none;
+    font-size: 1.6rem;
+    color: var(--primary-color);
+    cursor: pointer;
 }
 main {
     flex: 1;
@@ -156,7 +266,7 @@ main {
 .image-preview {
     margin-top: 10px;
     text-align: center;
-    width: calc(100vw - 76px); /* 1cm=約38px、左右2cm余白 */
+    width: calc(100vw - 76px);
     max-width: 350px;
     margin-left: auto;
     margin-right: auto;
@@ -178,7 +288,7 @@ main {
 }
 @media (max-width: 500px) {
     .image-preview {
-        width: calc(100vw - 38px * 2); /* 1cm左右余白 */
+        width: calc(100vw - 38px * 2);
         max-width: 100vw;
     }
     .image-preview img {
@@ -322,8 +432,14 @@ footer p {
     <div class="navbar">
         <a class="navbar-brand" href="#">toki01Ⓣ</a>
         <button id="modeToggle" type="button">テキスト</button>
+        <button id="historyMenuButton" title="履歴">&#9776;</button>
     </div>
 </header>
+<div id="historySidebar">
+    <button class="close-btn" onclick="closeHistorySidebar()">&times;</button>
+    <h2>履歴</h2>
+    <div id="historyList"></div>
+</div>
 <main>
     <div class="section-content">
         <section id="imageSection" class="image-selection">
@@ -379,6 +495,7 @@ footer p {
 <footer>
     <p>&copy; 2025 とき T's 鉄道部 toki</p>
 </footer>
+<script src="https://cdn.jsdelivr.net/npm/idb-keyval@6/dist/idb-keyval-iife.min.js"></script>
 <script>
 // --- 記号全角変換マップ
 const toZenkakuMap = {
@@ -390,6 +507,28 @@ function toZenkaku(str) {
     return str.replace(/[@#&\-\/\$%\(\)!?'"_:;_+]/g, c => toZenkakuMap[c] || c);
 }
 
+// --- IndexedDB履歴管理
+const historyStore = new idbKeyval.Store('toki01-history', 'history');
+async function addHistory(item) {
+    // item: {type, data, dateTimeType, copies, shrink, created}
+    const all = await idbKeyval.get('list', historyStore) || [];
+    all.unshift(item); // 新しい順
+    if (all.length > 30) all.length = 30; // 最大30件
+    await idbKeyval.set('list', all, historyStore);
+}
+async function getHistory() {
+    return await idbKeyval.get('list', historyStore) || [];
+}
+async function deleteHistory(idx) {
+    const all = await getHistory();
+    all.splice(idx, 1);
+    await idbKeyval.set('list', all, historyStore);
+}
+async function clearHistory() {
+    await idbKeyval.set('list', [], historyStore);
+}
+
+// --- UI/ロジック
 let formattedDate = '';
 let formattedTime = '';
 let selectedChip = '';
@@ -419,6 +558,8 @@ window.onload = function() {
         autoWrap(this);
     });
     setTextChipsEnabled(false);
+    document.getElementById('historyMenuButton').addEventListener('click', openHistorySidebar);
+    renderHistorySidebar();
 };
 function toggleMode() {
     const imageSection = document.getElementById('imageSection');
@@ -465,7 +606,6 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            // レスポンシブ: 画像幅350px以下、高さ220px以下、左右1cm余白
             let containerW = Math.min(window.innerWidth - 76, 350);
             let containerH = 220;
             let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
@@ -518,7 +658,7 @@ function selectTextChip(type) {
     chips.forEach(chip => chip.classList.remove('selected'));
     if (type === 'with') {
         chips[0].classList.add('selected');
-    } else if (type === 'without') {
+    } else {
         chips[1].classList.add('selected');
     }
     updateTextPrintButtonState();
@@ -565,36 +705,163 @@ function setTextChipsEnabled(enabled) {
         }
     });
 }
+
+// --- 履歴サイドバー
+function openHistorySidebar() {
+    document.getElementById('historySidebar').classList.add('open');
+    renderHistorySidebar();
+}
+function closeHistorySidebar() {
+    document.getElementById('historySidebar').classList.remove('open');
+}
+async function renderHistorySidebar() {
+    const list = await getHistory();
+    const container = document.getElementById('historyList');
+    container.innerHTML = '';
+    if (list.length === 0) {
+        container.innerHTML = '<div style="color:#888;text-align:center;padding:20px;">履歴はありません</div>';
+        return;
+    }
+    list.forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.onclick = () => loadHistoryItem(idx);
+        // サムネイル
+        if (item.type === 'image') {
+            const img = document.createElement('img');
+            img.className = 'history-thumb';
+            img.src = item.data;
+            div.appendChild(img);
+        } else {
+            const txt = document.createElement('div');
+            txt.className = 'history-text-preview';
+            txt.textContent = item.data.length > 8 ? item.data.slice(0, 8) + '…' : item.data;
+            div.appendChild(txt);
+        }
+        // 情報
+        const info = document.createElement('div');
+        info.className = 'history-info';
+        info.innerHTML = `<span class="history-type">${item.type === 'image' ? '画像' : 'テキスト'}</span>
+            <span class="history-meta">${item.dateTimeType === 'with' ? '日付・時刻あり' : '日付・時刻なし'}・${item.copies}枚${item.shrink ? '・縮小' : ''}</span>
+            <span class="history-meta">${item.created ? new Date(item.created).toLocaleString() : ''}</span>`;
+        div.appendChild(info);
+        // 削除ボタン
+        const del = document.createElement('button');
+        del.className = 'history-delete';
+        del.innerHTML = '&times;';
+        del.onclick = (e) => {
+            e.stopPropagation();
+            deleteHistory(idx).then(renderHistorySidebar);
+        };
+        div.appendChild(del);
+        container.appendChild(div);
+    });
+}
+async function loadHistoryItem(idx) {
+    const list = await getHistory();
+    const item = list[idx];
+    closeHistorySidebar();
+    if (item.type === 'image') {
+        // 画像モード
+        toggleModeIfNeeded('image');
+        // プレビュー
+        setTimeout(() => {
+            previewImageFromHistory(item.data);
+            // 設定反映
+            setTimeout(() => {
+                selectChip(item.dateTimeType);
+                document.getElementById('copiesSelect').value = item.copies;
+                document.getElementById('shrinkCheckbox').checked = !!item.shrink;
+                updatePrintButtonState();
+            }, 100);
+        }, 100);
+    } else {
+        // テキストモード
+        toggleModeIfNeeded('text');
+        setTimeout(() => {
+            document.getElementById('textInput').value = item.data;
+            autoWrap(document.getElementById('textInput'));
+            updateTextPrintButtonState();
+            selectTextChip(item.dateTimeType);
+            document.getElementById('textCopiesSelect').value = item.copies;
+        }, 100);
+    }
+}
+// 履歴から画像プレビュー
+function previewImageFromHistory(base64) {
+    const img = new Image();
+    img.src = base64;
+    img.onload = function() {
+        let containerW = Math.min(window.innerWidth - 76, 350);
+        let containerH = 220;
+        let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
+        let displayW = Math.round(img.naturalWidth * ratio);
+        let displayH = Math.round(img.naturalHeight * ratio);
+        img.style.width = displayW + "px";
+        img.style.height = displayH + "px";
+        img.style.maxWidth = "100%";
+        img.style.maxHeight = "220px";
+        img.style.display = "block";
+        img.style.margin = "0 auto";
+        lastPreviewImageNaturalWidth = img.naturalWidth;
+        lastPreviewImageNaturalHeight = img.naturalHeight;
+    };
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    previewContainer.innerHTML = '';
+    previewContainer.appendChild(img);
+    document.getElementById('dateTimeChoice').style.display = 'flex';
+    document.getElementById('imagePrintOptions').style.display = 'flex';
+}
+
+function toggleModeIfNeeded(mode) {
+    const imageSection = document.getElementById('imageSection');
+    const textSection = document.getElementById('textSection');
+    if (mode === 'image' && imageSection.style.display === 'none') {
+        document.getElementById('modeToggle').click();
+    }
+    if (mode === 'text' && textSection.style.display === 'none') {
+        document.getElementById('modeToggle').click();
+    }
+}
+
+// --- 印刷＆履歴保存
 function sendToPrintAssist(event) {
     event.preventDefault();
     const fileInput = document.getElementById('imageUpload');
     const file = fileInput.files[0];
-    if (!file || selectedChip === '') return;
     const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
+    const dateTimeType = selectedChip;
+    const copies = parseInt(document.getElementById('copiesSelect').value);
+    if (!file || selectedChip === '') return;
     const reader = new FileReader();
     reader.onloadend = function() {
         const base64Image = reader.result.split(',')[1];
+        const dataUrl = reader.result;
+        // 履歴保存
+        addHistory({
+            type: 'image',
+            data: dataUrl,
+            dateTimeType,
+            copies,
+            shrink: shrinkChecked,
+            created: Date.now()
+        });
         const paperWidth = 58;
         const img = new Image();
         img.onload = function() {
-            // 縮小指定時は80%に
             let scale = shrinkChecked ? 0.8 : 1.0;
-            // 印刷画像サイズ（mm単位）
             let origW = img.naturalWidth;
             let origH = img.naturalHeight;
             let aspectRatio = origW / origH;
             let maxW = paperWidth * scale;
             let maxH = Math.round(paperWidth / aspectRatio * scale);
-            // 実際の画像サイズ（mm単位）
             let imgW = maxW, imgH = maxH;
-            // 印刷画像のX座標（中央揃え）
             let x = Math.round((paperWidth - imgW) / 2);
             let y = 2;
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
             const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
-            const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
                 let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${base64Image}`;
@@ -602,26 +869,25 @@ function sendToPrintAssist(event) {
                     const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
                     printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                 }
-                if (copyIndex === selectedCopies) {
+                if (copyIndex === copies) {
                     printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
                 }
                 window.location.href = printUrlImage;
             }
             function printNext() {
-                if (currentCopy < selectedCopies) {
-                    setTimeout(printNext, 10000); // ←ここを10秒に変更
+                if (currentCopy < copies) {
+                    setTimeout(printNext, 10000);
                 }
                 printImageCopy(currentCopy);
                 currentCopy++;
             }
             printNext();
         };
-        img.src = reader.result;
+        img.src = dataUrl;
     };
     reader.readAsDataURL(file);
 }
 function wrapText(text) {
-    // 記号を全角化
     text = toZenkaku(text);
     const lines = [];
     const paragraphs = text.split('\n');
@@ -685,6 +951,17 @@ function printText() {
     let text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
     text = toZenkaku(text);
+    const dateTimeType = selectedTextChip;
+    const copies = parseInt(document.getElementById('textCopiesSelect').value);
+    // 履歴保存
+    addHistory({
+        type: 'text',
+        data: text,
+        dateTimeType,
+        copies,
+        shrink: false,
+        created: Date.now()
+    });
     const paperWidth = 58;
     const isDateTimeEnabled = selectedTextChip === 'with';
     const wrappedLines = wrapText(text);
@@ -699,7 +976,6 @@ function printText() {
         totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
     }
     totalHeight += bottomMargin;
-    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
     let currentCopy = 1;
     function printTextCopy(copyIndex) {
         let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
@@ -712,14 +988,14 @@ function printText() {
             const encodedDateTime = safeEncodeURIComponent(dateTimeString);
             printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
         }
-        if (copyIndex === selectedTextCopies) {
+        if (copyIndex === copies) {
             printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
         }
         window.location.href = printUrlText;
     }
     function printNext() {
-        if (currentCopy < selectedTextCopies) {
-            setTimeout(printNext, 10000); // ←ここを10秒に変更
+        if (currentCopy < copies) {
+            setTimeout(printNext, 10000);
         }
         printTextCopy(currentCopy);
         currentCopy++;
@@ -749,6 +1025,8 @@ function autoWrap(textarea) {
     const wrappedLines = wrapText(text);
     textarea.value = wrappedLines.join('\n');
 }
+
+// --- サービスワーカー登録
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
         navigator.serviceWorker.register('service-worker.js').then(function(registration) {
@@ -756,6 +1034,43 @@ if ('serviceWorker' in navigator) {
         }).catch(function(error) {
             console.log('Service Worker登録失敗:', error);
         });
+    });
+}
+</script>
+
+<!-- サービスワーカー本体（service-worker.js） -->
+<script id="sw-script" type="text/javascript">
+if (typeof window === "undefined") {
+    // サービスワーカー本体（HTML内設置用）
+    const CACHE_NAME = 'toki01-cache-v1';
+    const urlsToCache = [
+        '/',
+        '/index.html',
+        '/favicon.png',
+        // 必要に応じてCSS, JS, 画像, 外部ライブラリも追加
+    ];
+    self.addEventListener('install', function(event) {
+        event.waitUntil(
+            caches.open(CACHE_NAME).then(function(cache) {
+                return cache.addAll(urlsToCache);
+            })
+        );
+    });
+    self.addEventListener('activate', function(event) {
+        event.waitUntil(
+            caches.keys().then(function(keys) {
+                return Promise.all(
+                    keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+                );
+            })
+        );
+    });
+    self.addEventListener('fetch', function(event) {
+        event.respondWith(
+            caches.match(event.request).then(function(response) {
+                return response || fetch(event.request);
+            })
+        );
     });
 }
 </script>
