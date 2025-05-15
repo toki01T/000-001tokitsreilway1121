@@ -137,10 +137,12 @@ header {
 #historyDrawerMenu {
     display: flex;
     gap: 0.5rem;
-    padding: 1rem 1rem 0.5rem 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
     background: var(--background-color);
-    justify-content: flex-start;
+    justify-content: center;
     align-items: center;
+    position: relative;
 }
 #menuImageBtn, #menuTextBtn {
     padding: 0.3rem 1rem;
@@ -158,18 +160,30 @@ header {
     color: #fff;
 }
 #clearHistoryBtn {
-    margin-left: 0.7rem;
+    display: none;
+    margin-left: 0.5rem;
+    padding: 0.3rem 1rem;
+    border-radius: 5px;
+    border: 1.5px solid var(--primary-color);
     background: var(--primary-color);
     color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 0.4rem 1.2rem;
     font-size: 0.97rem;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s, color 0.2s;
 }
-#clearHistoryBtn:hover {
-    background: var(--primary-hover);
+#menuImageBtn:focus + #clearHistoryBtn,
+#menuImageBtn:hover + #clearHistoryBtn,
+#menuTextBtn:focus + #clearHistoryBtn,
+#menuTextBtn:hover + #clearHistoryBtn {
+    display: inline-block;
+}
+#historyDrawerMenu:hover #clearHistoryBtn,
+#historyDrawerMenu:focus-within #clearHistoryBtn {
+    display: inline-block;
+}
+#menuImageBtn.show-clear + #clearHistoryBtn,
+#menuTextBtn.show-clear + #clearHistoryBtn {
+    display: inline-block;
 }
 #historyList {
     flex: 1;
@@ -199,6 +213,7 @@ header {
     flex-shrink: 0;
     border: 1px solid var(--border-color);
     display: block;
+    position: relative;
 }
 .historyTextBlock {
     display: flex;
@@ -225,14 +240,15 @@ header {
     margin-top: 0.1rem;
     text-align: left;
     opacity: 0.85;
-    display: flex;
-    align-items: center;
-    gap: 0.5em;
 }
-.historyShrink {
-    color: var(--primary-color);
+.historyShrinkIcon {
     font-size: 1.1em;
+    color: var(--primary-color);
     margin-left: 0.2em;
+    vertical-align: middle;
+}
+@media (max-width: 600px) {
+    #historyDrawer { width: 95vw; }
 }
 main {
     flex: 1;
@@ -247,19 +263,6 @@ main {
     background: var(--background-color);
     color: var(--text-color);
     box-sizing: border-box;
-}
-@media (max-width: 600px) {
-    main {
-        padding-top: 60px;
-        padding-bottom: 80px;
-    }
-    #historyDrawer { width: 95vw; }
-}
-@media (orientation: landscape) {
-    main {
-        padding-top: 30px;
-        min-height: 100vw;
-    }
 }
 .section-content {
     display: flex;
@@ -464,7 +467,7 @@ footer p {
     <div id="historyDrawerMenu">
         <button id="menuImageBtn" class="selected">画像・T’s券</button>
         <button id="menuTextBtn">テキスト</button>
-        <button id="clearHistoryBtn">クリア</button>
+        <button id="clearHistoryBtn" style="display:none;">履歴クリア</button>
     </div>
     <div id="historyList"></div>
 </div>
@@ -604,22 +607,27 @@ const menuTextBtn = document.getElementById('menuTextBtn');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 let currentHistoryType = 'image';
 
-historyMenuBtn.onclick = () => { historyDrawer.classList.add('open'); loadHistoryList(); };
+historyMenuBtn.onclick = () => { historyDrawer.classList.add('open'); showClearBtn(); loadHistoryList(); };
 historyDrawerClose.onclick = () => { historyDrawer.classList.remove('open'); };
 menuImageBtn.onclick = () => {
     currentHistoryType = 'image';
     menuImageBtn.classList.add('selected');
     menuTextBtn.classList.remove('selected');
-    loadHistoryList();
     toggleMode('image');
+    showClearBtn();
+    loadHistoryList();
 };
 menuTextBtn.onclick = () => {
     currentHistoryType = 'text';
     menuTextBtn.classList.add('selected');
     menuImageBtn.classList.remove('selected');
-    loadHistoryList();
     toggleMode('text');
+    showClearBtn();
+    loadHistoryList();
 };
+function showClearBtn() {
+    clearHistoryBtn.style.display = 'inline-block';
+}
 clearHistoryBtn.onclick = () => {
     if (confirm('履歴をすべて削除しますか？')) {
         clearAllHistory().then(loadHistoryList);
@@ -641,12 +649,14 @@ function loadHistoryList() {
                 img.className = 'historyThumb';
                 img.src = item.data;
                 div.appendChild(img);
-                const meta = document.createElement('div');
-                meta.className = 'historyMeta';
-                meta.innerHTML =
-                    `${item.type === 'image' ? '画像' : 'テキスト'}・${item.dateTime === 'with' ? '日付時刻あり' : '日付時刻なし'}・${item.copies}枚` +
-                    (item.shrink ? `<span class="historyShrink">☑︎</span>` : '');
-                div.appendChild(meta);
+                // 縮小チェック表示
+                if (item.shrink) {
+                    const shrinkIcon = document.createElement('span');
+                    shrinkIcon.className = 'historyShrinkIcon';
+                    shrinkIcon.title = '縮小印刷';
+                    shrinkIcon.textContent = '✅';
+                    div.appendChild(shrinkIcon);
+                }
             } else {
                 const textBlock = document.createElement('div');
                 textBlock.className = 'historyTextBlock';
@@ -654,12 +664,12 @@ function loadHistoryList() {
                 text.className = 'historyTextPreview';
                 text.textContent = item.data.length <= 10 ? item.data : item.data.slice(0, 10) + '…';
                 textBlock.appendChild(text);
-                const meta = document.createElement('div');
-                meta.className = 'historyMeta';
-                meta.textContent = `${item.type === 'image' ? '画像' : 'テキスト'}・${item.dateTime === 'with' ? '日付時刻あり' : '日付時刻なし'}・${item.copies}枚`;
-                textBlock.appendChild(meta);
                 div.appendChild(textBlock);
             }
+            const meta = document.createElement('div');
+            meta.className = 'historyMeta';
+            meta.textContent = `${item.type === 'image' ? '画像' : 'テキスト'}・${item.dateTime === 'with' ? '日付時刻あり' : '日付時刻なし'}・${item.copies}枚`;
+            div.appendChild(meta);
             historyList.appendChild(div);
         }
     });
