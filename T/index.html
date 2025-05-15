@@ -81,28 +81,6 @@ header {
     padding: 0;
     white-space: nowrap;
 }
-#modeToggle {
-    position: absolute;
-    right: 2.5rem;
-    top: 50%;
-    transform: translateY(-50%);
-    padding: 0.18rem 0.9rem;
-    border: 1px solid #fff;
-    border-radius: 5px;
-    background-color: transparent;
-    color: #fff;
-    cursor: pointer;
-    font-size: 0.95rem;
-    min-width: 60px;
-    min-height: 28px;
-    transition: background 0.3s, color 0.3s, border 0.3s;
-    z-index: 10;
-}
-#modeToggle:hover {
-    background-color: #fff;
-    color: var(--primary-color);
-    border: 1px solid var(--primary-color);
-}
 #historyMenuBtn {
     position: absolute;
     right: 1rem;
@@ -156,19 +134,42 @@ header {
     color: var(--primary-color);
     cursor: pointer;
 }
+#historyDrawerMenu {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--background-color);
+    justify-content: center;
+}
+#historyDrawerMenu button {
+    padding: 0.3rem 1rem;
+    border-radius: 5px;
+    border: 1.5px solid var(--primary-color);
+    background: var(--chip-bg);
+    color: var(--primary-color);
+    font-size: 0.97rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+#historyDrawerMenu button.selected, #historyDrawerMenu button:hover {
+    background: var(--primary-color);
+    color: #fff;
+}
 #historyList {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem;
+    padding: 0.5rem 0.5rem 1rem 0.5rem;
 }
 .historyItem {
     border-bottom: 1px solid var(--border-color);
-    padding: 0.7rem 0;
+    padding: 0.7rem 0.2rem 0.7rem 0.2rem;
     cursor: pointer;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.7rem;
     transition: background 0.2s;
+    background: none;
 }
 .historyItem:last-child { border-bottom: none; }
 .historyItem:hover {
@@ -182,24 +183,54 @@ header {
     object-fit: contain;
     flex-shrink: 0;
     border: 1px solid var(--border-color);
+    display: block;
+}
+.historyTextBlock {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 .historyTextPreview {
-    font-size: 0.95rem;
+    font-size: 1rem;
     color: var(--text-color);
     background: var(--chip-bg);
     border-radius: 4px;
-    padding: 0.3rem 0.5rem;
-    max-width: 130px;
-    max-height: 2.4em;
+    padding: 0.2rem 0.5rem;
+    max-width: 100%;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+    margin-bottom: 0.2rem;
 }
 .historyMeta {
     font-size: 0.85rem;
     color: var(--primary-color);
-    margin-left: auto;
-    text-align: right;
+    margin-top: 0.1rem;
+    text-align: left;
+    opacity: 0.85;
+}
+#historyDrawerFooter {
+    border-top: 1px solid var(--border-color);
+    background: var(--chip-bg);
+    padding: 0.7rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+#clearHistoryBtn {
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.4rem 1.2rem;
+    font-size: 0.97rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+#clearHistoryBtn:hover {
+    background: var(--primary-hover);
 }
 main {
     flex: 1;
@@ -255,7 +286,7 @@ main {
 .image-preview {
     margin-top: 10px;
     text-align: center;
-    width: calc(100vw - 76px); /* 1cm=約38px、左右2cm余白 */
+    width: calc(100vw - 76px);
     max-width: 350px;
     margin-left: auto;
     margin-right: auto;
@@ -277,7 +308,7 @@ main {
 }
 @media (max-width: 500px) {
     .image-preview {
-        width: calc(100vw - 38px * 2); /* 1cm左右余白 */
+        width: calc(100vw - 38px * 2);
         max-width: 100vw;
     }
     .image-preview img {
@@ -420,7 +451,6 @@ footer p {
 <header>
     <div class="navbar">
         <a class="navbar-brand" href="#">toki01Ⓣ</a>
-        <button id="modeToggle" type="button">テキスト</button>
         <button id="historyMenuBtn" title="履歴"><span>&#9776;</span></button>
     </div>
 </header>
@@ -429,7 +459,14 @@ footer p {
         <h2>履歴</h2>
         <button id="historyDrawerClose" title="閉じる">&times;</button>
     </div>
+    <div id="historyDrawerMenu">
+        <button id="menuImageBtn" class="selected">画像・T’s券選択</button>
+        <button id="menuTextBtn">テキスト</button>
+    </div>
     <div id="historyList"></div>
+    <div id="historyDrawerFooter">
+        <button id="clearHistoryBtn">履歴クリア</button>
+    </div>
 </div>
 <main>
     <div class="section-content">
@@ -531,14 +568,28 @@ function addHistory(item) {
         });
     });
 }
-function getAllHistory() {
+function getAllHistory(typeFilter = null) {
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readonly');
             const store = tx.objectStore(STORE_NAME);
             const req = store.getAll();
-            req.onsuccess = () => resolve(req.result.reverse());
+            req.onsuccess = () => {
+                let result = req.result.reverse();
+                if (typeFilter) result = result.filter(x => x.type === typeFilter);
+                resolve(result);
+            };
             req.onerror = () => reject(req.error);
+        });
+    });
+}
+function clearAllHistory() {
+    return openDB().then(db => {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            tx.objectStore(STORE_NAME).clear();
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
         });
     });
 }
@@ -548,10 +599,32 @@ const historyMenuBtn = document.getElementById('historyMenuBtn');
 const historyDrawer = document.getElementById('historyDrawer');
 const historyDrawerClose = document.getElementById('historyDrawerClose');
 const historyList = document.getElementById('historyList');
+const menuImageBtn = document.getElementById('menuImageBtn');
+const menuTextBtn = document.getElementById('menuTextBtn');
+const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+let currentHistoryType = 'image';
+
 historyMenuBtn.onclick = () => { historyDrawer.classList.add('open'); loadHistoryList(); };
 historyDrawerClose.onclick = () => { historyDrawer.classList.remove('open'); };
+menuImageBtn.onclick = () => {
+    currentHistoryType = 'image';
+    menuImageBtn.classList.add('selected');
+    menuTextBtn.classList.remove('selected');
+    loadHistoryList();
+};
+menuTextBtn.onclick = () => {
+    currentHistoryType = 'text';
+    menuTextBtn.classList.add('selected');
+    menuImageBtn.classList.remove('selected');
+    loadHistoryList();
+};
+clearHistoryBtn.onclick = () => {
+    if (confirm('履歴をすべて削除しますか？')) {
+        clearAllHistory().then(loadHistoryList);
+    }
+};
 function loadHistoryList() {
-    getAllHistory().then(list => {
+    getAllHistory(currentHistoryType).then(list => {
         historyList.innerHTML = '';
         if (!list.length) {
             historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴がありません</div>';
@@ -567,14 +640,17 @@ function loadHistoryList() {
                 img.src = item.data;
                 div.appendChild(img);
             } else {
+                const textBlock = document.createElement('div');
+                textBlock.className = 'historyTextBlock';
                 const text = document.createElement('div');
                 text.className = 'historyTextPreview';
-                text.textContent = item.data.length > 20 ? item.data.slice(0, 20) + '…' : item.data;
-                div.appendChild(text);
+                text.textContent = item.data.length <= 10 ? item.data : item.data.slice(0, 10) + '…';
+                textBlock.appendChild(text);
+                div.appendChild(textBlock);
             }
             const meta = document.createElement('div');
             meta.className = 'historyMeta';
-            meta.textContent = `${item.mode === 'image' ? '画像' : 'テキスト'}・${item.dateTime === 'with' ? '日付時刻あり' : '日付時刻なし'}・${item.copies}枚`;
+            meta.textContent = `${item.type === 'image' ? '画像' : 'テキスト'}・${item.dateTime === 'with' ? '日付時刻あり' : '日付時刻なし'}・${item.copies}枚`;
             div.appendChild(meta);
             historyList.appendChild(div);
         }
@@ -583,10 +659,8 @@ function loadHistoryList() {
 function loadHistoryItem(item) {
     historyDrawer.classList.remove('open');
     if (item.type === 'image') {
-        // 画像モードに切替
         document.getElementById('imageSection').style.display = 'block';
         document.getElementById('textSection').style.display = 'none';
-        document.getElementById('modeToggle').textContent = 'テキスト';
         // プレビュー
         const previewContainer = document.getElementById('imagePreviewContainer');
         previewContainer.innerHTML = '';
@@ -606,34 +680,26 @@ function loadHistoryItem(item) {
             img.style.margin = "0 auto";
         };
         previewContainer.appendChild(img);
-        // チップ
         document.getElementById('dateTimeChoice').style.display = 'flex';
         const chips = document.querySelectorAll('#dateTimeChoice .chip');
         chips.forEach(chip => chip.classList.remove('selected'));
         if (item.dateTime === 'with') chips[0].classList.add('selected');
         else chips[1].classList.add('selected');
         selectedChip = item.dateTime;
-        // 枚数
         document.getElementById('copiesSelect').value = item.copies;
-        // 縮小
         document.getElementById('shrinkCheckbox').checked = !!item.shrink;
         document.getElementById('imagePrintOptions').style.display = 'flex';
         updatePrintButtonState();
     } else {
-        // テキストモードに切替
         document.getElementById('imageSection').style.display = 'none';
         document.getElementById('textSection').style.display = 'block';
-        document.getElementById('modeToggle').textContent = '画像・T❜s券選択';
-        // テキスト
         document.getElementById('textInput').value = item.data;
         autoWrap(document.getElementById('textInput'));
-        // チップ
         const chips = document.querySelectorAll('#textDateTimeChoice .chip');
         chips.forEach(chip => chip.classList.remove('selected'));
         if (item.dateTime === 'with') chips[0].classList.add('selected');
         else chips[1].classList.add('selected');
         selectedTextChip = item.dateTime;
-        // 枚数
         document.getElementById('textCopiesSelect').value = item.copies;
         updateTextPrintButtonState();
     }
@@ -653,7 +719,6 @@ function updateTime() {
 window.onload = function() {
     displayDate();
     updateTime();
-    document.getElementById('modeToggle').addEventListener('click', toggleMode);
     document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
     document.getElementById('textInput').addEventListener('input', toggleClearButton);
     document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
@@ -662,44 +727,31 @@ window.onload = function() {
     });
     setTextChipsEnabled(false);
 };
-function toggleMode() {
+function toggleMode(mode) {
     const imageSection = document.getElementById('imageSection');
     const textSection = document.getElementById('textSection');
-    const modeToggle = document.getElementById('modeToggle');
-    const imageUpload = document.getElementById('imageUpload');
-    const textInput = document.getElementById('textInput');
-    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-    const printButton = document.getElementById('printButton');
-    const textPrintButton = document.getElementById('textPrintButton');
-    const imagePrintOptions = document.getElementById('imagePrintOptions');
-    const textPrintOptions = document.getElementById('textPrintOptions');
-    if (imageSection.style.display === 'none') {
+    if (mode === 'image') {
         imageSection.style.display = 'block';
         textSection.style.display = 'none';
-        modeToggle.textContent = 'テキスト';
-        textInput.value = '';
-        textPrintButton.classList.add('disabled');
-        textPrintOptions.style.display = 'none';
-        document.getElementById('textDateTimeChoice').style.display = 'flex';
-        setTextChipsEnabled(false);
-        const textChips = document.querySelectorAll('#textDateTimeChoice .chip');
-        textChips.forEach(chip => chip.classList.remove('selected'));
-        selectedTextChip = '';
     } else {
         imageSection.style.display = 'none';
         textSection.style.display = 'block';
-        modeToggle.textContent = '画像・T❜s券選択';
-        imageUpload.value = '';
-        imagePreviewContainer.innerHTML = '';
-        printButton.classList.add('disabled');
-        imagePrintOptions.style.display = 'none';
-        document.getElementById('dateTimeChoice').style.display = 'none';
-        const imageChips = document.querySelectorAll('#dateTimeChoice .chip');
-        imageChips.forEach(chip => chip.classList.remove('selected'));
-        selectedChip = '';
-        setTextChipsEnabled(document.getElementById('textInput').value.trim() !== '');
     }
 }
+menuImageBtn.onclick = function() {
+    currentHistoryType = 'image';
+    menuImageBtn.classList.add('selected');
+    menuTextBtn.classList.remove('selected');
+    loadHistoryList();
+    toggleMode('image');
+};
+menuTextBtn.onclick = function() {
+    currentHistoryType = 'text';
+    menuTextBtn.classList.add('selected');
+    menuImageBtn.classList.remove('selected');
+    loadHistoryList();
+    toggleMode('text');
+};
 function previewImage(event) {
     const file = event.target.files[0];
     const reader = new FileReader();
@@ -852,7 +904,6 @@ function sendToPrintAssist(event) {
                 currentCopy++;
             }
             printNext();
-            // 履歴保存
             addHistory({
                 type: 'image',
                 mode: 'image',
@@ -971,7 +1022,6 @@ function printText() {
         currentCopy++;
     }
     printNext();
-    // 履歴保存
     addHistory({
         type: 'text',
         mode: 'text',
