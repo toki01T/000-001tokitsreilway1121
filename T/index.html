@@ -83,7 +83,7 @@ header {
 }
 #modeToggle {
     position: absolute;
-    right: 1rem;
+    right: 2.5rem;
     top: 50%;
     transform: translateY(-50%);
     padding: 0.18rem 0.9rem;
@@ -102,6 +102,104 @@ header {
     background-color: #fff;
     color: var(--primary-color);
     border: 1px solid var(--primary-color);
+}
+#historyMenuBtn {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 1.7rem;
+    cursor: pointer;
+    z-index: 12;
+    padding: 0;
+}
+#historyMenuBtn:focus { outline: none; }
+#historyDrawer {
+    position: fixed;
+    top: 0;
+    right: -350px;
+    width: 320px;
+    max-width: 90vw;
+    height: 100vh;
+    background: var(--background-color);
+    color: var(--text-color);
+    box-shadow: -2px 0 8px rgba(0,0,0,0.18);
+    z-index: 9999;
+    transition: right 0.25s;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+}
+#historyDrawer.open {
+    right: 0;
+}
+#historyDrawerHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--chip-bg);
+}
+#historyDrawerHeader h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+#historyDrawerClose {
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    cursor: pointer;
+}
+#historyList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+.historyItem {
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.7rem 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    transition: background 0.2s;
+}
+.historyItem:last-child { border-bottom: none; }
+.historyItem:hover {
+    background: var(--chip-bg);
+}
+.historyThumb {
+    width: 48px;
+    height: 48px;
+    background: #eee;
+    border-radius: 5px;
+    object-fit: contain;
+    flex-shrink: 0;
+    border: 1px solid var(--border-color);
+}
+.historyTextPreview {
+    font-size: 0.95rem;
+    color: var(--text-color);
+    background: var(--chip-bg);
+    border-radius: 4px;
+    padding: 0.3rem 0.5rem;
+    max-width: 130px;
+    max-height: 2.4em;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.historyMeta {
+    font-size: 0.85rem;
+    color: var(--primary-color);
+    margin-left: auto;
+    text-align: right;
 }
 main {
     flex: 1;
@@ -122,6 +220,7 @@ main {
         padding-top: 60px;
         padding-bottom: 80px;
     }
+    #historyDrawer { width: 95vw; }
 }
 @media (orientation: landscape) {
     main {
@@ -322,8 +421,16 @@ footer p {
     <div class="navbar">
         <a class="navbar-brand" href="#">toki01Ⓣ</a>
         <button id="modeToggle" type="button">テキスト</button>
+        <button id="historyMenuBtn" title="履歴"><span>&#9776;</span></button>
     </div>
 </header>
+<div id="historyDrawer">
+    <div id="historyDrawerHeader">
+        <h2>履歴</h2>
+        <button id="historyDrawerClose" title="閉じる">&times;</button>
+    </div>
+    <div id="historyList"></div>
+</div>
 <main>
     <div class="section-content">
         <section id="imageSection" class="image-selection">
@@ -397,6 +504,141 @@ let selectedTextChip = '';
 let lastPreviewImageNaturalWidth = 0;
 let lastPreviewImageNaturalHeight = 0;
 
+// IndexedDBラッパー
+const DB_NAME = 'toki01_history';
+const DB_VERSION = 1;
+const STORE_NAME = 'history';
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = function(e) {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+            }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+function addHistory(item) {
+    return openDB().then(db => {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            tx.objectStore(STORE_NAME).add(item);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    });
+}
+function getAllHistory() {
+    return openDB().then(db => {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result.reverse());
+            req.onerror = () => reject(req.error);
+        });
+    });
+}
+
+// 履歴サイドメニュー
+const historyMenuBtn = document.getElementById('historyMenuBtn');
+const historyDrawer = document.getElementById('historyDrawer');
+const historyDrawerClose = document.getElementById('historyDrawerClose');
+const historyList = document.getElementById('historyList');
+historyMenuBtn.onclick = () => { historyDrawer.classList.add('open'); loadHistoryList(); };
+historyDrawerClose.onclick = () => { historyDrawer.classList.remove('open'); };
+function loadHistoryList() {
+    getAllHistory().then(list => {
+        historyList.innerHTML = '';
+        if (!list.length) {
+            historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴がありません</div>';
+            return;
+        }
+        for (const item of list) {
+            const div = document.createElement('div');
+            div.className = 'historyItem';
+            div.onclick = () => loadHistoryItem(item);
+            if (item.type === 'image') {
+                const img = document.createElement('img');
+                img.className = 'historyThumb';
+                img.src = item.data;
+                div.appendChild(img);
+            } else {
+                const text = document.createElement('div');
+                text.className = 'historyTextPreview';
+                text.textContent = item.data.length > 20 ? item.data.slice(0, 20) + '…' : item.data;
+                div.appendChild(text);
+            }
+            const meta = document.createElement('div');
+            meta.className = 'historyMeta';
+            meta.textContent = `${item.mode === 'image' ? '画像' : 'テキスト'}・${item.dateTime === 'with' ? '日付時刻あり' : '日付時刻なし'}・${item.copies}枚`;
+            div.appendChild(meta);
+            historyList.appendChild(div);
+        }
+    });
+}
+function loadHistoryItem(item) {
+    historyDrawer.classList.remove('open');
+    if (item.type === 'image') {
+        // 画像モードに切替
+        document.getElementById('imageSection').style.display = 'block';
+        document.getElementById('textSection').style.display = 'none';
+        document.getElementById('modeToggle').textContent = 'テキスト';
+        // プレビュー
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        previewContainer.innerHTML = '';
+        const img = new Image();
+        img.src = item.data;
+        img.onload = function() {
+            let containerW = Math.min(window.innerWidth - 76, 350);
+            let containerH = 220;
+            let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
+            let displayW = Math.round(img.naturalWidth * ratio);
+            let displayH = Math.round(img.naturalHeight * ratio);
+            img.style.width = displayW + "px";
+            img.style.height = displayH + "px";
+            img.style.maxWidth = "100%";
+            img.style.maxHeight = "220px";
+            img.style.display = "block";
+            img.style.margin = "0 auto";
+        };
+        previewContainer.appendChild(img);
+        // チップ
+        document.getElementById('dateTimeChoice').style.display = 'flex';
+        const chips = document.querySelectorAll('#dateTimeChoice .chip');
+        chips.forEach(chip => chip.classList.remove('selected'));
+        if (item.dateTime === 'with') chips[0].classList.add('selected');
+        else chips[1].classList.add('selected');
+        selectedChip = item.dateTime;
+        // 枚数
+        document.getElementById('copiesSelect').value = item.copies;
+        // 縮小
+        document.getElementById('shrinkCheckbox').checked = !!item.shrink;
+        document.getElementById('imagePrintOptions').style.display = 'flex';
+        updatePrintButtonState();
+    } else {
+        // テキストモードに切替
+        document.getElementById('imageSection').style.display = 'none';
+        document.getElementById('textSection').style.display = 'block';
+        document.getElementById('modeToggle').textContent = '画像・T❜s券選択';
+        // テキスト
+        document.getElementById('textInput').value = item.data;
+        autoWrap(document.getElementById('textInput'));
+        // チップ
+        const chips = document.querySelectorAll('#textDateTimeChoice .chip');
+        chips.forEach(chip => chip.classList.remove('selected'));
+        if (item.dateTime === 'with') chips[0].classList.add('selected');
+        else chips[1].classList.add('selected');
+        selectedTextChip = item.dateTime;
+        // 枚数
+        document.getElementById('textCopiesSelect').value = item.copies;
+        updateTextPrintButtonState();
+    }
+}
+
 function displayDate() {
     const today = new Date();
     formattedDate = `${today.getFullYear()}年${String(today.getMonth() + 1).padStart(2, '0')}月${String(today.getDate()).padStart(2, '0')}日`;
@@ -465,7 +707,6 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            // レスポンシブ: 画像幅350px以下、高さ220px以下、左右1cm余白
             let containerW = Math.min(window.innerWidth - 76, 350);
             let containerH = 220;
             let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
@@ -577,17 +818,13 @@ function sendToPrintAssist(event) {
         const paperWidth = 58;
         const img = new Image();
         img.onload = function() {
-            // 縮小指定時は80%に
             let scale = shrinkChecked ? 0.8 : 1.0;
-            // 印刷画像サイズ（mm単位）
             let origW = img.naturalWidth;
             let origH = img.naturalHeight;
             let aspectRatio = origW / origH;
             let maxW = paperWidth * scale;
             let maxH = Math.round(paperWidth / aspectRatio * scale);
-            // 実際の画像サイズ（mm単位）
             let imgW = maxW, imgH = maxH;
-            // 印刷画像のX座標（中央揃え）
             let x = Math.round((paperWidth - imgW) / 2);
             let y = 2;
             const isDateTimeEnabled = selectedChip === 'with';
@@ -609,19 +846,28 @@ function sendToPrintAssist(event) {
             }
             function printNext() {
                 if (currentCopy < selectedCopies) {
-                    setTimeout(printNext, 10000); // ←ここを10秒に変更
+                    setTimeout(printNext, 10000);
                 }
                 printImageCopy(currentCopy);
                 currentCopy++;
             }
             printNext();
+            // 履歴保存
+            addHistory({
+                type: 'image',
+                mode: 'image',
+                data: 'data:image/png;base64,' + base64Image,
+                dateTime: selectedChip,
+                copies: selectedCopies,
+                shrink: shrinkChecked,
+                created: Date.now()
+            });
         };
         img.src = reader.result;
     };
     reader.readAsDataURL(file);
 }
 function wrapText(text) {
-    // 記号を全角化
     text = toZenkaku(text);
     const lines = [];
     const paragraphs = text.split('\n');
@@ -719,12 +965,21 @@ function printText() {
     }
     function printNext() {
         if (currentCopy < selectedTextCopies) {
-            setTimeout(printNext, 10000); // ←ここを10秒に変更
+            setTimeout(printNext, 10000);
         }
         printTextCopy(currentCopy);
         currentCopy++;
     }
     printNext();
+    // 履歴保存
+    addHistory({
+        type: 'text',
+        mode: 'text',
+        data: textInput.value,
+        dateTime: selectedTextChip,
+        copies: selectedTextCopies,
+        created: Date.now()
+    });
 }
 function toggleClearButton() {
     const textInput = document.getElementById('textInput');
