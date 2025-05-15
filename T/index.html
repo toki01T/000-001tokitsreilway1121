@@ -141,6 +141,7 @@ header {
     border-bottom: 1px solid var(--border-color);
     background: var(--background-color);
     justify-content: center;
+    align-items: center;
 }
 #historyDrawerMenu button {
     padding: 0.3rem 1rem;
@@ -155,6 +156,20 @@ header {
 #historyDrawerMenu button.selected, #historyDrawerMenu button:hover {
     background: var(--primary-color);
     color: #fff;
+}
+#clearHistoryBtn {
+    margin-left: 0.5rem;
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.3rem 1.1rem;
+    font-size: 0.97rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+#clearHistoryBtn:hover {
+    background: var(--primary-hover);
 }
 #historyList {
     flex: 1;
@@ -184,6 +199,24 @@ header {
     flex-shrink: 0;
     border: 1px solid var(--border-color);
     display: block;
+    position: relative;
+}
+.historyShrinkIcon {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    background: #fff;
+    color: var(--primary-color);
+    border-radius: 50%;
+    border: 1px solid var(--primary-color);
+    font-size: 1.1em;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    z-index: 2;
 }
 .historyTextBlock {
     display: flex;
@@ -203,6 +236,7 @@ header {
     white-space: nowrap;
     text-overflow: ellipsis;
     margin-bottom: 0.2rem;
+    word-break: break-all;
 }
 .historyMeta {
     font-size: 0.85rem;
@@ -210,27 +244,6 @@ header {
     margin-top: 0.1rem;
     text-align: left;
     opacity: 0.85;
-}
-#historyDrawerFooter {
-    border-top: 1px solid var(--border-color);
-    background: var(--chip-bg);
-    padding: 0.7rem 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-}
-#clearHistoryBtn {
-    background: var(--primary-color);
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 0.4rem 1.2rem;
-    font-size: 0.97rem;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-#clearHistoryBtn:hover {
-    background: var(--primary-hover);
 }
 main {
     flex: 1;
@@ -401,17 +414,17 @@ main {
     align-items: center;
 }
 .clear-button {
-    position: absolute;
-    top: -30px;
     background-color: var(--primary-color);
     color: #fff;
     border: none;
     padding: 5px 10px;
     border-radius: 3px;
     cursor: pointer;
-    display: none;
-    z-index: 10;
+    display: inline-block;
     font-size: 0.95rem;
+    margin-left: 0.5rem;
+    margin-bottom: 0;
+    vertical-align: middle;
 }
 .clear-button:hover {
     background-color: var(--primary-hover);
@@ -461,12 +474,10 @@ footer p {
     </div>
     <div id="historyDrawerMenu">
         <button id="menuImageBtn" class="selected">画像・T’s券選択</button>
+        <button id="clearHistoryBtn">履歴クリア</button>
         <button id="menuTextBtn">テキスト</button>
     </div>
     <div id="historyList"></div>
-    <div id="historyDrawerFooter">
-        <button id="clearHistoryBtn">履歴クリア</button>
-    </div>
 </div>
 <main>
     <div class="section-content">
@@ -498,7 +509,6 @@ footer p {
         </section>
         <section id="textSection" style="display:none;">
             <div class="text-input-container">
-                <button id="clearTextButton" class="clear-button" style="display:none;">クリア</button>
                 <textarea id="textInput" rows="4" placeholder="テキストを入力してください"></textarea>
             </div>
             <div class="choice-chips" id="textDateTimeChoice" style="display:flex;">
@@ -514,6 +524,7 @@ footer p {
                     <option value="5">5枚</option>
                 </select>
                 <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
+                <button id="clearTextButton" class="clear-button" style="display:none;">クリア</button>
             </div>
         </section>
         <div id="dateDisplay"></div>
@@ -611,12 +622,14 @@ menuImageBtn.onclick = () => {
     menuImageBtn.classList.add('selected');
     menuTextBtn.classList.remove('selected');
     loadHistoryList();
+    toggleMode('image');
 };
 menuTextBtn.onclick = () => {
     currentHistoryType = 'text';
     menuTextBtn.classList.add('selected');
     menuImageBtn.classList.remove('selected');
     loadHistoryList();
+    toggleMode('text');
 };
 clearHistoryBtn.onclick = () => {
     if (confirm('履歴をすべて削除しますか？')) {
@@ -635,10 +648,21 @@ function loadHistoryList() {
             div.className = 'historyItem';
             div.onclick = () => loadHistoryItem(item);
             if (item.type === 'image') {
+                // サムネイル＋縮小アイコン
+                const thumbWrap = document.createElement('div');
+                thumbWrap.style.position = 'relative';
                 const img = document.createElement('img');
                 img.className = 'historyThumb';
                 img.src = item.data;
-                div.appendChild(img);
+                thumbWrap.appendChild(img);
+                if (item.shrink) {
+                    const shrinkIcon = document.createElement('span');
+                    shrinkIcon.className = 'historyShrinkIcon';
+                    shrinkIcon.title = '縮小印刷';
+                    shrinkIcon.textContent = '✓';
+                    thumbWrap.appendChild(shrinkIcon);
+                }
+                div.appendChild(thumbWrap);
             } else {
                 const textBlock = document.createElement('div');
                 textBlock.className = 'historyTextBlock';
@@ -661,7 +685,6 @@ function loadHistoryItem(item) {
     if (item.type === 'image') {
         document.getElementById('imageSection').style.display = 'block';
         document.getElementById('textSection').style.display = 'none';
-        // プレビュー
         const previewContainer = document.getElementById('imagePreviewContainer');
         previewContainer.innerHTML = '';
         const img = new Image();
@@ -738,20 +761,6 @@ function toggleMode(mode) {
         textSection.style.display = 'block';
     }
 }
-menuImageBtn.onclick = function() {
-    currentHistoryType = 'image';
-    menuImageBtn.classList.add('selected');
-    menuTextBtn.classList.remove('selected');
-    loadHistoryList();
-    toggleMode('image');
-};
-menuTextBtn.onclick = function() {
-    currentHistoryType = 'text';
-    menuTextBtn.classList.add('selected');
-    menuImageBtn.classList.remove('selected');
-    loadHistoryList();
-    toggleMode('text');
-};
 function previewImage(event) {
     const file = event.target.files[0];
     const reader = new FileReader();
@@ -1035,7 +1044,7 @@ function toggleClearButton() {
     const textInput = document.getElementById('textInput');
     const clearTextButton = document.getElementById('clearTextButton');
     if (textInput.value.trim() !== '') {
-        clearTextButton.style.display = 'block';
+        clearTextButton.style.display = 'inline-block';
     } else {
         clearTextButton.style.display = 'none';
     }
