@@ -645,7 +645,7 @@ function loadHistoryList() {
                 meta.className = 'historyMeta';
                 meta.innerHTML =
                     `${item.type === 'image' ? '画像' : 'テキスト'}・${item.dateTime === 'with' ? '日付時刻あり' : '日付時刻なし'}・${item.copies}枚` +
-                    (item.shrink ? `<span class="historyShrink">✅縮小</span>` : '');
+                    (item.shrink ? `<span class="historyShrink">☑︎</span>` : '');
                 div.appendChild(meta);
             } else {
                 const textBlock = document.createElement('div');
