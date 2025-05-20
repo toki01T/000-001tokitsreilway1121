@@ -142,8 +142,8 @@ header {
     background: var(--background-color);
     justify-content: center;
 }
-#toggleModeBtn {
-    padding: 0.3rem 1.2rem;
+#modeToggleDrawer {
+    padding: 0.3rem 1.1rem;
     border-radius: 5px;
     border: 1.5px solid var(--primary-color);
     background: var(--chip-bg);
@@ -151,9 +151,9 @@ header {
     font-size: 0.97rem;
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
-    min-width: 120px;
+    width: 100%;
 }
-#toggleModeBtn.selected, #toggleModeBtn:hover {
+#modeToggleDrawer.selected, #modeToggleDrawer:hover {
     background: var(--primary-color);
     color: #fff;
 }
@@ -167,11 +167,13 @@ header {
     padding: 0.7rem 0.2rem 0.7rem 0.2rem;
     cursor: pointer;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.7rem;
     transition: background 0.2s;
     background: none;
     position: relative;
+    user-select: none;
+    overflow: hidden;
 }
 .historyItem:last-child { border-bottom: none; }
 .historyItem:hover {
@@ -193,6 +195,7 @@ header {
     align-items: flex-start;
     flex: 1 1 auto;
     min-width: 0;
+    justify-content: center;
 }
 .historyTextPreview {
     font-size: 1rem;
@@ -200,12 +203,13 @@ header {
     background: var(--chip-bg);
     border-radius: 4px;
     padding: 0.2rem 0.5rem;
-    max-width: 100%;
+    max-width: 140px;
+    min-width: 40px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
     margin-bottom: 0.2rem;
-    word-break: break-all;
+    text-align: center;
 }
 .historyMeta {
     font-size: 0.85rem;
@@ -213,33 +217,38 @@ header {
     margin-top: 0.1rem;
     text-align: left;
     opacity: 0.85;
-}
-.historyShrinkIcon {
-    font-size: 1.2rem;
-    color: var(--primary-color);
-    margin-left: 0.4em;
-    vertical-align: middle;
-}
-#historyDrawerFooter {
-    border-top: 1px solid var(--border-color);
-    background: var(--chip-bg);
-    padding: 0.7rem 1rem;
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    gap: 0.4em;
 }
-#clearHistoryBtn {
-    background: var(--primary-color);
+.historyShrinkIcon {
+    font-size: 1.2em;
+    margin-right: 0.2em;
+    vertical-align: middle;
+}
+.swipeDeleteBtn {
+    position: absolute;
+    right: -80px;
+    top: 0;
+    height: 100%;
+    width: 80px;
+    background: #ff6666;
     color: #fff;
     border: none;
-    border-radius: 4px;
-    padding: 0.4rem 1.2rem;
-    font-size: 0.97rem;
+    outline: none;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: right 0.2s;
+    z-index: 2;
     cursor: pointer;
-    transition: background 0.2s;
 }
-#clearHistoryBtn:hover {
-    background: var(--primary-hover);
+.historyItem.swiped .swipeDeleteBtn {
+    right: 0;
+}
+.historyItem.swiping {
+    background: #ffeaea;
 }
 main {
     flex: 1;
@@ -275,7 +284,7 @@ main {
     width: 100%;
     max-width: 500px;
 }
-.file-upload { margin: 1rem 0; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.5rem;}
+.file-upload { margin: 1rem 0; text-align: center; }
 .file-upload-label {
     display: inline-block;
     padding: 0.3rem 0.7rem;
@@ -292,27 +301,6 @@ main {
     color: #fff;
 }
 .file-upload input[type="file"] { display: none; }
-#clearImageBtn {
-    background: transparent;
-    border: none;
-    color: var(--primary-color);
-    font-size: 1.2rem;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.2s;
-    margin-left: 0.1rem;
-    padding: 0.2rem 0.6rem;
-    border-radius: 50%;
-    outline: none;
-    position: relative;
-}
-#clearImageBtn:focus, .file-upload:hover #clearImageBtn, .file-upload-label:focus + #clearImageBtn {
-    opacity: 1;
-    background: var(--chip-bg);
-}
-@media (hover: none) {
-    #clearImageBtn { opacity: 1; }
-}
 .image-preview {
     margin-top: 10px;
     text-align: center;
@@ -490,12 +478,9 @@ footer p {
         <button id="historyDrawerClose" title="閉じる">&times;</button>
     </div>
     <div id="historyDrawerMenu">
-        <button id="toggleModeBtn" class="selected">画像・T’s券</button>
+        <button id="modeToggleDrawer" class="selected">画像・T’s券</button>
     </div>
     <div id="historyList"></div>
-    <div id="historyDrawerFooter">
-        <button id="clearHistoryBtn" style="display:none;">履歴クリア</button>
-    </div>
 </div>
 <main>
     <div class="section-content">
@@ -506,7 +491,6 @@ footer p {
                         <span>画像・T❜s券</span>
                         <input type="file" id="imageUpload" name="image" accept="image/jpeg, image/png" onchange="previewImage(event)">
                     </label>
-                    <button type="button" id="clearImageBtn" title="クリア" tabindex="-1" aria-label="画像クリア" style="opacity:0;">&#10006;</button>
                 </div>
                 <div class="image-preview" id="imagePreviewContainer"></div>
                 <div class="choice-chips" id="dateTimeChoice" style="display:none;">
@@ -613,29 +597,13 @@ function getAllHistory(typeFilter = null) {
         });
     });
 }
-function clearAllHistory(typeFilter = null) {
+function deleteHistory(id) {
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
-            const store = tx.objectStore(STORE_NAME);
-            if (typeFilter) {
-                const req = store.openCursor();
-                req.onsuccess = function(e) {
-                    const cursor = e.target.result;
-                    if (cursor) {
-                        if (cursor.value.type === typeFilter) {
-                            store.delete(cursor.key);
-                        }
-                        cursor.continue();
-                    }
-                };
-                tx.oncomplete = () => resolve();
-                tx.onerror = () => reject(tx.error);
-            } else {
-                store.clear();
-                tx.oncomplete = () => resolve();
-                tx.onerror = () => reject(tx.error);
-            }
+            tx.objectStore(STORE_NAME).delete(id);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
         });
     });
 }
@@ -645,46 +613,17 @@ const historyMenuBtn = document.getElementById('historyMenuBtn');
 const historyDrawer = document.getElementById('historyDrawer');
 const historyDrawerClose = document.getElementById('historyDrawerClose');
 const historyList = document.getElementById('historyList');
-const toggleModeBtn = document.getElementById('toggleModeBtn');
-const clearHistoryBtn = document.getElementById('clearHistoryBtn');
-let currentHistoryType = 'image';
+const modeToggleDrawer = document.getElementById('modeToggleDrawer');
+let currentHistoryType = 'image'; // 'image' or 'text'
 
-historyMenuBtn.onclick = () => { 
-    historyDrawer.classList.add('open'); 
-    loadHistoryList();
-    updateClearHistoryBtn();
-};
+historyMenuBtn.onclick = () => { historyDrawer.classList.add('open'); loadHistoryList(); };
 historyDrawerClose.onclick = () => { historyDrawer.classList.remove('open'); };
-
-toggleModeBtn.onclick = () => {
-    // 切り替え
-    if (currentHistoryType === 'image') {
-        currentHistoryType = 'text';
-        toggleModeBtn.textContent = 'テキスト';
-        toggleModeBtn.classList.remove('selected');
-        toggleMode('text');
-    } else {
-        currentHistoryType = 'image';
-        toggleModeBtn.textContent = '画像・T’s券';
-        toggleModeBtn.classList.add('selected');
-        toggleMode('image');
-    }
+modeToggleDrawer.onclick = () => {
+    currentHistoryType = (currentHistoryType === 'image') ? 'text' : 'image';
+    modeToggleDrawer.textContent = currentHistoryType === 'image' ? '画像・T’s券' : 'テキスト';
+    modeToggleDrawer.classList.toggle('selected', currentHistoryType === 'image');
     loadHistoryList();
-    updateClearHistoryBtn();
-};
-
-function updateClearHistoryBtn() {
-    getAllHistory(currentHistoryType).then(list => {
-        clearHistoryBtn.style.display = list.length ? 'inline-block' : 'none';
-    });
-}
-clearHistoryBtn.onclick = () => {
-    if (confirm('履歴をすべて削除しますか？')) {
-        clearAllHistory(currentHistoryType).then(() => {
-            loadHistoryList();
-            updateClearHistoryBtn();
-        });
-    }
+    toggleMode(currentHistoryType);
 };
 
 function loadHistoryList() {
@@ -697,20 +636,73 @@ function loadHistoryList() {
         for (const item of list) {
             const div = document.createElement('div');
             div.className = 'historyItem';
-            div.onclick = () => loadHistoryItem(item);
+            div.setAttribute('data-id', item.id);
+            // Swipeout
+            let startX = 0, currentX = 0, swiped = false;
+            div.addEventListener('touchstart', function(e) {
+                startX = e.touches[0].clientX;
+                currentX = startX;
+                swiped = false;
+            });
+            div.addEventListener('touchmove', function(e) {
+                if (swiped) return;
+                currentX = e.touches[0].clientX;
+                let dx = currentX - startX;
+                if (dx < -60) {
+                    div.classList.add('swiped');
+                    swiped = true;
+                } else if (dx > 30) {
+                    div.classList.remove('swiped');
+                }
+            });
+            div.addEventListener('touchend', function(e) {
+                setTimeout(() => { div.classList.remove('swiping'); }, 200);
+            });
+            // Mouse swipe for PC
+            let mouseDown = false, mouseStartX = 0;
+            div.addEventListener('mousedown', function(e) {
+                mouseDown = true;
+                mouseStartX = e.clientX;
+            });
+            div.addEventListener('mousemove', function(e) {
+                if (!mouseDown) return;
+                let dx = e.clientX - mouseStartX;
+                if (dx < -60) {
+                    div.classList.add('swiped');
+                    mouseDown = false;
+                } else if (dx > 30) {
+                    div.classList.remove('swiped');
+                }
+            });
+            div.addEventListener('mouseup', function(e) {
+                mouseDown = false;
+                setTimeout(() => { div.classList.remove('swiping'); }, 200);
+            });
+            // Delete button
+            const delBtn = document.createElement('button');
+            delBtn.className = 'swipeDeleteBtn';
+            delBtn.textContent = '削除';
+            delBtn.onclick = function(ev) {
+                ev.stopPropagation();
+                deleteHistory(item.id).then(loadHistoryList);
+            };
+            div.appendChild(delBtn);
+
+            // 内容
             if (item.type === 'image') {
                 const img = document.createElement('img');
                 img.className = 'historyThumb';
                 img.src = item.data;
                 div.appendChild(img);
-                // 縮小チェック表示
-                if (item.shrink) {
-                    const shrinkIcon = document.createElement('span');
-                    shrinkIcon.className = 'historyShrinkIcon';
-                    shrinkIcon.title = '縮小印刷';
-                    shrinkIcon.textContent = '✅';
-                    div.appendChild(shrinkIcon);
-                }
+                const meta = document.createElement('div');
+                meta.className = 'historyMeta';
+                // チェックボックス状態
+                const shrinkIcon = document.createElement('span');
+                shrinkIcon.className = 'historyShrinkIcon';
+                shrinkIcon.textContent = item.shrink ? '✅' : '□';
+                meta.appendChild(shrinkIcon);
+                meta.appendChild(document.createTextNode(`${item.dateTime === 'with' ? '日付時刻あり' : '日付時刻なし'}・${item.copies}枚`));
+                div.appendChild(meta);
             } else {
                 const textBlock = document.createElement('div');
                 textBlock.className = 'historyTextBlock';
@@ -718,119 +710,65 @@ function loadHistoryList() {
                 text.className = 'historyTextPreview';
                 text.textContent = item.data.length <= 10 ? item.data : item.data.slice(0, 10) + '…';
                 textBlock.appendChild(text);
+                const meta = document.createElement('div');
+                meta.className = 'historyMeta';
+                meta.textContent = `${item.dateTime === 'with' ? '日付時刻あり' : '日付時刻なし'}・${item.copies}枚`;
+                textBlock.appendChild(meta);
                 div.appendChild(textBlock);
             }
-            const meta = document.createElement('div');
-            meta.className = 'historyMeta';
-            meta.textContent = `${item.type === 'image' ? '画像' : 'テキスト'}・${item.dateTime === 'with' ? '日付時刻あり' : '日付時刻なし'}・${item.copies}枚`;
-            div.appendChild(meta);
+            // 履歴クリックで内容反映
+            div.onclick = function(ev) {
+                if (ev.target.classList.contains('swipeDeleteBtn')) return;
+                historyDrawer.classList.remove('open');
+                if (item.type === 'image') {
+                    document.getElementById('imageSection').style.display = 'block';
+                    document.getElementById('textSection').style.display = 'none';
+                    // プレビュー
+                    const previewContainer = document.getElementById('imagePreviewContainer');
+                    previewContainer.innerHTML = '';
+                    const img = new Image();
+                    img.src = item.data;
+                    img.onload = function() {
+                        let containerW = Math.min(window.innerWidth - 76, 350);
+                        let containerH = 220;
+                        let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
+                        let displayW = Math.round(img.naturalWidth * ratio);
+                        let displayH = Math.round(img.naturalHeight * ratio);
+                        img.style.width = displayW + "px";
+                        img.style.height = displayH + "px";
+                        img.style.maxWidth = "100%";
+                        img.style.maxHeight = "220px";
+                        img.style.display = "block";
+                        img.style.margin = "0 auto";
+                    };
+                    previewContainer.appendChild(img);
+                    document.getElementById('dateTimeChoice').style.display = 'flex';
+                    const chips = document.querySelectorAll('#dateTimeChoice .chip');
+                    chips.forEach(chip => chip.classList.remove('selected'));
+                    if (item.dateTime === 'with') chips[0].classList.add('selected');
+                    else chips[1].classList.add('selected');
+                    selectedChip = item.dateTime;
+                    document.getElementById('copiesSelect').value = item.copies;
+                    document.getElementById('shrinkCheckbox').checked = !!item.shrink;
+                    document.getElementById('imagePrintOptions').style.display = 'flex';
+                    updatePrintButtonState();
+                } else {
+                    document.getElementById('imageSection').style.display = 'none';
+                    document.getElementById('textSection').style.display = 'block';
+                    document.getElementById('textInput').value = item.data;
+                    autoWrap(document.getElementById('textInput'));
+                    const chips = document.querySelectorAll('#textDateTimeChoice .chip');
+                    chips.forEach(chip => chip.classList.remove('selected'));
+                    if (item.dateTime === 'with') chips[0].classList.add('selected');
+                    else chips[1].classList.add('selected');
+                    selectedTextChip = item.dateTime;
+                    document.getElementById('textCopiesSelect').value = item.copies;
+                    updateTextPrintButtonState();
+                }
+            };
             historyList.appendChild(div);
         }
     });
-}
-
-function loadHistoryItem(item) {
-    historyDrawer.classList.remove('open');
-    setTimeout(() => {
-        if (item.type === 'image') {
-            document.getElementById('imageSection').style.display = 'block';
-            document.getElementById('textSection').style.display = 'none';
-            // プレビュー
-            const previewContainer = document.getElementById('imagePreviewContainer');
-            previewContainer.innerHTML = '';
-            const img = new Image();
-            img.src = item.data;
-            img.onload = function() {
-                let containerW = Math.min(window.innerWidth - 76, 350);
-                let containerH = 220;
-                let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-                let displayW = Math.round(img.naturalWidth * ratio);
-                let displayH = Math.round(img.naturalHeight * ratio);
-                img.style.width = displayW + "px";
-                img.style.height = displayH + "px";
-                img.style.maxWidth = "100%";
-                img.style.maxHeight = "220px";
-                img.style.display = "block";
-                img.style.margin = "0 auto";
-            };
-            previewContainer.appendChild(img);
-            document.getElementById('dateTimeChoice').style.display = 'flex';
-            const chips = document.querySelectorAll('#dateTimeChoice .chip');
-            chips.forEach(chip => chip.classList.remove('selected'));
-            if (item.dateTime === 'with') chips[0].classList.add('selected');
-            else chips[1].classList.add('selected');
-            selectedChip = item.dateTime;
-            document.getElementById('copiesSelect').value = item.copies;
-            document.getElementById('shrinkCheckbox').checked = !!item.shrink;
-            document.getElementById('imagePrintOptions').style.display = 'flex';
-            updatePrintButtonState();
-            // 発行ボタンの挙動を履歴データで上書き
-            document.getElementById('printButton').onclick = function(e) {
-                e.preventDefault();
-                // 画像データを再印刷
-                sendToPrintAssistFromHistory(item);
-            };
-        } else {
-            document.getElementById('imageSection').style.display = 'none';
-            document.getElementById('textSection').style.display = 'block';
-            document.getElementById('textInput').value = item.data;
-            autoWrap(document.getElementById('textInput'));
-            const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-            chips.forEach(chip => chip.classList.remove('selected'));
-            if (item.dateTime === 'with') chips[0].classList.add('selected');
-            else chips[1].classList.add('selected');
-            selectedTextChip = item.dateTime;
-            document.getElementById('textCopiesSelect').value = item.copies;
-            updateTextPrintButtonState();
-            document.getElementById('textPrintButton').onclick = function() {
-                printText();
-            };
-        }
-    }, 100);
-}
-
-function sendToPrintAssistFromHistory(item) {
-    // item.data: base64 image, item.dateTime, item.copies, item.shrink
-    const base64Image = item.data.split(',')[1];
-    const paperWidth = 58;
-    const img = new Image();
-    img.onload = function() {
-        let scale = item.shrink ? 0.8 : 1.0;
-        let origW = img.naturalWidth;
-        let origH = img.naturalHeight;
-        let aspectRatio = origW / origH;
-        let maxW = paperWidth * scale;
-        let maxH = Math.round(paperWidth / aspectRatio * scale);
-        let imgW = maxW, imgH = maxH;
-        let x = Math.round((paperWidth - imgW) / 2);
-        let y = 2;
-        const isDateTimeEnabled = item.dateTime === 'with';
-        const topMargin = 2;
-        const bottomMargin = isDateTimeEnabled ? 16 : 18;
-        const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
-        const selectedCopies = parseInt(item.copies);
-        let currentCopy = 1;
-        function printImageCopy(copyIndex) {
-            let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${base64Image}`;
-            if (isDateTimeEnabled) {
-                const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-                printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-            }
-            if (copyIndex === selectedCopies) {
-                printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-            }
-            window.location.href = printUrlImage;
-        }
-        function printNext() {
-            if (currentCopy < selectedCopies) {
-                setTimeout(printNext, 10000);
-            }
-            printImageCopy(currentCopy);
-            currentCopy++;
-        }
-        printNext();
-    };
-    img.src = item.data;
 }
 
 function displayDate() {
@@ -854,15 +792,8 @@ window.onload = function() {
         autoWrap(this);
     });
     setTextChipsEnabled(false);
-    // 画像クリアボタン
-    document.getElementById('clearImageBtn').onclick = function() {
-        document.getElementById('imageUpload').value = '';
-        document.getElementById('imagePreviewContainer').innerHTML = '';
-        document.getElementById('dateTimeChoice').style.display = 'none';
-        document.getElementById('imagePrintOptions').style.display = 'none';
-        selectedChip = '';
-        updatePrintButtonState();
-    };
+    // 初期履歴表示
+    loadHistoryList();
 };
 function toggleMode(mode) {
     const imageSection = document.getElementById('imageSection');
@@ -910,7 +841,6 @@ function previewImage(event) {
         reader.readAsDataURL(file);
     }
     else {
-        document.getElementById('imagePreviewContainer').innerHTML = '';
         document.getElementById('dateTimeChoice').style.display = 'none';
         document.getElementById('imagePrintOptions').style.display = 'none';
         selectedChip = '';
@@ -944,10 +874,8 @@ function updatePrintButtonState() {
     const printButton = document.getElementById('printButton');
     if (selectedChip === '') {
         printButton.classList.add('disabled');
-        printButton.onclick = null;
     } else {
         printButton.classList.remove('disabled');
-        printButton.onclick = null;
     }
 }
 function updateTextPrintButtonState() {
@@ -961,18 +889,15 @@ function updateTextPrintButtonState() {
         const chips = document.querySelectorAll('#textDateTimeChoice .chip');
         chips.forEach(chip => chip.classList.remove('selected'));
         textPrintButton.classList.add('disabled');
-        textPrintButton.onclick = null;
         textPrintOptions.style.display = 'none';
     } else {
         setTextChipsEnabled(true);
         textDateTimeChoice.style.display = 'flex';
         if (selectedTextChip !== '') {
             textPrintButton.classList.remove('disabled');
-            textPrintButton.onclick = function() { printText(); };
             textPrintOptions.style.display = 'flex';
         } else {
             textPrintButton.classList.add('disabled');
-            textPrintButton.onclick = null;
             textPrintOptions.style.display = 'flex';
         }
     }
@@ -989,13 +914,20 @@ function setTextChipsEnabled(enabled) {
 }
 function sendToPrintAssist(event) {
     event.preventDefault();
-    const fileInput = document.getElementById('imageUpload');
-    const file = fileInput.files[0];
-    if (!file || selectedChip === '') return;
+    // 履歴からの再印刷時もfileInputが空なので履歴のプレビュー画像を使う
+    let fileInput = document.getElementById('imageUpload');
+    let file = fileInput.files[0];
+    let base64Image = null;
+    let usePreview = false;
+    if (!file && document.getElementById('imagePreviewContainer').firstChild && document.getElementById('imagePreviewContainer').firstChild.tagName === 'IMG') {
+        // 履歴から呼び出し時
+        let img = document.getElementById('imagePreviewContainer').firstChild;
+        base64Image = img.src.split(',')[1];
+        usePreview = true;
+    }
+    if ((!file && !usePreview) || selectedChip === '') return;
     const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
-    const reader = new FileReader();
-    reader.onloadend = function() {
-        const base64Image = reader.result.split(',')[1];
+    function doPrint(base64Image) {
         const paperWidth = 58;
         const img = new Image();
         img.onload = function() {
@@ -1043,9 +975,18 @@ function sendToPrintAssist(event) {
                 created: Date.now()
             });
         };
-        img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
+        img.src = 'data:image/png;base64,' + base64Image;
+    }
+    if (usePreview) {
+        doPrint(base64Image);
+    } else {
+        const reader = new FileReader();
+        reader.onloadend = function() {
+            base64Image = reader.result.split(',')[1];
+            doPrint(base64Image);
+        };
+        reader.readAsDataURL(file);
+    }
 }
 function wrapText(text) {
     text = toZenkaku(text);
