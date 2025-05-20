@@ -141,11 +141,9 @@ header {
     border-bottom: 1px solid var(--border-color);
     background: var(--background-color);
     justify-content: center;
-    align-items: center;
-    position: relative;
 }
-#menuImageBtn, #menuTextBtn {
-    padding: 0.3rem 1rem;
+#modeSwitchBtn {
+    padding: 0.3rem 1.1rem;
     border-radius: 5px;
     border: 1.5px solid var(--primary-color);
     background: var(--chip-bg);
@@ -153,38 +151,24 @@ header {
     font-size: 0.97rem;
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
+    margin-right: 0.5rem;
 }
-#menuImageBtn.selected, #menuImageBtn:hover,
-#menuTextBtn.selected, #menuTextBtn:hover {
+#modeSwitchBtn.selected, #modeSwitchBtn:hover {
     background: var(--primary-color);
     color: #fff;
 }
 #clearHistoryBtn {
-    display: none;
-    margin-left: 0.5rem;
-    padding: 0.3rem 1rem;
-    border-radius: 5px;
-    border: 1.5px solid var(--primary-color);
     background: var(--primary-color);
     color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.4rem 1.2rem;
     font-size: 0.97rem;
     cursor: pointer;
-    transition: background 0.2s, color 0.2s;
+    transition: background 0.2s;
+    display: none;
 }
-#menuImageBtn:focus + #clearHistoryBtn,
-#menuImageBtn:hover + #clearHistoryBtn,
-#menuTextBtn:focus + #clearHistoryBtn,
-#menuTextBtn:hover + #clearHistoryBtn {
-    display: inline-block;
-}
-#historyDrawerMenu:hover #clearHistoryBtn,
-#historyDrawerMenu:focus-within #clearHistoryBtn {
-    display: inline-block;
-}
-#menuImageBtn.show-clear + #clearHistoryBtn,
-#menuTextBtn.show-clear + #clearHistoryBtn {
-    display: inline-block;
-}
+#clearHistoryBtn.show { display: inline-block; }
 #historyList {
     flex: 1;
     overflow-y: auto;
@@ -199,6 +183,7 @@ header {
     gap: 0.7rem;
     transition: background 0.2s;
     background: none;
+    position: relative;
 }
 .historyItem:last-child { border-bottom: none; }
 .historyItem:hover {
@@ -214,6 +199,20 @@ header {
     border: 1px solid var(--border-color);
     display: block;
     position: relative;
+}
+.historyShrinkIcon {
+    position: absolute;
+    top: 2px;
+    left: 38px;
+    font-size: 1.2rem;
+    color: var(--primary-color);
+    z-index: 2;
+    background: var(--chip-bg);
+    border-radius: 50%;
+    width: 20px; height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .historyTextBlock {
     display: flex;
@@ -241,14 +240,13 @@ header {
     text-align: left;
     opacity: 0.85;
 }
-.historyShrinkIcon {
-    font-size: 1.1em;
-    color: var(--primary-color);
-    margin-left: 0.2em;
-    vertical-align: middle;
-}
-@media (max-width: 600px) {
-    #historyDrawer { width: 95vw; }
+#historyDrawerFooter {
+    border-top: 1px solid var(--border-color);
+    background: var(--chip-bg);
+    padding: 0.7rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
 }
 main {
     flex: 1;
@@ -264,6 +262,19 @@ main {
     color: var(--text-color);
     box-sizing: border-box;
 }
+@media (max-width: 600px) {
+    main {
+        padding-top: 60px;
+        padding-bottom: 80px;
+    }
+    #historyDrawer { width: 95vw; }
+}
+@media (orientation: landscape) {
+    main {
+        padding-top: 30px;
+        min-height: 100vw;
+    }
+}
 .section-content {
     display: flex;
     flex-direction: column;
@@ -271,7 +282,7 @@ main {
     width: 100%;
     max-width: 500px;
 }
-.file-upload { margin: 1rem 0; text-align: center; }
+.file-upload { margin: 1rem 0; text-align: center; display: flex; align-items: center; justify-content: center; }
 .file-upload-label {
     display: inline-block;
     padding: 0.3rem 0.7rem;
@@ -288,6 +299,24 @@ main {
     color: #fff;
 }
 .file-upload input[type="file"] { display: none; }
+#clearFileBtn {
+    display: none;
+    margin-left: 0.5rem;
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.97rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    opacity: 0.2;
+}
+#clearFileBtn.show {
+    display: inline-block;
+    opacity: 1;
+}
+#clearFileBtn:active { opacity: 0.6; }
 .image-preview {
     margin-top: 10px;
     text-align: center;
@@ -465,9 +494,8 @@ footer p {
         <button id="historyDrawerClose" title="閉じる">&times;</button>
     </div>
     <div id="historyDrawerMenu">
-        <button id="menuImageBtn" class="selected">画像・T’s券</button>
-        <button id="menuTextBtn">テキスト</button>
-        <button id="clearHistoryBtn" style="display:none;">履歴クリア</button>
+        <button id="modeSwitchBtn" class="selected">画像・T’s券選択</button>
+        <button id="clearHistoryBtn" style="display:none;">クリア</button>
     </div>
     <div id="historyList"></div>
 </div>
@@ -480,6 +508,7 @@ footer p {
                         <span>画像・T❜s券</span>
                         <input type="file" id="imageUpload" name="image" accept="image/jpeg, image/png" onchange="previewImage(event)">
                     </label>
+                    <button type="button" id="clearFileBtn" title="クリア">×</button>
                 </div>
                 <div class="image-preview" id="imagePreviewContainer"></div>
                 <div class="choice-chips" id="dateTimeChoice" style="display:none;">
@@ -543,6 +572,7 @@ let selectedChip = '';
 let selectedTextChip = '';
 let lastPreviewImageNaturalWidth = 0;
 let lastPreviewImageNaturalHeight = 0;
+let currentMode = 'image'; // 'image' or 'text'
 
 // IndexedDBラッパー
 const DB_NAME = 'toki01_history';
@@ -586,11 +616,22 @@ function getAllHistory(typeFilter = null) {
         });
     });
 }
-function clearAllHistory() {
+function clearAllHistory(typeFilter = null) {
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
-            tx.objectStore(STORE_NAME).clear();
+            const store = tx.objectStore(STORE_NAME);
+            if (!typeFilter) {
+                store.clear();
+            } else {
+                store.openCursor().onsuccess = function(event) {
+                    const cursor = event.target.result;
+                    if (cursor) {
+                        if (cursor.value.type === typeFilter) cursor.delete();
+                        cursor.continue();
+                    }
+                };
+            }
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
         });
@@ -602,39 +643,60 @@ const historyMenuBtn = document.getElementById('historyMenuBtn');
 const historyDrawer = document.getElementById('historyDrawer');
 const historyDrawerClose = document.getElementById('historyDrawerClose');
 const historyList = document.getElementById('historyList');
-const menuImageBtn = document.getElementById('menuImageBtn');
-const menuTextBtn = document.getElementById('menuTextBtn');
+const modeSwitchBtn = document.getElementById('modeSwitchBtn');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
-let currentHistoryType = 'image';
+const imageSection = document.getElementById('imageSection');
+const textSection = document.getElementById('textSection');
+const clearFileBtn = document.getElementById('clearFileBtn');
+const imageUpload = document.getElementById('imageUpload');
+const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+const printButton = document.getElementById('printButton');
+const textPrintButton = document.getElementById('textPrintButton');
 
-historyMenuBtn.onclick = () => { historyDrawer.classList.add('open'); showClearBtn(); loadHistoryList(); };
+historyMenuBtn.onclick = () => {
+    historyDrawer.classList.add('open');
+    loadHistoryList();
+    updateClearHistoryBtn();
+};
 historyDrawerClose.onclick = () => { historyDrawer.classList.remove('open'); };
-menuImageBtn.onclick = () => {
-    currentHistoryType = 'image';
-    menuImageBtn.classList.add('selected');
-    menuTextBtn.classList.remove('selected');
-    toggleMode('image');
-    showClearBtn();
+
+modeSwitchBtn.onclick = function() {
+    if (currentMode === 'image') {
+        switchToTextMode();
+    } else {
+        switchToImageMode();
+    }
     loadHistoryList();
+    updateClearHistoryBtn();
 };
-menuTextBtn.onclick = () => {
-    currentHistoryType = 'text';
-    menuTextBtn.classList.add('selected');
-    menuImageBtn.classList.remove('selected');
-    toggleMode('text');
-    showClearBtn();
-    loadHistoryList();
-};
-function showClearBtn() {
+function switchToImageMode() {
+    currentMode = 'image';
+    modeSwitchBtn.textContent = '画像・T’s券選択';
+    modeSwitchBtn.classList.add('selected');
+    imageSection.style.display = 'block';
+    textSection.style.display = 'none';
+}
+function switchToTextMode() {
+    currentMode = 'text';
+    modeSwitchBtn.textContent = 'テキスト';
+    modeSwitchBtn.classList.remove('selected');
+    imageSection.style.display = 'none';
+    textSection.style.display = 'block';
+}
+function updateClearHistoryBtn() {
     clearHistoryBtn.style.display = 'inline-block';
+    clearHistoryBtn.classList.add('show');
 }
 clearHistoryBtn.onclick = () => {
     if (confirm('履歴をすべて削除しますか？')) {
-        clearAllHistory().then(loadHistoryList);
+        clearAllHistory(currentMode).then(() => {
+            loadHistoryList();
+            updateClearHistoryBtn();
+        });
     }
 };
 function loadHistoryList() {
-    getAllHistory(currentHistoryType).then(list => {
+    getAllHistory(currentMode).then(list => {
         historyList.innerHTML = '';
         if (!list.length) {
             historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴がありません</div>';
@@ -645,18 +707,19 @@ function loadHistoryList() {
             div.className = 'historyItem';
             div.onclick = () => loadHistoryItem(item);
             if (item.type === 'image') {
+                const thumbDiv = document.createElement('div');
+                thumbDiv.style.position = 'relative';
                 const img = document.createElement('img');
                 img.className = 'historyThumb';
                 img.src = item.data;
-                div.appendChild(img);
-                // 縮小チェック表示
+                thumbDiv.appendChild(img);
                 if (item.shrink) {
                     const shrinkIcon = document.createElement('span');
                     shrinkIcon.className = 'historyShrinkIcon';
-                    shrinkIcon.title = '縮小印刷';
                     shrinkIcon.textContent = '✅';
-                    div.appendChild(shrinkIcon);
+                    thumbDiv.appendChild(shrinkIcon);
                 }
+                div.appendChild(thumbDiv);
             } else {
                 const textBlock = document.createElement('div');
                 textBlock.className = 'historyTextBlock';
@@ -677,10 +740,10 @@ function loadHistoryList() {
 function loadHistoryItem(item) {
     historyDrawer.classList.remove('open');
     if (item.type === 'image') {
-        document.getElementById('imageSection').style.display = 'block';
-        document.getElementById('textSection').style.display = 'none';
-        const previewContainer = document.getElementById('imagePreviewContainer');
-        previewContainer.innerHTML = '';
+        switchToImageMode();
+        // プレビュー
+        imageUpload.value = '';
+        imagePreviewContainer.innerHTML = '';
         const img = new Image();
         img.src = item.data;
         img.onload = function() {
@@ -696,7 +759,7 @@ function loadHistoryItem(item) {
             img.style.display = "block";
             img.style.margin = "0 auto";
         };
-        previewContainer.appendChild(img);
+        imagePreviewContainer.appendChild(img);
         document.getElementById('dateTimeChoice').style.display = 'flex';
         const chips = document.querySelectorAll('#dateTimeChoice .chip');
         chips.forEach(chip => chip.classList.remove('selected'));
@@ -707,9 +770,11 @@ function loadHistoryItem(item) {
         document.getElementById('shrinkCheckbox').checked = !!item.shrink;
         document.getElementById('imagePrintOptions').style.display = 'flex';
         updatePrintButtonState();
+        // 発行ボタンのイベントを強制的に再バインド
+        printButton.onclick = null;
+        printButton.onclick = null;
     } else {
-        document.getElementById('imageSection').style.display = 'none';
-        document.getElementById('textSection').style.display = 'block';
+        switchToTextMode();
         document.getElementById('textInput').value = item.data;
         autoWrap(document.getElementById('textInput'));
         const chips = document.querySelectorAll('#textDateTimeChoice .chip');
@@ -721,6 +786,31 @@ function loadHistoryItem(item) {
         updateTextPrintButtonState();
     }
 }
+
+// 画像クリアボタン（長押しで表示、タップでクリア）
+let clearFileBtnTimeout;
+const fileUploadLabel = document.querySelector('.file-upload-label');
+fileUploadLabel.addEventListener('touchstart', showClearBtn, {passive:true});
+fileUploadLabel.addEventListener('mousedown', showClearBtn);
+fileUploadLabel.addEventListener('touchend', hideClearBtn, {passive:true});
+fileUploadLabel.addEventListener('mouseup', hideClearBtn);
+function showClearBtn() {
+    clearFileBtnTimeout = setTimeout(() => {
+        clearFileBtn.classList.add('show');
+    }, 400);
+}
+function hideClearBtn() {
+    clearTimeout(clearFileBtnTimeout);
+}
+clearFileBtn.onclick = function() {
+    imageUpload.value = '';
+    imagePreviewContainer.innerHTML = '';
+    document.getElementById('dateTimeChoice').style.display = 'none';
+    document.getElementById('imagePrintOptions').style.display = 'none';
+    selectedChip = '';
+    updatePrintButtonState();
+    clearFileBtn.classList.remove('show');
+};
 
 function displayDate() {
     const today = new Date();
@@ -743,18 +833,11 @@ window.onload = function() {
         autoWrap(this);
     });
     setTextChipsEnabled(false);
+    // 初期モード
+    switchToImageMode();
+    loadHistoryList();
+    updateClearHistoryBtn();
 };
-function toggleMode(mode) {
-    const imageSection = document.getElementById('imageSection');
-    const textSection = document.getElementById('textSection');
-    if (mode === 'image') {
-        imageSection.style.display = 'block';
-        textSection.style.display = 'none';
-    } else {
-        imageSection.style.display = 'none';
-        textSection.style.display = 'block';
-    }
-}
 function previewImage(event) {
     const file = event.target.files[0];
     const reader = new FileReader();
@@ -776,9 +859,8 @@ function previewImage(event) {
             lastPreviewImageNaturalWidth = img.naturalWidth;
             lastPreviewImageNaturalHeight = img.naturalHeight;
         };
-        const previewContainer = document.getElementById('imagePreviewContainer');
-        previewContainer.innerHTML = '';
-        previewContainer.appendChild(img);
+        imagePreviewContainer.innerHTML = '';
+        imagePreviewContainer.appendChild(img);
         document.getElementById('dateTimeChoice').style.display = 'flex';
         const imageChips = document.querySelectorAll('#dateTimeChoice .chip');
         imageChips.forEach(chip => chip.classList.remove('selected'));
@@ -820,15 +902,15 @@ function selectTextChip(type) {
     updateTextPrintButtonState();
 }
 function updatePrintButtonState() {
-    const printButton = document.getElementById('printButton');
     if (selectedChip === '') {
         printButton.classList.add('disabled');
+        printButton.onclick = null;
     } else {
         printButton.classList.remove('disabled');
+        printButton.onclick = sendToPrintAssist;
     }
 }
 function updateTextPrintButtonState() {
-    const textPrintButton = document.getElementById('textPrintButton');
     const textPrintOptions = document.getElementById('textPrintOptions');
     const textInput = document.getElementById('textInput');
     const textDateTimeChoice = document.getElementById('textDateTimeChoice');
@@ -838,15 +920,18 @@ function updateTextPrintButtonState() {
         const chips = document.querySelectorAll('#textDateTimeChoice .chip');
         chips.forEach(chip => chip.classList.remove('selected'));
         textPrintButton.classList.add('disabled');
+        textPrintButton.onclick = null;
         textPrintOptions.style.display = 'none';
     } else {
         setTextChipsEnabled(true);
         textDateTimeChoice.style.display = 'flex';
         if (selectedTextChip !== '') {
             textPrintButton.classList.remove('disabled');
+            textPrintButton.onclick = printText;
             textPrintOptions.style.display = 'flex';
         } else {
             textPrintButton.classList.add('disabled');
+            textPrintButton.onclick = null;
             textPrintOptions.style.display = 'flex';
         }
     }
@@ -862,14 +947,13 @@ function setTextChipsEnabled(enabled) {
     });
 }
 function sendToPrintAssist(event) {
-    event.preventDefault();
+    if (event && event.preventDefault) event.preventDefault();
     const fileInput = document.getElementById('imageUpload');
     const file = fileInput.files[0];
-    if (!file || selectedChip === '') return;
     const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
-    const reader = new FileReader();
-    reader.onloadend = function() {
-        const base64Image = reader.result.split(',')[1];
+    let base64Image;
+    let reader = new FileReader();
+    function doPrint(base64Image) {
         const paperWidth = 58;
         const img = new Image();
         img.onload = function() {
@@ -917,9 +1001,22 @@ function sendToPrintAssist(event) {
                 created: Date.now()
             });
         };
-        img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
+        img.src = 'data:image/png;base64,' + base64Image;
+    }
+    if (file) {
+        reader.onloadend = function() {
+            base64Image = reader.result.split(',')[1];
+            doPrint(base64Image);
+        };
+        reader.readAsDataURL(file);
+    } else {
+        // 履歴から呼び出し時
+        const imgElem = imagePreviewContainer.querySelector('img');
+        if (imgElem && imgElem.src.startsWith('data:image/')) {
+            base64Image = imgElem.src.split(',')[1];
+            doPrint(base64Image);
+        }
+    }
 }
 function wrapText(text) {
     text = toZenkaku(text);
