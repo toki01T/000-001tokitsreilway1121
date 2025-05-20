@@ -101,7 +101,7 @@ header {
     right: -350px;
     width: 320px;
     max-width: 90vw;
-    height: 100vh;
+    height: 100dvh;
     background: var(--background-color);
     color: var(--text-color);
     box-shadow: -2px 0 8px rgba(0,0,0,0.18);
@@ -159,11 +159,15 @@ header {
 }
 #historyList {
     flex: 1 1 auto;
-    min-height: 0;
     overflow-y: auto;
-    padding: 0.5rem 0.5rem 1rem 0.5rem;
-    background: var(--background-color);
+    /* 履歴ヘッダー(64px)＋メニュー(56px)＋下部余白(80px)を引いた高さ */
+    height: calc(100dvh - 64px - 56px - 80px);
+    min-height: 0;
+    padding: 0.5rem 0.5rem 3.5rem 0.5rem; /* 下部に余白を多めに */
     box-sizing: border-box;
+    /* iOSの下部バー考慮 */
+    scroll-padding-bottom: 80px;
+    -webkit-overflow-scrolling: touch;
 }
 .historyItem {
     border-bottom: 1px solid var(--border-color);
