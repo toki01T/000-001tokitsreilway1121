@@ -308,12 +308,27 @@ header {
     transition: right 0.2s;
     z-index: 2;
     cursor: pointer;
+    visibility: hidden;
 }
 .historyItem.swiped .swipeDeleteBtn {
     right: 0;
+    visibility: visible;
 }
 .historyItem.swiping {
     background: #ffeaea;
+}
+#historyDrawerBg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9998;
+    background: transparent;
+    display: none;
+}
+#historyDrawer.open + #historyDrawerBg {
+    display: block;
 }
 main {
     flex: 1;
@@ -548,6 +563,7 @@ footer p {
     </div>
     <div id="historyList"></div>
 </div>
+<div id="historyDrawerBg"></div>
 <main>
     <div class="section-content">
         <section id="imageSection" class="image-selection">
@@ -693,13 +709,22 @@ const historyDrawer = document.getElementById('historyDrawer');
 const historyDrawerClose = document.getElementById('historyDrawerClose');
 const historyList = document.getElementById('historyList');
 const modeToggleDrawer = document.getElementById('modeToggleDrawer');
+const historyDrawerBg = document.getElementById('historyDrawerBg');
 let currentHistoryType = 'image'; // 'image' or 'text'
 
 // 安定化：イベント競合防止
 let modeToggleDrawerLock = false;
 
-historyMenuBtn.onclick = () => { historyDrawer.classList.add('open'); loadHistoryList(); };
-historyDrawerClose.onclick = () => { historyDrawer.classList.remove('open'); };
+historyMenuBtn.onclick = () => { historyDrawer.classList.add('open'); historyDrawerBg.style.display = 'block'; loadHistoryList(); };
+historyDrawerClose.onclick = () => { historyDrawer.classList.remove('open'); historyDrawerBg.style.display = 'none'; };
+historyDrawerBg.onclick = (e) => {
+    // 履歴Drawerが開いている時のみ
+    if (historyDrawer.classList.contains('open')) {
+        // 履歴リスト・ヘッダー・メニュー以外の領域でのみ閉じる
+        historyDrawer.classList.remove('open');
+        historyDrawerBg.style.display = 'none';
+    }
+};
 modeToggleDrawer.onclick = () => {
     if (modeToggleDrawerLock) return;
     modeToggleDrawerLock = true;
@@ -718,10 +743,13 @@ function loadHistoryList() {
             historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴がありません</div>';
             return;
         }
+        // スワイプ中以外は全ての削除ボタンを非表示にする
+        let swipedId = null;
         for (const item of list) {
             const div = document.createElement('div');
             div.className = 'historyItem';
             div.setAttribute('data-id', item.id);
+
             // Swipeout
             let startX = 0, currentX = 0, swiped = false;
             div.addEventListener('touchstart', function(e) {
@@ -734,10 +762,14 @@ function loadHistoryList() {
                 currentX = e.touches[0].clientX;
                 let dx = currentX - startX;
                 if (dx < -60) {
+                    // すべての履歴のswipedクラスを外す
+                    document.querySelectorAll('.historyItem.swiped').forEach(el => el.classList.remove('swiped'));
                     div.classList.add('swiped');
                     swiped = true;
+                    swipedId = item.id;
                 } else if (dx > 30) {
                     div.classList.remove('swiped');
+                    swipedId = null;
                 }
             });
             div.addEventListener('touchend', function(e) {
@@ -753,17 +785,20 @@ function loadHistoryList() {
                 if (!mouseDown) return;
                 let dx = e.clientX - mouseStartX;
                 if (dx < -60) {
+                    document.querySelectorAll('.historyItem.swiped').forEach(el => el.classList.remove('swiped'));
                     div.classList.add('swiped');
                     mouseDown = false;
+                    swipedId = item.id;
                 } else if (dx > 30) {
                     div.classList.remove('swiped');
+                    swipedId = null;
                 }
             });
             div.addEventListener('mouseup', function(e) {
                 mouseDown = false;
                 setTimeout(() => { div.classList.remove('swiping'); }, 200);
             });
-            // Delete button
+            // Delete button（スワイプした1件のみ表示）
             const delBtn = document.createElement('button');
             delBtn.className = 'swipeDeleteBtn';
             delBtn.textContent = '削除';
@@ -786,7 +821,6 @@ function loadHistoryList() {
                 img.className = 'historyImgThumb';
                 img.src = item.data;
                 img.onload = function() {
-                    // 自動調整
                     let maxW = 200, maxH = 120;
                     let ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
                     img.style.width = Math.round(img.naturalWidth * ratio) + "px";
@@ -849,6 +883,7 @@ function loadHistoryList() {
             div.onclick = function(ev) {
                 if (ev.target.classList.contains('swipeDeleteBtn')) return;
                 historyDrawer.classList.remove('open');
+                historyDrawerBg.style.display = 'none';
                 if (item.type === 'image') {
                     document.getElementById('imageSection').style.display = 'block';
                     document.getElementById('textSection').style.display = 'none';
