@@ -131,12 +131,37 @@ header {
     font-size: 1.1rem;
     font-weight: bold;
 }
+#historyDrawerCloseWrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-left: 0.7em;
+    margin-right: -0.6em;
+    user-select: none;
+}
 #historyDrawerClose {
     background: transparent;
     border: none;
     font-size: 1.5rem;
     color: var(--primary-color);
     cursor: pointer;
+    line-height: 1;
+    display: block;
+    margin-bottom: 0.1em;
+    padding: 0;
+}
+#historyDrawerClose:focus { outline: none; }
+#historyDrawerCloseLabel {
+    font-size: 0.74em;
+    color: #888;
+    letter-spacing: 0.03em;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+    line-height: 1.1;
+    font-family: Arial, sans-serif;
+    pointer-events: none;
+    user-select: none;
 }
 #historyDrawerMenu {
     display: flex;
@@ -164,7 +189,7 @@ header {
 #historyList {
     flex: 1;
     overflow-y: auto;
-    padding: 0.5rem 0.5rem 1rem 0.5rem; /* ←標準値に戻し */
+    padding: 0.5rem 0.5rem 1rem 0.5rem;
 }
 .historyListSpacer {
     height: 120px;
@@ -562,8 +587,11 @@ footer p {
 </header>
 <div id="historyDrawer">
     <div id="historyDrawerHeader">
-        <h2>履歴</h2>
-        <button id="historyDrawerClose" title="閉じる">&times;</button>
+        <h2></h2>
+        <div id="historyDrawerCloseWrap">
+            <button id="historyDrawerClose" title="閉じる" tabindex="0">&times;</button>
+            <span id="historyDrawerCloseLabel">close（閉じる）</span>
+        </div>
     </div>
     <div id="historyDrawerMenu">
         <button id="modeToggleDrawer" class="selected">画像・T’s券</button>
@@ -1308,4 +1336,4 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 </body>
-</html>
+</html
