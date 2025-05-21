@@ -101,7 +101,7 @@ header {
     right: -350px;
     width: 320px;
     max-width: 90vw;
-    height: 100dvh;
+    height: 100vh;
     background: var(--background-color);
     color: var(--text-color);
     box-shadow: -2px 0 8px rgba(0,0,0,0.18);
@@ -158,16 +158,9 @@ header {
     color: #fff;
 }
 #historyList {
-    flex: 1 1 auto;
+    flex: 1;
     overflow-y: auto;
-    /* 履歴ヘッダー(64px)＋メニュー(56px)＋下部余白(80px)を引いた高さ */
-    height: calc(100dvh - 64px - 56px - 80px);
-    min-height: 0;
-    padding: 0.5rem 0.5rem 3.5rem 0.5rem; /* 下部に余白を多めに */
-    box-sizing: border-box;
-    /* iOSの下部バー考慮 */
-    scroll-padding-bottom: 80px;
-    -webkit-overflow-scrolling: touch;
+    padding: 0.5rem 0.5rem 1rem 0.5rem;
 }
 .historyItem {
     border-bottom: 1px solid var(--border-color);
@@ -232,6 +225,15 @@ header {
     font-size: 1.2em;
     margin-right: 0.2em;
     vertical-align: middle;
+}
+.historyCreated {
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: 0.1em;
+    text-align: left;
+    letter-spacing: 0.02em;
+    font-family: 'Menlo', 'Consolas', monospace;
+    word-break: keep-all;
 }
 .swipeDeleteBtn {
     position: absolute;
@@ -481,6 +483,7 @@ footer p {
 </header>
 <div id="historyDrawer">
     <div id="historyDrawerHeader">
+        <h2>履歴</h2>
         <button id="historyDrawerClose" title="閉じる">&times;</button>
     </div>
     <div id="historyDrawerMenu">
@@ -614,6 +617,19 @@ function deleteHistory(id) {
     });
 }
 
+// 日時フォーマット（半角・例：2025年5月21日 10時30分10秒）
+function formatDateTime(dt) {
+    const d = new Date(dt);
+    return (
+        d.getFullYear() + '年' +
+        (d.getMonth() + 1) + '月' +
+        d.getDate() + '日 ' +
+        d.getHours() + '時' +
+        (d.getMinutes() < 10 ? '0' : '') + d.getMinutes() + '分' +
+        (d.getSeconds() < 10 ? '0' : '') + d.getSeconds() + '秒'
+    );
+}
+
 // 履歴サイドメニュー
 const historyMenuBtn = document.getElementById('historyMenuBtn');
 const historyDrawer = document.getElementById('historyDrawer');
@@ -722,6 +738,12 @@ function loadHistoryList() {
                 textBlock.appendChild(meta);
                 div.appendChild(textBlock);
             }
+            // 印刷日時
+            const created = document.createElement('div');
+            created.className = 'historyCreated';
+            created.textContent = '印刷日時 ' + formatDateTime(item.created || Date.now());
+            div.appendChild(created);
+
             // 履歴クリックで内容反映
             div.onclick = function(ev) {
                 if (ev.target.classList.contains('swipeDeleteBtn')) return;
@@ -920,13 +942,11 @@ function setTextChipsEnabled(enabled) {
 }
 function sendToPrintAssist(event) {
     event.preventDefault();
-    // 履歴からの再印刷時もfileInputが空なので履歴のプレビュー画像を使う
     let fileInput = document.getElementById('imageUpload');
     let file = fileInput.files[0];
     let base64Image = null;
     let usePreview = false;
     if (!file && document.getElementById('imagePreviewContainer').firstChild && document.getElementById('imagePreviewContainer').firstChild.tagName === 'IMG') {
-        // 履歴から呼び出し時
         let img = document.getElementById('imagePreviewContainer').firstChild;
         base64Image = img.src.split(',')[1];
         usePreview = true;
