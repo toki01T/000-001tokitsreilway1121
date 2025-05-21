@@ -17,6 +17,8 @@
     --input-bg: #fff;
     --input-border: #ccc;
     --input-text: #222;
+    --check-color: #00A3ED;
+    --check-bg: #E6F3FF;
 }
 @media (prefers-color-scheme: dark) {
     :root {
@@ -30,6 +32,8 @@
         --input-bg: #232323;
         --input-border: #A67843;
         --input-text: #F3E9D2;
+        --check-color: #68C5E7;
+        --check-bg: #223D4B;
     }
 }
 html, body {
@@ -195,7 +199,7 @@ header {
     width: 100%;
 }
 .historyImgThumb {
-    width: 100%;
+    width: auto;
     max-width: 200px;
     max-height: 120px;
     height: auto;
@@ -211,39 +215,55 @@ header {
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 0.6em;
+    gap: 0.8em;
     width: 100%;
     margin-bottom: 0.2em;
 }
 .historyShrinkIcon {
-    font-size: 1.2em;
-    min-width: 1.6em;
-    text-align: center;
-    vertical-align: middle;
-    display: inline-block;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    border-radius: 5px;
+    background: var(--check-bg);
+    border: 2.5px solid var(--check-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.1em;
+    font-size: 1.1em;
+    color: var(--check-color);
+    font-weight: bold;
+    box-sizing: border-box;
+}
+.historyShrinkIcon svg {
+    display: block;
+    width: 18px;
+    height: 18px;
 }
 .historyMetaText {
-    font-size: 0.95em;
+    font-size: 0.97em;
     color: var(--primary-color);
     text-align: center;
     display: inline-block;
     vertical-align: middle;
     white-space: nowrap;
+    padding: 0 0.1em;
 }
-.historyMetaBox {
+.historyMetaCopies {
     display: inline-block;
-    border: 1.5px solid var(--primary-color);
-    border-radius: 5px;
-    padding: 0.08em 0.7em 0.08em 0.7em;
-    margin-left: 0.4em;
-    font-size: 0.98em;
-    font-weight: bold;
-    color: var(--primary-color);
-    background: var(--chip-bg);
-    min-width: 2.5em;
-    text-align: center;
     vertical-align: middle;
-    box-sizing: border-box;
+    min-width: 2.6em;
+    padding: 0.09em 0.7em 0.09em 0.7em;
+    font-size: 0.97em;
+    color: var(--primary-color);
+    background: #00A3ED1A;
+    border: 1.5px solid var(--primary-color);
+    border-radius: 7px;
+    text-align: center;
+    margin-left: 0.1em;
+    font-weight: bold;
+    letter-spacing: 0.04em;
 }
 .historyTextPreview {
     font-size: 1rem;
@@ -765,17 +785,24 @@ function loadHistoryList() {
                 const img = document.createElement('img');
                 img.className = 'historyImgThumb';
                 img.src = item.data;
+                img.onload = function() {
+                    // 自動調整
+                    let maxW = 200, maxH = 120;
+                    let ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
+                    img.style.width = Math.round(img.naturalWidth * ratio) + "px";
+                    img.style.height = Math.round(img.naturalHeight * ratio) + "px";
+                };
                 imgRow.appendChild(img);
                 contentBlock.appendChild(imgRow);
 
                 // メタ行
                 const metaRow = document.createElement('div');
                 metaRow.className = 'historyMetaRow';
-                // チェックボックス（縮小時のみ）
+                // チェックボックス（水色のみ/縮小時のみ）
                 if (item.shrink) {
                     const shrinkIcon = document.createElement('span');
                     shrinkIcon.className = 'historyShrinkIcon';
-                    shrinkIcon.textContent = '✅';
+                    shrinkIcon.innerHTML = `<svg viewBox="0 0 20 20"><polyline points="4,11 9,16 16,5" stroke="var(--check-color)" stroke-width="2.5" fill="none"/></svg>`;
                     metaRow.appendChild(shrinkIcon);
                 }
                 // 日付・時刻
@@ -785,7 +812,7 @@ function loadHistoryList() {
                 metaRow.appendChild(metaText);
                 // 枚数（四角囲み）
                 const metaCopies = document.createElement('span');
-                metaCopies.className = 'historyMetaBox';
+                metaCopies.className = 'historyMetaCopies';
                 metaCopies.textContent = item.copies + '枚';
                 metaRow.appendChild(metaCopies);
                 contentBlock.appendChild(metaRow);
@@ -798,11 +825,6 @@ function loadHistoryList() {
 
                 const metaRow = document.createElement('div');
                 metaRow.className = 'historyMetaRow';
-                // ダミー（画像履歴と高さ合わせ）
-                const shrinkIcon = document.createElement('span');
-                shrinkIcon.className = 'historyShrinkIcon';
-                shrinkIcon.textContent = '';
-                metaRow.appendChild(shrinkIcon);
                 // 日付・時刻
                 const metaText = document.createElement('span');
                 metaText.className = 'historyMetaText';
@@ -810,7 +832,7 @@ function loadHistoryList() {
                 metaRow.appendChild(metaText);
                 // 枚数（四角囲み）
                 const metaCopies = document.createElement('span');
-                metaCopies.className = 'historyMetaBox';
+                metaCopies.className = 'historyMetaCopies';
                 metaCopies.textContent = item.copies + '枚';
                 metaRow.appendChild(metaCopies);
                 contentBlock.appendChild(metaRow);
