@@ -180,14 +180,15 @@ header {
     background: var(--chip-bg);
 }
 .historyThumb {
-    width: 48px;
-    height: 48px;
+    width: 72px;
+    height: 72px;
     background: #eee;
     border-radius: 5px;
     object-fit: contain;
     flex-shrink: 0;
     border: 1px solid var(--border-color);
     display: block;
+    margin: 0 auto;
 }
 .historyContentBlock {
     display: flex;
@@ -221,17 +222,18 @@ header {
     text-align: center;
     opacity: 0.85;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.4em;
+    gap: 0.2em;
     width: 100%;
 }
 .historyShrinkIcon {
-    font-size: 1.2em;
-    margin-right: 0.2em;
+    font-size: 1.3em;
+    margin-bottom: 0.2em;
     vertical-align: middle;
     text-align: center;
-    display: inline-block;
+    display: block;
     min-width: 1.5em;
 }
 .historyCreated {
@@ -288,6 +290,7 @@ main {
         padding-bottom: 80px;
     }
     #historyDrawer { width: 95vw; }
+    .historyThumb { width: 56px; height: 56px; }
 }
 @media (orientation: landscape) {
     main {
@@ -347,6 +350,7 @@ main {
         width: calc(100vw - 38px * 2);
         max-width: 100vw;
     }
+    .historyThumb { width: 56px; height: 56px; }
     .image-preview img {
         max-width: 100vw;
     }
@@ -730,13 +734,13 @@ function loadHistoryList() {
                 shrinkIcon.textContent = item.shrink ? '✅' : '□';
                 contentBlock.appendChild(shrinkIcon);
 
-                // サムネイル
+                // サムネイル（72px*72px）
                 const img = document.createElement('img');
                 img.className = 'historyThumb';
                 img.src = item.data;
                 contentBlock.appendChild(img);
 
-                // メタ情報
+                // メタ情報（中央揃え、2段）
                 const meta = document.createElement('div');
                 meta.className = 'historyMeta';
                 meta.innerHTML =
@@ -757,7 +761,7 @@ function loadHistoryList() {
                     item.copies + '枚';
                 contentBlock.appendChild(meta);
             }
-            // 印刷日時
+            // 印刷日時（中央）
             const created = document.createElement('div');
             created.className = 'historyCreated';
             created.textContent = '印刷日時 ' + formatDateTime(item.created || Date.now());
