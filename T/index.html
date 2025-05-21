@@ -189,13 +189,14 @@ header {
     border: 1px solid var(--border-color);
     display: block;
 }
-.historyTextBlock {
+.historyContentBlock {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     flex: 1 1 auto;
     min-width: 0;
     justify-content: center;
+    width: 100%;
 }
 .historyTextPreview {
     font-size: 1rem;
@@ -210,30 +211,38 @@ header {
     text-overflow: ellipsis;
     margin-bottom: 0.2rem;
     text-align: center;
+    margin-left: auto;
+    margin-right: auto;
 }
 .historyMeta {
     font-size: 0.85rem;
     color: var(--primary-color);
     margin-top: 0.1rem;
-    text-align: left;
+    text-align: center;
     opacity: 0.85;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.4em;
+    width: 100%;
 }
 .historyShrinkIcon {
     font-size: 1.2em;
     margin-right: 0.2em;
     vertical-align: middle;
+    text-align: center;
+    display: inline-block;
+    min-width: 1.5em;
 }
 .historyCreated {
     font-size: 0.8rem;
     color: #888;
     margin-top: 0.1em;
-    text-align: left;
+    text-align: center;
     letter-spacing: 0.02em;
     font-family: 'Menlo', 'Consolas', monospace;
     word-break: keep-all;
+    width: 100%;
 }
 .swipeDeleteBtn {
     position: absolute;
@@ -711,38 +720,50 @@ function loadHistoryList() {
             div.appendChild(delBtn);
 
             // 内容
+            const contentBlock = document.createElement('div');
+            contentBlock.className = 'historyContentBlock';
+
             if (item.type === 'image') {
-                const img = document.createElement('img');
-                img.className = 'historyThumb';
-                img.src = item.data;
-                div.appendChild(img);
-                const meta = document.createElement('div');
-                meta.className = 'historyMeta';
-                // チェックボックス状態
+                // チェックボックス（中央）
                 const shrinkIcon = document.createElement('span');
                 shrinkIcon.className = 'historyShrinkIcon';
                 shrinkIcon.textContent = item.shrink ? '✅' : '□';
-                meta.appendChild(shrinkIcon);
-                meta.appendChild(document.createTextNode(`${item.dateTime === 'with' ? '日付時刻あり' : '日付時刻なし'}・${item.copies}枚`));
-                div.appendChild(meta);
+                contentBlock.appendChild(shrinkIcon);
+
+                // サムネイル
+                const img = document.createElement('img');
+                img.className = 'historyThumb';
+                img.src = item.data;
+                contentBlock.appendChild(img);
+
+                // メタ情報
+                const meta = document.createElement('div');
+                meta.className = 'historyMeta';
+                meta.innerHTML =
+                    (item.dateTime === 'with' ? '日付・時刻あり' : '日付・時刻なし') + '<br>' +
+                    item.copies + '枚';
+                contentBlock.appendChild(meta);
+
             } else {
-                const textBlock = document.createElement('div');
-                textBlock.className = 'historyTextBlock';
                 const text = document.createElement('div');
                 text.className = 'historyTextPreview';
                 text.textContent = item.data.length <= 10 ? item.data : item.data.slice(0, 10) + '…';
-                textBlock.appendChild(text);
+                contentBlock.appendChild(text);
+
                 const meta = document.createElement('div');
                 meta.className = 'historyMeta';
-                meta.textContent = `${item.dateTime === 'with' ? '日付時刻あり' : '日付時刻なし'}・${item.copies}枚`;
-                textBlock.appendChild(meta);
-                div.appendChild(textBlock);
+                meta.innerHTML =
+                    (item.dateTime === 'with' ? '日付・時刻あり' : '日付・時刻なし') + '<br>' +
+                    item.copies + '枚';
+                contentBlock.appendChild(meta);
             }
             // 印刷日時
             const created = document.createElement('div');
             created.className = 'historyCreated';
             created.textContent = '印刷日時 ' + formatDateTime(item.created || Date.now());
-            div.appendChild(created);
+            contentBlock.appendChild(created);
+
+            div.appendChild(contentBlock);
 
             // 履歴クリックで内容反映
             div.onclick = function(ev) {
