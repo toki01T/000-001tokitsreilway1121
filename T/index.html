@@ -164,7 +164,14 @@ header {
 #historyList {
     flex: 1;
     overflow-y: auto;
-    padding: 0.5rem 0.5rem 5.5rem 0.5rem; /* ←ここを増量（約88px） */
+    padding: 0.5rem 0.5rem 1rem 0.5rem; /* ←標準値に戻し */
+}
+.historyListSpacer {
+    height: 120px;
+    min-height: 120px;
+    width: 100%;
+    pointer-events: none;
+    background: transparent;
 }
 .historyItem {
     border-bottom: 1px solid var(--border-color);
@@ -739,9 +746,12 @@ function loadHistoryList() {
         historyList.innerHTML = '';
         if (!list.length) {
             historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴がありません</div>';
+            // スペーサーも追加
+            let spacer = document.createElement('div');
+            spacer.className = 'historyListSpacer';
+            historyList.appendChild(spacer);
             return;
         }
-        // スワイプ中以外は全ての削除ボタンを非表示にする
         let swipedId = null;
         for (const item of list) {
             const div = document.createElement('div');
@@ -929,6 +939,10 @@ function loadHistoryList() {
             };
             historyList.appendChild(div);
         }
+        // 最後にスペーサーを追加
+        let spacer = document.createElement('div');
+        spacer.className = 'historyListSpacer';
+        historyList.appendChild(spacer);
     });
 }
 
