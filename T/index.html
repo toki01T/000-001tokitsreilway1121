@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>toki01Ⓣ 発券</title>
 <link rel="icon" href="favicon.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
@@ -431,11 +431,11 @@ main {
     border: 2.5px solid var(--primary-color);
     border-radius: 10px;
     box-shadow: 0 1px 8px rgba(0,0,0,0.06);
-    width: 280px;
-    height: 360px;
+    width: 260px;
+    height: 340px;
     margin: 0 auto;
-    max-width: 98vw;
-    max-height: 80vw;
+    max-width: 95vw;
+    max-height: 90vw;
 }
 #signaturePad {
     background: #fff;
@@ -444,22 +444,22 @@ main {
     display: block;
     margin: 0 auto;
     touch-action: none;
-    width: 280px;
-    height: 360px;
-    min-width: 160px;
-    min-height: 140px;
-    max-width: 280px;
-    max-height: 360px;
+    width: 260px;
+    height: 340px;
+    min-width: 120px;
+    min-height: 120px;
+    max-width: 260px;
+    max-height: 340px;
     box-sizing: border-box;
 }
 @media (max-width: 500px) {
     .signature-pad-frame, #signaturePad {
         width: 90vw !important;
-        height: 45vw !important;
+        height: 110vw !important;
         min-width: 120px !important;
-        min-height: 80px !important;
-        max-width: 280px !important;
-        max-height: 360px !important;
+        min-height: 120px !important;
+        max-width: 260px !important;
+        max-height: 340px !important;
     }
 }
 #signatureClearBtn {
@@ -1221,23 +1221,25 @@ function setTextChipsEnabled(enabled) {
 // --- 手書きパッド ---
 let signaturePad = null;
 function getSignaturePadSize() {
-    if (window.innerWidth <= 500) {
-        let w = Math.min(window.innerWidth * 0.9, 280);
-        let h = Math.min(window.innerWidth * 0.45, 360);
-        return {width: Math.round(w), height: Math.round(h)};
+    let w = 260, h = 340;
+    if (window.innerWidth < 500) {
+        w = Math.min(window.innerWidth * 0.9, 260);
+        h = Math.min(window.innerWidth * 1.1, 340);
     }
-    return {width: 280, height: 360};
+    return {width: Math.round(w), height: Math.round(h)};
 }
 function initSignaturePad(imageDataUrl, fromHistory) {
     const canvas = document.getElementById('signaturePad');
     const size = getSignaturePadSize();
-    canvas.width = size.width;
-    canvas.height = size.height;
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    canvas.width = size.width * ratio;
+    canvas.height = size.height * ratio;
     canvas.style.width = size.width + "px";
     canvas.style.height = size.height + "px";
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(ratio, ratio);
     signaturePad = new window.SignaturePad(canvas, {
         backgroundColor: "#fff",
         penColor: "#222",
@@ -1249,7 +1251,7 @@ function initSignaturePad(imageDataUrl, fromHistory) {
     if (imageDataUrl) {
         const img = new window.Image();
         img.onload = function() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, size.width, size.height);
             ctx.drawImage(img, 0, 0, size.width, size.height);
             if (fromHistory) {
                 signaturePad._data = [[{x:0,y:0,time:Date.now()}]];
@@ -1269,7 +1271,9 @@ function initSignaturePad(imageDataUrl, fromHistory) {
 }
 window.addEventListener('resize', function() {
     if (document.getElementById('signatureSection').style.display !== 'none') {
-        initSignaturePad();
+        let dataUrl = signaturePad && !signaturePad.isEmpty() ? signaturePad.toDataURL() : null;
+        let fromHistory = !!(signaturePad && signaturePad._data && signaturePad._data.length > 0);
+        initSignaturePad(dataUrl, fromHistory);
     }
 });
 function selectSignatureChip(type) {
@@ -1296,16 +1300,20 @@ function updateSignaturePrintButtonState() {
 }
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
-    // 印刷用サイズは常に54x70mm（204x265px）に縮小
-    const dstW = 204, dstH = 265;
-    const srcCanvas = document.getElementById('signaturePad');
+    const canvas = document.getElementById('signaturePad');
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const srcW = canvas.width / ratio;
+    const srcH = canvas.height / ratio;
+    const marginPx = Math.round(srcW * 0.06); // 6%余白
+    const cropW = srcW - marginPx * 2;
+    const cropH = srcH - marginPx * 2;
     const tmpCanvas = document.createElement('canvas');
-    tmpCanvas.width = dstW;
-    tmpCanvas.height = dstH;
+    tmpCanvas.width = cropW;
+    tmpCanvas.height = cropH;
     const tmpCtx = tmpCanvas.getContext('2d', { willReadFrequently: true });
     tmpCtx.fillStyle = "#fff";
-    tmpCtx.fillRect(0, 0, dstW, dstH);
-    tmpCtx.drawImage(srcCanvas, 0, 0, srcCanvas.width, srcCanvas.height, 0, 0, dstW, dstH);
+    tmpCtx.fillRect(0, 0, cropW, cropH);
+    tmpCtx.drawImage(canvas, marginPx * ratio, marginPx * ratio, cropW * ratio, cropH * ratio, 0, 0, cropW, cropH);
     const paperWidth = 58;
     const imgW = 54, imgH = 70;
     const marginX = Math.floor((paperWidth - imgW) / 2);
