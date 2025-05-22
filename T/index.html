@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
 <title>toki01Ⓣ 発券</title>
 <link rel="icon" href="favicon.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
@@ -203,6 +203,7 @@ header {
     overflow-y: auto;
     padding: 0.5rem 0.5rem 1rem 0.5rem;
 }
+/* ...（履歴リスト等のCSSは前回通り、省略しません）... */
 .historyListSpacer {
     height: 120px;
     min-height: 120px;
@@ -451,6 +452,8 @@ main {
     max-width: 260px;
     max-height: 340px;
     box-sizing: border-box;
+    -webkit-user-select: none;
+    user-select: none;
 }
 @media (max-width: 500px) {
     .signature-pad-frame, #signaturePad {
@@ -1267,6 +1270,16 @@ function initSignaturePad(imageDataUrl, fromHistory) {
     canvas.onmouseup = updateSignaturePrintButtonState;
     canvas.ontouchend = updateSignaturePrintButtonState;
     canvas.onmouseout = updateSignaturePrintButtonState;
+    // --- 長押し対策 ---
+    canvas.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+    }, {passive: false});
+    canvas.addEventListener('touchend', function(e) {
+        e.preventDefault();
+    }, {passive: false});
+    canvas.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+    });
     updateSignaturePrintButtonState();
 }
 window.addEventListener('resize', function() {
@@ -1375,7 +1388,6 @@ function sendToPrintAssist(event) {
             let origH = img.naturalHeight;
             let imgW, imgH, x, y;
             if (shrinkChecked) {
-                // 縮小印刷: 54mm幅・高さ最大70mm
                 let maxW = 54, maxH = 70;
                 let ratio = Math.min(maxW / origW, maxH / origH, 1);
                 imgW = Math.round(origW * ratio);
@@ -1383,7 +1395,6 @@ function sendToPrintAssist(event) {
                 x = Math.round((paperWidth - imgW) / 2);
                 y = 2;
             } else {
-                // 原寸最大
                 let maxW = paperWidth, maxH = 70;
                 let ratio = Math.min(maxW / origW, maxH / origH, 1);
                 imgW = Math.round(origW * ratio);
