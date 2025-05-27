@@ -413,6 +413,103 @@ main {
     width: 100%;
     max-width: 500px;
 }
+.print-options {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1rem;
+    gap: 0.5rem;
+    width: 100%;
+}
+.print-options select,
+#printButton, #textPrintButton, #signaturePrintButton {
+    margin: 0 0.3em;
+}
+.print-options select {
+    text-align: center;
+    text-align-last: center;
+    margin: 0 0.3em;
+    padding: 0.4rem 1.5rem 0.4rem 1.5rem;
+    border: 1.5px solid var(--primary-color);
+    border-radius: 5px;
+    background-color: var(--background-color);
+    color: var(--primary-color);
+    font-size: 0.97rem;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    min-width: 80px;
+    box-sizing: border-box;
+    display: inline-block;
+}
+@media (max-width: 500px) {
+    .print-options select {
+        min-width: 70px;
+        font-size: 0.93rem;
+        padding: 0.3rem 1.2rem 0.3rem 1.2rem;
+    }
+}
+.print-options button {
+    display: inline-block;
+    vertical-align: middle;
+}
+#printButton, #textPrintButton, #signaturePrintButton {
+    padding: 0.4rem 1.3rem;
+    border-radius: 5px;
+    background-color: var(--primary-color);
+    color: #fff;
+    font-size: 0.97rem;
+    cursor: pointer;
+    transition: .3s;
+    border: none;
+    margin-left: 0.5rem;
+    margin-right: 0.5rem;
+    text-align: center;
+}
+#printButton.disabled, #textPrintButton.disabled, #signaturePrintButton.disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
+}
+.choice-chips {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1rem;
+    gap: 0.7rem;
+    width: 100%;
+}
+.chip {
+    display: inline-block;
+    min-width: 110px;
+    text-align: center;
+    padding: 0.4rem 1.1rem;
+    border-radius: 0.5rem;
+    background-color: var(--chip-bg);
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 0.97rem;
+    border: 1.5px solid var(--primary-color);
+    transition: .3s;
+    opacity: 1;
+    pointer-events: auto;
+    user-select: none;
+    margin: 0 0.2em;
+}
+.chip.selected {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+.chip.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+@media (max-width: 500px) {
+    .chip {
+        min-width: 90px;
+        font-size: 0.93rem;
+        padding: 0.3rem 0.7rem;
+    }
+}
 #signatureSection {
     display: none;
     width: 100%;
@@ -425,6 +522,29 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    width: 100%;
+}
+.signature-clear-row {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 0.5em;
+}
+#signatureClearBtn {
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.3em 1.3em;
+    font-size: 0.97rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: inline-block;
+    margin: 0 auto;
+}
+#signatureClearBtn:hover {
+    background: var(--primary-hover);
 }
 .signature-pad-frame {
     display: flex;
@@ -470,92 +590,10 @@ main {
         max-height: 340px !important;
     }
 }
-#signatureClearBtn {
-    margin-top: 0.5em;
-    background: var(--primary-color);
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 0.3em 1.1em;
-    font-size: 0.97rem;
-    cursor: pointer;
-    transition: background 0.2s;
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-}
-#signatureClearBtn:hover {
-    background: var(--primary-hover);
-}
-#printButton, #textPrintButton, #signaturePrintButton {
-    padding: 0.4rem 1rem;
-    border-radius: 5px;
-    background-color: var(--primary-color);
-    color: #fff;
-    font-size: 0.97rem;
-    cursor: pointer;
-    transition: .3s;
-    margin-left: 0.5rem;
-    display: inline-block;
-    border: none;
-}
-#printButton.disabled, #textPrintButton.disabled, #signaturePrintButton.disabled {
-    background-color: #aaa;
-    cursor: not-allowed;
-}
-.choice-chips {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 1rem;
-    gap: 0.7rem;
-}
-.chip {
-    display: inline-block;
-    padding: 0.4rem 1.1rem;
-    border-radius: 0.5rem;
-    background-color: var(--chip-bg);
-    color: var(--primary-color);
-    cursor: pointer;
-    font-size: 0.97rem;
-    border: 1.5px solid var(--primary-color);
-    transition: .3s;
-    opacity: 1;
-    pointer-events: auto;
-    user-select: none;
-}
-.chip.selected {
-    background-color: var(--primary-color);
-    color: #fff;
-}
-.chip.disabled {
-    opacity: 0.5;
-    pointer-events: none;
-}
-.print-options {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 1rem;
-    gap: 0.5rem;
-}
-#signaturePrintOptions {
-    display: none;
-}
-#signatureCopiesSelect, #copiesSelect, #textCopiesSelect {
-    padding: 0.4rem;
-    border: 1.5px solid var(--primary-color);
-    border-radius: 5px;
-    background-color: var(--background-color);
-    color: var(--primary-color);
-    font-size: 0.97rem;
-    appearance: none;
-    -webkit-appearance: none;
-    outline: none;
-    min-width: 60px;
-    box-sizing: border-box;
-    margin-left: 0.2em;
-    margin-right: 0.2em;
+.signature-instruction {
+    margin-bottom: 0.2em;
+    font-size: 0.96em;
+    color: #444;
 }
 .file-upload { margin: 1rem 0; text-align: center; }
 .file-upload-label {
@@ -731,11 +769,13 @@ footer p {
         </section>
         <section id="signatureSection" style="display:none;">
             <div class="signature-pad-container">
+                <div class="signature-clear-row">
+                    <button id="signatureClearBtn" type="button">クリア</button>
+                </div>
                 <div class="signature-instruction">指またはペンで枠内にご記入ください</div>
                 <div class="signature-pad-frame" id="signaturePadFrame">
                     <canvas id="signaturePad"></canvas>
                 </div>
-                <button id="signatureClearBtn" type="button">クリア</button>
             </div>
             <div class="choice-chips" id="signatureDateTimeChoice" style="display:flex;">
                 <div class="chip" id="signatureChipWith" onclick="selectSignatureChip('with')">日付・時刻あり</div>
@@ -1236,18 +1276,30 @@ function getSignaturePadSize() {
     }
     return {width: Math.round(w), height: Math.round(h)};
 }
-function initSignaturePad(imageDataUrl, fromHistory) {
-    const canvas = document.getElementById('signaturePad');
-    const size = getSignaturePadSize();
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+function resizeSignaturePadCanvas(canvas, ctx, size, ratio, imageDataUrl) {
+    let dataUrl = imageDataUrl || canvas.toDataURL();
     canvas.width = size.width * ratio;
     canvas.height = size.height * ratio;
     canvas.style.width = size.width + "px";
     canvas.style.height = size.height + "px";
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.scale(ratio, ratio);
+    if (dataUrl) {
+        let img = new window.Image();
+        img.onload = function() {
+            ctx.drawImage(img, 0, 0, size.width, size.height);
+        };
+        img.src = dataUrl;
+    }
+}
+function initSignaturePad(imageDataUrl, fromHistory) {
+    const canvas = document.getElementById('signaturePad');
+    const size = getSignaturePadSize();
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    let dataUrl = imageDataUrl || (canvas.width > 0 && canvas.height > 0 ? canvas.toDataURL() : null);
+    resizeSignaturePadCanvas(canvas, ctx, size, ratio, dataUrl);
     signaturePad = new window.SignaturePad(canvas, {
         backgroundColor: "#fff",
         penColor: "#222",
@@ -1259,7 +1311,6 @@ function initSignaturePad(imageDataUrl, fromHistory) {
     if (imageDataUrl) {
         const img = new window.Image();
         img.onload = function() {
-            ctx.clearRect(0, 0, size.width, size.height);
             ctx.drawImage(img, 0, 0, size.width, size.height);
             if (fromHistory) {
                 signaturePad._data = [[{x:0,y:0,time:Date.now()}]];
@@ -1275,7 +1326,6 @@ function initSignaturePad(imageDataUrl, fromHistory) {
     canvas.onmouseup = updateSignaturePrintButtonState;
     canvas.ontouchend = updateSignaturePrintButtonState;
     canvas.onmouseout = updateSignaturePrintButtonState;
-    // 長押し無効
     canvas.addEventListener('touchstart', function(e) {
         if (e.touches.length === 1) e.preventDefault();
     }, { passive: false });
@@ -1316,7 +1366,6 @@ document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
     const canvas = document.getElementById('signaturePad');
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    // 元canvasの描画内容を「幅50mm（約170px）」に縮小し、縦横比維持で印刷
     const srcW = canvas.width / ratio;
     const srcH = canvas.height / ratio;
     const printW = 50; // mm
@@ -1392,11 +1441,20 @@ function sendToPrintAssist(event) {
             let origH = img.naturalHeight;
             let imgW, imgH, x, y;
             if (shrinkChecked) {
-                // 縮小印刷: 54mm幅・高さ最大70mm
-                let maxW = 54, maxH = 70;
-                let ratio = Math.min(maxW / origW, maxH / origH, 1);
+                // 70%縮小
+                let ratio = 0.7;
                 imgW = Math.round(origW * ratio);
                 imgH = Math.round(origH * ratio);
+                if (imgW > 54) {
+                    let scale = 54 / imgW;
+                    imgW = 54;
+                    imgH = Math.round(imgH * scale);
+                }
+                if (imgH > 70) {
+                    let scale = 70 / imgH;
+                    imgH = 70;
+                    imgW = Math.round(imgW * scale);
+                }
                 x = Math.round((paperWidth - imgW) / 2);
                 y = 2;
             } else {
