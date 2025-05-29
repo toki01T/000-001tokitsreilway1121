@@ -510,6 +510,68 @@ main {
         padding: 0.3rem 0.7rem;
     }
 }
+/* チェックボックスカスタムデザイン（履歴リスト・画像モード共通） */
+.custom-checkbox {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    margin: 0 0.4em;
+    height: 24px;
+}
+.custom-checkbox input[type="checkbox"] {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+.custom-checkbox .checkmark {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    border-radius: 6px;
+    background: var(--check-bg);
+    border: 2.5px solid var(--check-color);
+    box-sizing: border-box;
+    position: relative;
+    transition: border-color 0.2s, background 0.2s;
+}
+.custom-checkbox input[type="checkbox"]:checked + .checkmark {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+.custom-checkbox .checkmark::after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+.custom-checkbox input[type="checkbox"]:checked + .checkmark::after {
+    display: block;
+}
+.custom-checkbox .checkmark::after {
+    left: 6px;
+    top: 2.5px;
+    width: 8px;
+    height: 14px;
+    border: solid #fff;
+    border-width: 0 3px 3px 0;
+    border-radius: 2px;
+    transform: rotate(45deg);
+    content: "";
+}
+@media (max-width: 500px) {
+    .custom-checkbox .checkmark {
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        min-height: 22px;
+        border-radius: 5px;
+    }
+}
 #signatureSection {
     display: none;
     width: 100%;
@@ -743,7 +805,10 @@ footer p {
                         <option value="5">5枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
-                    <input type="checkbox" id="shrinkCheckbox" title="縮小印刷" />
+                    <label class="custom-checkbox" id="shrinkCheckboxLabel" style="margin-left:0.5em;margin-right:0.5em;">
+                        <input type="checkbox" id="shrinkCheckbox" title="縮小印刷" />
+                        <span class="checkmark"></span>
+                    </label>
                 </div>
             </form>
         </section>
@@ -1072,10 +1137,8 @@ function loadHistoryList() {
                         let containerW = Math.min(window.innerWidth - 76, 350);
                         let containerH = 220;
                         let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-                        let displayW = Math.round(img.naturalWidth * ratio);
-                        let displayH = Math.round(img.naturalHeight * ratio);
-                        img.style.width = displayW + "px";
-                        img.style.height = displayH + "px";
+                        img.style.width = Math.round(img.naturalWidth * ratio) + "px";
+                        img.style.height = Math.round(img.naturalHeight * ratio) + "px";
                         img.style.maxWidth = "100%";
                         img.style.maxHeight = "220px";
                         img.style.display = "block";
@@ -1167,9 +1230,11 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
+            let shrink = document.getElementById('shrinkCheckbox').checked;
             let containerW = Math.min(window.innerWidth - 76, 350);
             let containerH = 220;
             let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
+            if (shrink) ratio *= 0.5;
             let displayW = Math.round(img.naturalWidth * ratio);
             let displayH = Math.round(img.naturalHeight * ratio);
             img.style.width = displayW + "px";
@@ -1201,6 +1266,20 @@ function previewImage(event) {
         updatePrintButtonState();
     }
 }
+document.getElementById('shrinkCheckbox').addEventListener('change', function() {
+    // チェック切替でプレビューを50%/100%切替
+    const img = document.getElementById('imagePreviewContainer').querySelector('img');
+    if (img && img.naturalWidth && img.naturalHeight) {
+        let containerW = Math.min(window.innerWidth - 76, 350);
+        let containerH = 220;
+        let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
+        if (this.checked) ratio *= 0.5;
+        let displayW = Math.round(img.naturalWidth * ratio);
+        let displayH = Math.round(img.naturalHeight * ratio);
+        img.style.width = displayW + "px";
+        img.style.height = displayH + "px";
+    }
+});
 function selectChip(type) {
     selectedChip = type;
     const chips = document.querySelectorAll('#dateTimeChoice .chip');
@@ -1441,20 +1520,11 @@ function sendToPrintAssist(event) {
             let origH = img.naturalHeight;
             let imgW, imgH, x, y;
             if (shrinkChecked) {
-                // 70%縮小
-                let ratio = 0.7;
+                // 50%縮小
+                let maxW = paperWidth, maxH = 70;
+                let ratio = Math.min(maxW / origW, maxH / origH, 1) * 0.5;
                 imgW = Math.round(origW * ratio);
                 imgH = Math.round(origH * ratio);
-                if (imgW > 54) {
-                    let scale = 54 / imgW;
-                    imgW = 54;
-                    imgH = Math.round(imgH * scale);
-                }
-                if (imgH > 70) {
-                    let scale = 70 / imgH;
-                    imgH = 70;
-                    imgW = Math.round(imgW * scale);
-                }
                 x = Math.round((paperWidth - imgW) / 2);
                 y = 2;
             } else {
