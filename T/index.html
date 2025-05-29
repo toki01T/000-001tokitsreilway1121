@@ -1234,7 +1234,7 @@ function previewImage(event) {
             let containerW = Math.min(window.innerWidth - 76, 350);
             let containerH = 220;
             let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-            if (shrink) ratio *= 0.5;
+            if (shrink) ratio *= 0.6;
             let displayW = Math.round(img.naturalWidth * ratio);
             let displayH = Math.round(img.naturalHeight * ratio);
             img.style.width = displayW + "px";
@@ -1243,6 +1243,7 @@ function previewImage(event) {
             img.style.maxHeight = "220px";
             img.style.display = "block";
             img.style.margin = "0 auto";
+            img.style.objectFit = "contain";
             lastPreviewImageNaturalWidth = img.naturalWidth;
             lastPreviewImageNaturalHeight = img.naturalHeight;
         };
@@ -1267,17 +1268,18 @@ function previewImage(event) {
     }
 }
 document.getElementById('shrinkCheckbox').addEventListener('change', function() {
-    // チェック切替でプレビューを50%/100%切替
+    // チェック切替でプレビューを60%/100%切替
     const img = document.getElementById('imagePreviewContainer').querySelector('img');
     if (img && img.naturalWidth && img.naturalHeight) {
         let containerW = Math.min(window.innerWidth - 76, 350);
         let containerH = 220;
         let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-        if (this.checked) ratio *= 0.5;
+        if (this.checked) ratio *= 0.6;
         let displayW = Math.round(img.naturalWidth * ratio);
         let displayH = Math.round(img.naturalHeight * ratio);
         img.style.width = displayW + "px";
         img.style.height = displayH + "px";
+        img.style.objectFit = "contain";
     }
 });
 function selectChip(type) {
@@ -1520,9 +1522,9 @@ function sendToPrintAssist(event) {
             let origH = img.naturalHeight;
             let imgW, imgH, x, y;
             if (shrinkChecked) {
-                // 50%縮小
+                // 60%縮小
                 let maxW = paperWidth, maxH = 70;
-                let ratio = Math.min(maxW / origW, maxH / origH, 1) * 0.5;
+                let ratio = Math.min(maxW / origW, maxH / origH, 1) * 0.6;
                 imgW = Math.round(origW * ratio);
                 imgH = Math.round(origH * ratio);
                 x = Math.round((paperWidth - imgW) / 2);
