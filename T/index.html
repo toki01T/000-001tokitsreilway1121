@@ -696,6 +696,7 @@ main {
     height: auto;
     max-width: 100%;
     max-height: 220px;
+    transition: transform 0.2s;
 }
 @media (max-width: 500px) {
     .image-preview {
@@ -1234,7 +1235,7 @@ function previewImage(event) {
             let containerW = Math.min(window.innerWidth - 76, 350);
             let containerH = 220;
             let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-            if (shrink) ratio *= 0.6;
+            if (shrink) ratio *= 0.7;
             let displayW = Math.round(img.naturalWidth * ratio);
             let displayH = Math.round(img.naturalHeight * ratio);
             img.style.width = displayW + "px";
@@ -1243,7 +1244,7 @@ function previewImage(event) {
             img.style.maxHeight = "220px";
             img.style.display = "block";
             img.style.margin = "0 auto";
-            img.style.objectFit = "contain";
+            img.style.transform = shrink ? "scale(1)" : "scale(1)";
             lastPreviewImageNaturalWidth = img.naturalWidth;
             lastPreviewImageNaturalHeight = img.naturalHeight;
         };
@@ -1268,18 +1269,18 @@ function previewImage(event) {
     }
 }
 document.getElementById('shrinkCheckbox').addEventListener('change', function() {
-    // チェック切替でプレビューを60%/100%切替
+    // チェック切替でプレビューを70%/100%切替
     const img = document.getElementById('imagePreviewContainer').querySelector('img');
     if (img && img.naturalWidth && img.naturalHeight) {
         let containerW = Math.min(window.innerWidth - 76, 350);
         let containerH = 220;
         let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-        if (this.checked) ratio *= 0.6;
+        if (this.checked) ratio *= 0.7;
         let displayW = Math.round(img.naturalWidth * ratio);
         let displayH = Math.round(img.naturalHeight * ratio);
         img.style.width = displayW + "px";
         img.style.height = displayH + "px";
-        img.style.objectFit = "contain";
+        img.style.transform = "scale(1)";
     }
 });
 function selectChip(type) {
@@ -1522,9 +1523,9 @@ function sendToPrintAssist(event) {
             let origH = img.naturalHeight;
             let imgW, imgH, x, y;
             if (shrinkChecked) {
-                // 60%縮小
+                // 70%縮小
                 let maxW = paperWidth, maxH = 70;
-                let ratio = Math.min(maxW / origW, maxH / origH, 1) * 0.6;
+                let ratio = Math.min(maxW / origW, maxH / origH, 1) * 0.7;
                 imgW = Math.round(origW * ratio);
                 imgH = Math.round(origH * ratio);
                 x = Math.round((paperWidth - imgW) / 2);
