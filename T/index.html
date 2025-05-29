@@ -1244,7 +1244,7 @@ function previewImage(event) {
             img.style.maxHeight = "220px";
             img.style.display = "block";
             img.style.margin = "0 auto";
-            img.style.transform = shrink ? "scale(1)" : "scale(1)";
+            img.style.transform = "scale(1)";
             lastPreviewImageNaturalWidth = img.naturalWidth;
             lastPreviewImageNaturalHeight = img.naturalHeight;
         };
@@ -1517,28 +1517,19 @@ function sendToPrintAssist(event) {
     const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
     function doPrint(base64Image) {
         const paperWidth = 58;
+        const paperHeight = 70; // 最大高さ
         let img = new window.Image();
         img.onload = function() {
             let origW = img.naturalWidth;
             let origH = img.naturalHeight;
-            let imgW, imgH, x, y;
-            if (shrinkChecked) {
-                // 70%縮小
-                let maxW = paperWidth, maxH = 70;
-                let ratio = Math.min(maxW / origW, maxH / origH, 1) * 0.7;
-                imgW = Math.round(origW * ratio);
-                imgH = Math.round(origH * ratio);
-                x = Math.round((paperWidth - imgW) / 2);
-                y = 2;
-            } else {
-                // 原寸最大
-                let maxW = paperWidth, maxH = 70;
-                let ratio = Math.min(maxW / origW, maxH / origH, 1);
-                imgW = Math.round(origW * ratio);
-                imgH = Math.round(origH * ratio);
-                x = Math.round((paperWidth - imgW) / 2);
-                y = 2;
-            }
+            // 1. まず用紙に収まる最大倍率を計算
+            let maxRatio = Math.min(paperWidth / origW, paperHeight / origH, 1);
+            // 2. 縮小時はさらに0.7倍
+            let ratio = shrinkChecked ? maxRatio * 0.7 : maxRatio;
+            let imgW = Math.round(origW * ratio);
+            let imgH = Math.round(origH * ratio);
+            let x = Math.round((paperWidth - imgW) / 2);
+            let y = 2;
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
