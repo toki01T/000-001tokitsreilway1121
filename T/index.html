@@ -247,8 +247,8 @@ header {
 }
 .historyImgThumb {
     width: auto;
-    max-width: 220px;
-    max-height: 150px;
+    max-width: 200px;
+    max-height: 120px;
     height: auto;
     object-fit: contain;
     display: block;
@@ -678,7 +678,7 @@ main {
     margin-top: 10px;
     text-align: center;
     width: 100%;
-    max-width: 400px;
+    max-width: 420px;
     margin-left: auto;
     margin-right: auto;
     display: flex;
@@ -694,16 +694,17 @@ main {
     background: var(--input-bg);
     width: auto;
     height: auto;
-    max-width: 100%;
-    max-height: 320px;
+    max-width: 90vw;
+    max-height: 420px;
 }
 @media (max-width: 500px) {
     .image-preview {
-        width: 100vw;
-        max-width: 100vw;
+        width: 98vw;
+        max-width: 98vw;
     }
     .image-preview img {
-        max-width: 100vw;
+        max-width: 98vw;
+        max-height: 90vw;
     }
 }
 #textInput {
@@ -1052,7 +1053,7 @@ function loadHistoryList() {
                 img.className = 'historyImgThumb';
                 img.src = item.data;
                 img.onload = function() {
-                    let maxW = 220, maxH = 150;
+                    let maxW = 200, maxH = 120;
                     let ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
                     img.style.width = Math.round(img.naturalWidth * ratio) + "px";
                     img.style.height = Math.round(img.naturalHeight * ratio) + "px";
@@ -1083,7 +1084,7 @@ function loadHistoryList() {
                 img.className = 'historyImgThumb';
                 img.src = item.data;
                 img.onload = function() {
-                    let maxW = 220, maxH = 150;
+                    let maxW = 200, maxH = 120;
                     let ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
                     img.style.width = Math.round(img.naturalWidth * ratio) + "px";
                     img.style.height = Math.round(img.naturalHeight * ratio) + "px";
@@ -1134,13 +1135,15 @@ function loadHistoryList() {
                     const img = new Image();
                     img.src = item.data;
                     img.onload = function() {
-                        let containerW = Math.min(window.innerWidth, 400);
-                        let containerH = 320;
+                        let containerW = Math.min(window.innerWidth * 0.98, 420);
+                        let containerH = 420;
                         let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-                        img.style.width = Math.round(img.naturalWidth * ratio) + "px";
-                        img.style.height = Math.round(img.naturalHeight * ratio) + "px";
+                        let displayW = Math.round(img.naturalWidth * ratio);
+                        let displayH = Math.round(img.naturalHeight * ratio);
+                        img.style.width = displayW + "px";
+                        img.style.height = displayH + "px";
                         img.style.maxWidth = "100%";
-                        img.style.maxHeight = "320px";
+                        img.style.maxHeight = "420px";
                         img.style.display = "block";
                         img.style.margin = "0 auto";
                     };
@@ -1230,15 +1233,15 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            let containerW = Math.min(window.innerWidth, 400);
-            let containerH = 320;
+            let containerW = Math.min(window.innerWidth * 0.98, 420);
+            let containerH = 420;
             let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
             let displayW = Math.round(img.naturalWidth * ratio);
             let displayH = Math.round(img.naturalHeight * ratio);
             img.style.width = displayW + "px";
             img.style.height = displayH + "px";
             img.style.maxWidth = "100%";
-            img.style.maxHeight = "320px";
+            img.style.maxHeight = "420px";
             img.style.display = "block";
             img.style.margin = "0 auto";
             lastPreviewImageNaturalWidth = img.naturalWidth;
@@ -1265,7 +1268,7 @@ function previewImage(event) {
     }
 }
 document.getElementById('shrinkCheckbox').addEventListener('change', function() {
-    // プレビューは常に原寸
+    // プレビューは常に最大
 });
 function selectChip(type) {
     selectedChip = type;
@@ -1506,26 +1509,12 @@ function sendToPrintAssist(event) {
             let origW = img.naturalWidth;
             let origH = img.naturalHeight;
             let imgW, imgH, x, y;
-            let maxW, maxH, ratio;
-            if (shrinkChecked) {
-                // 70%縮小
-                maxW = paperWidth * 0.7;
-                maxH = 70 * 0.7;
-                ratio = Math.min(maxW / origW, maxH / origH, 1);
-                imgW = Math.round(origW * ratio);
-                imgH = Math.round(origH * ratio);
-                x = Math.round((paperWidth - imgW) / 2);
-                y = 2;
-            } else {
-                // 58mm幅いっぱいに拡大
-                maxW = paperWidth;
-                maxH = 70;
-                ratio = Math.min(maxW / origW, maxH / origH, 1);
-                imgW = Math.round(origW * ratio);
-                imgH = Math.round(origH * ratio);
-                x = Math.round((paperWidth - imgW) / 2);
-                y = 2;
-            }
+            let ratio = Math.min(paperWidth / origW, 1);
+            if (shrinkChecked) ratio *= 0.7;
+            imgW = Math.round(origW * ratio);
+            imgH = Math.round(origH * ratio);
+            x = Math.round((paperWidth - imgW) / 2);
+            y = 2;
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
