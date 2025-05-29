@@ -678,7 +678,7 @@ main {
     margin-top: 10px;
     text-align: center;
     width: 100%;
-    max-width: 420px;
+    max-width: 500px;
     margin-left: auto;
     margin-right: auto;
     display: flex;
@@ -694,17 +694,16 @@ main {
     background: var(--input-bg);
     width: auto;
     height: auto;
-    max-width: 90vw;
-    max-height: 420px;
+    max-width: 95vw;
+    max-height: 80vh;
 }
-@media (max-width: 500px) {
+@media (max-width: 600px) {
     .image-preview {
-        width: 98vw;
         max-width: 98vw;
     }
     .image-preview img {
         max-width: 98vw;
-        max-height: 90vw;
+        max-height: 60vh;
     }
 }
 #textInput {
@@ -1135,15 +1134,15 @@ function loadHistoryList() {
                     const img = new Image();
                     img.src = item.data;
                     img.onload = function() {
-                        let containerW = Math.min(window.innerWidth * 0.98, 420);
-                        let containerH = 420;
+                        let containerW = Math.min(window.innerWidth * 0.95, 500);
+                        let containerH = Math.min(window.innerHeight * 0.8, 500);
                         let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
                         let displayW = Math.round(img.naturalWidth * ratio);
                         let displayH = Math.round(img.naturalHeight * ratio);
                         img.style.width = displayW + "px";
                         img.style.height = displayH + "px";
                         img.style.maxWidth = "100%";
-                        img.style.maxHeight = "420px";
+                        img.style.maxHeight = "80vh";
                         img.style.display = "block";
                         img.style.margin = "0 auto";
                     };
@@ -1233,15 +1232,15 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            let containerW = Math.min(window.innerWidth * 0.98, 420);
-            let containerH = 420;
+            let containerW = Math.min(window.innerWidth * 0.95, 500);
+            let containerH = Math.min(window.innerHeight * 0.8, 500);
             let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
             let displayW = Math.round(img.naturalWidth * ratio);
             let displayH = Math.round(img.naturalHeight * ratio);
             img.style.width = displayW + "px";
             img.style.height = displayH + "px";
             img.style.maxWidth = "100%";
-            img.style.maxHeight = "420px";
+            img.style.maxHeight = "80vh";
             img.style.display = "block";
             img.style.margin = "0 auto";
             lastPreviewImageNaturalWidth = img.naturalWidth;
@@ -1504,17 +1503,18 @@ function sendToPrintAssist(event) {
     const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
     function doPrint(base64Image) {
         const paperWidth = 58;
+        const leftRightMargin = 1.5; // mm
+        const imgAreaWidth = paperWidth - leftRightMargin * 2; // 55mm
         let img = new window.Image();
         img.onload = function() {
             let origW = img.naturalWidth;
             let origH = img.naturalHeight;
-            let imgW, imgH, x, y;
-            let ratio = Math.min(paperWidth / origW, 1);
+            let ratio = Math.min(imgAreaWidth / origW, 1);
             if (shrinkChecked) ratio *= 0.7;
-            imgW = Math.round(origW * ratio);
-            imgH = Math.round(origH * ratio);
-            x = Math.round((paperWidth - imgW) / 2);
-            y = 2;
+            let imgW = Math.round(origW * ratio);
+            let imgH = Math.round(origH * ratio);
+            let x = Math.round((paperWidth - imgW) / 2);
+            let y = 2;
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
