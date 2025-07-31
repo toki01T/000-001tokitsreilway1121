@@ -1318,11 +1318,10 @@ function updateTextPrintButtonState() {
         textDateTimeChoice.style.display = 'flex';
         if (selectedTextChip !== '') {
             textPrintButton.classList.remove('disabled');
-            textPrintOptions.style.display = 'flex';
         } else {
             textPrintButton.classList.add('disabled');
-            textPrintOptions.style.display = 'flex';
         }
+        textPrintOptions.style.display = 'flex';
     }
 }
 function setTextChipsEnabled(enabled) {
@@ -1431,64 +1430,19 @@ function updateSignaturePrintButtonState() {
         options.style.display = 'flex';
     }
 }
-document.getElementById('signaturePrintButton').onclick = function() {
-    if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
-    const canvas = document.getElementById('signaturePad');
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    const srcW = canvas.width / ratio;
-    const srcH = canvas.height / ratio;
-    const printW = 50; // mm
-    const pxPerMm = 3.38; // 1mm=3.38px（58mm=196px基準）
-    const outW = Math.round(printW * pxPerMm);
-    const scale = outW / srcW;
-    const outH = Math.round(srcH * scale);
-    const tmpCanvas = document.createElement('canvas');
-    tmpCanvas.width = outW;
-    tmpCanvas.height = outH;
-    const tmpCtx = tmpCanvas.getContext('2d', { willReadFrequently: true });
-    tmpCtx.fillStyle = "#fff";
-    tmpCtx.fillRect(0, 0, outW, outH);
-    tmpCtx.drawImage(canvas, 0, 0, srcW * ratio, srcH * ratio, 0, 0, outW, outH);
-    const paperWidth = 58;
-    const imgW = 50, imgH = Math.round(outH / pxPerMm);
-    const marginX = Math.floor((paperWidth - imgW) / 2);
-    const marginY = 4;
-    const isDateTimeEnabled = selectedSignatureChip === 'with';
-    const dateTimeHeight = 16;
-    const bottomMargin = isDateTimeEnabled ? 16 : 18;
-    const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
-    const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
-    let currentCopy = 1;
-    function printSignatureCopy(copyIndex) {
-        let dataUrl = tmpCanvas.toDataURL("image/png");
-        let printUrl = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${marginX},${marginY},${imgW},${imgH},${dataUrl.split(',')[1]}`;
-        if (isDateTimeEnabled) {
-            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-            printUrl += `&2=${safeEncodeURIComponent(dateTimeString)},0,${marginY + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-        }
-        if (copyIndex === selectedCopies) {
-            printUrl += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-        }
-        window.location.href = printUrl;
-    }
-    function printNext() {
-        if (currentCopy < selectedCopies) {
-            setTimeout(printNext, 10000);
-        }
-        printSignatureCopy(currentCopy);
-        currentCopy++;
-    }
-    printNext();
-    addHistory({
-        type: 'signature',
-        mode: 'signature',
-        data: tmpCanvas.toDataURL("image/png"),
-        dateTime: selectedSignatureChip,
-        copies: selectedCopies,
-        created: Date.now()
-    });
-};
-// --- 画像印刷 ---
+
+// ---- SII URL Print Agent用 印刷関数 ----
+function safeEncodeURIComponent(str) {
+    return encodeURIComponent(str)
+        .replace(/!/g, '%21')
+        .replace(/'/g, '%27')
+        .replace(/\(/g, '%28')
+        .replace(/\)/g, '%29')
+        .replace(/\*/g, '%2A')
+        .replace(/%20/g, '%20');
+}
+
+// 画像印刷（SII用URLスキーム）
 function sendToPrintAssist(event) {
     event.preventDefault();
     let fileInput = document.getElementById('imageUpload');
@@ -1502,7 +1456,7 @@ function sendToPrintAssist(event) {
     }
     if ((!file && !usePreview) || selectedChip === '') return;
     const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
-    function doPrint(base64Image) {
+    async function doPrint(base64Image) {
         const paperWidth = 58;
         let img = new window.Image();
         img.onload = function() {
@@ -1512,33 +1466,17 @@ function sendToPrintAssist(event) {
             if (shrinkChecked) ratio *= 0.6;
             let imgW = Math.round(origW * ratio);
             let imgH = Math.round(origH * ratio);
-            let x = Math.round((paperWidth - imgW) / 2);
-            let y = 2;
-            const isDateTimeEnabled = selectedChip === 'with';
-            const topMargin = 2;
-            const bottomMargin = isDateTimeEnabled ? 16 : 18;
-            const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
-            let currentCopy = 1;
-            function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${base64Image}`;
-                if (isDateTimeEnabled) {
-                    const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-                }
-                if (copyIndex === selectedCopies) {
-                    printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-                }
-                window.location.href = printUrlImage;
-            }
-            function printNext() {
-                if (currentCopy < selectedCopies) {
-                    setTimeout(printNext, 10000);
-                }
-                printImageCopy(currentCopy);
-                currentCopy++;
-            }
-            printNext();
+            let isDateTimeEnabled = selectedChip === 'with';
+            let url = "siiprintagent://1.0/print?";
+            url += "CallbackSuccess=" + encodeURIComponent(window.location.href) + "&";
+            url += "CallbackFail=" + encodeURIComponent(window.location.href) + "&";
+            url += "Format=png&";
+            url += "Data=" + encodeURIComponent("data:image/png;base64," + base64Image) + "&";
+            url += "FitToWidth=no&";
+            url += "PaperWidth=" + paperWidth;
+            console.log("SII PRINT URL:", url); // デバッグ用
+            location.href = url;
             addHistory({
                 type: 'image',
                 mode: 'image',
@@ -1562,7 +1500,66 @@ function sendToPrintAssist(event) {
         reader.readAsDataURL(file);
     }
 }
-// --- テキスト印刷 ---
+
+// テキスト印刷（SII用URLスキーム）
+function printText() {
+    const textInput = document.getElementById('textInput');
+    let text = textInput.value;
+    if (text.trim() === '' || selectedTextChip === '') return;
+    text = toZenkaku(text);
+    const paperWidth = 58;
+    const isDateTimeEnabled = selectedTextChip === 'with';
+    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+
+    let url = "siiprintagent://1.0/print?";
+    url += "CallbackSuccess=" + encodeURIComponent(window.location.href) + "&";
+    url += "CallbackFail=" + encodeURIComponent(window.location.href) + "&";
+    url += "Format=text&";
+    url += "Data=" + encodeURIComponent(text) + "&";
+    url += "FitToWidth=no&";
+    url += "PaperWidth=" + paperWidth;
+    console.log("SII PRINT URL:", url); // デバッグ用
+    location.href = url;
+
+    addHistory({
+        type: 'text',
+        mode: 'text',
+        data: textInput.value,
+        dateTime: selectedTextChip,
+        copies: selectedTextCopies,
+        created: Date.now()
+    });
+}
+
+// 手書きサイン印刷（SII用URLスキーム）
+document.getElementById('signaturePrintButton').onclick = async function() {
+    if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
+    const canvas = document.getElementById('signaturePad');
+    const base64Image = canvas.toDataURL("image/png").split(',')[1];
+    const paperWidth = 58;
+    const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
+    let isDateTimeEnabled = selectedSignatureChip === 'with';
+
+    let url = "siiprintagent://1.0/print?";
+    url += "CallbackSuccess=" + encodeURIComponent(window.location.href) + "&";
+    url += "CallbackFail=" + encodeURIComponent(window.location.href) + "&";
+    url += "Format=png&";
+    url += "Data=" + encodeURIComponent("data:image/png;base64," + base64Image) + "&";
+    url += "FitToWidth=no&";
+    url += "PaperWidth=" + paperWidth;
+    console.log("SII PRINT URL:", url); // デバッグ用
+    location.href = url;
+    addHistory({
+        type: 'signature',
+        mode: 'signature',
+        data: canvas.toDataURL("image/png"),
+        dateTime: selectedSignatureChip,
+        copies: selectedCopies,
+        created: Date.now()
+    });
+};
+
+// --- テキスト自動改行 用 ---
 function wrapText(text) {
     text = toZenkaku(text);
     const lines = [];
@@ -1613,69 +1610,7 @@ function wrapText(text) {
     }
     return lines;
 }
-function safeEncodeURIComponent(str) {
-    return encodeURIComponent(str)
-        .replace(/!/g, '%21')
-        .replace(/'/g, '%27')
-        .replace(/\(/g, '%28')
-        .replace(/\)/g, '%29')
-        .replace(/\*/g, '%2A')
-        .replace(/%20/g, '%20');
-}
-function printText() {
-    const textInput = document.getElementById('textInput');
-    let text = textInput.value;
-    if (text.trim() === '' || selectedTextChip === '') return;
-    text = toZenkaku(text);
-    const paperWidth = 58;
-    const isDateTimeEnabled = selectedTextChip === 'with';
-    const wrappedLines = wrapText(text);
-    const lineHeight = 4;
-    const topMargin = 6;
-    const dateTimeHeight = 16;
-    const spaceBetweenTextAndDate = 4;
-    const bottomMargin = isDateTimeEnabled ? 15 : 19;
-    const leftMargin = 2;
-    let totalHeight = topMargin + (wrappedLines.length * lineHeight);
-    if (isDateTimeEnabled) {
-        totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
-    }
-    totalHeight += bottomMargin;
-    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-    let currentCopy = 1;
-    function printTextCopy(copyIndex) {
-        let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
-        wrappedLines.forEach((line, index) => {
-            const encodedLine = safeEncodeURIComponent(line);
-            printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-        });
-        if (isDateTimeEnabled) {
-            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-            const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-            printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
-        }
-        if (copyIndex === selectedTextCopies) {
-            printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-        }
-        window.location.href = printUrlText;
-    }
-    function printNext() {
-        if (currentCopy < selectedTextCopies) {
-            setTimeout(printNext, 10000);
-        }
-        printTextCopy(currentCopy);
-        currentCopy++;
-    }
-    printNext();
-    addHistory({
-        type: 'text',
-        mode: 'text',
-        data: textInput.value,
-        dateTime: selectedTextChip,
-        copies: selectedTextCopies,
-        created: Date.now()
-    });
-}
+
 function toggleClearButton() {
     const textInput = document.getElementById('textInput');
     const clearTextButton = document.getElementById('clearTextButton');
@@ -1709,5 +1644,6 @@ if ('serviceWorker' in navigator) {
     });
 }
 </script>
+<script src="signature_pad.umd.min.js"></script>
 </body>
 </html>
