@@ -108,7 +108,7 @@ header {
     top: 0;
     right: -350px;
     width: 320px;
-    max-width: 90vw;
+    max-width: 100vw;
     height: 100vh;
     background: var(--background-color);
     color: var(--text-color);
@@ -396,7 +396,7 @@ main {
         padding-top: 60px;
         padding-bottom: 80px;
     }
-    #historyDrawer { width: 95vw; }
+    #historyDrawer { width: 100vw; max-width: 100vw; }
     .historyImgThumb { max-width: 98vw; }
     #modeToggleUnified { font-size: 0.93rem; padding: 0.3rem 0.2rem; }
 }
@@ -1334,7 +1334,6 @@ function setTextChipsEnabled(enabled) {
         }
     });
 }
-// --- 手書きパッド ---
 let signaturePad = null;
 function getSignaturePadSize() {
     let w = 260, h = 340;
@@ -1430,7 +1429,6 @@ function updateSignaturePrintButtonState() {
         options.style.display = 'flex';
     }
 }
-
 // ---- SII URL Print Agent用 印刷関数 ----
 function safeEncodeURIComponent(str) {
     return encodeURIComponent(str)
@@ -1441,7 +1439,6 @@ function safeEncodeURIComponent(str) {
         .replace(/\*/g, '%2A')
         .replace(/%20/g, '%20');
 }
-
 // 画像印刷（SII用URLスキーム）
 function sendToPrintAssist(event) {
     event.preventDefault();
@@ -1468,16 +1465,15 @@ function sendToPrintAssist(event) {
             let imgH = Math.round(origH * ratio);
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let isDateTimeEnabled = selectedChip === 'with';
-            let url = "siiprintagent://print?";
-            url += "data=" + encodeURIComponent("data:image/png;base64," + base64Image);
-            url += "&type=png";
+            let url = "siiurlprintagent://print?";
+            url += "version=1";
+            url += "&data=" + encodeURIComponent("data:image/png;base64," + base64Image);
             url += "&width=" + paperWidth;
             url += "&copies=" + selectedCopies;
             if (isDateTimeEnabled) {
                 const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
                 url += "&footer=" + encodeURIComponent(dateTimeString);
             }
-            console.log("SII PRINT URL:", url); // デバッグ用
             window.location.href = url;
             addHistory({
                 type: 'image',
@@ -1502,7 +1498,6 @@ function sendToPrintAssist(event) {
         reader.readAsDataURL(file);
     }
 }
-
 // テキスト印刷（SII用URLスキーム）
 function printText() {
     const textInput = document.getElementById('textInput');
@@ -1512,19 +1507,16 @@ function printText() {
     const paperWidth = 58;
     const isDateTimeEnabled = selectedTextChip === 'with';
     const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-
-    let url = "siiprintagent://print?";
-    url += "data=" + encodeURIComponent(text);
-    url += "&type=text";
+    let url = "siiurlprintagent://print?";
+    url += "version=1";
+    url += "&data=" + encodeURIComponent(text);
     url += "&width=" + paperWidth;
     url += "&copies=" + selectedTextCopies;
     if (isDateTimeEnabled) {
         const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
         url += "&footer=" + encodeURIComponent(dateTimeString);
     }
-    console.log("SII PRINT URL:", url); // デバッグ用
     window.location.href = url;
-
     addHistory({
         type: 'text',
         mode: 'text',
@@ -1534,7 +1526,6 @@ function printText() {
         created: Date.now()
     });
 }
-
 // 手書きサイン印刷（SII用URLスキーム）
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
@@ -1543,17 +1534,15 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const paperWidth = 58;
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     let isDateTimeEnabled = selectedSignatureChip === 'with';
-
-    let url = "siiprintagent://print?";
-    url += "data=" + encodeURIComponent("data:image/png;base64," + base64Image);
-    url += "&type=png";
+    let url = "siiurlprintagent://print?";
+    url += "version=1";
+    url += "&data=" + encodeURIComponent("data:image/png;base64," + base64Image);
     url += "&width=" + paperWidth;
     url += "&copies=" + selectedCopies;
     if (isDateTimeEnabled) {
         const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
         url += "&footer=" + encodeURIComponent(dateTimeString);
     }
-    console.log("SII PRINT URL:", url); // デバッグ用
     window.location.href = url;
     addHistory({
         type: 'signature',
@@ -1564,7 +1553,6 @@ document.getElementById('signaturePrintButton').onclick = function() {
         created: Date.now()
     });
 };
-
 // --- テキスト自動改行 用 ---
 function wrapText(text) {
     text = toZenkaku(text);
@@ -1616,7 +1604,6 @@ function wrapText(text) {
     }
     return lines;
 }
-
 function toggleClearButton() {
     const textInput = document.getElementById('textInput');
     const clearTextButton = document.getElementById('clearTextButton');
