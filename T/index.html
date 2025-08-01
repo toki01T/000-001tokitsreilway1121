@@ -6,7 +6,6 @@
 <title>toki01Ⓣ 発券</title>
 <link rel="icon" href="favicon.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -913,6 +912,10 @@ function toZenkaku(str) {
     return str.replace(/[@#&\-\/\$%\(\)!?'"_:;_+]/g, function(c) { return toZenkakuMap[c] || c; });
 }
 
+function safeEncodeURIComponent(str) {
+    return encodeURIComponent(str);
+}
+
 var formattedDate = '';
 var formattedTime = '';
 var selectedChip = '';
@@ -927,418 +930,237 @@ var DB_NAME = 'toki01_history';
 var DB_VERSION = 1;
 var STORE_NAME = 'history';
 
-var printQueue = [];
-var isProcessingPrint = false;
-
-var jsPDF = window.jspdf.jsPDF;
-
-// ---- 修正：超高品質・大サイズ・完全中央配置Canvas作成 ----
-function createUltraSharpLargeCanvas(imageDataUrl, shrinkScale, isDateTimeEnabled, callback) {
-    if (shrinkScale === undefined) shrinkScale = 1;
-    
-    var img = new Image();
-    img.onload = function() {
-        var paperWidth = 58; // mm
-        var origW = img.naturalWidth;
-        var origH = img.naturalHeight;
-        
-        // 大幅サイズアップ + 完全中央配置
-        var maxImageWidth = 56; // 最大限まで大きく
-        var ratio = Math.min(maxImageWidth / origW, 1);
-        if (shrinkScale < 1) ratio *= shrinkScale;
-        
-        var imgW = Math.round(origW * ratio);
-        var imgH = Math.round(origH * ratio);
-        
-        // 数学的完全中央配置
-        var x = (paperWidth - imgW) / 2;
-        var y = 3;
-        
-        // 最適化された用紙長さ
-        var topMargin = 3;
-        var dateTimeHeight = isDateTimeEnabled ? 18 : 0;
-        var spaceBetween = isDateTimeEnabled ? 5 : 0;
-        var bottomMargin = isDateTimeEnabled ? 6 : 4;
-        var totalHeight = topMargin + imgH + spaceBetween + dateTimeHeight + bottomMargin;
-        
-        // 超高解像度Canvas（600DPI）
-        var canvas = document.createElement('canvas');
-        var ctx = canvas.getContext('2d');
-        var dpi = 600; // 超高解像度
-        var pxPerMm = dpi / 25.4;
-        
-        canvas.width = Math.round(paperWidth * pxPerMm);
-        canvas.height = Math.round(totalHeight * pxPerMm);
-        
-        // 最高品質設定
-        ctx.imageSmoothingEnabled = false;
-        ctx.webkitImageSmoothingEnabled = false;
-        ctx.mozImageSmoothingEnabled = false;
-        ctx.msImageSmoothingEnabled = false;
-        
-        // 純白背景
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // 数学的完全中央配置で画像描画
-        var imgPxW = Math.round(imgW * pxPerMm);
-        var imgPxH = Math.round(imgH * pxPerMm);
-        var imgPxX = Math.round(x * pxPerMm);
-        var imgPxY = Math.round(y * pxPerMm);
-        
-        ctx.drawImage(img, imgPxX, imgPxY, imgPxW, imgPxH);
-        
-        // 修正：正しい日付・時刻形式で描画
-        if (isDateTimeEnabled) {
-            ctx.fillStyle = '#000000';
-            ctx.font = 'bold ' + Math.round(24 * pxPerMm / 23.6) + 'px Arial'; // より大きなフォント
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-            
-            var dateTimeY = imgPxY + imgPxH + Math.round(spaceBetween * pxPerMm);
-            var centerX = canvas.width / 2;
-            
-            // 正しい日付形式：「2025年 8月 2日」
-            var today = new Date();
-            var correctDateFormat = today.getFullYear() + '年 ' + (today.getMonth() + 1) + '月 ' + today.getDate() + '日';
-            
-            // 正しい時刻形式：「13時35分00秒」
-            var correctTimeFormat = String(today.getHours()).padStart(2, '0') + '時' + 
-                                  String(today.getMinutes()).padStart(2, '0') + '分' + 
-                                  String(today.getSeconds()).padStart(2, '0') + '秒';
-            
-            // 日付（1行目）
-            ctx.fillText(correctDateFormat, centerX, dateTimeY);
-            
-            // 時刻（2行目）
-            var timeY = dateTimeY + Math.round(10 * pxPerMm / 23.6);
-            ctx.fillText(correctTimeFormat, centerX, timeY);
-        }
-        
-        var pngDataUrl = canvas.toDataURL('image/png', 1.0);
-        callback(pngDataUrl);
-    };
-    img.onerror = function() {
-        callback(null);
-    };
-    img.src = imageDataUrl;
-}
-
-function createUltraSharpLargeTextCanvas(text, isDateTimeEnabled, callback) {
-    text = toZenkaku(text);
-    var paperWidth = 58;
-    var wrappedLines = wrapText(text);
-    
-    // 大サイズテキスト用レイアウト
-    var lineHeight = 6; // より大きな行間
-    var topMargin = 6;
-    var dateTimeHeight = isDateTimeEnabled ? 18 : 0;
-    var spaceBetween = isDateTimeEnabled ? 5 : 0;
-    var bottomMargin = isDateTimeEnabled ? 6 : 4;
-    var leftMargin = 4;
-    
-    var totalHeight = topMargin + (wrappedLines.length * lineHeight) + spaceBetween + dateTimeHeight + bottomMargin;
-    
-    // 超高解像度Canvas
-    var canvas = document.createElement('canvas');
-    var ctx = canvas.getContext('2d');
-    var dpi = 600;
-    var pxPerMm = dpi / 25.4;
-    
-    canvas.width = Math.round(paperWidth * pxPerMm);
-    canvas.height = Math.round(totalHeight * pxPerMm);
-    
-    ctx.imageSmoothingEnabled = false;
-    ctx.webkitImageSmoothingEnabled = false;
-    ctx.mozImageSmoothingEnabled = false;
-    ctx.msImageSmoothingEnabled = false;
-    
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // より大きなテキスト描画
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold ' + Math.round(20 * pxPerMm / 23.6) + 'px Arial'; // より大きなフォント
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    
-    var textLeftMargin = Math.round(leftMargin * pxPerMm);
-    var textTopMargin = Math.round(topMargin * pxPerMm);
-    var lineHeightPx = Math.round(lineHeight * pxPerMm);
-    
-    for (var i = 0; i < wrappedLines.length; i++) {
-        var line = wrappedLines[i];
-        var yPos = textTopMargin + (i * lineHeightPx);
-        ctx.fillText(line, textLeftMargin, yPos);
-    }
-    
-    // 正しい日付・時刻描画
-    if (isDateTimeEnabled) {
-        var dateTimeY = textTopMargin + (wrappedLines.length * lineHeightPx) + Math.round(spaceBetween * pxPerMm);
-        
-        ctx.font = 'bold ' + Math.round(24 * pxPerMm / 23.6) + 'px Arial';
-        ctx.textAlign = 'center';
-        var centerX = canvas.width / 2;
-        
-        // 正しい日付・時刻形式
-        var today = new Date();
-        var correctDateFormat = today.getFullYear() + '年 ' + (today.getMonth() + 1) + '月 ' + today.getDate() + '日';
-        var correctTimeFormat = String(today.getHours()).padStart(2, '0') + '時' + 
-                              String(today.getMinutes()).padStart(2, '0') + '分' + 
-                              String(today.getSeconds()).padStart(2, '0') + '秒';
-        
-        // 日付（1行目）
-        ctx.fillText(correctDateFormat, centerX, dateTimeY);
-        
-        // 時刻（2行目）
-        var timeY = dateTimeY + Math.round(10 * pxPerMm / 23.6);
-        ctx.fillText(correctTimeFormat, centerX, timeY);
-    }
-    
-    var pngDataUrl = canvas.toDataURL('image/png', 1.0);
-    callback(pngDataUrl);
-}
-
-function createUltraSharpLargeSignatureCanvas(signatureDataUrl, isDateTimeEnabled, callback) {
-    var img = new Image();
-    img.onload = function() {
-        var paperWidth = 58;
-        var maxSignatureWidth = 54; // より大きなサイズ
-        
-        var scale = maxSignatureWidth / img.naturalWidth;
-        var signatureW = maxSignatureWidth;
-        var signatureH = Math.round(img.naturalHeight * scale);
-        
-        // 完全中央配置
-        var marginX = (paperWidth - signatureW) / 2;
-        var marginY = 6;
-        var dateTimeHeight = isDateTimeEnabled ? 18 : 0;
-        var spaceBetween = isDateTimeEnabled ? 5 : 0;
-        var bottomMargin = isDateTimeEnabled ? 6 : 4;
-        var totalHeight = marginY + signatureH + spaceBetween + dateTimeHeight + bottomMargin;
-        
-        // 超高解像度Canvas
-        var canvas = document.createElement('canvas');
-        var ctx = canvas.getContext('2d');
-        var dpi = 600;
-        var pxPerMm = dpi / 25.4;
-        
-        canvas.width = Math.round(paperWidth * pxPerMm);
-        canvas.height = Math.round(totalHeight * pxPerMm);
-        
-        ctx.imageSmoothingEnabled = false;
-        ctx.webkitImageSmoothingEnabled = false;
-        ctx.mozImageSmoothingEnabled = false;
-        ctx.msImageSmoothingEnabled = false;
-        
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // 署名を完全中央配置で描画
-        var signaturePxW = Math.round(signatureW * pxPerMm);
-        var signaturePxH = Math.round(signatureH * pxPerMm);
-        var signaturePxX = Math.round(marginX * pxPerMm);
-        var signaturePxY = Math.round(marginY * pxPerMm);
-        
-        ctx.drawImage(img, signaturePxX, signaturePxY, signaturePxW, signaturePxH);
-        
-        // 正しい日付・時刻描画
-        if (isDateTimeEnabled) {
-            ctx.fillStyle = '#000000';
-            ctx.font = 'bold ' + Math.round(24 * pxPerMm / 23.6) + 'px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-            
-            var dateTimeY = signaturePxY + signaturePxH + Math.round(spaceBetween * pxPerMm);
-            var centerX = canvas.width / 2;
-            
-            // 正しい日付・時刻形式
-            var today = new Date();
-            var correctDateFormat = today.getFullYear() + '年 ' + (today.getMonth() + 1) + '月 ' + today.getDate() + '日';
-            var correctTimeFormat = String(today.getHours()).padStart(2, '0') + '時' + 
-                                  String(today.getMinutes()).padStart(2, '0') + '分' + 
-                                  String(today.getSeconds()).padStart(2, '0') + '秒';
-            
-            // 日付（1行目）
-            ctx.fillText(correctDateFormat, centerX, dateTimeY);
-            
-            // 時刻（2行目）
-            var timeY = dateTimeY + Math.round(10 * pxPerMm / 23.6);
-            ctx.fillText(correctTimeFormat, centerX, timeY);
-        }
-        
-        var pngDataUrl = canvas.toDataURL('image/png', 1.0);
-        callback(pngDataUrl);
-    };
-    img.onerror = function() {
-        callback(null);
-    };
-    img.src = signatureDataUrl;
-}
-
-// ---- URLスキーム重複防止機能 ----
-function queuePrint(printData) {
-    printQueue.push(printData);
-    processPrintQueue();
-}
-
-function processPrintQueue() {
-    if (isProcessingPrint || printQueue.length === 0) return;
-    
-    isProcessingPrint = true;
-    var printData = printQueue.shift();
-    
-    console.log('超高品質大サイズ印刷処理開始:', printData.type);
-    
-    convertPngToPdf(printData.pngDataUrl, function(pdfBase64) {
-        if (!pdfBase64) {
-            alert('PDF変換に失敗しました。');
-            isProcessingPrint = false;
-            setTimeout(processPrintQueue, 100);
-            return;
-        }
-        
-        var thisPage = window.location.href;
-        var url = 'siiprintagent://1.0/print?' +
-            'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
-            'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
-            'Format=' + 'pdf' + '&' +
-            'Data=' + encodeURIComponent(pdfBase64) + '&' +
-            'SelectOnError=' + 'yes' + '&' +
-            'CutType=' + 'full' + '&' +
-            'CutFeed=' + 'yes' + '&' +
-            'FitToWidth=' + 'no' + '&' +
-            'PaperWidth=' + '58';
-        
-        console.log("超高品質SII PRINT URL:", url);
-        console.log("PDF Base64 Length:", pdfBase64.length);
-        
-        window.location.href = url;
-        addHistory(printData.historyItem);
-        
-        setTimeout(function() {
-            isProcessingPrint = false;
-            processPrintQueue();
-        }, 3000);
-    });
-}
-
-function convertPngToPdf(pngDataUrl, callback) {
-    var img = new Image();
-    img.onload = function() {
-        try {
-            var paperWidthMM = 58;
-            var aspectRatio = img.naturalHeight / img.naturalWidth;
-            var paperHeightMM = paperWidthMM * aspectRatio;
-            
-            var pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'mm',
-                format: [paperWidthMM, paperHeightMM]
-            });
-            
-            pdf.addImage(pngDataUrl, 'PNG', 0, 0, paperWidthMM, paperHeightMM);
-            
-            var pdfDataUri = pdf.output('datauristring');
-            var index = pdfDataUri.indexOf(',') + 1;
-            var pdfBase64 = pdfDataUri.slice(index);
-            callback(pdfBase64);
-        } catch (error) {
-            console.error('PDF変換エラー:', error);
-            callback(null);
-        }
-    };
-    img.onerror = function() {
-        console.error('PNG画像の読み込みエラー');
-        callback(null);
-    };
-    img.src = pngDataUrl;
-}
-
-// ---- 修正：超高品質大サイズ印刷関数 ----
+// ---- 修正：見本コード準拠の画像印刷関数 ----
 function sendToPrintAssist(event) {
     event.preventDefault();
-    
-    var fileInput = document.getElementById('imageUpload');
-    var file = fileInput.files[0];
-    var imageDataUrl = null;
-    var usePreview = false;
+    let fileInput = document.getElementById('imageUpload');
+    let file = fileInput.files[0];
+    let base64Image = null;
+    let usePreview = false;
     
     if (!file && document.getElementById('imagePreviewContainer').firstChild && document.getElementById('imagePreviewContainer').firstChild.tagName === 'IMG') {
-        var img = document.getElementById('imagePreviewContainer').firstChild;
-        imageDataUrl = img.src;
+        let img = document.getElementById('imagePreviewContainer').firstChild;
+        base64Image = img.src.split(',')[1];
         usePreview = true;
     }
     
     if ((!file && !usePreview) || selectedChip === '') return;
     
-    var shrinkChecked = document.getElementById('shrinkCheckbox').checked;
-    var selectedCopies = parseInt(document.getElementById('copiesSelect').value);
-    var isDateTimeEnabled = selectedChip === 'with';
+    const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
+    const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
     
-    function doPrint(imageDataUrl) {
-        var shrinkScale = shrinkChecked ? 0.6 : 1.0;
-        
-        createUltraSharpLargeCanvas(imageDataUrl, shrinkScale, isDateTimeEnabled, function(pngDataUrl) {
-            if (!pngDataUrl) {
-                alert('画像の処理に失敗しました。');
-                return;
+    function doPrint(base64Image) {
+        const paperWidth = 58;
+        let img = new window.Image();
+        img.onload = function() {
+            let origW = img.naturalWidth;
+            let origH = img.naturalHeight;
+            
+            // 見本コード準拠のサイズ計算
+            let ratio = Math.min(paperWidth / origW, 1);
+            if (shrinkChecked) ratio *= 0.6;
+            
+            let imgW = Math.round(origW * ratio);
+            let imgH = Math.round(origH * ratio);
+            let x = Math.round((paperWidth - imgW) / 2);
+            let y = 2;
+            
+            const isDateTimeEnabled = selectedChip === 'with';
+            const topMargin = 2;
+            const bottomMargin = isDateTimeEnabled ? 16 : 18;
+            const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
+            
+            let currentCopy = 1;
+            
+            function printImageCopy(copyIndex) {
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${base64Image}`;
+                
+                if (isDateTimeEnabled) {
+                    const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
+                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                }
+                
+                if (copyIndex === selectedCopies) {
+                    printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+                }
+                
+                window.location.href = printUrlImage;
             }
             
-            queuePrint({
-                type: 'image',
-                pngDataUrl: pngDataUrl,
-                historyItem: {
-                    type: 'image',
-                    mode: 'image',
-                    data: imageDataUrl,
-                    dateTime: selectedChip,
-                    copies: selectedCopies,
-                    shrink: shrinkChecked,
-                    created: Date.now()
+            function printNext() {
+                if (currentCopy < selectedCopies) {
+                    setTimeout(printNext, 10000);
                 }
+                printImageCopy(currentCopy);
+                currentCopy++;
+            }
+            
+            printNext();
+            
+            addHistory({
+                type: 'image',
+                mode: 'image',
+                data: 'data:image/png;base64,' + base64Image,
+                dateTime: selectedChip,
+                copies: selectedCopies,
+                shrink: shrinkChecked,
+                created: Date.now()
             });
-        });
+        };
+        img.src = 'data:image/png;base64,' + base64Image;
     }
     
     if (usePreview) {
-        doPrint(imageDataUrl);
+        doPrint(base64Image);
     } else {
-        var reader = new FileReader();
+        const reader = new FileReader();
         reader.onloadend = function() {
-            doPrint(reader.result);
+            base64Image = reader.result.split(',')[1];
+            doPrint(base64Image);
         };
         reader.readAsDataURL(file);
     }
 }
 
+// ---- 修正：見本コード準拠のテキスト印刷関数 ----
 function printText() {
     var textInput = document.getElementById('textInput');
     var text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
     
-    var isDateTimeEnabled = selectedTextChip === 'with';
-    var selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+    const isDateTimeEnabled = selectedTextChip === 'with';
+    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+    const paperWidth = 58;
+    const wrappedLines = wrapText(text);
     
-    createUltraSharpLargeTextCanvas(text, isDateTimeEnabled, function(pngDataUrl) {
-        if (!pngDataUrl) {
-            alert('テキストの処理に失敗しました。');
-            return;
+    // 見本コード準拠のテキストレイアウト
+    const lineHeight = 4;
+    const topMargin = 6;
+    const dateTimeHeight = isDateTimeEnabled ? 16 : 0;
+    const spaceBetween = isDateTimeEnabled ? 4 : 0;
+    const bottomMargin = isDateTimeEnabled ? 15 : 19;
+    const totalHeight = topMargin + (wrappedLines.length * lineHeight) + spaceBetween + dateTimeHeight + bottomMargin;
+    
+    let currentCopy = 1;
+    
+    function printTextCopy(copyIndex) {
+        let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
+        
+        // テキスト行を追加
+        for (let i = 0; i < wrappedLines.length; i++) {
+            const line = toZenkaku(wrappedLines[i]);
+            const yPos = topMargin + (i * lineHeight);
+            printUrlText += `&${i+1}=${safeEncodeURIComponent(line)},2,${yPos},${paperWidth-4},${lineHeight},機械彫刻用標準書体 M,3,0,0,0`;
         }
         
-        queuePrint({
-            type: 'text',
-            pngDataUrl: pngDataUrl,
-            historyItem: {
-                type: 'text',
-                mode: 'text',
-                data: textInput.value,
-                dateTime: selectedTextChip,
-                copies: selectedTextCopies,
-                created: Date.now()
-            }
-        });
+        // 日付・時刻を追加
+        if (isDateTimeEnabled) {
+            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
+            const dateTimeY = topMargin + (wrappedLines.length * lineHeight) + spaceBetween;
+            printUrlText += `&${wrappedLines.length+1}=${safeEncodeURIComponent(dateTimeString)},0,${dateTimeY},${paperWidth},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+        }
+        
+        if (copyIndex === selectedTextCopies) {
+            printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+        }
+        
+        window.location.href = printUrlText;
+    }
+    
+    function printNext() {
+        if (currentCopy < selectedTextCopies) {
+            setTimeout(printNext, 10000);
+        }
+        printTextCopy(currentCopy);
+        currentCopy++;
+    }
+    
+    printNext();
+    
+    addHistory({
+        type: 'text',
+        mode: 'text',
+        data: textInput.value,
+        dateTime: selectedTextChip,
+        copies: selectedTextCopies,
+        created: Date.now()
     });
+}
+
+// ---- 修正：見本コード準拠の手書きサイン印刷関数 ----
+function printSignature() {
+    if (!signaturePad || signaturePad.isEmpty() || selectedSignatureChip === '') return;
+    
+    try {
+        var canvas = document.getElementById('signaturePad');
+        var signatureDataUrl = canvas.toDataURL("image/png");
+        var base64Signature = signatureDataUrl.split(',')[1];
+        var selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
+        
+        const paperWidth = 58;
+        const isDateTimeEnabled = selectedSignatureChip === 'with';
+        
+        // 見本コード準拠のサイン処理
+        let img = new window.Image();
+        img.onload = function() {
+            const maxSignatureWidth = 50;
+            let origW = img.naturalWidth;
+            let origH = img.naturalHeight;
+            
+            let ratio = Math.min(maxSignatureWidth / origW, 1);
+            let signatureW = Math.round(origW * ratio);
+            let signatureH = Math.round(origH * ratio);
+            let x = Math.round((paperWidth - signatureW) / 2);
+            let y = 4;
+            
+            const topMargin = 4;
+            const dateTimeHeight = isDateTimeEnabled ? 16 : 0;
+            const spaceBetween = isDateTimeEnabled ? 4 : 0;
+            const bottomMargin = isDateTimeEnabled ? 16 : 18;
+            const totalHeight = topMargin + signatureH + spaceBetween + dateTimeHeight + bottomMargin;
+            
+            let currentCopy = 1;
+            
+            function printSignatureCopy(copyIndex) {
+                let printUrlSignature = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${signatureW},${signatureH},${base64Signature}`;
+                
+                if (isDateTimeEnabled) {
+                    const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
+                    printUrlSignature += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + signatureH + spaceBetween},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                }
+                
+                if (copyIndex === selectedCopies) {
+                    printUrlSignature += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+                }
+                
+                window.location.href = printUrlSignature;
+            }
+            
+            function printNext() {
+                if (currentCopy < selectedCopies) {
+                    setTimeout(printNext, 10000);
+                }
+                printSignatureCopy(currentCopy);
+                currentCopy++;
+            }
+            
+            printNext();
+            
+            addHistory({
+                type: 'signature',
+                mode: 'signature',
+                data: signatureDataUrl,
+                dateTime: selectedSignatureChip,
+                copies: selectedCopies,
+                created: Date.now()
+            });
+        };
+        img.src = signatureDataUrl;
+        
+    } catch (error) {
+        console.error('署名印刷エラー:', error);
+        alert('署名印刷に失敗しました。もう一度お試しください。');
+    }
 }
 
 // ---- IndexedDB 関連関数 ----
@@ -1526,7 +1348,7 @@ function restoreFromHistory(item) {
         chips.forEach(function(chip) { chip.classList.remove('selected'); });
         if (item.dateTime === 'with') {
             chips[0].classList.add('selected');
-                } else {
+        } else {
             chips[1].classList.add('selected');
         }
         
@@ -1715,7 +1537,7 @@ function loadHistoryList() {
                 metaCopies.textContent = item.copies + '枚';
                 metaRow.appendChild(metaCopies);
                 
-                contentBlock.appendChild(metaRow);
+                                contentBlock.appendChild(metaRow);
             } else {
                 var text = document.createElement('div');
                 text.className = 'historyTextPreview';
@@ -1756,17 +1578,17 @@ function loadHistoryList() {
     });
 }
 
-// ---- 修正：正しい日付・時刻表示 ----
+// ---- 修正：正しい日付・時刻表示（見本準拠） ----
 function displayDate() {
     var today = new Date();
-    // 正しい形式：「2025年 8月 2日」
+    // 正しい形式：「2025年 8月 2日」（スペース付き）
     formattedDate = today.getFullYear() + '年 ' + (today.getMonth() + 1) + '月 ' + today.getDate() + '日';
     document.getElementById('dateDisplay').textContent = formattedDate;
 }
 
 function updateTime() {
     var now = new Date();
-    // 正しい形式：「13時35分00秒」
+    // 正しい形式：「13時35分00秒」（0埋め）
     formattedTime = String(now.getHours()).padStart(2, '0') + '時' + 
                    String(now.getMinutes()).padStart(2, '0') + '分' + 
                    String(now.getSeconds()).padStart(2, '0') + '秒';
@@ -1774,24 +1596,11 @@ function updateTime() {
     setTimeout(updateTime, 1000);
 }
 
-// ---- URLスキームのコールバック処理 ----
-function handleCallback() {
-    var query = location.search;
-    var code = query.match(/Code=([^&#]*)/);
-    var message = query.match(/Message=([^&#]*)/);
-    if (code) {
-        alert('印刷エラーが発生しました。\n\nCode = ' + decodeURIComponent(code[1]) + '\nMessage = ' + decodeURIComponent(message[1]));
-    }
-    
-    isProcessingPrint = false;
-}
-
 // ---- 初期化 ----
 window.onload = function() {
     displayDate();
     updateTime();
     setModeToggle(currentHistoryType);
-    handleCallback();
     
     document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
     document.getElementById('textInput').addEventListener('input', toggleClearButton);
@@ -2042,39 +1851,9 @@ window.addEventListener('resize', function() {
     }
 });
 
-// ---- 手書きサイン印刷（超高品質対応） ----
+// ---- 手書きサイン印刷ボタン接続 ----
 document.getElementById('signaturePrintButton').onclick = function() {
-    if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
-    
-    try {
-        var canvas = document.getElementById('signaturePad');
-        var signatureDataUrl = canvas.toDataURL("image/png");
-        var selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
-        var isDateTimeEnabled = selectedSignatureChip === 'with';
-        
-        createUltraSharpLargeSignatureCanvas(signatureDataUrl, isDateTimeEnabled, function(pngDataUrl) {
-            if (!pngDataUrl) {
-                alert('署名の処理に失敗しました。');
-                return;
-            }
-            
-            queuePrint({
-                type: 'signature',
-                pngDataUrl: pngDataUrl,
-                historyItem: {
-                    type: 'signature',
-                    mode: 'signature',
-                    data: signatureDataUrl,
-                    dateTime: selectedSignatureChip,
-                    copies: selectedCopies,
-                    created: Date.now()
-                }
-            });
-        });
-    } catch (error) {
-        console.error('署名印刷エラー:', error);
-        alert('署名印刷に失敗しました。もう一度お試しください。');
-    }
+    printSignature();
 };
 
 // ---- テキスト自動改行機能 ----
