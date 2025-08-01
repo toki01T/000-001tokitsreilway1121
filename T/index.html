@@ -1,1568 +1,185 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-<title>toki01Ⓣ 発券</title>
-<link rel="icon" href="favicon.png" type="image/png">
-<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-<style>
-:root {
-    --primary-color: #00A3ED;
-    --primary-hover: #0080BF;
-    --background-color: #fff;
-    --text-color: #222;
-    --footer-bg: #E6F3FF;
-    --chip-bg: #F8F9FA;
-    --border-color: #cccccc;
-    --input-bg: #fff;
-    --input-border: #ccc;
-    --input-text: #222;
-    --check-color: #00A3ED;
-    --check-bg: #E6F3FF;
-}
-@media (prefers-color-scheme: dark) {
-    :root {
-        --primary-color: #A67843;
-        --primary-hover: #7C5832;
-        --background-color: #2D2D2D;
-        --text-color: #F3E9D2;
-        --footer-bg: #232323;
-        --chip-bg: #3B3631;
-        --border-color: #7C5832;
-        --input-bg: #232323;
-        --input-border: #A67843;
-        --input-text: #F3E9D2;
-        --check-color: #68C5E7;
-        --check-bg: #223D4B;
-    }
-}
-html, body {
-    height: 100%;
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background-color: var(--background-color);
-    color: var(--text-color);
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-}
-body {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-header {
-    width: 100%;
-    background-color: var(--primary-color);
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    position: fixed;
-    top: 0;
-    left: 0;
-    z-index: 100;
-    height: 48px;
-    display: flex;
-    align-items: center;
-}
-.navbar {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    height: 48px;
-    padding: 0 1rem;
-    box-sizing: border-box;
-    position: relative;
-}
-.navbar-brand {
-    color: #fff;
-    text-decoration: none;
-    font-size: 1.05rem;
-    flex: 1 1 auto;
-    text-align: center;
-    font-weight: normal;
-    letter-spacing: 0.05em;
-    line-height: 1;
-    margin: 0;
-    padding: 0;
-    white-space: nowrap;
-}
-#historyMenuBtn {
-    position: absolute;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: transparent;
-    border: none;
-    color: #fff;
-    font-size: 1.7rem;
-    cursor: pointer;
-    z-index: 12;
-    padding: 0;
-}
-#historyMenuBtn:focus { outline: none; }
-#historyDrawer {
-    position: fixed;
-    top: 0;
-    right: -350px;
-    width: 320px;
-    max-width: 90vw;
-    height: 100vh;
-    background: var(--background-color);
-    color: var(--text-color);
-    box-shadow: -2px 0 8px rgba(0,0,0,0.18);
-    z-index: 9999;
-    transition: right 0.25s;
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-}
-#historyDrawer.open {
-    right: 0;
-}
-#historyDrawerHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--chip-bg);
-}
-#historyDrawerHeader h2 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: bold;
-}
-#historyDrawerCloseWrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-left: 0.7em;
-    margin-right: -0.6em;
-    user-select: none;
-}
-#historyDrawerClose {
-    background: transparent;
-    border: none;
-    font-size: 1.5rem;
-    color: var(--primary-color);
-    cursor: pointer;
-    line-height: 1;
-    display: block;
-    margin-bottom: 0.1em;
-    padding: 0;
-}
-#historyDrawerClose:focus { outline: none; }
-#historyDrawerCloseLabel {
-    font-size: 0.74em;
-    color: #888;
-    letter-spacing: 0.03em;
-    text-align: center;
-    margin: 0;
-    padding: 0;
-    line-height: 1.1;
-    font-family: Arial, sans-serif;
-    pointer-events: none;
-    user-select: none;
-}
-#historyDrawerMenu {
-    display: flex;
-    gap: 0.5rem;
-    padding: 1rem;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--background-color);
-    justify-content: center;
-}
-#modeToggleUnified {
-    width: 100%;
-    max-width: 320px;
-    padding: 0.4rem 1.1rem;
-    border-radius: 5px;
-    border: 1.5px solid var(--primary-color);
-    background: var(--chip-bg);
-    color: var(--primary-color);
-    font-size: 0.97rem;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-    text-align: center;
-    margin: 0 auto;
-    outline: none;
-    white-space: nowrap;
-    font-family: inherit;
-    box-sizing: border-box;
-    display: block;
-}
-#modeToggleUnified.selected, #modeToggleUnified:active {
-    background: var(--primary-color);
-    color: #fff;
-}
-@media (max-width: 600px) {
-    #modeToggleUnified { font-size: 0.93rem; padding: 0.3rem 0.2rem; }
-}
-#historyList {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0.5rem 0.5rem 1rem 0.5rem;
-}
-.historyListSpacer {
-    height: 120px;
-    min-height: 120px;
-    width: 100%;
-    pointer-events: none;
-    background: transparent;
-}
-.historyItem {
-    border-bottom: 1px solid var(--border-color);
-    padding: 0.7rem 0.2rem 0.7rem 0.2rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-    background: none;
-    position: relative;
-    user-select: none;
-    overflow: hidden;
-}
-.historyItem:last-child { border-bottom: none; }
-.historyItem:hover {
-    background: var(--chip-bg);
-}
-.historyContentBlock {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    flex: 1 1 auto;
-    min-width: 0;
-    justify-content: center;
-    width: 100%;
-}
-.historyImgRow {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-}
-.historyImgThumb {
-    width: auto;
-    max-width: 200px;
-    max-height: 120px;
-    height: auto;
-    object-fit: contain;
-    display: block;
-    margin: 0.3em auto 0.5em auto;
-    border-radius: 8px;
-    border: 1.5px solid var(--border-color);
-    background: #f4f4f4;
-}
-.historyMetaRow {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    gap: 0.8em;
-    width: 100%;
-    margin-bottom: 0.2em;
-}
-.historyShrinkIcon {
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    min-height: 24px;
-    border-radius: 5px;
-    background: var(--check-bg);
-    border: 2.5px solid var(--check-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 0.1em;
-    font-size: 1.1em;
-    color: var(--check-color);
-    font-weight: bold;
-    box-sizing: border-box;
-}
-.historyShrinkIcon svg {
-    display: block;
-    width: 18px;
-    height: 18px;
-}
-.historyMetaText {
-    font-size: 0.97em;
-    color: var(--primary-color);
-    text-align: center;
-    display: inline-block;
-    vertical-align: middle;
-    white-space: nowrap;
-    padding: 0 0.1em;
-}
-.historyMetaCopies {
-    display: inline-block;
-    vertical-align: middle;
-    min-width: 2.6em;
-    padding: 0.09em 0.7em 0.09em 0.7em;
-    font-size: 0.97em;
-    color: var(--primary-color);
-    background: #00A3ED1A;
-    border: 1.5px solid var(--primary-color);
-    border-radius: 7px;
-    text-align: center;
-    margin-left: 0.1em;
-    font-weight: bold;
-    letter-spacing: 0.04em;
-}
-.historyTextPreview {
-    font-size: 1rem;
-    color: var(--text-color);
-    background: var(--chip-bg);
-    border-radius: 4px;
-    padding: 0.2rem 0.5rem;
-    max-width: 140px;
-    min-width: 40px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    margin-bottom: 0.2rem;
-    text-align: center;
-    margin-left: auto;
-    margin-right: auto;
-}
-.historyCreated {
-    font-size: 0.8rem;
-    color: #888;
-    margin-top: 0.1em;
-    text-align: center;
-    letter-spacing: 0.02em;
-    font-family: 'Menlo', 'Consolas', monospace;
-    word-break: keep-all;
-    width: 100%;
-}
-.swipeDeleteBtn {
-    position: absolute;
-    right: -80px;
-    top: 0;
-    height: 100%;
-    width: 80px;
-    background: #ff6666;
-    color: #fff;
-    border: none;
-    outline: none;
-    font-size: 1.1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: right 0.2s;
-    z-index: 2;
-    cursor: pointer;
-    visibility: hidden;
-}
-.historyItem.swiped .swipeDeleteBtn {
-    right: 0;
-    visibility: visible;
-}
-.historyItem.swiping {
-    background: #ffeaea;
-}
-#historyDrawerBg {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 9998;
-    background: transparent;
-    display: none;
-}
-#historyDrawer.open + #historyDrawerBg {
-    display: block;
-}
-main {
-    flex: 1;
-    min-height: 100vh;
-    width: 100vw;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding-top: 70px;
-    padding-bottom: 80px;
-    background: var(--background-color);
-    color: var(--text-color);
-    box-sizing: border-box;
-}
-@media (max-width: 600px) {
-    main {
-        padding-top: 60px;
-        padding-bottom: 80px;
-    }
-    #historyDrawer { width: 95vw; }
-    .historyImgThumb { max-width: 98vw; }
-    #modeToggleUnified { font-size: 0.93rem; padding: 0.3rem 0.2rem; }
-}
-@media (orientation: landscape) {
-    main {
-        padding-top: 30px;
-        min-height: 100vw;
-    }
-}
-.section-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    max-width: 500px;
-}
-.print-options {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 1rem;
-    gap: 0.5rem;
-    width: 100%;
-}
-.print-options select,
-#printButton, #textPrintButton, #signaturePrintButton {
-    margin: 0 0.3em;
-}
-.print-options select {
-    text-align: center;
-    text-align-last: center;
-    margin: 0 0.3em;
-    padding: 0.4rem 1.5rem 0.4rem 1.5rem;
-    border: 1.5px solid var(--primary-color);
-    border-radius: 5px;
-    background-color: var(--background-color);
-    color: var(--primary-color);
-    font-size: 0.97rem;
-    appearance: none;
-    -webkit-appearance: none;
-    outline: none;
-    min-width: 80px;
-    box-sizing: border-box;
-    display: inline-block;
-}
-@media (max-width: 500px) {
-    .print-options select {
-        min-width: 70px;
-        font-size: 0.93rem;
-        padding: 0.3rem 1.2rem 0.3rem 1.2rem;
-    }
-}
-.print-options button {
-    display: inline-block;
-    vertical-align: middle;
-}
-#printButton, #textPrintButton, #signaturePrintButton {
-    padding: 0.4rem 1.3rem;
-    border-radius: 5px;
-    background-color: var(--primary-color);
-    color: #fff;
-    font-size: 0.97rem;
-    cursor: pointer;
-    transition: .3s;
-    border: none;
-    margin-left: 0.5rem;
-    margin-right: 0.5rem;
-    text-align: center;
-}
-#printButton.disabled, #textPrintButton.disabled, #signaturePrintButton.disabled {
-    background-color: #aaa;
-    cursor: not-allowed;
-}
-.choice-chips {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 1rem;
-    gap: 0.7rem;
-    width: 100%;
-}
-.chip {
-    display: inline-block;
-    min-width: 110px;
-    text-align: center;
-    padding: 0.4rem 1.1rem;
-    border-radius: 0.5rem;
-    background-color: var(--chip-bg);
-    color: var(--primary-color);
-    cursor: pointer;
-    font-size: 0.97rem;
-    border: 1.5px solid var(--primary-color);
-    transition: .3s;
-    opacity: 1;
-    pointer-events: auto;
-    user-select: none;
-    margin: 0 0.2em;
-}
-.chip.selected {
-    background-color: var(--primary-color);
-    color: #fff;
-}
-.chip.disabled {
-    opacity: 0.5;
-    pointer-events: none;
-}
-@media (max-width: 500px) {
-    .chip {
-        min-width: 90px;
-        font-size: 0.93rem;
-        padding: 0.3rem 0.7rem;
-    }
-}
-/* チェックボックスカスタムデザイン（履歴リスト・画像モード共通） */
-.custom-checkbox {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    user-select: none;
-    margin: 0 0.4em;
-    height: 24px;
-}
-.custom-checkbox input[type="checkbox"] {
-    opacity: 0;
-    width: 0;
-    height: 0;
-    position: absolute;
-}
-.custom-checkbox .checkmark {
-    display: inline-block;
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    min-height: 24px;
-    border-radius: 6px;
-    background: var(--check-bg);
-    border: 2.5px solid var(--check-color);
-    box-sizing: border-box;
-    position: relative;
-    transition: border-color 0.2s, background 0.2s;
-}
-.custom-checkbox input[type="checkbox"]:checked + .checkmark {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
-}
-.custom-checkbox .checkmark::after {
-    content: "";
-    position: absolute;
-    display: none;
-}
-.custom-checkbox input[type="checkbox"]:checked + .checkmark::after {
-    display: block;
-}
-.custom-checkbox .checkmark::after {
-    left: 6px;
-    top: 2.5px;
-    width: 8px;
-    height: 14px;
-    border: solid #fff;
-    border-width: 0 3px 3px 0;
-    border-radius: 2px;
-    transform: rotate(45deg);
-    content: "";
-}
-@media (max-width: 500px) {
-    .custom-checkbox .checkmark {
-        width: 22px;
-        height: 22px;
-        min-width: 22px;
-        min-height: 22px;
-        border-radius: 5px;
-    }
-}
-#signatureSection {
-    display: none;
-    width: 100%;
-    margin: 0 auto;
-    text-align: center;
-}
-.signature-pad-container {
-    margin: 1.2rem auto 0.7rem auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-}
-.signature-clear-row {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 0.5em;
-}
-#signatureClearBtn {
-    background: var(--primary-color);
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 0.3em 1.3em;
-    font-size: 0.97rem;
-    cursor: pointer;
-    transition: background 0.2s;
-    display: inline-block;
-    margin: 0 auto;
-}
-#signatureClearBtn:hover {
-    background: var(--primary-hover);
-}
-.signature-pad-frame {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fff;
-    border: 2.5px solid var(--primary-color);
-    border-radius: 10px;
-    box-shadow: 0 1px 8px rgba(0,0,0,0.06);
-    width: 260px;
-    height: 340px;
-    margin: 0 auto;
-    max-width: 95vw;
-    max-height: 90vw;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-}
-#signaturePad {
-    background: #fff;
-    border: none;
-    border-radius: 8px;
-    display: block;
-    margin: 0 auto;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-    width: 260px;
-    height: 340px;
-    min-width: 120px;
-    min-height: 120px;
-    max-width: 260px;
-    max-height: 340px;
-    box-sizing: border-box;
-}
-@media (max-width: 500px) {
-    .signature-pad-frame, #signaturePad {
-        width: 90vw !important;
-        height: 110vw !important;
-        min-width: 120px !important;
-        min-height: 120px !important;
-        max-width: 260px !important;
-        max-height: 340px !important;
-    }
-}
-.signature-instruction {
-    margin-bottom: 0.2em;
-    font-size: 0.96em;
-    color: #444;
-}
-.file-upload { margin: 1rem 0; text-align: center; }
-.file-upload-label {
-    display: inline-block;
-    padding: 0.3rem 0.7rem;
-    border: 2px solid var(--primary-color);
-    border-radius: 5px;
-    background-color: var(--chip-bg);
-    cursor: pointer;
-    font-size: 0.97rem;
-    color: var(--primary-color);
-    transition: background-color 0.3s, color 0.3s;
-}
-.file-upload-label:hover {
-    background-color: var(--primary-hover);
-    color: #fff;
-}
-.file-upload input[type="file"] { display: none; }
-.image-preview {
-    margin-top: 10px;
-    text-align: center;
-    width: 100%;
-    max-width: 480px;
-    margin-left: auto;
-    margin-right: auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-.image-preview img {
-    display: block;
-    margin: 0 auto;
-    border: 1px solid var(--border-color);
-    border-radius: 5px;
-    object-fit: contain;
-    background: var(--input-bg);
-    width: auto;
-    height: auto;
-    max-width: 90vw;
-    max-height: 360px;
-}
-@media (max-width: 700px) {
-    .image-preview {
-        width: 98vw;
-        max-width: 98vw;
-    }
-    .image-preview img {
-        max-width: 90vw;
-        max-height: 70vw;
-    }
-}
-#textInput {
-    width: calc(16 * 1em);
-    max-width: 450px;
-    height: 300px;
-    margin-top: 1rem;
-    padding: 0.5rem;
-    border: 1px solid var(--input-border);
-    border-radius: 5px;
-    resize: vertical;
-    font-family: monospace;
-    font-size: 17px;
-    white-space: pre-wrap;
-    text-align: center;
-    background: var(--input-bg);
-    color: var(--input-text);
-}
-.text-input-container {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-.clear-button {
-    position: absolute;
-    top: -30px;
-    background-color: var(--primary-color);
-    color: #fff;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 3px;
-    cursor: pointer;
-    display: none;
-    z-index: 10;
-    font-size: 0.95rem;
-}
-.clear-button:hover {
-    background-color: var(--primary-hover);
-}
-footer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    padding: 10px 0;
-    background-color: var(--footer-bg);
-    text-align: center;
-}
-footer p {
-    margin: 0;
-    color: var(--primary-color);
-    font-size: 14px;
-}
-</style>
-</head>
-<body>
-<header>
-    <div class="navbar">
-        <a class="navbar-brand" href="#">toki01Ⓣ</a>
-        <button id="historyMenuBtn" title="履歴"><span>&#9776;</span></button>
-    </div>
-</header>
-<div id="historyDrawer">
-    <div id="historyDrawerHeader">
-        <h2>履歴</h2>
-        <div id="historyDrawerCloseWrap">
-            <button id="historyDrawerClose" title="閉じる" tabindex="0">&times;</button>
-            <span id="historyDrawerCloseLabel">close（閉じる）</span>
-        </div>
-    </div>
-    <div id="historyDrawerMenu">
-        <button id="modeToggleUnified" class="selected">画像・T’s券</button>
-    </div>
-    <div id="historyList"></div>
-</div>
-<div id="historyDrawerBg"></div>
-<main>
-    <div class="section-content">
-        <section id="imageSection" class="image-selection">
-            <form id="imageForm" enctype="multipart/form-data" onsubmit="sendToPrintAssist(event)">
-                <div class="file-upload">
-                    <label for="imageUpload" class="file-upload-label">
-                        <span>画像・T❜s券</span>
-                        <input type="file" id="imageUpload" name="image" accept="image/jpeg, image/png" onchange="previewImage(event)">
-                    </label>
-                </div>
-                <div class="image-preview" id="imagePreviewContainer"></div>
-                <div class="choice-chips" id="dateTimeChoice" style="display:none;">
-                    <div class="chip" id="chipWith" onclick="selectChip('with')">日付・時刻あり</div>
-                    <div class="chip" id="chipWithout" onclick="selectChip('without')">日付・時刻なし</div>
-                </div>
-                <div class="print-options" id="imagePrintOptions" style="display:none;">
-                    <select id="copiesSelect">
-                        <option value="1">1枚</option>
-                        <option value="2">2枚</option>
-                        <option value="3">3枚</option>
-                        <option value="4">4枚</option>
-                        <option value="5">5枚</option>
-                    </select>
-                    <button type="submit" id="printButton" class="disabled">発行</button>
-                    <label class="custom-checkbox" id="shrinkCheckboxLabel" style="margin-left:0.5em;margin-right:0.5em;">
-                        <input type="checkbox" id="shrinkCheckbox" title="縮小印刷" />
-                        <span class="checkmark"></span>
-                    </label>
-                </div>
-            </form>
-        </section>
-        <section id="textSection" style="display:none;">
-            <div class="text-input-container">
-                <button id="clearTextButton" class="clear-button" style="display:none;">クリア</button>
-                <textarea id="textInput" rows="4" placeholder="テキストを入力してください"></textarea>
-            </div>
-            <div class="choice-chips" id="textDateTimeChoice" style="display:flex;">
-                <div class="chip" id="textChipWith" onclick="selectTextChip('with')">日付・時刻あり</div>
-                <div class="chip" id="textChipWithout" onclick="selectTextChip('without')">日付・時刻なし</div>
-            </div>
-            <div class="print-options" id="textPrintOptions" style="display:none;">
-                <select id="textCopiesSelect">
-                    <option value="1">1枚</option>
-                    <option value="2">2枚</option>
-                    <option value="3">3枚</option>
-                    <option value="4">4枚</option>
-                    <option value="5">5枚</option>
-                </select>
-                <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
-            </div>
-        </section>
-        <section id="signatureSection" style="display:none;">
-            <div class="signature-pad-container">
-                <div class="signature-clear-row">
-                    <button id="signatureClearBtn" type="button">クリア</button>
-                </div>
-                <div class="signature-instruction">指またはペンで枠内にご記入ください</div>
-                <div class="signature-pad-frame" id="signaturePadFrame">
-                    <canvas id="signaturePad"></canvas>
-                </div>
-            </div>
-            <div class="choice-chips" id="signatureDateTimeChoice" style="display:flex;">
-                <div class="chip" id="signatureChipWith" onclick="selectSignatureChip('with')">日付・時刻あり</div>
-                <div class="chip" id="signatureChipWithout" onclick="selectSignatureChip('without')">日付・時刻なし</div>
-            </div>
-            <div class="print-options" id="signaturePrintOptions">
-                <select id="signatureCopiesSelect">
-                    <option value="1">1枚</option>
-                    <option value="2">2枚</option>
-                    <option value="3">3枚</option>
-                    <option value="4">4枚</option>
-                    <option value="5">5枚</option>
-                </select>
-                <button id="signaturePrintButton" class="disabled" type="button">発行</button>
-            </div>
-        </section>
-        <div id="dateDisplay"></div>
-        <div id="timeDisplay"></div>
-    </div>
-</main>
-<footer>
-    <p>&copy; 2025 とき T's 鉄道部 toki</p>
-</footer>
-<script>
-const toZenkakuMap = {
-    '@': '＠', '#': '＃', '&': '＆', '-': '－', '/': '／', '$': '＄', '%': '％',
-    '(': '（', ')': '）', '!': '！', '?': '？', "'": '＇', '"': '＂', ':': '：',
-    ';': '；', '_': '＿', '+': '＋'
-};
-function toZenkaku(str) {
-    return str.replace(/[@#&\-\/\$%\(\)!?'"_:;_+]/g, c => toZenkakuMap[c] || c);
-}
-let formattedDate = '';
-let formattedTime = '';
-let selectedChip = '';
-let selectedTextChip = '';
-let selectedSignatureChip = '';
-let lastPreviewImageNaturalWidth = 0;
-let lastPreviewImageNaturalHeight = 0;
-const DB_NAME = 'toki01_history';
-const DB_VERSION = 1;
-const STORE_NAME = 'history';
-function openDB() {
+                unit: 'mm',
+                format: [paperWidthMM, paperHeightMM]
+            });
+            
+            // フォントサイズと行間を設定
+            pdf.setFontSize(10);
+            const lineHeight = 4;
+            let yPosition = 10;
+            
+            // 日付・時刻を追加
+            if (isDateTimeEnabled) {
+                const now = new Date();
+                const dateTimeText = formattedDate + ' ' + formattedTime;
+                pdf.text(dateTimeText, 5, yPosition);
+                yPosition += lineHeight + 2;
+            }
+            
+            // テキストを行に分割して追加
+            const lines = text.split('\n');
+            for (let line of lines) {
+                if (yPosition > paperHeightMM - 10) {
+                    pdf.addPage([paperWidthMM, paperHeightMM]);
+                    yPosition = 10;
+                }
+                pdf.text(line, 5, yPosition);
+                yPosition += lineHeight;
+            }
+            
+            // Base64でPDFデータを取得
+            const pdfBase64 = pdf.output('datauristring').split(',')[1];
+            resolve(pdfBase64);
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+function createPDFFromSignature(signatureDataUrl) {
     return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, DB_VERSION);
-        req.onupgradeneeded = function(e) {
-            const db = e.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-            }
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-    });
-}
-function addHistory(item) {
-    return openDB().then(db => {
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            tx.objectStore(STORE_NAME).add(item);
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
-        });
-    });
-}
-function getAllHistory(typeFilter = null) {
-    return openDB().then(db => {
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, 'readonly');
-            const store = tx.objectStore(STORE_NAME);
-            const req = store.getAll();
-            req.onsuccess = () => {
-                let result = req.result.reverse();
-                if (typeFilter) result = result.filter(x => x.type === typeFilter);
-                resolve(result);
+        try {
+            const img = new Image();
+            img.onload = function() {
+                const paperWidthMM = 58;
+                const paperHeightMM = Math.max(80, (img.naturalHeight / img.naturalWidth) * paperWidthMM);
+                
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: [paperWidthMM, paperHeightMM]
+                });
+                
+                // 署名をPDFに追加
+                const imgWidthMM = paperWidthMM - 10;
+                const imgHeightMM = (img.naturalHeight / img.naturalWidth) * imgWidthMM;
+                const x = 5;
+                const y = 5;
+                
+                pdf.addImage(signatureDataUrl, 'PNG', x, y, imgWidthMM, imgHeightMM);
+                
+                // Base64でPDFデータを取得
+                const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                resolve(pdfBase64);
             };
-            req.onerror = () => reject(req.error);
-        });
-    });
-}
-function deleteHistory(id) {
-    return openDB().then(db => {
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            tx.objectStore(STORE_NAME).delete(id);
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
-        });
-    });
-}
-function formatDateTime(dt) {
-    const d = new Date(dt);
-    return (
-        d.getFullYear() + '年' +
-        (d.getMonth() + 1) + '月' +
-        d.getDate() + '日 ' +
-        d.getHours() + '時' +
-        (d.getMinutes() < 10 ? '0' : '') + d.getMinutes() + '分' +
-        (d.getSeconds() < 10 ? '0' : '') + d.getSeconds() + '秒'
-    );
-}
-const historyMenuBtn = document.getElementById('historyMenuBtn');
-const historyDrawer = document.getElementById('historyDrawer');
-const historyDrawerClose = document.getElementById('historyDrawerClose');
-const historyList = document.getElementById('historyList');
-const modeToggleUnified = document.getElementById('modeToggleUnified');
-const historyDrawerBg = document.getElementById('historyDrawerBg');
-let currentHistoryType = 'image';
-let modeOrder = ['image', 'text', 'signature'];
-let modeNames = {
-    image: '画像・T’s券',
-    text: 'テキスト',
-    signature: '手書き(電子サイン)'
-};
-function setModeToggle(mode) {
-    modeToggleUnified.textContent = modeNames[mode];
-    modeToggleUnified.classList.add('selected');
-}
-modeToggleUnified.onclick = () => {
-    let idx = modeOrder.indexOf(currentHistoryType);
-    let nextIdx = (idx + 1) % modeOrder.length;
-    currentHistoryType = modeOrder[nextIdx];
-    setModeToggle(currentHistoryType);
-    loadHistoryList();
-    toggleMode(currentHistoryType);
-};
-historyMenuBtn.onclick = () => { historyDrawer.classList.add('open'); historyDrawerBg.style.display = 'block'; loadHistoryList(); };
-historyDrawerClose.onclick = () => { historyDrawer.classList.remove('open'); historyDrawerBg.style.display = 'none'; };
-historyDrawerBg.onclick = (e) => {
-    if (historyDrawer.classList.contains('open')) {
-        historyDrawer.classList.remove('open');
-        historyDrawerBg.style.display = 'none';
-    }
-};
-function loadHistoryList() {
-    getAllHistory(currentHistoryType).then(list => {
-        historyList.innerHTML = '';
-        if (!list.length) {
-            historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴がありません</div>';
-            let spacer = document.createElement('div');
-            spacer.className = 'historyListSpacer';
-            historyList.appendChild(spacer);
-            return;
-        }
-        let swipedId = null;
-        for (const item of list) {
-            const div = document.createElement('div');
-            div.className = 'historyItem';
-            div.setAttribute('data-id', item.id);
-            let startX = 0, currentX = 0, swiped = false;
-            div.addEventListener('touchstart', function(e) {
-                startX = e.touches[0].clientX;
-                currentX = startX;
-                swiped = false;
-            });
-            div.addEventListener('touchmove', function(e) {
-                if (swiped) return;
-                currentX = e.touches[0].clientX;
-                let dx = currentX - startX;
-                if (dx < -60) {
-                    document.querySelectorAll('.historyItem.swiped').forEach(el => el.classList.remove('swiped'));
-                    div.classList.add('swiped');
-                    swiped = true;
-                    swipedId = item.id;
-                } else if (dx > 30) {
-                    div.classList.remove('swiped');
-                    swipedId = null;
-                }
-            });
-            div.addEventListener('touchend', function(e) {
-                setTimeout(() => { div.classList.remove('swiping'); }, 200);
-            });
-            let mouseDown = false, mouseStartX = 0;
-            div.addEventListener('mousedown', function(e) {
-                mouseDown = true;
-                mouseStartX = e.clientX;
-            });
-            div.addEventListener('mousemove', function(e) {
-                if (!mouseDown) return;
-                let dx = e.clientX - mouseStartX;
-                if (dx < -60) {
-                    document.querySelectorAll('.historyItem.swiped').forEach(el => el.classList.remove('swiped'));
-                    div.classList.add('swiped');
-                    mouseDown = false;
-                    swipedId = item.id;
-                } else if (dx > 30) {
-                    div.classList.remove('swiped');
-                    swipedId = null;
-                }
-            });
-            div.addEventListener('mouseup', function(e) {
-                mouseDown = false;
-                setTimeout(() => { div.classList.remove('swiping'); }, 200);
-            });
-            const delBtn = document.createElement('button');
-            delBtn.className = 'swipeDeleteBtn';
-            delBtn.textContent = '削除';
-            delBtn.onclick = function(ev) {
-                ev.stopPropagation();
-                deleteHistory(item.id).then(loadHistoryList);
-            };
-            div.appendChild(delBtn);
-            const contentBlock = document.createElement('div');
-            contentBlock.className = 'historyContentBlock';
-            if (item.type === 'image') {
-                const imgRow = document.createElement('div');
-                imgRow.className = 'historyImgRow';
-                const img = document.createElement('img');
-                img.className = 'historyImgThumb';
-                img.src = item.data;
-                img.onload = function() {
-                    let maxW = 200, maxH = 120;
-                    let ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
-                    img.style.width = Math.round(img.naturalWidth * ratio) + "px";
-                    img.style.height = Math.round(img.naturalHeight * ratio) + "px";
-                };
-                imgRow.appendChild(img);
-                contentBlock.appendChild(imgRow);
-                const metaRow = document.createElement('div');
-                metaRow.className = 'historyMetaRow';
-                if (item.shrink) {
-                    const shrinkIcon = document.createElement('span');
-                    shrinkIcon.className = 'historyShrinkIcon';
-                    shrinkIcon.innerHTML = `<svg viewBox="0 0 20 20"><polyline points="4,11 9,16 16,5" stroke="var(--check-color)" stroke-width="2.5" fill="none"/></svg>`;
-                    metaRow.appendChild(shrinkIcon);
-                }
-                const metaText = document.createElement('span');
-                metaText.className = 'historyMetaText';
-                metaText.textContent = (item.dateTime === 'with' ? '日付・時刻あり' : '日付・時刻なし');
-                metaRow.appendChild(metaText);
-                const metaCopies = document.createElement('span');
-                metaCopies.className = 'historyMetaCopies';
-                metaCopies.textContent = item.copies + '枚';
-                metaRow.appendChild(metaCopies);
-                contentBlock.appendChild(metaRow);
-            } else if (item.type === 'signature') {
-                const imgRow = document.createElement('div');
-                imgRow.className = 'historyImgRow';
-                const img = document.createElement('img');
-                img.className = 'historyImgThumb';
-                img.src = item.data;
-                img.onload = function() {
-                    let maxW = 200, maxH = 120;
-                    let ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
-                    img.style.width = Math.round(img.naturalWidth * ratio) + "px";
-                    img.style.height = Math.round(img.naturalHeight * ratio) + "px";
-                };
-                imgRow.appendChild(img);
-                contentBlock.appendChild(imgRow);
-                const metaRow = document.createElement('div');
-                metaRow.className = 'historyMetaRow';
-                const metaText = document.createElement('span');
-                metaText.className = 'historyMetaText';
-                metaText.textContent = (item.dateTime === 'with' ? '日付・時刻あり' : '日付・時刻なし');
-                metaRow.appendChild(metaText);
-                const metaCopies = document.createElement('span');
-                metaCopies.className = 'historyMetaCopies';
-                metaCopies.textContent = item.copies + '枚';
-                metaRow.appendChild(metaCopies);
-                contentBlock.appendChild(metaRow);
-            } else {
-                const text = document.createElement('div');
-                text.className = 'historyTextPreview';
-                text.textContent = item.data.length <= 10 ? item.data : item.data.slice(0, 10) + '…';
-                contentBlock.appendChild(text);
-                const metaRow = document.createElement('div');
-                metaRow.className = 'historyMetaRow';
-                const metaText = document.createElement('span');
-                metaText.className = 'historyMetaText';
-                metaText.textContent = (item.dateTime === 'with' ? '日付・時刻あり' : '日付・時刻なし');
-                metaRow.appendChild(metaText);
-                const metaCopies = document.createElement('span');
-                metaCopies.className = 'historyMetaCopies';
-                metaCopies.textContent = item.copies + '枚';
-                metaRow.appendChild(metaCopies);
-                contentBlock.appendChild(metaRow);
-            }
-            const created = document.createElement('div');
-            created.className = 'historyCreated';
-            created.textContent = '印刷日時 ' + formatDateTime(item.created || Date.now());
-            contentBlock.appendChild(created);
-            div.appendChild(contentBlock);
-            div.onclick = function(ev) {
-                if (ev.target.classList.contains('swipeDeleteBtn')) return;
-                historyDrawer.classList.remove('open');
-                historyDrawerBg.style.display = 'none';
-                if (item.type === 'image') {
-                    showSection('image');
-                    const previewContainer = document.getElementById('imagePreviewContainer');
-                    previewContainer.innerHTML = '';
-                    const img = new Image();
-                    img.src = item.data;
-                    img.onload = function() {
-                        let containerW = Math.min(window.innerWidth * 0.98, 480);
-                        let containerH = 360;
-                        let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-                        let displayW = Math.round(img.naturalWidth * ratio);
-                        let displayH = Math.round(img.naturalHeight * ratio);
-                        img.style.width = displayW + "px";
-                        img.style.height = displayH + "px";
-                        img.style.maxWidth = "100%";
-                        img.style.maxHeight = "360px";
-                        img.style.display = "block";
-                        img.style.margin = "0 auto";
-                    };
-                    previewContainer.appendChild(img);
-                    document.getElementById('dateTimeChoice').style.display = 'flex';
-                    const chips = document.querySelectorAll('#dateTimeChoice .chip');
-                    chips.forEach(chip => chip.classList.remove('selected'));
-                    if (item.dateTime === 'with') chips[0].classList.add('selected');
-                    else chips[1].classList.add('selected');
-                    selectedChip = item.dateTime;
-                    document.getElementById('copiesSelect').value = item.copies;
-                    document.getElementById('shrinkCheckbox').checked = !!item.shrink;
-                    document.getElementById('imagePrintOptions').style.display = 'flex';
-                    updatePrintButtonState();
-                } else if (item.type === 'signature') {
-                    showSection('signature');
-                    setTimeout(function() {
-                        initSignaturePad(item.data, true);
-                        const chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
-                        chips.forEach(chip => chip.classList.remove('selected'));
-                        if (item.dateTime === 'with') chips[0].classList.add('selected');
-                        else chips[1].classList.add('selected');
-                        selectedSignatureChip = item.dateTime;
-                        document.getElementById('signatureCopiesSelect').value = item.copies;
-                        updateSignaturePrintButtonState();
-                    }, 100);
-                } else {
-                    showSection('text');
-                    document.getElementById('textInput').value = item.data;
-                    autoWrap(document.getElementById('textInput'));
-                    const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-                    chips.forEach(chip => chip.classList.remove('selected'));
-                    if (item.dateTime === 'with') chips[0].classList.add('selected');
-                    else chips[1].classList.add('selected');
-                    selectedTextChip = item.dateTime;
-                    document.getElementById('textCopiesSelect').value = item.copies;
-                    updateTextPrintButtonState();
-                }
-            };
-            historyList.appendChild(div);
-        }
-        let spacer = document.createElement('div');
-        spacer.className = 'historyListSpacer';
-        historyList.appendChild(spacer);
-    });
-}
-function displayDate() {
-    const today = new Date();
-    formattedDate = `${today.getFullYear()}年${String(today.getMonth() + 1).padStart(2, '0')}月${String(today.getDate()).padStart(2, '0')}日`;
-    document.getElementById('dateDisplay').textContent = `${formattedDate}`;
-}
-function updateTime() {
-    const now = new Date();
-    formattedTime = `${String(now.getHours()).padStart(2, '0')}時${String(now.getMinutes()).padStart(2, '0')}分${String(now.getSeconds()).padStart(2, '0')}秒`;
-    document.getElementById('timeDisplay').textContent = formattedTime;
-    setTimeout(updateTime, 1000);
-}
-window.onload = function() {
-    displayDate();
-    updateTime();
-    setModeToggle(currentHistoryType);
-    document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
-    document.getElementById('textInput').addEventListener('input', toggleClearButton);
-    document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
-    document.getElementById('textInput').addEventListener('input', function() {
-        autoWrap(this);
-    });
-    setTextChipsEnabled(false);
-    loadHistoryList();
-    initSignaturePad();
-};
-function showSection(mode) {
-    document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
-    document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
-    document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
-    if (mode === 'signature') {
-        setTimeout(function(){initSignaturePad();}, 50);
-    }
-}
-function toggleMode(mode) {
-    showSection(mode);
-}
-function previewImage(event) {
-    const file = event.target.files[0];
-    const reader = new FileReader();
-    reader.onloadend = function() {
-        const img = new Image();
-        img.src = reader.result;
-        img.onload = function() {
-            let containerW = Math.min(window.innerWidth * 0.98, 480);
-            let containerH = 360;
-            let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-            let displayW = Math.round(img.naturalWidth * ratio);
-            let displayH = Math.round(img.naturalHeight * ratio);
-            img.style.width = displayW + "px";
-            img.style.height = displayH + "px";
-            img.style.maxWidth = "100%";
-            img.style.maxHeight = "360px";
-            img.style.display = "block";
-            img.style.margin = "0 auto";
-            lastPreviewImageNaturalWidth = img.naturalWidth;
-            lastPreviewImageNaturalHeight = img.naturalHeight;
-        };
-        const previewContainer = document.getElementById('imagePreviewContainer');
-        previewContainer.innerHTML = '';
-        previewContainer.appendChild(img);
-        document.getElementById('dateTimeChoice').style.display = 'flex';
-        const imageChips = document.querySelectorAll('#dateTimeChoice .chip');
-        imageChips.forEach(chip => chip.classList.remove('selected'));
-        selectedChip = '';
-        document.getElementById('imagePrintOptions').style.display = 'flex';
-        updatePrintButtonState();
-    };
-    if (file) {
-        reader.readAsDataURL(file);
-    }
-    else {
-        document.getElementById('dateTimeChoice').style.display = 'none';
-        document.getElementById('imagePrintOptions').style.display = 'none';
-        selectedChip = '';
-        updatePrintButtonState();
-    }
-}
-document.getElementById('shrinkCheckbox').addEventListener('change', function() {
-    // プレビューは常に最大
-});
-function selectChip(type) {
-    selectedChip = type;
-    const chips = document.querySelectorAll('#dateTimeChoice .chip');
-    chips.forEach(chip => chip.classList.remove('selected'));
-    if (type === 'with') {
-        chips[0].classList.add('selected');
-    } else if (type === 'without') {
-        chips[1].classList.add('selected');
-    }
-    updatePrintButtonState();
-}
-function selectTextChip(type) {
-    if (document.getElementById('textInput').value.trim() === '') return;
-    selectedTextChip = type;
-    const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-    chips.forEach(chip => chip.classList.remove('selected'));
-    if (type === 'with') {
-        chips[0].classList.add('selected');
-    } else if (type === 'without') {
-        chips[1].classList.add('selected');
-    }
-    updateTextPrintButtonState();
-}
-function updatePrintButtonState() {
-    const printButton = document.getElementById('printButton');
-    if (selectedChip === '') {
-        printButton.classList.add('disabled');
-    } else {
-        printButton.classList.remove('disabled');
-    }
-}
-function updateTextPrintButtonState() {
-    const textPrintButton = document.getElementById('textPrintButton');
-    const textPrintOptions = document.getElementById('textPrintOptions');
-    const textInput = document.getElementById('textInput');
-    const textDateTimeChoice = document.getElementById('textDateTimeChoice');
-    if (textInput.value.trim() === '') {
-        setTextChipsEnabled(false);
-        selectedTextChip = '';
-        const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-        chips.forEach(chip => chip.classList.remove('selected'));
-        textPrintButton.classList.add('disabled');
-        textPrintOptions.style.display = 'none';
-    } else {
-        setTextChipsEnabled(true);
-        textDateTimeChoice.style.display = 'flex';
-        if (selectedTextChip !== '') {
-            textPrintButton.classList.remove('disabled');
-            textPrintOptions.style.display = 'flex';
-        } else {
-            textPrintButton.classList.add('disabled');
-            textPrintOptions.style.display = 'flex';
-        }
-    }
-}
-function setTextChipsEnabled(enabled) {
-    const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-    chips.forEach(chip => {
-        if (enabled) {
-            chip.classList.remove('disabled');
-        } else {
-            chip.classList.add('disabled');
+            img.onerror = () => reject(new Error('署名の読み込みに失敗しました'));
+            img.src = signatureDataUrl;
+        } catch (error) {
+            reject(error);
         }
     });
 }
-// --- 手書きパッド ---
-let signaturePad = null;
-function getSignaturePadSize() {
-    let w = 260, h = 340;
-    if (window.innerWidth < 500) {
-        w = Math.min(window.innerWidth * 0.9, 260);
-        h = Math.min(window.innerWidth * 1.1, 340);
-    }
-    return {width: Math.round(w), height: Math.round(h)};
+
+// ---- SII URL Print Agent用 PDF印刷関数 ----
+function safeEncodeURIComponent(str) {
+    return encodeURIComponent(str)
+        .replace(/!/g, '%21')
+        .replace(/'/g, '%27')
+        .replace(/\(/g, '%28')
+        .replace(/\)/g, '%29')
+        .replace(/\*/g, '%2A')
+        .replace(/%20/g, '%20');
 }
-function resizeSignaturePadCanvas(canvas, ctx, size, ratio, imageDataUrl) {
-    let dataUrl = imageDataUrl || canvas.toDataURL();
-    canvas.width = size.width * ratio;
-    canvas.height = size.height * ratio;
-    canvas.style.width = size.width + "px";
-    canvas.style.height = size.height + "px";
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.scale(ratio, ratio);
-    if (dataUrl) {
-        let img = new window.Image();
-        img.onload = function() {
-            ctx.drawImage(img, 0, 0, size.width, size.height);
-        };
-        img.src = dataUrl;
-    }
-}
-function initSignaturePad(imageDataUrl, fromHistory) {
-    const canvas = document.getElementById('signaturePad');
-    const size = getSignaturePadSize();
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    let dataUrl = imageDataUrl || (canvas.width > 0 && canvas.height > 0 ? canvas.toDataURL() : null);
-    resizeSignaturePadCanvas(canvas, ctx, size, ratio, dataUrl);
-    signaturePad = new window.SignaturePad(canvas, {
-        backgroundColor: "#fff",
-        penColor: "#222",
-        minWidth: 1.5,
-        maxWidth: 2.5,
-        throttle: 10,
-        velocityFilterWeight: 0.7
-    });
-    if (imageDataUrl) {
-        const img = new window.Image();
-        img.onload = function() {
-            ctx.drawImage(img, 0, 0, size.width, size.height);
-            if (fromHistory) {
-                signaturePad._data = [[{x:0,y:0,time:Date.now()}]];
-            }
-            updateSignaturePrintButtonState();
-        };
-        img.src = imageDataUrl;
-    }
-    document.getElementById('signatureClearBtn').onclick = function() {
-        signaturePad.clear();
-        updateSignaturePrintButtonState();
-    };
-    canvas.onmouseup = updateSignaturePrintButtonState;
-    canvas.ontouchend = updateSignaturePrintButtonState;
-    canvas.onmouseout = updateSignaturePrintButtonState;
-    canvas.addEventListener('touchstart', function(e) {
-        if (e.touches.length === 1) e.preventDefault();
-    }, { passive: false });
-    canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); });
-    canvas.addEventListener('selectstart', function(e) { e.preventDefault(); });
-    updateSignaturePrintButtonState();
-}
-window.addEventListener('resize', function() {
-    if (document.getElementById('signatureSection').style.display !== 'none') {
-        let dataUrl = signaturePad && !signaturePad.isEmpty() ? signaturePad.toDataURL() : null;
-        let fromHistory = !!(signaturePad && signaturePad._data && signaturePad._data.length > 0);
-        initSignaturePad(dataUrl, fromHistory);
-    }
-});
-function selectSignatureChip(type) {
-    selectedSignatureChip = type;
-    const chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
-    chips.forEach(chip => chip.classList.remove('selected'));
-    if (type === 'with') {
-        chips[0].classList.add('selected');
-    } else if (type === 'without') {
-        chips[1].classList.add('selected');
-    }
-    updateSignaturePrintButtonState();
-}
-function updateSignaturePrintButtonState() {
-    const btn = document.getElementById('signaturePrintButton');
-    const options = document.getElementById('signaturePrintOptions');
-    if (signaturePad && (!signaturePad.isEmpty() || signaturePad._data && signaturePad._data.length > 0) && selectedSignatureChip !== '') {
-        btn.classList.remove('disabled');
-        options.style.display = 'flex';
-    } else {
-        btn.classList.add('disabled');
-        options.style.display = 'flex';
-    }
-}
-document.getElementById('signaturePrintButton').onclick = function() {
-    if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
-    const canvas = document.getElementById('signaturePad');
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    const srcW = canvas.width / ratio;
-    const srcH = canvas.height / ratio;
-    const printW = 50; // mm
-    const pxPerMm = 3.38; // 1mm=3.38px（58mm=196px基準）
-    const outW = Math.round(printW * pxPerMm);
-    const scale = outW / srcW;
-    const outH = Math.round(srcH * scale);
-    const tmpCanvas = document.createElement('canvas');
-    tmpCanvas.width = outW;
-    tmpCanvas.height = outH;
-    const tmpCtx = tmpCanvas.getContext('2d', { willReadFrequently: true });
-    tmpCtx.fillStyle = "#fff";
-    tmpCtx.fillRect(0, 0, outW, outH);
-    tmpCtx.drawImage(canvas, 0, 0, srcW * ratio, srcH * ratio, 0, 0, outW, outH);
-    const paperWidth = 58;
-    const imgW = 50, imgH = Math.round(outH / pxPerMm);
-    const marginX = Math.floor((paperWidth - imgW) / 2);
-    const marginY = 4;
-    const isDateTimeEnabled = selectedSignatureChip === 'with';
-    const dateTimeHeight = 16;
-    const bottomMargin = isDateTimeEnabled ? 16 : 18;
-    const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
-    const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
-    let currentCopy = 1;
-    function printSignatureCopy(copyIndex) {
-        let dataUrl = tmpCanvas.toDataURL("image/png");
-        let printUrl = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${marginX},${marginY},${imgW},${imgH},${dataUrl.split(',')[1]}`;
-        if (isDateTimeEnabled) {
-            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-            printUrl += `&2=${safeEncodeURIComponent(dateTimeString)},0,${marginY + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-        }
-        if (copyIndex === selectedCopies) {
-            printUrl += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-        }
-        window.location.href = printUrl;
-    }
-    function printNext() {
-        if (currentCopy < selectedCopies) {
-            setTimeout(printNext, 10000);
-        }
-        printSignatureCopy(currentCopy);
-        currentCopy++;
-    }
-    printNext();
-    addHistory({
-        type: 'signature',
-        mode: 'signature',
-        data: tmpCanvas.toDataURL("image/png"),
-        dateTime: selectedSignatureChip,
-        copies: selectedCopies,
-        created: Date.now()
-    });
-};
-// --- 画像印刷 ---
+
+// 画像印刷（PDF対応版）
 function sendToPrintAssist(event) {
     event.preventDefault();
     let fileInput = document.getElementById('imageUpload');
     let file = fileInput.files[0];
-    let base64Image = null;
+    let imageDataUrl = null;
     let usePreview = false;
+    
     if (!file && document.getElementById('imagePreviewContainer').firstChild && document.getElementById('imagePreviewContainer').firstChild.tagName === 'IMG') {
         let img = document.getElementById('imagePreviewContainer').firstChild;
-        base64Image = img.src.split(',')[1];
+        imageDataUrl = img.src;
         usePreview = true;
     }
+    
     if ((!file && !usePreview) || selectedChip === '') return;
+    
     const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
-    function doPrint(base64Image) {
-        const paperWidth = 58;
-        let img = new window.Image();
-        img.onload = function() {
-            let origW = img.naturalWidth;
-            let origH = img.naturalHeight;
-            let ratio = Math.min(paperWidth / origW, 1);
-            if (shrinkChecked) ratio *= 0.6;
-            let imgW = Math.round(origW * ratio);
-            let imgH = Math.round(origH * ratio);
-            let x = Math.round((paperWidth - imgW) / 2);
-            let y = 2;
-            const isDateTimeEnabled = selectedChip === 'with';
-            const topMargin = 2;
-            const bottomMargin = isDateTimeEnabled ? 16 : 18;
-            const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
-            const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
-            let currentCopy = 1;
-            function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${base64Image}`;
-                if (isDateTimeEnabled) {
-                    const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-                }
-                if (copyIndex === selectedCopies) {
-                    printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-                }
-                window.location.href = printUrlImage;
-            }
-            function printNext() {
-                if (currentCopy < selectedCopies) {
-                    setTimeout(printNext, 10000);
-                }
-                printImageCopy(currentCopy);
-                currentCopy++;
-            }
-            printNext();
+    const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
+    
+    async function doPrint(imageDataUrl) {
+        try {
+            const shrinkScale = shrinkChecked ? 0.6 : 1.0;
+            const pdfBase64 = await createPDFFromImage(imageDataUrl, shrinkScale);
+            
+            // SII URL Scheme（PDF版）
+            let url = "siiprintagent://1.0/print?";
+            url += "CallbackSuccess=" + safeEncodeURIComponent(window.location.href) + "&";
+            url += "CallbackFail=" + safeEncodeURIComponent(window.location.href) + "&";
+            url += "Format=pdf&";
+            url += "Data=" + safeEncodeURIComponent("data:application/pdf;base64," + pdfBase64) + "&";
+            url += "PaperWidth=58";
+            
+            console.log("SII PRINT URL (PDF):", url);
+            location.href = url;
+            
+            // 履歴に保存
             addHistory({
                 type: 'image',
                 mode: 'image',
-                data: 'data:image/png;base64,' + base64Image,
+                data: imageDataUrl,
                 dateTime: selectedChip,
                 copies: selectedCopies,
                 shrink: shrinkChecked,
                 created: Date.now()
             });
-        };
-        img.src = 'data:image/png;base64,' + base64Image;
+        } catch (error) {
+            console.error('PDF生成エラー:', error);
+            alert('PDF生成に失敗しました。もう一度お試しください。');
+        }
     }
+    
     if (usePreview) {
-        doPrint(base64Image);
+        doPrint(imageDataUrl);
     } else {
         const reader = new FileReader();
         reader.onloadend = function() {
-            base64Image = reader.result.split(',')[1];
-            doPrint(base64Image);
+            doPrint(reader.result);
         };
         reader.readAsDataURL(file);
     }
 }
-// --- テキスト印刷 ---
+
+// テキスト印刷（PDF対応版）
+function printText() {
+    const textInput = document.getElementById('textInput');
+    let text = textInput.value;
+    if (text.trim() === '' || selectedTextChip === '') return;
+    
+    text = toZenkaku(text);
+    const isDateTimeEnabled = selectedTextChip === 'with';
+    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+    
+    createPDFFromText(text, isDateTimeEnabled).then(pdfBase64 => {
+        // SII URL Scheme（PDF版）
+        let url = "siiprintagent://1.0/print?";
+        url += "CallbackSuccess=" + safeEncodeURIComponent(window.location.href) + "&";
+        url += "CallbackFail=" + safeEncodeURIComponent(window.location.href) + "&";
+        url += "Format=pdf&";
+        url += "Data=" + safeEncodeURIComponent("data:application/pdf;base64," + pdfBase64) + "&";
+        url += "PaperWidth=58";
+        
+        console.log("SII PRINT URL (PDF):", url);
+        location.href = url;
+        
+        // 履歴に保存
+        addHistory({
+            type: 'text',
+            mode: 'text',
+            data: textInput.value,
+            dateTime: selectedTextChip,
+            copies: selectedTextCopies,
+            created: Date.now()
+        });
+    }).catch(error => {
+        console.error('PDF生成エラー:', error);
+        alert('PDF生成に失敗しました。もう一度お試しください。');
+    });
+}
+
+// --- テキスト自動改行 用 ---
 function wrapText(text) {
     text = toZenkaku(text);
     const lines = [];
@@ -1613,69 +230,7 @@ function wrapText(text) {
     }
     return lines;
 }
-function safeEncodeURIComponent(str) {
-    return encodeURIComponent(str)
-        .replace(/!/g, '%21')
-        .replace(/'/g, '%27')
-        .replace(/\(/g, '%28')
-        .replace(/\)/g, '%29')
-        .replace(/\*/g, '%2A')
-        .replace(/%20/g, '%20');
-}
-function printText() {
-    const textInput = document.getElementById('textInput');
-    let text = textInput.value;
-    if (text.trim() === '' || selectedTextChip === '') return;
-    text = toZenkaku(text);
-    const paperWidth = 58;
-    const isDateTimeEnabled = selectedTextChip === 'with';
-    const wrappedLines = wrapText(text);
-    const lineHeight = 4;
-    const topMargin = 6;
-    const dateTimeHeight = 16;
-    const spaceBetweenTextAndDate = 4;
-    const bottomMargin = isDateTimeEnabled ? 15 : 19;
-    const leftMargin = 2;
-    let totalHeight = topMargin + (wrappedLines.length * lineHeight);
-    if (isDateTimeEnabled) {
-        totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
-    }
-    totalHeight += bottomMargin;
-    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-    let currentCopy = 1;
-    function printTextCopy(copyIndex) {
-        let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
-        wrappedLines.forEach((line, index) => {
-            const encodedLine = safeEncodeURIComponent(line);
-            printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-        });
-        if (isDateTimeEnabled) {
-            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-            const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-            printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
-        }
-        if (copyIndex === selectedTextCopies) {
-            printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-        }
-        window.location.href = printUrlText;
-    }
-    function printNext() {
-        if (currentCopy < selectedTextCopies) {
-            setTimeout(printNext, 10000);
-        }
-        printTextCopy(currentCopy);
-        currentCopy++;
-    }
-    printNext();
-    addHistory({
-        type: 'text',
-        mode: 'text',
-        data: textInput.value,
-        dateTime: selectedTextChip,
-        copies: selectedTextCopies,
-        created: Date.now()
-    });
-}
+
 function toggleClearButton() {
     const textInput = document.getElementById('textInput');
     const clearTextButton = document.getElementById('clearTextButton');
@@ -1685,6 +240,7 @@ function toggleClearButton() {
         clearTextButton.style.display = 'none';
     }
 }
+
 function handleClearButtonClick() {
     const textInput = document.getElementById('textInput');
     const confirmClear = confirm('テキストをクリアしますか？');
@@ -1694,11 +250,85 @@ function handleClearButtonClick() {
         updateTextPrintButtonState();
     }
 }
+
 function autoWrap(textarea) {
     const text = textarea.value;
     const wrappedLines = wrapText(text);
     textarea.value = wrappedLines.join('\n');
 }
+
+// イベントリスナーの設定
+window.onload = function() {
+    displayDate();
+    updateTime();
+    setModeToggle(currentHistoryType);
+    
+    // ファイル入力のイベントリスナー
+    document.getElementById('imageUpload').addEventListener('change', previewImage);
+    
+    // チップクリックのイベントリスナー
+    document.getElementById('chipWith').addEventListener('click', () => selectChip('with'));
+    document.getElementById('chipWithout').addEventListener('click', () => selectChip('without'));
+    document.getElementById('textChipWith').addEventListener('click', () => selectTextChip('with'));
+    document.getElementById('textChipWithout').addEventListener('click', () => selectTextChip('without'));
+    document.getElementById('signatureChipWith').addEventListener('click', () => selectSignatureChip('with'));
+    document.getElementById('signatureChipWithout').addEventListener('click', () => selectSignatureChip('without'));
+    
+    // 印刷ボタンのイベントリスナー
+    document.getElementById('printButton').addEventListener('click', sendToPrintAssist);
+    document.getElementById('textPrintButton').addEventListener('click', printText);
+    
+    // 手書きサイン印刷ボタンのイベントリスナー
+    document.getElementById('signaturePrintButton').addEventListener('click', async function() {
+        if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
+        
+        try {
+            const canvas = document.getElementById('signaturePad');
+            const signatureDataUrl = canvas.toDataURL("image/png");
+            const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
+            
+            const pdfBase64 = await createPDFFromSignature(signatureDataUrl);
+            
+            // SII URL Scheme（PDF版）
+            let url = "siiprintagent://1.0/print?";
+            url += "CallbackSuccess=" + safeEncodeURIComponent(window.location.href) + "&";
+            url += "CallbackFail=" + safeEncodeURIComponent(window.location.href) + "&";
+            url += "Format=pdf&";
+            url += "Data=" + safeEncodeURIComponent("data:application/pdf;base64," + pdfBase64) + "&";
+            url += "PaperWidth=58";
+            
+            console.log("SII PRINT URL (PDF):", url);
+            location.href = url;
+            
+            // 履歴に保存
+            addHistory({
+                type: 'signature',
+                mode: 'signature',
+                data: signatureDataUrl,
+                dateTime: selectedSignatureChip,
+                copies: selectedCopies,
+                created: Date.now()
+            });
+        } catch (error) {
+            console.error('PDF生成エラー:', error);
+            alert('PDF生成に失敗しました。もう一度お試しください。');
+        }
+    });
+    
+    // テキスト関連のイベントリスナー
+    document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
+    document.getElementById('textInput').addEventListener('input', toggleClearButton);
+    document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
+    document.getElementById('textInput').addEventListener('input', function() {
+        autoWrap(this);
+    });
+    
+    setTextChipsEnabled(false);
+    loadHistoryList();
+    initSignaturePad();
+};
+
+// Service Worker登録（オフライン対応）
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
         navigator.serviceWorker.register('service-worker.js').then(function(registration) {
