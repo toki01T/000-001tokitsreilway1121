@@ -90,20 +90,38 @@ header {
     padding: 0;
     white-space: nowrap;
 }
+/* 修正：Android Aquos Wish4対応 - ハンバーガーメニューのはみ出し防止 */
 #historyMenuBtn {
     position: absolute;
-    right: 1rem;
+    right: 8px; /* 1remから8pxに変更 */
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
     border: none;
     color: #fff;
-    font-size: 1.7rem;
+    font-size: 1.5rem; /* 1.7remから1.5remに縮小 */
     cursor: pointer;
     z-index: 12;
-    padding: 0;
+    padding: 4px; /* パディングを追加 */
+    width: 32px; /* 固定幅を設定 */
+    height: 32px; /* 固定高を設定 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 #historyMenuBtn:focus { outline: none; }
+/* 追加：小さい画面でのさらなる調整 */
+@media (max-width: 360px) {
+    #historyMenuBtn {
+        right: 4px;
+        font-size: 1.3rem;
+        width: 28px;
+        height: 28px;
+    }
+    .navbar {
+        padding: 0 0.5rem;
+    }
+}
 #historyDrawer {
     position: fixed;
     top: 0;
@@ -214,6 +232,7 @@ header {
     pointer-events: none;
     background: transparent;
 }
+/* 修正：スワイプ削除機能の完全実装 */
 .historyItem {
     border-bottom: 1px solid var(--border-color);
     padding: 0.7rem 0.2rem 0.7rem 0.2rem;
@@ -221,15 +240,25 @@ header {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: background 0.2s, transform 0.2s;
     background: none;
     position: relative;
     user-select: none;
     overflow: hidden;
+    transform: translateX(0);
+    touch-action: pan-y;
 }
 .historyItem:last-child { border-bottom: none; }
 .historyItem:hover {
     background: var(--chip-bg);
+}
+.historyItem.swiping {
+    background: #ffeaea;
+    transition: none;
+}
+.historyItem.swiped {
+    transform: translateX(-80px);
+    background: #ffeaea;
 }
 .historyContentBlock {
     display: flex;
@@ -239,6 +268,7 @@ header {
     min-width: 0;
     justify-content: center;
     width: 100%;
+    pointer-events: auto;
 }
 .historyImgRow {
     display: flex;
@@ -339,6 +369,7 @@ header {
     word-break: keep-all;
     width: 100%;
 }
+/* 修正：削除ボタンのスタイリング */
 .swipeDeleteBtn {
     position: absolute;
     right: -80px;
@@ -353,17 +384,14 @@ header {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: right 0.2s;
-    z-index: 2;
+    transition: none;
+    z-index: 10;
     cursor: pointer;
-    visibility: hidden;
+    user-select: none;
+    touch-action: manipulation;
 }
 .historyItem.swiped .swipeDeleteBtn {
     right: 0;
-    visibility: visible;
-}
-.historyItem.swiping {
-    background: #ffeaea;
 }
 #historyDrawerBg {
     position: fixed;
@@ -886,6 +914,7 @@ var selectedSignatureChip = '';
 var lastPreviewImageNaturalWidth = 0;
 var lastPreviewImageNaturalHeight = 0;
 var signaturePad = null;
+var currentHistoryType = 'image';
 
 var DB_NAME = 'toki01_history';
 var DB_VERSION = 1;
@@ -1020,7 +1049,7 @@ function createCanvasFromSignature(signatureDataUrl, callback) {
     img.src = signatureDataUrl;
 }
 
-// ---- PNG to PDF変換関数 ----
+// ---- PNG to PDF変換関数（マニュアル準拠） ----
 function convertPngToPdf(pngDataUrl, callback) {
     var img = new Image();
     img.onload = function() {
@@ -1044,9 +1073,9 @@ function convertPngToPdf(pngDataUrl, callback) {
             
             pdf.addImage(pngDataUrl, 'PNG', x, y, imgWidthMM, imgHeightMM);
             
-            // PDFをBase64で出力
-            var pdfArrayBuffer = pdf.output('arraybuffer');
-            var pdfBase64 = arrayBufferToBase64(pdfArrayBuffer);
+            // マニュアル準拠：直接datauristringでBase64を取得
+            var pdfDataUri = pdf.output('datauristring');
+            var pdfBase64 = pdfDataUri.split(',')[1]; // data:application/pdf;base64, を除去
             callback(pdfBase64);
         } catch (error) {
             console.error('PDF変換エラー:', error);
@@ -1060,7 +1089,7 @@ function convertPngToPdf(pngDataUrl, callback) {
     img.src = pngDataUrl;
 }
 
-// ---- SII URL Print Agent印刷関数（PNG→PDF方式） ----
+// ---- マニュアル準拠SII URL Print Agent印刷関数 ----
 function sendToPrintAssist(event) {
     event.preventDefault();
     var fileInput = document.getElementById('imageUpload');
@@ -1096,13 +1125,16 @@ function sendToPrintAssist(event) {
                     return;
                 }
                 
-                // Step 3: SII URLスキームでPDF送信
-                var url = "siiprintagent://1.0/print?";
-                url += "Format=pdf&";
-                url += "Data=" + encodeURIComponent(pdfBase64) + "&";
-                url += "PaperWidth=58";
+                // Step 3: マニュアル準拠 SII URLスキーム
+                var url = "siiprintagent://1.0/print";
+                url += "?Format=pdf";
+                url += "&Data=" + pdfBase64; // 生Base64データ（エンコードなし）
+                url += "&PaperWidth=58";
+                url += "&Copies=" + selectedCopies; // 枚数指定を追加
                 
-                console.log("SII PRINT URL (PNG→PDF):", url);
+                console.log("SII PRINT URL (マニュアル準拠):", url);
+                console.log("PDF Base64 Length:", pdfBase64.length);
+                console.log("印刷枚数:", selectedCopies);
                 window.location.href = url;
                 
                 addHistory({
@@ -1152,13 +1184,16 @@ function printText() {
                 return;
             }
             
-            // Step 3: SII URLスキームでPDF送信
-            var url = "siiprintagent://1.0/print?";
-            url += "Format=pdf&";
-            url += "Data=" + encodeURIComponent(pdfBase64) + "&";
-            url += "PaperWidth=58";
+            // Step 3: マニュアル準拠 SII URLスキーム
+            var url = "siiprintagent://1.0/print";
+            url += "?Format=pdf";
+            url += "&Data=" + pdfBase64; // 生Base64データ（エンコードなし）
+            url += "&PaperWidth=58";
+            url += "&Copies=" + selectedTextCopies; // 枚数指定を追加
             
-            console.log("SII PRINT URL (PNG→PDF):", url);
+            console.log("SII PRINT URL (マニュアル準拠):", url);
+            console.log("PDF Base64 Length:", pdfBase64.length);
+            console.log("印刷枚数:", selectedTextCopies);
             window.location.href = url;
             
             addHistory({
@@ -1238,7 +1273,7 @@ function formatDateTime(dt) {
     );
 }
 
-// ---- 履歴機能 ----
+// ---- 修正された履歴機能（スワイプ削除対応） ----
 var historyMenuBtn = document.getElementById('historyMenuBtn');
 var historyDrawer = document.getElementById('historyDrawer');
 var historyDrawerClose = document.getElementById('historyDrawerClose');
@@ -1246,7 +1281,6 @@ var historyList = document.getElementById('historyList');
 var modeToggleUnified = document.getElementById('modeToggleUnified');
 var historyDrawerBg = document.getElementById('historyDrawerBg');
 
-var currentHistoryType = 'image';
 var modeOrder = ['image', 'text', 'signature'];
 var modeNames = {
     image: '画像・T\'s券',
@@ -1259,13 +1293,202 @@ function setModeToggle(mode) {
     modeToggleUnified.classList.add('selected');
 }
 
+// ---- スワイプ削除機能の実装 ----
+var swipeStartX = 0;
+var swipeStartY = 0;
+var isSwipingItem = null;
+var swipeThreshold = 80;
+var moveThreshold = 10;
+
+function handleSwipeStart(e, item) {
+    var touch = e.touches ? e.touches[0] : e;
+    swipeStartX = touch.clientX;
+    swipeStartY = touch.clientY;
+    isSwipingItem = item;
+    
+    // 他のアイテムのスワイプ状態をリセット
+    var allItems = document.querySelectorAll('.historyItem');
+    allItems.forEach(function(otherItem) {
+        if (otherItem !== item) {
+            otherItem.classList.remove('swiped', 'swiping');
+            otherItem.style.transform = 'translateX(0)';
+        }
+    });
+}
+
+function handleSwipeMove(e, item) {
+    if (!isSwipingItem || isSwipingItem !== item) return;
+    
+    var touch = e.touches ? e.touches[0] : e;
+    var deltaX = touch.clientX - swipeStartX;
+    var deltaY = touch.clientY - swipeStartY;
+    
+    // 縦スクロールを優先
+    if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        isSwipingItem = null;
+        return;
+    }
+    
+    // 左スワイプのみ対応
+    if (deltaX < -moveThreshold) {
+        e.preventDefault();
+        item.classList.add('swiping');
+        var moveX = Math.max(deltaX, -swipeThreshold);
+        item.style.transform = 'translateX(' + moveX + 'px)';
+    }
+}
+
+function handleSwipeEnd(e, item) {
+    if (!isSwipingItem || isSwipingItem !== item) return;
+    
+    var touch = e.changedTouches ? e.changedTouches[0] : e;
+    var deltaX = touch.clientX - swipeStartX;
+    
+    item.classList.remove('swiping');
+    
+    if (deltaX < -swipeThreshold / 2) {
+        // 削除ボタンを表示
+        item.classList.add('swiped');
+        item.style.transform = 'translateX(-80px)';
+    } else {
+        // 元の位置に戻す
+        item.classList.remove('swiped');
+        item.style.transform = 'translateX(0)';
+    }
+    
+    isSwipingItem = null;
+}
+
+// ---- 履歴からの状態復元機能 ----
+function restoreFromHistory(item) {
+    console.log('履歴から復元:', item);
+    
+    // 履歴ドロワーを閉じる
+    historyDrawer.classList.remove('open');
+    historyDrawerBg.style.display = 'none';
+    
+    // 対応するモードに切り替え
+    currentHistoryType = item.type;
+    setModeToggle(currentHistoryType);
+    showSection(currentHistoryType);
+    
+    if (item.type === 'image') {
+        // 画像の復元
+        var img = new Image();
+        img.onload = function() {
+            var containerW = Math.min(window.innerWidth * 0.98, 480);
+            var containerH = 360;
+            var ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
+            var displayW = Math.round(img.naturalWidth * ratio);
+            var displayH = Math.round(img.naturalHeight * ratio);
+            img.style.width = displayW + "px";
+            img.style.height = displayH + "px";
+            img.style.maxWidth = "100%";
+            img.style.maxHeight = "360px";
+            img.style.display = "block";
+            img.style.margin = "0 auto";
+        };
+        img.src = item.data;
+        
+        var previewContainer = document.getElementById('imagePreviewContainer');
+        previewContainer.innerHTML = '';
+        previewContainer.appendChild(img);
+        
+        // UI状態復元
+        document.getElementById('dateTimeChoice').style.display = 'flex';
+        document.getElementById('imagePrintOptions').style.display = 'flex';
+        
+        // チップ選択復元
+        selectedChip = item.dateTime;
+        var chips = document.querySelectorAll('#dateTimeChoice .chip');
+        chips.forEach(function(chip) { chip.classList.remove('selected'); });
+        if (item.dateTime === 'with') {
+            chips[0].classList.add('selected');
+        } else {
+            chips[1].classList.add('selected');
+        }
+        
+        // 縮小設定復元
+        document.getElementById('shrinkCheckbox').checked = item.shrink || false;
+        
+        // 枚数設定復元
+        document.getElementById('copiesSelect').value = item.copies || 1;
+        
+        updatePrintButtonState();
+        
+    } else if (item.type === 'text') {
+        // テキストの復元
+        document.getElementById('textInput').value = item.data;
+        
+        // UI状態復元
+        document.getElementById('textDateTimeChoice').style.display = 'flex';
+        document.getElementById('textPrintOptions').style.display = 'flex';
+        
+        // チップ選択復元
+        selectedTextChip = item.dateTime;
+        var chips = document.querySelectorAll('#textDateTimeChoice .chip');
+        chips.forEach(function(chip) { chip.classList.remove('selected'); });
+        if (item.dateTime === 'with') {
+            chips[0].classList.add('selected');
+        } else {
+            chips[1].classList.add('selected');
+        }
+        
+        // 枚数設定復元
+        document.getElementById('textCopiesSelect').value = item.copies || 1;
+        
+        setTextChipsEnabled(true);
+        updateTextPrintButtonState();
+        toggleClearButton();
+        
+    } else if (item.type === 'signature') {
+        // 手書きサインの復元
+        setTimeout(function() {
+            if (signaturePad) {
+                signaturePad.clear();
+                
+                var img = new Image();
+                img.onload = function() {
+                    var canvas = document.getElementById('signaturePad');
+                    var ctx = canvas.getContext('2d');
+                    var size = getSignaturePadSize();
+                    ctx.drawImage(img, 0, 0, size.width, size.height);
+                    
+                    // 署名データがあることを示すためのダミーデータ
+                    signaturePad._data = [[{x:0,y:0,time:Date.now()}]];
+                    updateSignaturePrintButtonState();
+                };
+                img.src = item.data;
+            }
+        }, 100);
+        
+        // UI状態復元
+        document.getElementById('signatureDateTimeChoice').style.display = 'flex';
+        document.getElementById('signaturePrintOptions').style.display = 'flex';
+        
+        // チップ選択復元
+        selectedSignatureChip = item.dateTime;
+        var chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
+        chips.forEach(function(chip) { chip.classList.remove('selected'); });
+        if (item.dateTime === 'with') {
+            chips[0].classList.add('selected');
+        } else {
+            chips[1].classList.add('selected');
+        }
+        
+        // 枚数設定復元
+        document.getElementById('signatureCopiesSelect').value = item.copies || 1;
+    }
+}
+
+// ---- 履歴ボタンのクリックイベント ----
 modeToggleUnified.onclick = function() {
     var idx = modeOrder.indexOf(currentHistoryType);
     var nextIdx = (idx + 1) % modeOrder.length;
     currentHistoryType = modeOrder[nextIdx];
     setModeToggle(currentHistoryType);
     loadHistoryList();
-    toggleMode(currentHistoryType);
+    showSection(currentHistoryType);
 };
 
 historyMenuBtn.onclick = function() { 
@@ -1303,13 +1526,49 @@ function loadHistoryList() {
             div.className = 'historyItem';
             div.setAttribute('data-id', item.id);
             
+            // スワイプイベントの追加
+            div.addEventListener('touchstart', function(e) { handleSwipeStart(e, this); }, { passive: false });
+            div.addEventListener('touchmove', function(e) { handleSwipeMove(e, this); }, { passive: false });
+            div.addEventListener('touchend', function(e) { handleSwipeEnd(e, this); }, { passive: false });
+            
+            // マウスイベントも追加（デスクトップ対応）
+            div.addEventListener('mousedown', function(e) { handleSwipeStart(e, this); });
+            div.addEventListener('mousemove', function(e) { handleSwipeMove(e, this); });
+            div.addEventListener('mouseup', function(e) { handleSwipeEnd(e, this); });
+            
+            // 履歴アイテムのクリックイベント
+                            div.onclick = function(ev) {
+                if (ev.target.classList.contains('swipeDeleteBtn')) return; // 削除ボタンの場合は無視
+                if (this.classList.contains('swiped')) {
+                    // スワイプ状態の場合は元に戻す
+                    this.classList.remove('swiped');
+                    this.style.transform = 'translateX(0)';
+                    return;
+                }
+                
+                var itemId = parseInt(this.getAttribute('data-id'));
+                var clickedItem = list.find(function(x) { return x.id === itemId; });
+                if (clickedItem) {
+                    restoreFromHistory(clickedItem);
+                }
+            };
+            
+            // 削除ボタンの作成
             var delBtn = document.createElement('button');
             delBtn.className = 'swipeDeleteBtn';
             delBtn.textContent = '削除';
             delBtn.onclick = function(ev) {
                 ev.stopPropagation();
                 var itemId = parseInt(this.parentNode.getAttribute('data-id'));
-                deleteHistory(itemId).then(loadHistoryList);
+                var confirmDelete = confirm('この履歴を削除しますか？');
+                if (confirmDelete) {
+                    deleteHistory(itemId).then(function() {
+                        loadHistoryList();
+                    }).catch(function(error) {
+                        console.error('削除エラー:', error);
+                        alert('削除に失敗しました。');
+                    });
+                }
             };
             div.appendChild(delBtn);
             
@@ -1652,7 +1911,7 @@ window.addEventListener('resize', function() {
     }
 });
 
-// ---- 手書きサイン印刷（PNG→PDF方式） ----
+// ---- 手書きサイン印刷（マニュアル準拠URLスキーム） ----
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
     
@@ -1675,13 +1934,16 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     return;
                 }
                 
-                // Step 3: SII URLスキームでPDF送信
-                var url = "siiprintagent://1.0/print?";
-                url += "Format=pdf&";
-                url += "Data=" + encodeURIComponent(pdfBase64) + "&";
-                url += "PaperWidth=58";
+                // Step 3: マニュアル準拠 SII URLスキーム
+                var url = "siiprintagent://1.0/print";
+                url += "?Format=pdf";
+                url += "&Data=" + pdfBase64; // 生Base64データ（エンコードなし）
+                url += "&PaperWidth=58";
+                url += "&Copies=" + selectedCopies; // 枚数指定を追加
                 
-                console.log("SII PRINT URL (PNG→PDF):", url);
+                console.log("SII PRINT URL (マニュアル準拠):", url);
+                console.log("PDF Base64 Length:", pdfBase64.length);
+                console.log("印刷枚数:", selectedCopies);
                 window.location.href = url;
                 
                 addHistory({
