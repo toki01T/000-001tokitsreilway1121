@@ -6,6 +6,7 @@
 <title>toki01Ⓣ 発券</title>
 <link rel="icon" href="favicon.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -72,7 +73,7 @@ header {
     max-width: 1200px;
     margin: 0 auto;
     height: 48px;
-    padding: 0 1rem;
+    padding: 0 0.8rem;
     box-sizing: border-box;
     position: relative;
 }
@@ -88,21 +89,60 @@ header {
     margin: 0;
     padding: 0;
     white-space: nowrap;
+    margin-right: 40px; /* ハンバーガーメニューのスペースを確保 */
 }
+/* 修正：Android完全対応 - ハンバーガーメニューのはみ出し完全防止 */
 #historyMenuBtn {
     position: absolute;
-    right: 1rem;
+    right: 4px; /* さらに内側に */
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
     border: none;
     color: #fff;
-    font-size: 1.7rem;
+    font-size: 1.4rem; /* サイズを小さく */
     cursor: pointer;
     z-index: 12;
-    padding: 0;
+    padding: 2px;
+    width: 28px; /* 固定幅をさらに小さく */
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* 縮小を防ぐ */
 }
 #historyMenuBtn:focus { outline: none; }
+/* Android小画面での追加対応 */
+@media (max-width: 400px) {
+    #historyMenuBtn {
+        right: 2px;
+        font-size: 1.2rem;
+        width: 24px;
+        height: 24px;
+    }
+    .navbar {
+        padding: 0 0.4rem;
+    }
+    .navbar-brand {
+        margin-right: 30px;
+        font-size: 1rem;
+    }
+}
+@media (max-width: 360px) {
+    #historyMenuBtn {
+        right: 1px;
+        font-size: 1.1rem;
+        width: 22px;
+        height: 22px;
+    }
+    .navbar {
+        padding: 0 0.2rem;
+    }
+    .navbar-brand {
+        margin-right: 25px;
+        font-size: 0.95rem;
+    }
+}
 #historyDrawer {
     position: fixed;
     top: 0;
@@ -213,22 +253,36 @@ header {
     pointer-events: none;
     background: transparent;
 }
+/* 修正：スワイプ削除の余白問題完全解決 */
 .historyItem {
     border-bottom: 1px solid var(--border-color);
-    padding: 0.7rem 0.2rem 0.7rem 0.2rem;
+    padding: 0.7rem 0.2rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: background 0.2s, transform 0.2s;
     background: none;
     position: relative;
     user-select: none;
     overflow: hidden;
+    transform: translateX(0);
+    touch-action: pan-y;
+    margin: 0; /* マージンを完全に削除 */
+    width: 100%; /* 幅を100%に固定 */
+    box-sizing: border-box;
 }
 .historyItem:last-child { border-bottom: none; }
 .historyItem:hover {
     background: var(--chip-bg);
+}
+.historyItem.swiping {
+    background: #ffeaea;
+    transition: none;
+}
+.historyItem.swiped {
+    transform: translateX(-80px);
+    background: #ffeaea;
 }
 .historyContentBlock {
     display: flex;
@@ -238,6 +292,8 @@ header {
     min-width: 0;
     justify-content: center;
     width: 100%;
+    pointer-events: auto;
+    padding-right: 0; /* 右側のパディングを削除 */
 }
 .historyImgRow {
     display: flex;
@@ -338,6 +394,7 @@ header {
     word-break: keep-all;
     width: 100%;
 }
+/* 修正：削除ボタンの完全修正 */
 .swipeDeleteBtn {
     position: absolute;
     right: -80px;
@@ -352,17 +409,16 @@ header {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: right 0.2s;
-    z-index: 2;
+    transition: none;
+    z-index: 10;
     cursor: pointer;
-    visibility: hidden;
+    user-select: none;
+    touch-action: manipulation;
+    margin: 0; /* マージンを削除 */
+    padding: 0; /* パディングを削除 */
 }
 .historyItem.swiped .swipeDeleteBtn {
     right: 0;
-    visibility: visible;
-}
-.historyItem.swiping {
-    background: #ffeaea;
 }
 #historyDrawerBg {
     position: fixed;
@@ -510,7 +566,7 @@ main {
         padding: 0.3rem 0.7rem;
     }
 }
-/* チェックボックスカスタムデザイン（履歴リスト・画像モード共通） */
+/* チェックボックスカスタムデザイン */
 .custom-checkbox {
     position: relative;
     display: inline-flex;
@@ -777,7 +833,7 @@ footer p {
         </div>
     </div>
     <div id="historyDrawerMenu">
-        <button id="modeToggleUnified" class="selected">画像・T’s券</button>
+        <button id="modeToggleUnified" class="selected">画像・T's券</button>
     </div>
     <div id="historyList"></div>
 </div>
@@ -866,74 +922,486 @@ footer p {
     <p>&copy; 2025 とき T's 鉄道部 toki</p>
 </footer>
 <script>
-const toZenkakuMap = {
+// ---- グローバル変数と設定 ----
+var toZenkakuMap = {
     '@': '＠', '#': '＃', '&': '＆', '-': '－', '/': '／', '$': '＄', '%': '％',
     '(': '（', ')': '）', '!': '！', '?': '？', "'": '＇', '"': '＂', ':': '：',
     ';': '；', '_': '＿', '+': '＋'
 };
+
 function toZenkaku(str) {
-    return str.replace(/[@#&\-\/\$%\(\)!?'"_:;_+]/g, c => toZenkakuMap[c] || c);
+    return str.replace(/[@#&\-\/\$%\(\)!?'"_:;_+]/g, function(c) { return toZenkakuMap[c] || c; });
 }
-let formattedDate = '';
-let formattedTime = '';
-let selectedChip = '';
-let selectedTextChip = '';
-let selectedSignatureChip = '';
-let lastPreviewImageNaturalWidth = 0;
-let lastPreviewImageNaturalHeight = 0;
-const DB_NAME = 'toki01_history';
-const DB_VERSION = 1;
-const STORE_NAME = 'history';
+
+var formattedDate = '';
+var formattedTime = '';
+var selectedChip = '';
+var selectedTextChip = '';
+var selectedSignatureChip = '';
+var lastPreviewImageNaturalWidth = 0;
+var lastPreviewImageNaturalHeight = 0;
+var signaturePad = null;
+var currentHistoryType = 'image';
+
+var DB_NAME = 'toki01_history';
+var DB_VERSION = 1;
+var STORE_NAME = 'history';
+
+// ---- 修正：重複印刷防止フラグ ----
+var isCurrentlyPrinting = false;
+
+// ---- PDF生成ライブラリ初期化 ----
+var jsPDF = window.jspdf.jsPDF;
+
+// ---- 元のindex.htmlと同じ画像処理関数 ----
+function createOptimizedCanvasForSII(imageDataUrl, shrinkScale, isDateTimeEnabled, callback) {
+    if (shrinkScale === undefined) shrinkScale = 1;
+    
+    var img = new Image();
+    img.onload = function() {
+        // 元のindex.htmlと同じ用紙サイズ計算
+        var paperWidth = 58; // mm
+        var origW = img.naturalWidth;
+        var origH = img.naturalHeight;
+        
+        // 画像サイズの最適化計算（元のindex.htmlと同じ）
+        var ratio = Math.min(paperWidth / origW, 1);
+        if (shrinkScale < 1) ratio *= shrinkScale;
+        
+        var imgW = Math.round(origW * ratio);
+        var imgH = Math.round(origH * ratio);
+        var x = Math.round((paperWidth - imgW) / 2);
+        var y = 2;
+        
+        // 用紙の高さ計算（元のindex.htmlと同じ）
+        var topMargin = 2;
+        var bottomMargin = isDateTimeEnabled ? 16 : 18;
+        var totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
+        
+        // Canvas作成（適切なサイズで）
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext('2d');
+        
+        // 58mm幅 = 約220px（96dpi基準）
+        var pxPerMm = 3.78; // より正確なピクセル比
+        canvas.width = Math.round(paperWidth * pxPerMm);
+        canvas.height = Math.round(totalHeight * pxPerMm);
+        
+        // 背景を白で塗りつぶし
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // 画像を中央配置で描画
+        var imgPxW = Math.round(imgW * pxPerMm);
+        var imgPxH = Math.round(imgH * pxPerMm);
+        var imgPxX = Math.round(x * pxPerMm);
+        var imgPxY = Math.round(y * pxPerMm);
+        
+        ctx.drawImage(img, imgPxX, imgPxY, imgPxW, imgPxH);
+        
+        // 日付・時刻の描画（元のindex.htmlと同じ）
+        if (isDateTimeEnabled) {
+            ctx.fillStyle = '#000000';
+            ctx.font = Math.round(12 * pxPerMm / 3.78) + 'px Arial';
+            ctx.textAlign = 'center';
+            
+            var dateTimeText = toZenkaku(formattedDate + '\n' + formattedTime);
+            var lines = dateTimeText.split('\n');
+            var dateTimeY = Math.round((topMargin + imgH + 2) * pxPerMm);
+            
+            for (var i = 0; i < lines.length; i++) {
+                ctx.fillText(lines[i], canvas.width / 2, dateTimeY + (i * Math.round(8 * pxPerMm / 3.78)));
+            }
+        }
+        
+        var pngDataUrl = canvas.toDataURL('image/png');
+        callback(pngDataUrl);
+    };
+    img.onerror = function() {
+        callback(null);
+    };
+    img.src = imageDataUrl;
+}
+
+// ---- テキスト処理関数（元のindex.htmlと同じ） ----
+function createOptimizedTextCanvasForSII(text, isDateTimeEnabled, callback) {
+    text = toZenkaku(text);
+    var paperWidth = 58; // mm
+    var wrappedLines = wrapText(text);
+    
+    // 元のindex.htmlと同じレイアウト計算
+    var lineHeight = 4;
+    var topMargin = 6;
+    var dateTimeHeight = 16;
+    var spaceBetweenTextAndDate = 4;
+    var bottomMargin = isDateTimeEnabled ? 15 : 19;
+    var leftMargin = 2;
+    
+    var totalHeight = topMargin + (wrappedLines.length * lineHeight);
+    if (isDateTimeEnabled) {
+        totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
+    }
+    totalHeight += bottomMargin;
+    
+    // Canvas作成
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    var pxPerMm = 3.78;
+    
+    canvas.width = Math.round(paperWidth * pxPerMm);
+    canvas.height = Math.round(totalHeight * pxPerMm);
+    
+    // 背景を白で塗りつぶし
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // テキスト描画
+    ctx.fillStyle = '#000000';
+    ctx.font = Math.round(10 * pxPerMm / 3.78) + 'px Arial';
+    ctx.textAlign = 'left';
+    
+    var textLeftMargin = Math.round(leftMargin * pxPerMm);
+    var textTopMargin = Math.round(topMargin * pxPerMm);
+    var lineHeightPx = Math.round(lineHeight * pxPerMm);
+    
+    // 各行を描画
+    for (var i = 0; i < wrappedLines.length; i++) {
+        var line = wrappedLines[i];
+        var yPos = textTopMargin + (i * lineHeightPx);
+        ctx.fillText(line, textLeftMargin, yPos);
+    }
+    
+    // 日付・時刻の描画
+    if (isDateTimeEnabled) {
+        var dateTimeText = toZenkaku(formattedDate + '\n' + formattedTime);
+        var dateTimeLines = dateTimeText.split('\n');
+        var dateTimeY = textTopMargin + (wrappedLines.length * lineHeightPx) + Math.round(spaceBetweenTextAndDate * pxPerMm);
+        
+        ctx.font = Math.round(12 * pxPerMm / 3.78) + 'px Arial';
+        for (var j = 0; j < dateTimeLines.length; j++) {
+            ctx.fillText(dateTimeLines[j], textLeftMargin, dateTimeY + (j * Math.round(8 * pxPerMm / 3.78)));
+        }
+    }
+    
+    var pngDataUrl = canvas.toDataURL('image/png');
+    callback(pngDataUrl);
+}
+
+// ---- 手書きサイン処理関数（元のindex.htmlと同じ） ----
+function createOptimizedSignatureCanvasForSII(signatureDataUrl, isDateTimeEnabled, callback) {
+    var img = new Image();
+    img.onload = function() {
+        // 元のindex.htmlと同じサイズ計算
+        var paperWidth = 58;
+        var printW = 50; // mm
+        var pxPerMm = 3.38; // 1mm=3.38px（58mm=196px基準）
+        var outW = Math.round(printW * pxPerMm);
+        var scale = outW / img.naturalWidth;
+        var outH = Math.round(img.naturalHeight * scale);
+        
+        var imgW = 50, imgH = Math.round(outH / pxPerMm);
+        var marginX = Math.floor((paperWidth - imgW) / 2);
+        var marginY = 4;
+        var dateTimeHeight = 16;
+        var bottomMargin = isDateTimeEnabled ? 16 : 18;
+        var totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
+        
+        // Canvas作成
+        var canvas = document.createElement('canvas');
+        var ctx = canvas.getContext('2d');
+        var canvasPxPerMm = 3.78;
+        
+        canvas.width = Math.round(paperWidth * canvasPxPerMm);
+        canvas.height = Math.round(totalHeight * canvasPxPerMm);
+        
+        // 背景を白で塗りつぶし
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // 署名画像を描画
+        var imgPxW = Math.round(imgW * canvasPxPerMm);
+        var imgPxH = Math.round(imgH * canvasPxPerMm);
+        var imgPxX = Math.round(marginX * canvasPxPerMm);
+        var imgPxY = Math.round(marginY * canvasPxPerMm);
+        
+        ctx.drawImage(img, imgPxX, imgPxY, imgPxW, imgPxH);
+        
+        // 日付・時刻の描画
+        if (isDateTimeEnabled) {
+            ctx.fillStyle = '#000000';
+            ctx.font = Math.round(12 * canvasPxPerMm / 3.78) + 'px Arial';
+            ctx.textAlign = 'center';
+            
+            var dateTimeText = toZenkaku(formattedDate + '\n' + formattedTime);
+            var lines = dateTimeText.split('\n');
+            var dateTimeY = Math.round((marginY + imgH + 2) * canvasPxPerMm);
+            
+            for (var i = 0; i < lines.length; i++) {
+                ctx.fillText(lines[i], canvas.width / 2, dateTimeY + (i * Math.round(8 * canvasPxPerMm / 3.78)));
+            }
+        }
+        
+        var pngDataUrl = canvas.toDataURL('image/png');
+        callback(pngDataUrl);
+    };
+    img.onerror = function() {
+        callback(null);
+    };
+    img.src = signatureDataUrl;
+}
+
+// ---- サンプル準拠PNG to PDF変換関数 ----
+function convertPngToPdf(pngDataUrl, callback) {
+    var img = new Image();
+    img.onload = function() {
+        try {
+            // 58mm幅のPDF作成
+            var paperWidthMM = 58;
+            var aspectRatio = img.naturalHeight / img.naturalWidth;
+            var paperHeightMM = paperWidthMM * aspectRatio;
+            
+            var pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: [paperWidthMM, paperHeightMM]
+            });
+            
+            // PNG画像をPDFに埋め込み（用紙全体に）
+            pdf.addImage(pngDataUrl, 'PNG', 0, 0, paperWidthMM, paperHeightMM);
+            
+            // サンプル準拠：直接datauristringでBase64を取得
+            var pdfDataUri = pdf.output('datauristring');
+            var index = pdfDataUri.indexOf(',') + 1;
+            var pdfBase64 = pdfDataUri.slice(index);
+            callback(pdfBase64);
+        } catch (error) {
+            console.error('PDF変換エラー:', error);
+            callback(null);
+        }
+    };
+    img.onerror = function() {
+        console.error('PNG画像の読み込みエラー');
+        callback(null);
+    };
+    img.src = pngDataUrl;
+}
+
+// ---- 修正：重複防止機能付きSII URL Print Agent印刷関数 ----
+function sendToPrintAssist(event) {
+    event.preventDefault();
+    
+    // 重複印刷防止
+    if (isCurrentlyPrinting) {
+        console.log('印刷処理中のため、新しい印刷要求を無視します');
+        return;
+    }
+    
+    var fileInput = document.getElementById('imageUpload');
+    var file = fileInput.files[0];
+    var imageDataUrl = null;
+    var usePreview = false;
+    
+    if (!file && document.getElementById('imagePreviewContainer').firstChild && document.getElementById('imagePreviewContainer').firstChild.tagName === 'IMG') {
+        var img = document.getElementById('imagePreviewContainer').firstChild;
+        imageDataUrl = img.src;
+        usePreview = true;
+    }
+    
+    if ((!file && !usePreview) || selectedChip === '') return;
+    
+    // 印刷開始フラグ
+    isCurrentlyPrinting = true;
+    
+    var shrinkChecked = document.getElementById('shrinkCheckbox').checked;
+    var selectedCopies = parseInt(document.getElementById('copiesSelect').value);
+    var isDateTimeEnabled = selectedChip === 'with';
+    
+    function doPrint(imageDataUrl) {
+        var shrinkScale = shrinkChecked ? 0.6 : 1.0;
+        
+        // Step 1: 最適化されたCanvas作成
+        createOptimizedCanvasForSII(imageDataUrl, shrinkScale, isDateTimeEnabled, function(pngDataUrl) {
+            if (!pngDataUrl) {
+                alert('画像の処理に失敗しました。');
+                isCurrentlyPrinting = false; // フラグリセット
+                return;
+            }
+            
+            // Step 2: PNGをPDFに変換
+            convertPngToPdf(pngDataUrl, function(pdfBase64) {
+                if (!pdfBase64) {
+                    alert('PDF変換に失敗しました。');
+                    isCurrentlyPrinting = false; // フラグリセット
+                    return;
+                }
+                
+                // Step 3: サンプル準拠 SII URLスキーム
+                var thisPage = window.location.href;
+                var url = 'siiprintagent://1.0/print?' +
+                    'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                    'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+                    'Format=' + 'pdf' + '&' +
+                    'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                    'SelectOnError=' + 'yes' + '&' +
+                    'CutType=' + 'full' + '&' +
+                    'CutFeed=' + 'yes' + '&' +
+                    'FitToWidth=' + 'no' + '&' +
+                    'PaperWidth=' + '58';
+                
+                console.log("SII PRINT URL (最適化版):", url);
+                console.log("PDF Base64 Length:", pdfBase64.length);
+                window.location.href = url;
+                
+                addHistory({
+                    type: 'image',
+                    mode: 'image',
+                    data: imageDataUrl,
+                    dateTime: selectedChip,
+                    copies: selectedCopies,
+                    shrink: shrinkChecked,
+                    created: Date.now()
+                });
+                
+                // 印刷完了後にフラグをリセット（5秒後）
+                setTimeout(function() {
+                    isCurrentlyPrinting = false;
+                }, 5000);
+            });
+        });
+    }
+    
+    if (usePreview) {
+        doPrint(imageDataUrl);
+    } else {
+        var reader = new FileReader();
+        reader.onloadend = function() {
+            doPrint(reader.result);
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function printText() {
+    // 重複印刷防止
+    if (isCurrentlyPrinting) {
+        console.log('印刷処理中のため、新しい印刷要求を無視します');
+        return;
+    }
+    
+    var textInput = document.getElementById('textInput');
+    var text = textInput.value;
+    if (text.trim() === '' || selectedTextChip === '') return;
+    
+    // 印刷開始フラグ
+    isCurrentlyPrinting = true;
+    
+    var isDateTimeEnabled = selectedTextChip === 'with';
+    var selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+    
+    // Step 1: 最適化されたテキストCanvas作成
+    createOptimizedTextCanvasForSII(text, isDateTimeEnabled, function(pngDataUrl) {
+        if (!pngDataUrl) {
+            alert('テキストの処理に失敗しました。');
+            isCurrentlyPrinting = false; // フラグリセット
+            return;
+        }
+        
+        // Step 2: PNGをPDFに変換
+        convertPngToPdf(pngDataUrl, function(pdfBase64) {
+            if (!pdfBase64) {
+                alert('PDF変換に失敗しました。');
+                isCurrentlyPrinting = false; // フラグリセット
+                return;
+            }
+            
+            // Step 3: サンプル準拠 SII URLスキーム
+            var thisPage = window.location.href;
+            var url = 'siiprintagent://1.0/print?' +
+                'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+                'Format=' + 'pdf' + '&' +
+                'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                'SelectOnError=' + 'yes' + '&' +
+                'CutType=' + 'full' + '&' +
+                'CutFeed=' + 'yes' + '&' +
+                'FitToWidth=' + 'no' + '&' +
+                'PaperWidth=' + '58';
+            
+            console.log("SII PRINT URL (テキスト最適化版):", url);
+            window.location.href = url;
+            
+            addHistory({
+                type: 'text',
+                mode: 'text',
+                data: textInput.value,
+                dateTime: selectedTextChip,
+                copies: selectedTextCopies,
+                created: Date.now()
+            });
+            
+            // 印刷完了後にフラグをリセット（5秒後）
+            setTimeout(function() {
+                isCurrentlyPrinting = false;
+            }, 5000);
+        });
+    });
+}
+
+// ---- IndexedDB 関連関数 ----
 function openDB() {
-    return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, DB_VERSION);
+    return new Promise(function(resolve, reject) {
+        var req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = function(e) {
-            const db = e.target.result;
+            var db = e.target.result;
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
             }
         };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.onsuccess = function() { resolve(req.result); };
+        req.onerror = function() { reject(req.error); };
     });
 }
+
 function addHistory(item) {
-    return openDB().then(db => {
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, 'readwrite');
+    return openDB().then(function(db) {
+        return new Promise(function(resolve, reject) {
+            var tx = db.transaction(STORE_NAME, 'readwrite');
             tx.objectStore(STORE_NAME).add(item);
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
+            tx.oncomplete = function() { resolve(); };
+            tx.onerror = function() { reject(tx.error); };
         });
     });
 }
-function getAllHistory(typeFilter = null) {
-    return openDB().then(db => {
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, 'readonly');
-            const store = tx.objectStore(STORE_NAME);
-            const req = store.getAll();
-            req.onsuccess = () => {
-                let result = req.result.reverse();
-                if (typeFilter) result = result.filter(x => x.type === typeFilter);
+
+function getAllHistory(typeFilter) {
+    return openDB().then(function(db) {
+        return new Promise(function(resolve, reject) {
+            var tx = db.transaction(STORE_NAME, 'readonly');
+            var store = tx.objectStore(STORE_NAME);
+            var req = store.getAll();
+            req.onsuccess = function() {
+                var result = req.result.reverse();
+                if (typeFilter) result = result.filter(function(x) { return x.type === typeFilter; });
                 resolve(result);
             };
-            req.onerror = () => reject(req.error);
+            req.onerror = function() { reject(req.error); };
         });
     });
 }
+
 function deleteHistory(id) {
-    return openDB().then(db => {
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, 'readwrite');
+    return openDB().then(function(db) {
+        return new Promise(function(resolve, reject) {
+            var tx = db.transaction(STORE_NAME, 'readwrite');
             tx.objectStore(STORE_NAME).delete(id);
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
+            tx.oncomplete = function() { resolve(); };
+            tx.onerror = function() { reject(tx.error); };
         });
     });
 }
+
 function formatDateTime(dt) {
-    const d = new Date(dt);
+    var d = new Date(dt);
     return (
         d.getFullYear() + '年' +
         (d.getMonth() + 1) + '月' +
@@ -943,278 +1411,434 @@ function formatDateTime(dt) {
         (d.getSeconds() < 10 ? '0' : '') + d.getSeconds() + '秒'
     );
 }
-const historyMenuBtn = document.getElementById('historyMenuBtn');
-const historyDrawer = document.getElementById('historyDrawer');
-const historyDrawerClose = document.getElementById('historyDrawerClose');
-const historyList = document.getElementById('historyList');
-const modeToggleUnified = document.getElementById('modeToggleUnified');
-const historyDrawerBg = document.getElementById('historyDrawerBg');
-let currentHistoryType = 'image';
-let modeOrder = ['image', 'text', 'signature'];
-let modeNames = {
-    image: '画像・T’s券',
+
+// ---- 修正された履歴機能（完全なスワイプ削除対応） ----
+var historyMenuBtn = document.getElementById('historyMenuBtn');
+var historyDrawer = document.getElementById('historyDrawer');
+var historyDrawerClose = document.getElementById('historyDrawerClose');
+var historyList = document.getElementById('historyList');
+var modeToggleUnified = document.getElementById('modeToggleUnified');
+var historyDrawerBg = document.getElementById('historyDrawerBg');
+
+var modeOrder = ['image', 'text', 'signature'];
+var modeNames = {
+    image: '画像・T\'s券',
     text: 'テキスト',
     signature: '手書き(電子サイン)'
 };
+
 function setModeToggle(mode) {
     modeToggleUnified.textContent = modeNames[mode];
     modeToggleUnified.classList.add('selected');
 }
-modeToggleUnified.onclick = () => {
-    let idx = modeOrder.indexOf(currentHistoryType);
-    let nextIdx = (idx + 1) % modeOrder.length;
+
+// ---- 完全修正：スワイプ削除機能 ----
+var swipeStartX = 0;
+var swipeStartY = 0;
+var isSwipingItem = null;
+var swipeThreshold = 60; // より軽くスワイプできるように調整
+var moveThreshold = 10;
+
+function handleSwipeStart(e, item) {
+    var touch = e.touches ? e.touches[0] : e;
+    swipeStartX = touch.clientX;
+    swipeStartY = touch.clientY;
+    isSwipingItem = item;
+    
+    // 他のアイテムのスワイプ状態をリセット
+    var allItems = document.querySelectorAll('.historyItem');
+    allItems.forEach(function(otherItem) {
+        if (otherItem !== item) {
+            otherItem.classList.remove('swiped', 'swiping');
+            otherItem.style.transform = 'translateX(0)';
+        }
+    });
+}
+
+function handleSwipeMove(e, item) {
+    if (!isSwipingItem || isSwipingItem !== item) return;
+    
+    var touch = e.touches ? e.touches[0] : e;
+    var deltaX = touch.clientX - swipeStartX;
+    var deltaY = touch.clientY - swipeStartY;
+    
+    // 縦スクロールを優先
+    if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        isSwipingItem = null;
+        return;
+    }
+    
+    // 左スワイプのみ対応
+    if (deltaX < -moveThreshold) {
+        e.preventDefault();
+        item.classList.add('swiping');
+        var moveX = Math.max(deltaX, -80);
+        item.style.transform = 'translateX(' + moveX + 'px)';
+    }
+}
+
+function handleSwipeEnd(e, item) {
+    if (!isSwipingItem || isSwipingItem !== item) return;
+    
+    var touch = e.changedTouches ? e.changedTouches[0] : e;
+    var deltaX = touch.clientX - swipeStartX;
+    
+    item.classList.remove('swiping');
+    
+    if (deltaX < -swipeThreshold / 2) {
+        // 削除ボタンを表示
+        item.classList.add('swiped');
+        item.style.transform = 'translateX(-80px)';
+    } else {
+        // 元の位置に戻す
+        item.classList.remove('swiped');
+        item.style.transform = 'translateX(0)';
+    }
+    
+    isSwipingItem = null;
+}
+
+// ---- 履歴からの状態復元機能 ----
+function restoreFromHistory(item) {
+    console.log('履歴から復元:', item);
+    
+        // 履歴ドロワーを閉じる
+    historyDrawer.classList.remove('open');
+    historyDrawerBg.style.display = 'none';
+    
+    // 対応するモードに切り替え
+    currentHistoryType = item.type;
+    setModeToggle(currentHistoryType);
+    showSection(currentHistoryType);
+    
+    if (item.type === 'image') {
+        // 画像の復元
+        var img = new Image();
+        img.onload = function() {
+            var containerW = Math.min(window.innerWidth * 0.98, 480);
+            var containerH = 360;
+            var ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
+            var displayW = Math.round(img.naturalWidth * ratio);
+            var displayH = Math.round(img.naturalHeight * ratio);
+            img.style.width = displayW + "px";
+            img.style.height = displayH + "px";
+            img.style.maxWidth = "100%";
+            img.style.maxHeight = "360px";
+            img.style.display = "block";
+            img.style.margin = "0 auto";
+        };
+        img.src = item.data;
+        
+        var previewContainer = document.getElementById('imagePreviewContainer');
+        previewContainer.innerHTML = '';
+        previewContainer.appendChild(img);
+        
+        // UI状態復元
+        document.getElementById('dateTimeChoice').style.display = 'flex';
+        document.getElementById('imagePrintOptions').style.display = 'flex';
+        
+        // チップ選択復元
+        selectedChip = item.dateTime;
+        var chips = document.querySelectorAll('#dateTimeChoice .chip');
+        chips.forEach(function(chip) { chip.classList.remove('selected'); });
+        if (item.dateTime === 'with') {
+            chips[0].classList.add('selected');
+        } else {
+            chips[1].classList.add('selected');
+        }
+        
+        // 縮小設定復元
+        document.getElementById('shrinkCheckbox').checked = item.shrink || false;
+        
+        // 枚数設定復元
+        document.getElementById('copiesSelect').value = item.copies || 1;
+        
+        updatePrintButtonState();
+        
+    } else if (item.type === 'text') {
+        // テキストの復元
+        document.getElementById('textInput').value = item.data;
+        
+        // UI状態復元
+        document.getElementById('textDateTimeChoice').style.display = 'flex';
+        document.getElementById('textPrintOptions').style.display = 'flex';
+        
+        // チップ選択復元
+        selectedTextChip = item.dateTime;
+        var chips = document.querySelectorAll('#textDateTimeChoice .chip');
+        chips.forEach(function(chip) { chip.classList.remove('selected'); });
+        if (item.dateTime === 'with') {
+            chips[0].classList.add('selected');
+        } else {
+            chips[1].classList.add('selected');
+        }
+        
+        // 枚数設定復元
+        document.getElementById('textCopiesSelect').value = item.copies || 1;
+        
+        setTextChipsEnabled(true);
+        updateTextPrintButtonState();
+        toggleClearButton();
+        autoWrap(document.getElementById('textInput'));
+        
+    } else if (item.type === 'signature') {
+        // 手書きサインの復元
+        setTimeout(function() {
+            if (signaturePad) {
+                signaturePad.clear();
+                
+                var img = new Image();
+                img.onload = function() {
+                    var canvas = document.getElementById('signaturePad');
+                    var ctx = canvas.getContext('2d');
+                    var size = getSignaturePadSize();
+                    ctx.drawImage(img, 0, 0, size.width, size.height);
+                    
+                    // 署名データがあることを示すためのダミーデータ
+                    signaturePad._data = [[{x:0,y:0,time:Date.now()}]];
+                    updateSignaturePrintButtonState();
+                };
+                img.src = item.data;
+            }
+        }, 100);
+        
+        // UI状態復元
+        document.getElementById('signatureDateTimeChoice').style.display = 'flex';
+        document.getElementById('signaturePrintOptions').style.display = 'flex';
+        
+        // チップ選択復元
+        selectedSignatureChip = item.dateTime;
+        var chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
+        chips.forEach(function(chip) { chip.classList.remove('selected'); });
+        if (item.dateTime === 'with') {
+            chips[0].classList.add('selected');
+        } else {
+            chips[1].classList.add('selected');
+        }
+        
+        // 枚数設定復元
+        document.getElementById('signatureCopiesSelect').value = item.copies || 1;
+    }
+}
+
+// ---- 履歴ボタンのクリックイベント ----
+modeToggleUnified.onclick = function() {
+    var idx = modeOrder.indexOf(currentHistoryType);
+    var nextIdx = (idx + 1) % modeOrder.length;
     currentHistoryType = modeOrder[nextIdx];
     setModeToggle(currentHistoryType);
     loadHistoryList();
-    toggleMode(currentHistoryType);
+    showSection(currentHistoryType);
 };
-historyMenuBtn.onclick = () => { historyDrawer.classList.add('open'); historyDrawerBg.style.display = 'block'; loadHistoryList(); };
-historyDrawerClose.onclick = () => { historyDrawer.classList.remove('open'); historyDrawerBg.style.display = 'none'; };
-historyDrawerBg.onclick = (e) => {
+
+historyMenuBtn.onclick = function() { 
+    historyDrawer.classList.add('open'); 
+    historyDrawerBg.style.display = 'block'; 
+    loadHistoryList(); 
+};
+
+historyDrawerClose.onclick = function() { 
+    historyDrawer.classList.remove('open'); 
+    historyDrawerBg.style.display = 'none'; 
+};
+
+historyDrawerBg.onclick = function(e) {
     if (historyDrawer.classList.contains('open')) {
         historyDrawer.classList.remove('open');
         historyDrawerBg.style.display = 'none';
     }
 };
+
+// ---- 修正：削除機能の完全実装（余白問題解決） ----
 function loadHistoryList() {
-    getAllHistory(currentHistoryType).then(list => {
+    getAllHistory(currentHistoryType).then(function(list) {
         historyList.innerHTML = '';
         if (!list.length) {
             historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴がありません</div>';
-            let spacer = document.createElement('div');
+            var spacer = document.createElement('div');
             spacer.className = 'historyListSpacer';
             historyList.appendChild(spacer);
             return;
         }
-        let swipedId = null;
-        for (const item of list) {
-            const div = document.createElement('div');
+        
+        for (var i = 0; i < list.length; i++) {
+            var item = list[i];
+            var div = document.createElement('div');
             div.className = 'historyItem';
             div.setAttribute('data-id', item.id);
-            let startX = 0, currentX = 0, swiped = false;
-            div.addEventListener('touchstart', function(e) {
-                startX = e.touches[0].clientX;
-                currentX = startX;
-                swiped = false;
-            });
-            div.addEventListener('touchmove', function(e) {
-                if (swiped) return;
-                currentX = e.touches[0].clientX;
-                let dx = currentX - startX;
-                if (dx < -60) {
-                    document.querySelectorAll('.historyItem.swiped').forEach(el => el.classList.remove('swiped'));
-                    div.classList.add('swiped');
-                    swiped = true;
-                    swipedId = item.id;
-                } else if (dx > 30) {
-                    div.classList.remove('swiped');
-                    swipedId = null;
+            
+            // スワイプイベントの追加
+            div.addEventListener('touchstart', function(e) { handleSwipeStart(e, this); }, { passive: false });
+            div.addEventListener('touchmove', function(e) { handleSwipeMove(e, this); }, { passive: false });
+            div.addEventListener('touchend', function(e) { handleSwipeEnd(e, this); }, { passive: false });
+            
+            // マウスイベントも追加（デスクトップ対応）
+            div.addEventListener('mousedown', function(e) { handleSwipeStart(e, this); });
+            div.addEventListener('mousemove', function(e) { handleSwipeMove(e, this); });
+            div.addEventListener('mouseup', function(e) { handleSwipeEnd(e, this); });
+            
+            // 履歴アイテムのクリックイベント
+            div.onclick = function(ev) {
+                if (ev.target.classList.contains('swipeDeleteBtn')) return; // 削除ボタンの場合は無視
+                if (this.classList.contains('swiped')) {
+                    // スワイプ状態の場合は元に戻す
+                    this.classList.remove('swiped');
+                    this.style.transform = 'translateX(0)';
+                    return;
                 }
-            });
-            div.addEventListener('touchend', function(e) {
-                setTimeout(() => { div.classList.remove('swiping'); }, 200);
-            });
-            let mouseDown = false, mouseStartX = 0;
-            div.addEventListener('mousedown', function(e) {
-                mouseDown = true;
-                mouseStartX = e.clientX;
-            });
-            div.addEventListener('mousemove', function(e) {
-                if (!mouseDown) return;
-                let dx = e.clientX - mouseStartX;
-                if (dx < -60) {
-                    document.querySelectorAll('.historyItem.swiped').forEach(el => el.classList.remove('swiped'));
-                    div.classList.add('swiped');
-                    mouseDown = false;
-                    swipedId = item.id;
-                } else if (dx > 30) {
-                    div.classList.remove('swiped');
-                    swipedId = null;
+                
+                var itemId = parseInt(this.getAttribute('data-id'));
+                var clickedItem = list.find(function(x) { return x.id === itemId; });
+                if (clickedItem) {
+                    restoreFromHistory(clickedItem);
                 }
-            });
-            div.addEventListener('mouseup', function(e) {
-                mouseDown = false;
-                setTimeout(() => { div.classList.remove('swiping'); }, 200);
-            });
-            const delBtn = document.createElement('button');
+            };
+            
+            // 削除ボタンの作成
+            var delBtn = document.createElement('button');
             delBtn.className = 'swipeDeleteBtn';
             delBtn.textContent = '削除';
             delBtn.onclick = function(ev) {
                 ev.stopPropagation();
-                deleteHistory(item.id).then(loadHistoryList);
+                var itemId = parseInt(this.parentNode.getAttribute('data-id'));
+                var confirmDelete = confirm('この履歴を削除しますか？');
+                if (confirmDelete) {
+                    deleteHistory(itemId).then(function() {
+                        loadHistoryList(); // リストを再読み込み
+                    }).catch(function(error) {
+                        console.error('削除エラー:', error);
+                        alert('削除に失敗しました。');
+                    });
+                }
             };
             div.appendChild(delBtn);
-            const contentBlock = document.createElement('div');
+            
+            var contentBlock = document.createElement('div');
             contentBlock.className = 'historyContentBlock';
-            if (item.type === 'image') {
-                const imgRow = document.createElement('div');
+            
+            if (item.type === 'image' || item.type === 'signature') {
+                var imgRow = document.createElement('div');
                 imgRow.className = 'historyImgRow';
-                const img = document.createElement('img');
+                var img = document.createElement('img');
                 img.className = 'historyImgThumb';
                 img.src = item.data;
                 img.onload = function() {
-                    let maxW = 200, maxH = 120;
-                    let ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
+                    var maxW = 200, maxH = 120;
+                    var ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
                     img.style.width = Math.round(img.naturalWidth * ratio) + "px";
                     img.style.height = Math.round(img.naturalHeight * ratio) + "px";
                 };
                 imgRow.appendChild(img);
                 contentBlock.appendChild(imgRow);
-                const metaRow = document.createElement('div');
+                
+                var metaRow = document.createElement('div');
                 metaRow.className = 'historyMetaRow';
+                
                 if (item.shrink) {
-                    const shrinkIcon = document.createElement('span');
+                    var shrinkIcon = document.createElement('span');
                     shrinkIcon.className = 'historyShrinkIcon';
-                    shrinkIcon.innerHTML = `<svg viewBox="0 0 20 20"><polyline points="4,11 9,16 16,5" stroke="var(--check-color)" stroke-width="2.5" fill="none"/></svg>`;
+                    shrinkIcon.innerHTML = '<svg viewBox="0 0 20 20"><polyline points="4,11 9,16 16,5" stroke="var(--check-color)" stroke-width="2.5" fill="none"/></svg>';
                     metaRow.appendChild(shrinkIcon);
                 }
-                const metaText = document.createElement('span');
+                
+                var metaText = document.createElement('span');
                 metaText.className = 'historyMetaText';
                 metaText.textContent = (item.dateTime === 'with' ? '日付・時刻あり' : '日付・時刻なし');
                 metaRow.appendChild(metaText);
-                const metaCopies = document.createElement('span');
+                
+                var metaCopies = document.createElement('span');
                 metaCopies.className = 'historyMetaCopies';
                 metaCopies.textContent = item.copies + '枚';
                 metaRow.appendChild(metaCopies);
-                contentBlock.appendChild(metaRow);
-            } else if (item.type === 'signature') {
-                const imgRow = document.createElement('div');
-                imgRow.className = 'historyImgRow';
-                const img = document.createElement('img');
-                img.className = 'historyImgThumb';
-                img.src = item.data;
-                img.onload = function() {
-                    let maxW = 200, maxH = 120;
-                    let ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
-                    img.style.width = Math.round(img.naturalWidth * ratio) + "px";
-                    img.style.height = Math.round(img.naturalHeight * ratio) + "px";
-                };
-                imgRow.appendChild(img);
-                contentBlock.appendChild(imgRow);
-                const metaRow = document.createElement('div');
-                metaRow.className = 'historyMetaRow';
-                const metaText = document.createElement('span');
-                metaText.className = 'historyMetaText';
-                metaText.textContent = (item.dateTime === 'with' ? '日付・時刻あり' : '日付・時刻なし');
-                metaRow.appendChild(metaText);
-                const metaCopies = document.createElement('span');
-                metaCopies.className = 'historyMetaCopies';
-                metaCopies.textContent = item.copies + '枚';
-                metaRow.appendChild(metaCopies);
+                
                 contentBlock.appendChild(metaRow);
             } else {
-                const text = document.createElement('div');
+                var text = document.createElement('div');
                 text.className = 'historyTextPreview';
                 text.textContent = item.data.length <= 10 ? item.data : item.data.slice(0, 10) + '…';
                 contentBlock.appendChild(text);
-                const metaRow = document.createElement('div');
+                
+                var metaRow = document.createElement('div');
                 metaRow.className = 'historyMetaRow';
-                const metaText = document.createElement('span');
+                
+                var metaText = document.createElement('span');
                 metaText.className = 'historyMetaText';
                 metaText.textContent = (item.dateTime === 'with' ? '日付・時刻あり' : '日付・時刻なし');
                 metaRow.appendChild(metaText);
-                const metaCopies = document.createElement('span');
+                
+                var metaCopies = document.createElement('span');
                 metaCopies.className = 'historyMetaCopies';
                 metaCopies.textContent = item.copies + '枚';
                 metaRow.appendChild(metaCopies);
+                
                 contentBlock.appendChild(metaRow);
             }
-            const created = document.createElement('div');
+            
+            var created = document.createElement('div');
             created.className = 'historyCreated';
             created.textContent = '印刷日時 ' + formatDateTime(item.created || Date.now());
             contentBlock.appendChild(created);
+            
             div.appendChild(contentBlock);
-            div.onclick = function(ev) {
-                if (ev.target.classList.contains('swipeDeleteBtn')) return;
-                historyDrawer.classList.remove('open');
-                historyDrawerBg.style.display = 'none';
-                if (item.type === 'image') {
-                    showSection('image');
-                    const previewContainer = document.getElementById('imagePreviewContainer');
-                    previewContainer.innerHTML = '';
-                    const img = new Image();
-                    img.src = item.data;
-                    img.onload = function() {
-                        let containerW = Math.min(window.innerWidth * 0.98, 480);
-                        let containerH = 360;
-                        let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-                        let displayW = Math.round(img.naturalWidth * ratio);
-                        let displayH = Math.round(img.naturalHeight * ratio);
-                        img.style.width = displayW + "px";
-                        img.style.height = displayH + "px";
-                        img.style.maxWidth = "100%";
-                        img.style.maxHeight = "360px";
-                        img.style.display = "block";
-                        img.style.margin = "0 auto";
-                    };
-                    previewContainer.appendChild(img);
-                    document.getElementById('dateTimeChoice').style.display = 'flex';
-                    const chips = document.querySelectorAll('#dateTimeChoice .chip');
-                    chips.forEach(chip => chip.classList.remove('selected'));
-                    if (item.dateTime === 'with') chips[0].classList.add('selected');
-                    else chips[1].classList.add('selected');
-                    selectedChip = item.dateTime;
-                    document.getElementById('copiesSelect').value = item.copies;
-                    document.getElementById('shrinkCheckbox').checked = !!item.shrink;
-                    document.getElementById('imagePrintOptions').style.display = 'flex';
-                    updatePrintButtonState();
-                } else if (item.type === 'signature') {
-                    showSection('signature');
-                    setTimeout(function() {
-                        initSignaturePad(item.data, true);
-                        const chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
-                        chips.forEach(chip => chip.classList.remove('selected'));
-                        if (item.dateTime === 'with') chips[0].classList.add('selected');
-                        else chips[1].classList.add('selected');
-                        selectedSignatureChip = item.dateTime;
-                        document.getElementById('signatureCopiesSelect').value = item.copies;
-                        updateSignaturePrintButtonState();
-                    }, 100);
-                } else {
-                    showSection('text');
-                    document.getElementById('textInput').value = item.data;
-                    autoWrap(document.getElementById('textInput'));
-                    const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-                    chips.forEach(chip => chip.classList.remove('selected'));
-                    if (item.dateTime === 'with') chips[0].classList.add('selected');
-                    else chips[1].classList.add('selected');
-                    selectedTextChip = item.dateTime;
-                    document.getElementById('textCopiesSelect').value = item.copies;
-                    updateTextPrintButtonState();
-                }
-            };
             historyList.appendChild(div);
         }
-        let spacer = document.createElement('div');
+        
+        var spacer = document.createElement('div');
         spacer.className = 'historyListSpacer';
         historyList.appendChild(spacer);
+    }).catch(function(error) {
+        console.error('履歴読み込みエラー:', error);
+        historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴の読み込みに失敗しました</div>';
     });
 }
+
+// ---- 日付・時刻表示 ----
 function displayDate() {
-    const today = new Date();
-    formattedDate = `${today.getFullYear()}年${String(today.getMonth() + 1).padStart(2, '0')}月${String(today.getDate()).padStart(2, '0')}日`;
-    document.getElementById('dateDisplay').textContent = `${formattedDate}`;
+    var today = new Date();
+    formattedDate = today.getFullYear() + '年' + String(today.getMonth() + 1).padStart(2, '0') + '月' + String(today.getDate()).padStart(2, '0') + '日';
+    document.getElementById('dateDisplay').textContent = formattedDate;
 }
+
 function updateTime() {
-    const now = new Date();
-    formattedTime = `${String(now.getHours()).padStart(2, '0')}時${String(now.getMinutes()).padStart(2, '0')}分${String(now.getSeconds()).padStart(2, '0')}秒`;
+    var now = new Date();
+    formattedTime = String(now.getHours()).padStart(2, '0') + '時' + String(now.getMinutes()).padStart(2, '0') + '分' + String(now.getSeconds()).padStart(2, '0') + '秒';
     document.getElementById('timeDisplay').textContent = formattedTime;
     setTimeout(updateTime, 1000);
 }
+
+// ---- URLスキームのコールバック処理 ----
+function handleCallback() {
+    var query = location.search;
+    var code = query.match(/Code=([^&#]*)/);
+    var message = query.match(/Message=([^&#]*)/);
+    if (code) {
+        alert('印刷エラーが発生しました。\n\nCode = ' + decodeURIComponent(code[1]) + '\nMessage = ' + decodeURIComponent(message[1]));
+    }
+    
+    // URLスキーム処理完了後にフラグをリセット
+    isCurrentlyPrinting = false;
+}
+
+// ---- 初期化 ----
 window.onload = function() {
     displayDate();
     updateTime();
     setModeToggle(currentHistoryType);
+    handleCallback(); // URLスキームのコールバック処理
+    
     document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
     document.getElementById('textInput').addEventListener('input', toggleClearButton);
     document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
     document.getElementById('textInput').addEventListener('input', function() {
         autoWrap(this);
     });
+    
     setTextChipsEnabled(false);
     loadHistoryList();
     initSignaturePad();
 };
+
+// ---- セクション切り替え ----
 function showSection(mode) {
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
@@ -1223,21 +1847,24 @@ function showSection(mode) {
         setTimeout(function(){initSignaturePad();}, 50);
     }
 }
+
 function toggleMode(mode) {
     showSection(mode);
 }
+
+// ---- 画像プレビュー ----
 function previewImage(event) {
-    const file = event.target.files[0];
-    const reader = new FileReader();
+    var file = event.target.files[0];
+    var reader = new FileReader();
     reader.onloadend = function() {
-        const img = new Image();
+        var img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            let containerW = Math.min(window.innerWidth * 0.98, 480);
-            let containerH = 360;
-            let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-            let displayW = Math.round(img.naturalWidth * ratio);
-            let displayH = Math.round(img.naturalHeight * ratio);
+            var containerW = Math.min(window.innerWidth * 0.98, 480);
+            var containerH = 360;
+            var ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
+            var displayW = Math.round(img.naturalWidth * ratio);
+            var displayH = Math.round(img.naturalHeight * ratio);
             img.style.width = displayW + "px";
             img.style.height = displayH + "px";
             img.style.maxWidth = "100%";
@@ -1247,33 +1874,31 @@ function previewImage(event) {
             lastPreviewImageNaturalWidth = img.naturalWidth;
             lastPreviewImageNaturalHeight = img.naturalHeight;
         };
-        const previewContainer = document.getElementById('imagePreviewContainer');
+        var previewContainer = document.getElementById('imagePreviewContainer');
         previewContainer.innerHTML = '';
         previewContainer.appendChild(img);
         document.getElementById('dateTimeChoice').style.display = 'flex';
-        const imageChips = document.querySelectorAll('#dateTimeChoice .chip');
-        imageChips.forEach(chip => chip.classList.remove('selected'));
+        var imageChips = document.querySelectorAll('#dateTimeChoice .chip');
+        imageChips.forEach(function(chip) { chip.classList.remove('selected'); });
         selectedChip = '';
         document.getElementById('imagePrintOptions').style.display = 'flex';
         updatePrintButtonState();
     };
     if (file) {
         reader.readAsDataURL(file);
-    }
-    else {
+    } else {
         document.getElementById('dateTimeChoice').style.display = 'none';
         document.getElementById('imagePrintOptions').style.display = 'none';
         selectedChip = '';
         updatePrintButtonState();
     }
 }
-document.getElementById('shrinkCheckbox').addEventListener('change', function() {
-    // プレビューは常に最大
-});
+
+// ---- チップ選択 ----
 function selectChip(type) {
     selectedChip = type;
-    const chips = document.querySelectorAll('#dateTimeChoice .chip');
-    chips.forEach(chip => chip.classList.remove('selected'));
+    var chips = document.querySelectorAll('#dateTimeChoice .chip');
+    chips.forEach(function(chip) { chip.classList.remove('selected'); });
     if (type === 'with') {
         chips[0].classList.add('selected');
     } else if (type === 'without') {
@@ -1281,11 +1906,12 @@ function selectChip(type) {
     }
     updatePrintButtonState();
 }
+
 function selectTextChip(type) {
     if (document.getElementById('textInput').value.trim() === '') return;
     selectedTextChip = type;
-    const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-    chips.forEach(chip => chip.classList.remove('selected'));
+    var chips = document.querySelectorAll('#textDateTimeChoice .chip');
+    chips.forEach(function(chip) { chip.classList.remove('selected'); });
     if (type === 'with') {
         chips[0].classList.add('selected');
     } else if (type === 'without') {
@@ -1293,24 +1919,40 @@ function selectTextChip(type) {
     }
     updateTextPrintButtonState();
 }
+
+function selectSignatureChip(type) {
+    selectedSignatureChip = type;
+    var chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
+    chips.forEach(function(chip) { chip.classList.remove('selected'); });
+    if (type === 'with') {
+        chips[0].classList.add('selected');
+    } else if (type === 'without') {
+        chips[1].classList.add('selected');
+    }
+    updateSignaturePrintButtonState();
+}
+
+// ---- ボタン状態更新 ----
 function updatePrintButtonState() {
-    const printButton = document.getElementById('printButton');
+    var printButton = document.getElementById('printButton');
     if (selectedChip === '') {
         printButton.classList.add('disabled');
     } else {
         printButton.classList.remove('disabled');
     }
 }
+
 function updateTextPrintButtonState() {
-    const textPrintButton = document.getElementById('textPrintButton');
-    const textPrintOptions = document.getElementById('textPrintOptions');
-    const textInput = document.getElementById('textInput');
-    const textDateTimeChoice = document.getElementById('textDateTimeChoice');
+    var textPrintButton = document.getElementById('textPrintButton');
+    var textPrintOptions = document.getElementById('textPrintOptions');
+    var textInput = document.getElementById('textInput');
+    var textDateTimeChoice = document.getElementById('textDateTimeChoice');
+    
     if (textInput.value.trim() === '') {
         setTextChipsEnabled(false);
         selectedTextChip = '';
-        const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-        chips.forEach(chip => chip.classList.remove('selected'));
+        var chips = document.querySelectorAll('#textDateTimeChoice .chip');
+        chips.forEach(function(chip) { chip.classList.remove('selected'); });
         textPrintButton.classList.add('disabled');
         textPrintOptions.style.display = 'none';
     } else {
@@ -1318,16 +1960,28 @@ function updateTextPrintButtonState() {
         textDateTimeChoice.style.display = 'flex';
         if (selectedTextChip !== '') {
             textPrintButton.classList.remove('disabled');
-            textPrintOptions.style.display = 'flex';
         } else {
             textPrintButton.classList.add('disabled');
-            textPrintOptions.style.display = 'flex';
         }
+        textPrintOptions.style.display = 'flex';
     }
 }
+
+function updateSignaturePrintButtonState() {
+    var btn = document.getElementById('signaturePrintButton');
+    var options = document.getElementById('signaturePrintOptions');
+    if (signaturePad && (!signaturePad.isEmpty() || (signaturePad._data && signaturePad._data.length > 0)) && selectedSignatureChip !== '') {
+        btn.classList.remove('disabled');
+        options.style.display = 'flex';
+    } else {
+        btn.classList.add('disabled');
+        options.style.display = 'flex';
+    }
+}
+
 function setTextChipsEnabled(enabled) {
-    const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-    chips.forEach(chip => {
+    var chips = document.querySelectorAll('#textDateTimeChoice .chip');
+    chips.forEach(function(chip) {
         if (enabled) {
             chip.classList.remove('disabled');
         } else {
@@ -1335,18 +1989,19 @@ function setTextChipsEnabled(enabled) {
         }
     });
 }
-// --- 手書きパッド ---
-let signaturePad = null;
+
+// ---- 手書きパッド ----
 function getSignaturePadSize() {
-    let w = 260, h = 340;
+    var w = 260, h = 340;
     if (window.innerWidth < 500) {
         w = Math.min(window.innerWidth * 0.9, 260);
         h = Math.min(window.innerWidth * 1.1, 340);
     }
     return {width: Math.round(w), height: Math.round(h)};
 }
+
 function resizeSignaturePadCanvas(canvas, ctx, size, ratio, imageDataUrl) {
-    let dataUrl = imageDataUrl || canvas.toDataURL();
+    var dataUrl = imageDataUrl || canvas.toDataURL();
     canvas.width = size.width * ratio;
     canvas.height = size.height * ratio;
     canvas.style.width = size.width + "px";
@@ -1355,20 +2010,23 @@ function resizeSignaturePadCanvas(canvas, ctx, size, ratio, imageDataUrl) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.scale(ratio, ratio);
     if (dataUrl) {
-        let img = new window.Image();
+        var img = new window.Image();
         img.onload = function() {
             ctx.drawImage(img, 0, 0, size.width, size.height);
         };
         img.src = dataUrl;
     }
 }
+
 function initSignaturePad(imageDataUrl, fromHistory) {
-    const canvas = document.getElementById('signaturePad');
-    const size = getSignaturePadSize();
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    let dataUrl = imageDataUrl || (canvas.width > 0 && canvas.height > 0 ? canvas.toDataURL() : null);
+    var canvas = document.getElementById('signaturePad');
+    var size = getSignaturePadSize();
+    var ratio = Math.max(window.devicePixelRatio || 1, 1);
+    var ctx = canvas.getContext("2d", { willReadFrequently: true });
+    var dataUrl = imageDataUrl || (canvas.width > 0 && canvas.height > 0 ? canvas.toDataURL() : null);
+    
     resizeSignaturePadCanvas(canvas, ctx, size, ratio, dataUrl);
+    
     signaturePad = new window.SignaturePad(canvas, {
         backgroundColor: "#fff",
         penColor: "#222",
@@ -1377,8 +2035,9 @@ function initSignaturePad(imageDataUrl, fromHistory) {
         throttle: 10,
         velocityFilterWeight: 0.7
     });
+    
     if (imageDataUrl) {
-        const img = new window.Image();
+        var img = new window.Image();
         img.onload = function() {
             ctx.drawImage(img, 0, 0, size.width, size.height);
             if (fromHistory) {
@@ -1388,203 +2047,136 @@ function initSignaturePad(imageDataUrl, fromHistory) {
         };
         img.src = imageDataUrl;
     }
+    
     document.getElementById('signatureClearBtn').onclick = function() {
         signaturePad.clear();
         updateSignaturePrintButtonState();
     };
+    
     canvas.onmouseup = updateSignaturePrintButtonState;
     canvas.ontouchend = updateSignaturePrintButtonState;
     canvas.onmouseout = updateSignaturePrintButtonState;
+    
     canvas.addEventListener('touchstart', function(e) {
         if (e.touches.length === 1) e.preventDefault();
     }, { passive: false });
+    
     canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); });
     canvas.addEventListener('selectstart', function(e) { e.preventDefault(); });
+    
     updateSignaturePrintButtonState();
 }
+
 window.addEventListener('resize', function() {
     if (document.getElementById('signatureSection').style.display !== 'none') {
-        let dataUrl = signaturePad && !signaturePad.isEmpty() ? signaturePad.toDataURL() : null;
-        let fromHistory = !!(signaturePad && signaturePad._data && signaturePad._data.length > 0);
+        var dataUrl = signaturePad && !signaturePad.isEmpty() ? signaturePad.toDataURL() : null;
+        var fromHistory = !!(signaturePad && signaturePad._data && signaturePad._data.length > 0);
         initSignaturePad(dataUrl, fromHistory);
     }
 });
-function selectSignatureChip(type) {
-    selectedSignatureChip = type;
-    const chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
-    chips.forEach(chip => chip.classList.remove('selected'));
-    if (type === 'with') {
-        chips[0].classList.add('selected');
-    } else if (type === 'without') {
-        chips[1].classList.add('selected');
-    }
-    updateSignaturePrintButtonState();
-}
-function updateSignaturePrintButtonState() {
-    const btn = document.getElementById('signaturePrintButton');
-    const options = document.getElementById('signaturePrintOptions');
-    if (signaturePad && (!signaturePad.isEmpty() || signaturePad._data && signaturePad._data.length > 0) && selectedSignatureChip !== '') {
-        btn.classList.remove('disabled');
-        options.style.display = 'flex';
-    } else {
-        btn.classList.add('disabled');
-        options.style.display = 'flex';
-    }
-}
+
+// ---- 手書きサイン印刷（重複防止付きSII URLスキーム対応） ----
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
-    const canvas = document.getElementById('signaturePad');
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    const srcW = canvas.width / ratio;
-    const srcH = canvas.height / ratio;
-    const printW = 50; // mm
-    const pxPerMm = 3.38; // 1mm=3.38px（58mm=196px基準）
-    const outW = Math.round(printW * pxPerMm);
-    const scale = outW / srcW;
-    const outH = Math.round(srcH * scale);
-    const tmpCanvas = document.createElement('canvas');
-    tmpCanvas.width = outW;
-    tmpCanvas.height = outH;
-    const tmpCtx = tmpCanvas.getContext('2d', { willReadFrequently: true });
-    tmpCtx.fillStyle = "#fff";
-    tmpCtx.fillRect(0, 0, outW, outH);
-    tmpCtx.drawImage(canvas, 0, 0, srcW * ratio, srcH * ratio, 0, 0, outW, outH);
-    const paperWidth = 58;
-    const imgW = 50, imgH = Math.round(outH / pxPerMm);
-    const marginX = Math.floor((paperWidth - imgW) / 2);
-    const marginY = 4;
-    const isDateTimeEnabled = selectedSignatureChip === 'with';
-    const dateTimeHeight = 16;
-    const bottomMargin = isDateTimeEnabled ? 16 : 18;
-    const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
-    const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
-    let currentCopy = 1;
-    function printSignatureCopy(copyIndex) {
-        let dataUrl = tmpCanvas.toDataURL("image/png");
-        let printUrl = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${marginX},${marginY},${imgW},${imgH},${dataUrl.split(',')[1]}`;
-        if (isDateTimeEnabled) {
-            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-            printUrl += `&2=${safeEncodeURIComponent(dateTimeString)},0,${marginY + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-        }
-        if (copyIndex === selectedCopies) {
-            printUrl += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-        }
-        window.location.href = printUrl;
+    
+    // 重複印刷防止
+    if (isCurrentlyPrinting) {
+        console.log('印刷処理中のため、新しい印刷要求を無視します');
+        return;
     }
-    function printNext() {
-        if (currentCopy < selectedCopies) {
-            setTimeout(printNext, 10000);
-        }
-        printSignatureCopy(currentCopy);
-        currentCopy++;
-    }
-    printNext();
-    addHistory({
-        type: 'signature',
-        mode: 'signature',
-        data: tmpCanvas.toDataURL("image/png"),
-        dateTime: selectedSignatureChip,
-        copies: selectedCopies,
-        created: Date.now()
-    });
-};
-// --- 画像印刷 ---
-function sendToPrintAssist(event) {
-    event.preventDefault();
-    let fileInput = document.getElementById('imageUpload');
-    let file = fileInput.files[0];
-    let base64Image = null;
-    let usePreview = false;
-    if (!file && document.getElementById('imagePreviewContainer').firstChild && document.getElementById('imagePreviewContainer').firstChild.tagName === 'IMG') {
-        let img = document.getElementById('imagePreviewContainer').firstChild;
-        base64Image = img.src.split(',')[1];
-        usePreview = true;
-    }
-    if ((!file && !usePreview) || selectedChip === '') return;
-    const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
-    function doPrint(base64Image) {
-        const paperWidth = 58;
-        let img = new window.Image();
-        img.onload = function() {
-            let origW = img.naturalWidth;
-            let origH = img.naturalHeight;
-            let ratio = Math.min(paperWidth / origW, 1);
-            if (shrinkChecked) ratio *= 0.6;
-            let imgW = Math.round(origW * ratio);
-            let imgH = Math.round(origH * ratio);
-            let x = Math.round((paperWidth - imgW) / 2);
-            let y = 2;
-            const isDateTimeEnabled = selectedChip === 'with';
-            const topMargin = 2;
-            const bottomMargin = isDateTimeEnabled ? 16 : 18;
-            const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
-            const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
-            let currentCopy = 1;
-            function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${base64Image}`;
-                if (isDateTimeEnabled) {
-                    const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-                }
-                if (copyIndex === selectedCopies) {
-                    printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-                }
-                window.location.href = printUrlImage;
+    
+    try {
+        // 印刷開始フラグ
+        isCurrentlyPrinting = true;
+        
+        var canvas = document.getElementById('signaturePad');
+        var signatureDataUrl = canvas.toDataURL("image/png");
+        var selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
+        var isDateTimeEnabled = selectedSignatureChip === 'with';
+        
+        // Step 1: 最適化された署名Canvas作成
+        createOptimizedSignatureCanvasForSII(signatureDataUrl, isDateTimeEnabled, function(pngDataUrl) {
+            if (!pngDataUrl) {
+                alert('署名の処理に失敗しました。');
+                isCurrentlyPrinting = false; // フラグリセット
+                return;
             }
-            function printNext() {
-                if (currentCopy < selectedCopies) {
-                    setTimeout(printNext, 10000);
+            
+            // Step 2: PNGをPDFに変換
+            convertPngToPdf(pngDataUrl, function(pdfBase64) {
+                if (!pdfBase64) {
+                    alert('PDF変換に失敗しました。');
+                    isCurrentlyPrinting = false; // フラグリセット
+                    return;
                 }
-                printImageCopy(currentCopy);
-                currentCopy++;
-            }
-            printNext();
-            addHistory({
-                type: 'image',
-                mode: 'image',
-                data: 'data:image/png;base64,' + base64Image,
-                dateTime: selectedChip,
-                copies: selectedCopies,
-                shrink: shrinkChecked,
-                created: Date.now()
+                
+                // Step 3: サンプル準拠 SII URLスキーム
+                var thisPage = window.location.href;
+                var url = 'siiprintagent://1.0/print?' +
+                    'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                    'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+                    'Format=' + 'pdf' + '&' +
+                    'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                    'SelectOnError=' + 'yes' + '&' +
+                    'CutType=' + 'full' + '&' +
+                    'CutFeed=' + 'yes' + '&' +
+                    'FitToWidth=' + 'no' + '&' +
+                    'PaperWidth=' + '58';
+                
+                console.log("SII PRINT URL (署名最適化版):", url);
+                window.location.href = url;
+                
+                addHistory({
+                    type: 'signature',
+                    mode: 'signature',
+                    data: signatureDataUrl,
+                    dateTime: selectedSignatureChip,
+                    copies: selectedCopies,
+                    created: Date.now()
+                });
+                
+                // 印刷完了後にフラグをリセット（5秒後）
+                setTimeout(function() {
+                    isCurrentlyPrinting = false;
+                }, 5000);
             });
-        };
-        img.src = 'data:image/png;base64,' + base64Image;
+        });
+    } catch (error) {
+        console.error('署名印刷エラー:', error);
+        alert('署名印刷に失敗しました。もう一度お試しください。');
+        isCurrentlyPrinting = false; // エラー時もフラグリセット
     }
-    if (usePreview) {
-        doPrint(base64Image);
-    } else {
-        const reader = new FileReader();
-        reader.onloadend = function() {
-            base64Image = reader.result.split(',')[1];
-            doPrint(base64Image);
-        };
-        reader.readAsDataURL(file);
-    }
-}
-// --- テキスト印刷 ---
+};
+
+// ---- テキスト自動改行機能（元のindex.htmlと同じ） ----
 function wrapText(text) {
     text = toZenkaku(text);
-    const lines = [];
-    const paragraphs = text.split('\n');
-    for (let paragraph of paragraphs) {
+    var lines = [];
+    var paragraphs = text.split('\n');
+    
+    for (var p = 0; p < paragraphs.length; p++) {
+        var paragraph = paragraphs[p];
         if (paragraph.length === 0) {
             lines.push('');
             continue;
         }
-        let remainingText = paragraph;
+        
+        var remainingText = paragraph;
         while (remainingText.length > 0) {
-            let lineLength = 0;
-            let currentLine = '';
-            let hasFullWidth = false;
-            let hasHalfWidth = false;
-            for (let i = 0; i < remainingText.length; i++) {
-                const char = remainingText[i];
-                const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
-                const charWidth = isFullWidth ? 2 : 1;
+            var lineLength = 0;
+            var currentLine = '';
+            var hasFullWidth = false;
+            var hasHalfWidth = false;
+            
+            for (var i = 0; i < remainingText.length; i++) {
+                var char = remainingText[i];
+                var isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
+                var charWidth = isFullWidth ? 2 : 1;
+                
                 if (isFullWidth) hasFullWidth = true;
                 else hasHalfWidth = true;
-                let maxLen;
+                
+                var maxLen;
                 if (hasFullWidth && hasHalfWidth) {
                     maxLen = 14;
                 } else if (hasFullWidth) {
@@ -1592,113 +2184,59 @@ function wrapText(text) {
                 } else {
                     maxLen = 23;
                 }
+                
                 if ((hasFullWidth && hasHalfWidth && currentLine.length >= maxLen) ||
                     (!hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen) ||
                     (hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen) ||
                     (!hasFullWidth && hasHalfWidth && currentLine.length >= maxLen)) {
                     break;
                 }
+                
                 if ((hasFullWidth && hasHalfWidth && lineLength + charWidth > maxLen * 2) ||
                     (!hasFullWidth && !hasHalfWidth && lineLength + charWidth > maxLen) ||
                     (hasFullWidth && !hasHalfWidth && lineLength + charWidth > maxLen * 2) ||
                     (!hasFullWidth && hasHalfWidth && lineLength + charWidth > maxLen)) {
                     break;
                 }
+                
                 currentLine += char;
                 lineLength += charWidth;
             }
+            
             lines.push(currentLine);
             remainingText = remainingText.substring(currentLine.length);
         }
     }
     return lines;
 }
-function safeEncodeURIComponent(str) {
-    return encodeURIComponent(str)
-        .replace(/!/g, '%21')
-        .replace(/'/g, '%27')
-        .replace(/\(/g, '%28')
-        .replace(/\)/g, '%29')
-        .replace(/\*/g, '%2A')
-        .replace(/%20/g, '%20');
-}
-function printText() {
-    const textInput = document.getElementById('textInput');
-    let text = textInput.value;
-    if (text.trim() === '' || selectedTextChip === '') return;
-    text = toZenkaku(text);
-    const paperWidth = 58;
-    const isDateTimeEnabled = selectedTextChip === 'with';
-    const wrappedLines = wrapText(text);
-    const lineHeight = 4;
-    const topMargin = 6;
-    const dateTimeHeight = 16;
-    const spaceBetweenTextAndDate = 4;
-    const bottomMargin = isDateTimeEnabled ? 15 : 19;
-    const leftMargin = 2;
-    let totalHeight = topMargin + (wrappedLines.length * lineHeight);
-    if (isDateTimeEnabled) {
-        totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
-    }
-    totalHeight += bottomMargin;
-    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-    let currentCopy = 1;
-    function printTextCopy(copyIndex) {
-        let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
-        wrappedLines.forEach((line, index) => {
-            const encodedLine = safeEncodeURIComponent(line);
-            printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-        });
-        if (isDateTimeEnabled) {
-            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-            const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-            printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
-        }
-        if (copyIndex === selectedTextCopies) {
-            printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-        }
-        window.location.href = printUrlText;
-    }
-    function printNext() {
-        if (currentCopy < selectedTextCopies) {
-            setTimeout(printNext, 10000);
-        }
-        printTextCopy(currentCopy);
-        currentCopy++;
-    }
-    printNext();
-    addHistory({
-        type: 'text',
-        mode: 'text',
-        data: textInput.value,
-        dateTime: selectedTextChip,
-        copies: selectedTextCopies,
-        created: Date.now()
-    });
-}
+
 function toggleClearButton() {
-    const textInput = document.getElementById('textInput');
-    const clearTextButton = document.getElementById('clearTextButton');
+    var textInput = document.getElementById('textInput');
+    var clearTextButton = document.getElementById('clearTextButton');
     if (textInput.value.trim() !== '') {
         clearTextButton.style.display = 'block';
     } else {
         clearTextButton.style.display = 'none';
     }
 }
+
 function handleClearButtonClick() {
-    const textInput = document.getElementById('textInput');
-    const confirmClear = confirm('テキストをクリアしますか？');
+    var textInput = document.getElementById('textInput');
+    var confirmClear = confirm('テキストをクリアしますか？');
     if (confirmClear) {
         textInput.value = '';
         document.getElementById('clearTextButton').style.display = 'none';
         updateTextPrintButtonState();
     }
 }
+
 function autoWrap(textarea) {
-    const text = textarea.value;
-    const wrappedLines = wrapText(text);
+    var text = textarea.value;
+    var wrappedLines = wrapText(text);
     textarea.value = wrappedLines.join('\n');
 }
+
+// ---- Service Worker登録（オフライン対応） ----
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
         navigator.serviceWorker.register('service-worker.js').then(function(registration) {
