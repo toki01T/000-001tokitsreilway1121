@@ -77,7 +77,6 @@ header {
     box-sizing: border-box;
     position: relative;
 }
-/* 修正：toki01Ⓣの中央配置完全修正 */
 .navbar-brand {
     color: #fff;
     text-decoration: none;
@@ -92,7 +91,6 @@ header {
     padding: 0;
     white-space: nowrap;
 }
-/* 修正：ハンバーガーメニューサイズ復旧 */
 #historyMenuBtn {
     position: absolute;
     right: 1rem;
@@ -101,7 +99,7 @@ header {
     background: transparent;
     border: none;
     color: #fff;
-    font-size: 1.7rem; /* 元のサイズに復旧 */
+    font-size: 1.7rem;
     cursor: pointer;
     z-index: 12;
     padding: 0;
@@ -240,7 +238,6 @@ header {
     pointer-events: none;
     background: transparent;
 }
-/* 修正：履歴削除の余白問題完全解決 */
 .historyItem {
     border-bottom: 1px solid var(--border-color);
     padding: 0.7rem 0;
@@ -381,7 +378,6 @@ header {
     word-break: keep-all;
     width: 100%;
 }
-/* 修正：削除ボタンの完全修正 */
 .swipeDeleteBtn {
     position: absolute;
     right: -80px;
@@ -931,53 +927,50 @@ var DB_NAME = 'toki01_history';
 var DB_VERSION = 1;
 var STORE_NAME = 'history';
 
-// ---- 修正：重複印刷防止の完全対策 ----
 var printQueue = [];
 var isProcessingPrint = false;
 
-// ---- PDF生成ライブラリ初期化 ----
 var jsPDF = window.jspdf.jsPDF;
 
-// ---- 修正：見本に基づく高品質印刷Canvas作成 ----
-function createHighQualityCanvas(imageDataUrl, shrinkScale, isDateTimeEnabled, callback) {
+// ---- 修正：見本準拠の完全中央配置Canvas作成 ----
+function createPerfectCenterCanvas(imageDataUrl, shrinkScale, isDateTimeEnabled, callback) {
     if (shrinkScale === undefined) shrinkScale = 1;
     
     var img = new Image();
     img.onload = function() {
-        // 見本に基づくサイズ計算
         var paperWidth = 58; // mm
         var origW = img.naturalWidth;
         var origH = img.naturalHeight;
         
-        // 高品質化：より正確なサイズ計算
-        var maxImageWidth = 54; // 実際の印刷可能領域
-        var ratio = Math.min(maxImageWidth / origW, 1);
+        // 見本に基づく正確なサイズ計算
+        var printableWidth = 52; // 印刷可能領域を52mmに設定
+        var ratio = Math.min(printableWidth / origW, 1);
         if (shrinkScale < 1) ratio *= shrinkScale;
         
         var imgW = Math.round(origW * ratio);
         var imgH = Math.round(origH * ratio);
-        var x = Math.round((paperWidth - imgW) / 2);
-        var y = 3; // より適切な上マージン
         
-        // 用紙長さの最適化
-        var topMargin = 3;
-        var dateTimeHeight = isDateTimeEnabled ? 12 : 0; // より適切な高さ
-        var spaceBetween = isDateTimeEnabled ? 2 : 0;
-        var bottomMargin = isDateTimeEnabled ? 8 : 5; // 最小限の下マージン
+        // 完全中央配置
+        var x = Math.round((paperWidth - imgW) / 2);
+        var y = 4; // 上マージン
+        
+        // 見本に基づく用紙長さ最適化
+        var topMargin = 4;
+        var dateTimeHeight = isDateTimeEnabled ? 16 : 0;
+        var spaceBetween = isDateTimeEnabled ? 4 : 0;
+        var bottomMargin = isDateTimeEnabled ? 6 : 4;
         var totalHeight = topMargin + imgH + spaceBetween + dateTimeHeight + bottomMargin;
         
-        // 高解像度Canvas作成
+        // 高解像度Canvas
         var canvas = document.createElement('canvas');
         var ctx = canvas.getContext('2d');
-        
-        // 高解像度化（見本の品質に合わせる）
-        var dpi = 300; // 高品質印刷用DPI
-        var pxPerMm = dpi / 25.4; // 1mm = 約11.8px (300DPI)
+        var dpi = 300;
+        var pxPerMm = dpi / 25.4;
         
         canvas.width = Math.round(paperWidth * pxPerMm);
         canvas.height = Math.round(totalHeight * pxPerMm);
         
-        // アンチエイリアシング無効化（シャープな印刷）
+        // 鮮明な印刷のための設定
         ctx.imageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
@@ -987,7 +980,7 @@ function createHighQualityCanvas(imageDataUrl, shrinkScale, isDateTimeEnabled, c
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // 画像描画（高品質）
+        // 画像を完全中央配置で描画
         var imgPxW = Math.round(imgW * pxPerMm);
         var imgPxH = Math.round(imgH * pxPerMm);
         var imgPxX = Math.round(x * pxPerMm);
@@ -995,24 +988,25 @@ function createHighQualityCanvas(imageDataUrl, shrinkScale, isDateTimeEnabled, c
         
         ctx.drawImage(img, imgPxX, imgPxY, imgPxW, imgPxH);
         
-        // 日付・時刻描画（見本準拠）
+        // 見本準拠の日付・時刻描画
         if (isDateTimeEnabled) {
             ctx.fillStyle = '#000000';
-            ctx.font = 'bold ' + Math.round(14 * pxPerMm / 11.8) + 'px Arial';
+            ctx.font = 'bold ' + Math.round(18 * pxPerMm / 11.8) + 'px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             
-            var dateTimeText = toZenkaku(formattedDate + '\n' + formattedTime);
-            var lines = dateTimeText.split('\n');
+            // 見本通りの日付・時刻位置（完全中央）
             var dateTimeY = imgPxY + imgPxH + Math.round(spaceBetween * pxPerMm);
-            var lineSpacing = Math.round(6 * pxPerMm / 11.8);
+            var centerX = canvas.width / 2;
             
-            for (var i = 0; i < lines.length; i++) {
-                ctx.fillText(lines[i], canvas.width / 2, dateTimeY + (i * lineSpacing));
-            }
+            // 日付（1行目）
+            ctx.fillText(formattedDate, centerX, dateTimeY);
+            
+            // 時刻（2行目）
+            var timeY = dateTimeY + Math.round(8 * pxPerMm / 11.8);
+            ctx.fillText(formattedTime, centerX, timeY);
         }
         
-        // 高品質PNG出力
         var pngDataUrl = canvas.toDataURL('image/png', 1.0);
         callback(pngDataUrl);
     };
@@ -1022,22 +1016,21 @@ function createHighQualityCanvas(imageDataUrl, shrinkScale, isDateTimeEnabled, c
     img.src = imageDataUrl;
 }
 
-function createHighQualityTextCanvas(text, isDateTimeEnabled, callback) {
+function createPerfectTextCanvas(text, isDateTimeEnabled, callback) {
     text = toZenkaku(text);
     var paperWidth = 58;
     var wrappedLines = wrapText(text);
     
     // 見本に基づく最適化レイアウト
-    var lineHeight = 4.5;
-    var topMargin = 4;
-    var dateTimeHeight = isDateTimeEnabled ? 12 : 0;
-    var spaceBetween = isDateTimeEnabled ? 3 : 0;
+    var lineHeight = 5;
+    var topMargin = 6;
+    var dateTimeHeight = isDateTimeEnabled ? 16 : 0;
+    var spaceBetween = isDateTimeEnabled ? 4 : 0;
     var bottomMargin = isDateTimeEnabled ? 6 : 4;
-    var leftMargin = 3;
+    var leftMargin = 4; // 見本に基づく左マージン
     
     var totalHeight = topMargin + (wrappedLines.length * lineHeight) + spaceBetween + dateTimeHeight + bottomMargin;
     
-    // 高解像度Canvas
     var canvas = document.createElement('canvas');
     var ctx = canvas.getContext('2d');
     var dpi = 300;
@@ -1046,7 +1039,6 @@ function createHighQualityTextCanvas(text, isDateTimeEnabled, callback) {
     canvas.width = Math.round(paperWidth * pxPerMm);
     canvas.height = Math.round(totalHeight * pxPerMm);
     
-    // アンチエイリアシング無効化
     ctx.imageSmoothingEnabled = false;
     ctx.webkitImageSmoothingEnabled = false;
     ctx.mozImageSmoothingEnabled = false;
@@ -1055,9 +1047,9 @@ function createHighQualityTextCanvas(text, isDateTimeEnabled, callback) {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // テキスト描画（高品質）
+    // テキスト描画（見本準拠の配置）
     ctx.fillStyle = '#000000';
-    ctx.font = 'bold ' + Math.round(12 * pxPerMm / 11.8) + 'px Arial';
+    ctx.font = 'bold ' + Math.round(16 * pxPerMm / 11.8) + 'px Arial';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     
@@ -1071,44 +1063,44 @@ function createHighQualityTextCanvas(text, isDateTimeEnabled, callback) {
         ctx.fillText(line, textLeftMargin, yPos);
     }
     
-    // 日付・時刻描画
+    // 見本準拠の日付・時刻描画（完全中央）
     if (isDateTimeEnabled) {
-        var dateTimeText = toZenkaku(formattedDate + '\n' + formattedTime);
-        var dateTimeLines = dateTimeText.split('\n');
         var dateTimeY = textTopMargin + (wrappedLines.length * lineHeightPx) + Math.round(spaceBetween * pxPerMm);
         
-        ctx.font = 'bold ' + Math.round(14 * pxPerMm / 11.8) + 'px Arial';
+        ctx.font = 'bold ' + Math.round(18 * pxPerMm / 11.8) + 'px Arial';
         ctx.textAlign = 'center';
-        var lineSpacing = Math.round(6 * pxPerMm / 11.8);
+        var centerX = canvas.width / 2;
         
-        for (var j = 0; j < dateTimeLines.length; j++) {
-            ctx.fillText(dateTimeLines[j], canvas.width / 2, dateTimeY + (j * lineSpacing));
-        }
+        // 日付（1行目）
+        ctx.fillText(formattedDate, centerX, dateTimeY);
+        
+        // 時刻（2行目）
+        var timeY = dateTimeY + Math.round(8 * pxPerMm / 11.8);
+        ctx.fillText(formattedTime, centerX, timeY);
     }
     
     var pngDataUrl = canvas.toDataURL('image/png', 1.0);
     callback(pngDataUrl);
 }
 
-function createHighQualitySignatureCanvas(signatureDataUrl, isDateTimeEnabled, callback) {
+function createPerfectSignatureCanvas(signatureDataUrl, isDateTimeEnabled, callback) {
     var img = new Image();
     img.onload = function() {
         var paperWidth = 58;
         var maxSignatureWidth = 50;
         
-        // サイズ計算
         var scale = maxSignatureWidth / img.naturalWidth;
         var signatureW = maxSignatureWidth;
         var signatureH = Math.round(img.naturalHeight * scale);
         
+        // 完全中央配置
         var marginX = Math.round((paperWidth - signatureW) / 2);
-        var marginY = 4;
-        var dateTimeHeight = isDateTimeEnabled ? 12 : 0;
-        var spaceBetween = isDateTimeEnabled ? 2 : 0;
+        var marginY = 6;
+        var dateTimeHeight = isDateTimeEnabled ? 16 : 0;
+        var spaceBetween = isDateTimeEnabled ? 4 : 0;
         var bottomMargin = isDateTimeEnabled ? 6 : 4;
         var totalHeight = marginY + signatureH + spaceBetween + dateTimeHeight + bottomMargin;
         
-        // 高解像度Canvas
         var canvas = document.createElement('canvas');
         var ctx = canvas.getContext('2d');
         var dpi = 300;
@@ -1117,7 +1109,6 @@ function createHighQualitySignatureCanvas(signatureDataUrl, isDateTimeEnabled, c
         canvas.width = Math.round(paperWidth * pxPerMm);
         canvas.height = Math.round(totalHeight * pxPerMm);
         
-        // アンチエイリアシング無効化
         ctx.imageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
@@ -1126,7 +1117,7 @@ function createHighQualitySignatureCanvas(signatureDataUrl, isDateTimeEnabled, c
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // 署名描画
+        // 署名を完全中央配置で描画
         var signaturePxW = Math.round(signatureW * pxPerMm);
         var signaturePxH = Math.round(signatureH * pxPerMm);
         var signaturePxX = Math.round(marginX * pxPerMm);
@@ -1134,21 +1125,22 @@ function createHighQualitySignatureCanvas(signatureDataUrl, isDateTimeEnabled, c
         
         ctx.drawImage(img, signaturePxX, signaturePxY, signaturePxW, signaturePxH);
         
-        // 日付・時刻描画
+        // 見本準拠の日付・時刻描画（完全中央）
         if (isDateTimeEnabled) {
             ctx.fillStyle = '#000000';
-            ctx.font = 'bold ' + Math.round(14 * pxPerMm / 11.8) + 'px Arial';
+            ctx.font = 'bold ' + Math.round(18 * pxPerMm / 11.8) + 'px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             
-            var dateTimeText = toZenkaku(formattedDate + '\n' + formattedTime);
-            var lines = dateTimeText.split('\n');
             var dateTimeY = signaturePxY + signaturePxH + Math.round(spaceBetween * pxPerMm);
-            var lineSpacing = Math.round(6 * pxPerMm / 11.8);
+            var centerX = canvas.width / 2;
             
-            for (var i = 0; i < lines.length; i++) {
-                ctx.fillText(lines[i], canvas.width / 2, dateTimeY + (i * lineSpacing));
-            }
+            // 日付（1行目）
+            ctx.fillText(formattedDate, centerX, dateTimeY);
+            
+            // 時刻（2行目）
+            var timeY = dateTimeY + Math.round(8 * pxPerMm / 11.8);
+            ctx.fillText(formattedTime, centerX, timeY);
         }
         
         var pngDataUrl = canvas.toDataURL('image/png', 1.0);
@@ -1172,7 +1164,7 @@ function processPrintQueue() {
     isProcessingPrint = true;
     var printData = printQueue.shift();
     
-    console.log('高品質印刷処理開始:', printData.type);
+    console.log('完全中央配置印刷処理開始:', printData.type);
     
     convertPngToPdf(printData.pngDataUrl, function(pdfBase64) {
         if (!pdfBase64) {
@@ -1194,7 +1186,7 @@ function processPrintQueue() {
             'FitToWidth=' + 'no' + '&' +
             'PaperWidth=' + '58';
         
-        console.log("高品質SII PRINT URL:", url);
+        console.log("完全中央配置SII PRINT URL:", url);
         console.log("PDF Base64 Length:", pdfBase64.length);
         
         window.location.href = url;
@@ -1207,7 +1199,6 @@ function processPrintQueue() {
     });
 }
 
-// ---- PNG to PDF変換関数 ----
 function convertPngToPdf(pngDataUrl, callback) {
     var img = new Image();
     img.onload = function() {
@@ -1240,7 +1231,7 @@ function convertPngToPdf(pngDataUrl, callback) {
     img.src = pngDataUrl;
 }
 
-// ---- 修正：高品質印刷関数 ----
+// ---- 修正：完全中央配置印刷関数 ----
 function sendToPrintAssist(event) {
     event.preventDefault();
     
@@ -1264,7 +1255,7 @@ function sendToPrintAssist(event) {
     function doPrint(imageDataUrl) {
         var shrinkScale = shrinkChecked ? 0.6 : 1.0;
         
-        createHighQualityCanvas(imageDataUrl, shrinkScale, isDateTimeEnabled, function(pngDataUrl) {
+        createPerfectCenterCanvas(imageDataUrl, shrinkScale, isDateTimeEnabled, function(pngDataUrl) {
             if (!pngDataUrl) {
                 alert('画像の処理に失敗しました。');
                 return;
@@ -1305,7 +1296,7 @@ function printText() {
     var isDateTimeEnabled = selectedTextChip === 'with';
     var selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
     
-    createHighQualityTextCanvas(text, isDateTimeEnabled, function(pngDataUrl) {
+    createPerfectTextCanvas(text, isDateTimeEnabled, function(pngDataUrl) {
         if (!pngDataUrl) {
             alert('テキストの処理に失敗しました。');
             return;
@@ -1526,7 +1517,7 @@ function restoreFromHistory(item) {
         document.getElementById('textDateTimeChoice').style.display = 'flex';
         document.getElementById('textPrintOptions').style.display = 'flex';
         
-                selectedTextChip = item.dateTime;
+        selectedTextChip = item.dateTime;
         var chips = document.querySelectorAll('#textDateTimeChoice .chip');
         chips.forEach(function(chip) { chip.classList.remove('selected'); });
         if (item.dateTime === 'with') {
@@ -1557,7 +1548,7 @@ function restoreFromHistory(item) {
                     signaturePad._data = [[{x:0,y:0,time:Date.now()}]];
                     updateSignaturePrintButtonState();
                 };
-                img.src = item.data;
+                                img.src = item.data;
             }
         }, 100);
         
@@ -2023,7 +2014,7 @@ window.addEventListener('resize', function() {
     }
 });
 
-// ---- 手書きサイン印刷（高品質対応） ----
+// ---- 手書きサイン印刷（完全中央配置対応） ----
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
     
@@ -2033,7 +2024,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
         var selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
         var isDateTimeEnabled = selectedSignatureChip === 'with';
         
-        createHighQualitySignatureCanvas(signatureDataUrl, isDateTimeEnabled, function(pngDataUrl) {
+        createPerfectSignatureCanvas(signatureDataUrl, isDateTimeEnabled, function(pngDataUrl) {
             if (!pngDataUrl) {
                 alert('署名の処理に失敗しました。');
                 return;
