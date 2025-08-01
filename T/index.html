@@ -246,7 +246,7 @@ header {
     overflow: hidden;
     transform: translateX(0);
     touch-action: pan-y;
-    margin-bottom: 0; /* 削除時の空白を防ぐ */
+    margin-bottom: 0;
 }
 .historyItem:last-child { border-bottom: none; }
 .historyItem:hover {
@@ -923,45 +923,66 @@ var STORE_NAME = 'history';
 // ---- PDF生成ライブラリ初期化 ----
 var jsPDF = window.jspdf.jsPDF;
 
-// ---- Base64変換関数 ----
-function arrayBufferToBase64(buffer) {
-    var binary = '';
-    var bytes = new Uint8Array(buffer);
-    var len = bytes.byteLength;
-    for (var i = 0; i < len; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return window.btoa(binary);
-}
-
-// ---- Canvas要素を作成してPNGデータを生成 ----
-function createCanvasFromImage(imageDataUrl, shrinkScale, callback) {
+// ---- 元のindex.htmlと同じ画像処理関数 ----
+function createOptimizedCanvasForSII(imageDataUrl, shrinkScale, isDateTimeEnabled, callback) {
     if (shrinkScale === undefined) shrinkScale = 1;
     
     var img = new Image();
     img.onload = function() {
+        // 元のindex.htmlと同じ用紙サイズ計算
+        var paperWidth = 58; // mm
+        var origW = img.naturalWidth;
+        var origH = img.naturalHeight;
+        
+        // 画像サイズの最適化計算（元のindex.htmlと同じ）
+        var ratio = Math.min(paperWidth / origW, 1);
+        if (shrinkScale < 1) ratio *= shrinkScale;
+        
+        var imgW = Math.round(origW * ratio);
+        var imgH = Math.round(origH * ratio);
+        var x = Math.round((paperWidth - imgW) / 2);
+        var y = 2;
+        
+        // 用紙の高さ計算（元のindex.htmlと同じ）
+        var topMargin = 2;
+        var bottomMargin = isDateTimeEnabled ? 16 : 18;
+        var totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
+        
+        // Canvas作成（適切なサイズで）
         var canvas = document.createElement('canvas');
         var ctx = canvas.getContext('2d');
         
-        // 58mm幅に合わせたサイズ計算
-        var targetWidthPx = 220; // 58mm ≈ 220px (at 96dpi)
-        var aspectRatio = img.naturalHeight / img.naturalWidth;
-        var targetHeightPx = Math.max(300, targetWidthPx * aspectRatio * shrinkScale);
-        
-        canvas.width = targetWidthPx;
-        canvas.height = targetHeightPx;
+        // 58mm幅 = 約220px（96dpi基準）
+        var pxPerMm = 3.78; // より正確なピクセル比
+        canvas.width = Math.round(paperWidth * pxPerMm);
+        canvas.height = Math.round(totalHeight * pxPerMm);
         
         // 背景を白で塗りつぶし
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // 画像を中央に配置
-        var imgWidth = targetWidthPx * shrinkScale;
-        var imgHeight = aspectRatio * imgWidth;
-        var x = (canvas.width - imgWidth) / 2;
-        var y = 10;
+        // 画像を中央配置で描画
+        var imgPxW = Math.round(imgW * pxPerMm);
+        var imgPxH = Math.round(imgH * pxPerMm);
+        var imgPxX = Math.round(x * pxPerMm);
+        var imgPxY = Math.round(y * pxPerMm);
         
-        ctx.drawImage(img, x, y, imgWidth, imgHeight);
+        ctx.drawImage(img, imgPxX, imgPxY, imgPxW, imgPxH);
+        
+        // 日付・時刻の描画（元のindex.htmlと同じ）
+        if (isDateTimeEnabled) {
+            ctx.fillStyle = '#000000';
+            ctx.font = Math.round(12 * pxPerMm / 3.78) + 'px Arial';
+            ctx.textAlign = 'center';
+            
+            var dateTimeText = toZenkaku(formattedDate + '\n' + formattedTime);
+            var lines = dateTimeText.split('\n');
+            var dateTimeY = Math.round((topMargin + imgH + 2) * pxPerMm);
+            
+            for (var i = 0; i < lines.length; i++) {
+                ctx.fillText(lines[i], canvas.width / 2, dateTimeY + (i * Math.round(8 * pxPerMm / 3.78)));
+            }
+        }
         
         var pngDataUrl = canvas.toDataURL('image/png');
         callback(pngDataUrl);
@@ -972,73 +993,123 @@ function createCanvasFromImage(imageDataUrl, shrinkScale, callback) {
     img.src = imageDataUrl;
 }
 
-function createCanvasFromText(text, isDateTimeEnabled, callback) {
-    if (isDateTimeEnabled === undefined) isDateTimeEnabled = false;
+// ---- テキスト処理関数（元のindex.htmlと同じ） ----
+function createOptimizedTextCanvasForSII(text, isDateTimeEnabled, callback) {
+    text = toZenkaku(text);
+    var paperWidth = 58; // mm
+    var wrappedLines = wrapText(text);
     
+    // 元のindex.htmlと同じレイアウト計算
+    var lineHeight = 4;
+    var topMargin = 6;
+    var dateTimeHeight = 16;
+    var spaceBetweenTextAndDate = 4;
+    var bottomMargin = isDateTimeEnabled ? 15 : 19;
+    var leftMargin = 2;
+    
+    var totalHeight = topMargin + (wrappedLines.length * lineHeight);
+    if (isDateTimeEnabled) {
+        totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
+    }
+    totalHeight += bottomMargin;
+    
+    // Canvas作成
     var canvas = document.createElement('canvas');
     var ctx = canvas.getContext('2d');
+    var pxPerMm = 3.78;
     
-    // 58mm幅に合わせたサイズ
-    canvas.width = 220; // 58mm ≈ 220px
-    canvas.height = 400; // 適当な高さ
+    canvas.width = Math.round(paperWidth * pxPerMm);
+    canvas.height = Math.round(totalHeight * pxPerMm);
     
     // 背景を白で塗りつぶし
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // テキスト設定
+    // テキスト描画
     ctx.fillStyle = '#000000';
-    ctx.font = '12px Arial';
+    ctx.font = Math.round(10 * pxPerMm / 3.78) + 'px Arial';
     ctx.textAlign = 'left';
     
-    var yPosition = 20;
-    var lineHeight = 16;
+    var textLeftMargin = Math.round(leftMargin * pxPerMm);
+    var textTopMargin = Math.round(topMargin * pxPerMm);
+    var lineHeightPx = Math.round(lineHeight * pxPerMm);
     
-    // 日付・時刻を追加
-    if (isDateTimeEnabled) {
-        var dateTimeText = formattedDate + ' ' + formattedTime;
-        ctx.fillText(dateTimeText, 10, yPosition);
-        yPosition += lineHeight + 5;
+    // 各行を描画
+    for (var i = 0; i < wrappedLines.length; i++) {
+        var line = wrappedLines[i];
+        var yPos = textTopMargin + (i * lineHeightPx);
+        ctx.fillText(line, textLeftMargin, yPos);
     }
     
-    // テキストを行ごとに描画
-    var lines = text.split('\n');
-    for (var i = 0; i < lines.length; i++) {
-        var line = lines[i];
-        if (yPosition > canvas.height - 20) break;
-        ctx.fillText(line, 10, yPosition);
-        yPosition += lineHeight;
+    // 日付・時刻の描画
+    if (isDateTimeEnabled) {
+        var dateTimeText = toZenkaku(formattedDate + '\n' + formattedTime);
+        var dateTimeLines = dateTimeText.split('\n');
+        var dateTimeY = textTopMargin + (wrappedLines.length * lineHeightPx) + Math.round(spaceBetweenTextAndDate * pxPerMm);
+        
+        ctx.font = Math.round(12 * pxPerMm / 3.78) + 'px Arial';
+        for (var j = 0; j < dateTimeLines.length; j++) {
+            ctx.fillText(dateTimeLines[j], textLeftMargin, dateTimeY + (j * Math.round(8 * pxPerMm / 3.78)));
+        }
     }
     
     var pngDataUrl = canvas.toDataURL('image/png');
     callback(pngDataUrl);
 }
 
-function createCanvasFromSignature(signatureDataUrl, callback) {
+// ---- 手書きサイン処理関数（元のindex.htmlと同じ） ----
+function createOptimizedSignatureCanvasForSII(signatureDataUrl, isDateTimeEnabled, callback) {
     var img = new Image();
     img.onload = function() {
+        // 元のindex.htmlと同じサイズ計算
+        var paperWidth = 58;
+        var printW = 50; // mm
+        var pxPerMm = 3.38; // 1mm=3.38px（58mm=196px基準）
+        var outW = Math.round(printW * pxPerMm);
+        var scale = outW / img.naturalWidth;
+        var outH = Math.round(img.naturalHeight * scale);
+        
+        var imgW = 50, imgH = Math.round(outH / pxPerMm);
+        var marginX = Math.floor((paperWidth - imgW) / 2);
+        var marginY = 4;
+        var dateTimeHeight = 16;
+        var bottomMargin = isDateTimeEnabled ? 16 : 18;
+        var totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
+        
+        // Canvas作成
         var canvas = document.createElement('canvas');
         var ctx = canvas.getContext('2d');
+        var canvasPxPerMm = 3.78;
         
-        // 58mm幅に合わせたサイズ計算
-        var targetWidthPx = 220; // 58mm ≈ 220px
-        var aspectRatio = img.naturalHeight / img.naturalWidth;
-        var targetHeightPx = Math.max(300, targetWidthPx * aspectRatio);
-        
-        canvas.width = targetWidthPx;
-        canvas.height = targetHeightPx;
+        canvas.width = Math.round(paperWidth * canvasPxPerMm);
+        canvas.height = Math.round(totalHeight * canvasPxPerMm);
         
         // 背景を白で塗りつぶし
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // 署名を中央に配置
-        var imgWidth = targetWidthPx * 0.9;
-        var imgHeight = aspectRatio * imgWidth;
-        var x = (canvas.width - imgWidth) / 2;
-        var y = 10;
+        // 署名画像を描画
+        var imgPxW = Math.round(imgW * canvasPxPerMm);
+        var imgPxH = Math.round(imgH * canvasPxPerMm);
+        var imgPxX = Math.round(marginX * canvasPxPerMm);
+        var imgPxY = Math.round(marginY * canvasPxPerMm);
         
-        ctx.drawImage(img, x, y, imgWidth, imgHeight);
+        ctx.drawImage(img, imgPxX, imgPxY, imgPxW, imgPxH);
+        
+        // 日付・時刻の描画
+        if (isDateTimeEnabled) {
+            ctx.fillStyle = '#000000';
+            ctx.font = Math.round(12 * canvasPxPerMm / 3.78) + 'px Arial';
+            ctx.textAlign = 'center';
+            
+            var dateTimeText = toZenkaku(formattedDate + '\n' + formattedTime);
+            var lines = dateTimeText.split('\n');
+            var dateTimeY = Math.round((marginY + imgH + 2) * canvasPxPerMm);
+            
+            for (var i = 0; i < lines.length; i++) {
+                ctx.fillText(lines[i], canvas.width / 2, dateTimeY + (i * Math.round(8 * canvasPxPerMm / 3.78)));
+            }
+        }
         
         var pngDataUrl = canvas.toDataURL('image/png');
         callback(pngDataUrl);
@@ -1057,7 +1128,7 @@ function convertPngToPdf(pngDataUrl, callback) {
             // 58mm幅のPDF作成
             var paperWidthMM = 58;
             var aspectRatio = img.naturalHeight / img.naturalWidth;
-            var paperHeightMM = Math.max(80, paperWidthMM * aspectRatio + 10);
+            var paperHeightMM = paperWidthMM * aspectRatio;
             
             var pdf = new jsPDF({
                 orientation: 'portrait',
@@ -1065,18 +1136,13 @@ function convertPngToPdf(pngDataUrl, callback) {
                 format: [paperWidthMM, paperHeightMM]
             });
             
-            // PNG画像をPDFに追加
-            var imgWidthMM = paperWidthMM * 0.95;
-            var imgHeightMM = aspectRatio * imgWidthMM;
-            var x = (paperWidthMM - imgWidthMM) / 2;
-            var y = 2;
-            
-            pdf.addImage(pngDataUrl, 'PNG', x, y, imgWidthMM, imgHeightMM);
+            // PNG画像をPDFに埋め込み（用紙全体に）
+            pdf.addImage(pngDataUrl, 'PNG', 0, 0, paperWidthMM, paperHeightMM);
             
             // サンプル準拠：直接datauristringでBase64を取得
             var pdfDataUri = pdf.output('datauristring');
-            var index = pdfDataUri.indexOf(',') + 1; // サンプルコードと同じ方式
-            var pdfBase64 = pdfDataUri.slice(index); // 不要な部分を除去
+            var index = pdfDataUri.indexOf(',') + 1;
+            var pdfBase64 = pdfDataUri.slice(index);
             callback(pdfBase64);
         } catch (error) {
             console.error('PDF変換エラー:', error);
@@ -1108,12 +1174,13 @@ function sendToPrintAssist(event) {
     
     var shrinkChecked = document.getElementById('shrinkCheckbox').checked;
     var selectedCopies = parseInt(document.getElementById('copiesSelect').value);
+    var isDateTimeEnabled = selectedChip === 'with';
     
     function doPrint(imageDataUrl) {
         var shrinkScale = shrinkChecked ? 0.6 : 1.0;
         
-        // Step 1: 画像をCanvasでPNG化
-        createCanvasFromImage(imageDataUrl, shrinkScale, function(pngDataUrl) {
+        // Step 1: 最適化されたCanvas作成
+        createOptimizedCanvasForSII(imageDataUrl, shrinkScale, isDateTimeEnabled, function(pngDataUrl) {
             if (!pngDataUrl) {
                 alert('画像の処理に失敗しました。');
                 return;
@@ -1139,9 +1206,8 @@ function sendToPrintAssist(event) {
                     'FitToWidth=' + 'no' + '&' +
                     'PaperWidth=' + '58';
                 
-                console.log("SII PRINT URL (サンプル準拠):", url);
+                console.log("SII PRINT URL (最適化版):", url);
                 console.log("PDF Base64 Length:", pdfBase64.length);
-                console.log("印刷枚数:", selectedCopies);
                 window.location.href = url;
                 
                 addHistory({
@@ -1173,12 +1239,11 @@ function printText() {
     var text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
     
-    text = toZenkaku(text);
     var isDateTimeEnabled = selectedTextChip === 'with';
     var selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
     
-    // Step 1: テキストをCanvasでPNG化
-    createCanvasFromText(text, isDateTimeEnabled, function(pngDataUrl) {
+    // Step 1: 最適化されたテキストCanvas作成
+    createOptimizedTextCanvasForSII(text, isDateTimeEnabled, function(pngDataUrl) {
         if (!pngDataUrl) {
             alert('テキストの処理に失敗しました。');
             return;
@@ -1204,9 +1269,7 @@ function printText() {
                 'FitToWidth=' + 'no' + '&' +
                 'PaperWidth=' + '58';
             
-            console.log("SII PRINT URL (サンプル準拠):", url);
-            console.log("PDF Base64 Length:", pdfBase64.length);
-            console.log("印刷枚数:", selectedTextCopies);
+            console.log("SII PRINT URL (テキスト最適化版):", url);
             window.location.href = url;
             
             addHistory({
@@ -1453,6 +1516,7 @@ function restoreFromHistory(item) {
         setTextChipsEnabled(true);
         updateTextPrintButtonState();
         toggleClearButton();
+        autoWrap(document.getElementById('textInput'));
         
     } else if (item.type === 'signature') {
         // 手書きサインの復元
@@ -1546,7 +1610,7 @@ function loadHistoryList() {
             div.addEventListener('touchend', function(e) { handleSwipeEnd(e, this); }, { passive: false });
             
             // マウスイベントも追加（デスクトップ対応）
-                        div.addEventListener('mousedown', function(e) { handleSwipeStart(e, this); });
+            div.addEventListener('mousedown', function(e) { handleSwipeStart(e, this); });
             div.addEventListener('mousemove', function(e) { handleSwipeMove(e, this); });
             div.addEventListener('mouseup', function(e) { handleSwipeEnd(e, this); });
             
@@ -1610,6 +1674,12 @@ function loadHistoryList() {
                 var img = document.createElement('img');
                 img.className = 'historyImgThumb';
                 img.src = item.data;
+                img.onload = function() {
+                    var maxW = 200, maxH = 120;
+                    var ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
+                    img.style.width = Math.round(img.naturalWidth * ratio) + "px";
+                    img.style.height = Math.round(img.naturalHeight * ratio) + "px";
+                };
                 imgRow.appendChild(img);
                 contentBlock.appendChild(imgRow);
                 
@@ -1954,7 +2024,7 @@ window.addEventListener('resize', function() {
     }
 });
 
-// ---- 手書きサイン印刷（サンプル準拠URLスキーム） ----
+// ---- 手書きサイン印刷（SII URLスキーム対応） ----
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
     
@@ -1962,9 +2032,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
         var canvas = document.getElementById('signaturePad');
         var signatureDataUrl = canvas.toDataURL("image/png");
         var selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
+        var isDateTimeEnabled = selectedSignatureChip === 'with';
         
-        // Step 1: 署名をCanvasでPNG化
-        createCanvasFromSignature(signatureDataUrl, function(pngDataUrl) {
+        // Step 1: 最適化された署名Canvas作成
+        createOptimizedSignatureCanvasForSII(signatureDataUrl, isDateTimeEnabled, function(pngDataUrl) {
             if (!pngDataUrl) {
                 alert('署名の処理に失敗しました。');
                 return;
@@ -1990,9 +2061,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     'FitToWidth=' + 'no' + '&' +
                     'PaperWidth=' + '58';
                 
-                console.log("SII PRINT URL (サンプル準拠):", url);
-                console.log("PDF Base64 Length:", pdfBase64.length);
-                console.log("印刷枚数:", selectedCopies);
+                console.log("SII PRINT URL (署名最適化版):", url);
                 window.location.href = url;
                 
                 addHistory({
@@ -2011,7 +2080,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
     }
 };
 
-// ---- テキスト自動改行機能 ----
+// ---- テキスト自動改行機能（元のindex.htmlと同じ） ----
 function wrapText(text) {
     text = toZenkaku(text);
     var lines = [];
