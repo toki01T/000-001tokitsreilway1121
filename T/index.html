@@ -90,27 +90,26 @@ header {
     padding: 0;
     white-space: nowrap;
 }
-/* 修正：Android Aquos Wish4対応 - ハンバーガーメニューのはみ出し防止 */
+/* Android Aquos Wish4対応 - ハンバーガーメニューのはみ出し防止 */
 #historyMenuBtn {
     position: absolute;
-    right: 8px; /* 1remから8pxに変更 */
+    right: 8px;
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
     border: none;
     color: #fff;
-    font-size: 1.5rem; /* 1.7remから1.5remに縮小 */
+    font-size: 1.5rem;
     cursor: pointer;
     z-index: 12;
-    padding: 4px; /* パディングを追加 */
-    width: 32px; /* 固定幅を設定 */
-    height: 32px; /* 固定高を設定 */
+    padding: 4px;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 #historyMenuBtn:focus { outline: none; }
-/* 追加：小さい画面でのさらなる調整 */
 @media (max-width: 360px) {
     #historyMenuBtn {
         right: 4px;
@@ -247,6 +246,7 @@ header {
     overflow: hidden;
     transform: translateX(0);
     touch-action: pan-y;
+    margin-bottom: 0; /* 削除時の空白を防ぐ */
 }
 .historyItem:last-child { border-bottom: none; }
 .historyItem:hover {
@@ -539,7 +539,7 @@ main {
         padding: 0.3rem 0.7rem;
     }
 }
-/* チェックボックスカスタムデザイン（履歴リスト・画像モード共通） */
+/* チェックボックスカスタムデザイン */
 .custom-checkbox {
     position: relative;
     display: inline-flex;
@@ -1049,7 +1049,7 @@ function createCanvasFromSignature(signatureDataUrl, callback) {
     img.src = signatureDataUrl;
 }
 
-// ---- PNG to PDF変換関数（マニュアル準拠） ----
+// ---- サンプル準拠PNG to PDF変換関数 ----
 function convertPngToPdf(pngDataUrl, callback) {
     var img = new Image();
     img.onload = function() {
@@ -1073,9 +1073,10 @@ function convertPngToPdf(pngDataUrl, callback) {
             
             pdf.addImage(pngDataUrl, 'PNG', x, y, imgWidthMM, imgHeightMM);
             
-            // マニュアル準拠：直接datauristringでBase64を取得
+            // サンプル準拠：直接datauristringでBase64を取得
             var pdfDataUri = pdf.output('datauristring');
-            var pdfBase64 = pdfDataUri.split(',')[1]; // data:application/pdf;base64, を除去
+            var index = pdfDataUri.indexOf(',') + 1; // サンプルコードと同じ方式
+            var pdfBase64 = pdfDataUri.slice(index); // 不要な部分を除去
             callback(pdfBase64);
         } catch (error) {
             console.error('PDF変換エラー:', error);
@@ -1089,7 +1090,7 @@ function convertPngToPdf(pngDataUrl, callback) {
     img.src = pngDataUrl;
 }
 
-// ---- マニュアル準拠SII URL Print Agent印刷関数 ----
+// ---- サンプル準拠SII URL Print Agent印刷関数 ----
 function sendToPrintAssist(event) {
     event.preventDefault();
     var fileInput = document.getElementById('imageUpload');
@@ -1125,14 +1126,20 @@ function sendToPrintAssist(event) {
                     return;
                 }
                 
-                // Step 3: マニュアル準拠 SII URLスキーム
-                var url = "siiprintagent://1.0/print";
-                url += "?Format=pdf";
-                url += "&Data=" + pdfBase64; // 生Base64データ（エンコードなし）
-                url += "&PaperWidth=58";
-                url += "&Copies=" + selectedCopies; // 枚数指定を追加
+                // Step 3: サンプル準拠 SII URLスキーム
+                var thisPage = window.location.href;
+                var url = 'siiprintagent://1.0/print?' +
+                    'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                    'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+                    'Format=' + 'pdf' + '&' +
+                    'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                    'SelectOnError=' + 'yes' + '&' +
+                    'CutType=' + 'full' + '&' +
+                    'CutFeed=' + 'yes' + '&' +
+                    'FitToWidth=' + 'no' + '&' +
+                    'PaperWidth=' + '58';
                 
-                console.log("SII PRINT URL (マニュアル準拠):", url);
+                console.log("SII PRINT URL (サンプル準拠):", url);
                 console.log("PDF Base64 Length:", pdfBase64.length);
                 console.log("印刷枚数:", selectedCopies);
                 window.location.href = url;
@@ -1184,14 +1191,20 @@ function printText() {
                 return;
             }
             
-            // Step 3: マニュアル準拠 SII URLスキーム
-            var url = "siiprintagent://1.0/print";
-            url += "?Format=pdf";
-            url += "&Data=" + pdfBase64; // 生Base64データ（エンコードなし）
-            url += "&PaperWidth=58";
-            url += "&Copies=" + selectedTextCopies; // 枚数指定を追加
+            // Step 3: サンプル準拠 SII URLスキーム
+            var thisPage = window.location.href;
+            var url = 'siiprintagent://1.0/print?' +
+                'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+                'Format=' + 'pdf' + '&' +
+                'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                'SelectOnError=' + 'yes' + '&' +
+                'CutType=' + 'full' + '&' +
+                'CutFeed=' + 'yes' + '&' +
+                'FitToWidth=' + 'no' + '&' +
+                'PaperWidth=' + '58';
             
-            console.log("SII PRINT URL (マニュアル準拠):", url);
+            console.log("SII PRINT URL (サンプル準拠):", url);
             console.log("PDF Base64 Length:", pdfBase64.length);
             console.log("印刷枚数:", selectedTextCopies);
             window.location.href = url;
@@ -1273,7 +1286,7 @@ function formatDateTime(dt) {
     );
 }
 
-// ---- 修正された履歴機能（スワイプ削除対応） ----
+// ---- 修正された履歴機能（完全なスワイプ削除対応） ----
 var historyMenuBtn = document.getElementById('historyMenuBtn');
 var historyDrawer = document.getElementById('historyDrawer');
 var historyDrawerClose = document.getElementById('historyDrawerClose');
@@ -1293,7 +1306,7 @@ function setModeToggle(mode) {
     modeToggleUnified.classList.add('selected');
 }
 
-// ---- スワイプ削除機能の実装 ----
+// ---- 完全修正：スワイプ削除機能 ----
 var swipeStartX = 0;
 var swipeStartY = 0;
 var isSwipingItem = null;
@@ -1509,6 +1522,7 @@ historyDrawerBg.onclick = function(e) {
     }
 };
 
+// ---- 修正：削除機能の完全実装 ----
 function loadHistoryList() {
     getAllHistory(currentHistoryType).then(function(list) {
         historyList.innerHTML = '';
@@ -1532,12 +1546,12 @@ function loadHistoryList() {
             div.addEventListener('touchend', function(e) { handleSwipeEnd(e, this); }, { passive: false });
             
             // マウスイベントも追加（デスクトップ対応）
-            div.addEventListener('mousedown', function(e) { handleSwipeStart(e, this); });
+                        div.addEventListener('mousedown', function(e) { handleSwipeStart(e, this); });
             div.addEventListener('mousemove', function(e) { handleSwipeMove(e, this); });
             div.addEventListener('mouseup', function(e) { handleSwipeEnd(e, this); });
             
             // 履歴アイテムのクリックイベント
-                            div.onclick = function(ev) {
+            div.onclick = function(ev) {
                 if (ev.target.classList.contains('swipeDeleteBtn')) return; // 削除ボタンの場合は無視
                 if (this.classList.contains('swiped')) {
                     // スワイプ状態の場合は元に戻す
@@ -1562,12 +1576,27 @@ function loadHistoryList() {
                 var itemId = parseInt(this.parentNode.getAttribute('data-id'));
                 var confirmDelete = confirm('この履歴を削除しますか？');
                 if (confirmDelete) {
-                    deleteHistory(itemId).then(function() {
-                        loadHistoryList();
-                    }).catch(function(error) {
-                        console.error('削除エラー:', error);
-                        alert('削除に失敗しました。');
-                    });
+                    // 削除時のアニメーション
+                    var itemToDelete = this.parentNode;
+                    itemToDelete.style.transition = 'opacity 0.3s, height 0.3s';
+                    itemToDelete.style.opacity = '0';
+                    itemToDelete.style.height = '0';
+                    itemToDelete.style.padding = '0';
+                    itemToDelete.style.marginBottom = '0';
+                    
+                    setTimeout(function() {
+                        deleteHistory(itemId).then(function() {
+                            loadHistoryList(); // リストを再読み込み
+                        }).catch(function(error) {
+                            console.error('削除エラー:', error);
+                            alert('削除に失敗しました。');
+                            // エラー時は元に戻す
+                            itemToDelete.style.opacity = '1';
+                            itemToDelete.style.height = 'auto';
+                            itemToDelete.style.padding = '0.7rem 0.2rem';
+                            itemToDelete.style.marginBottom = '0';
+                        });
+                    }, 300);
                 }
             };
             div.appendChild(delBtn);
@@ -1639,6 +1668,9 @@ function loadHistoryList() {
         var spacer = document.createElement('div');
         spacer.className = 'historyListSpacer';
         historyList.appendChild(spacer);
+    }).catch(function(error) {
+        console.error('履歴読み込みエラー:', error);
+        historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴の読み込みに失敗しました</div>';
     });
 }
 
@@ -1656,11 +1688,22 @@ function updateTime() {
     setTimeout(updateTime, 1000);
 }
 
+// ---- URLスキームのコールバック処理 ----
+function handleCallback() {
+    var query = location.search;
+    var code = query.match(/Code=([^&#]*)/);
+    var message = query.match(/Message=([^&#]*)/);
+    if (code) {
+        alert('印刷エラーが発生しました。\n\nCode = ' + decodeURIComponent(code[1]) + '\nMessage = ' + decodeURIComponent(message[1]));
+    }
+}
+
 // ---- 初期化 ----
 window.onload = function() {
     displayDate();
     updateTime();
     setModeToggle(currentHistoryType);
+    handleCallback(); // URLスキームのコールバック処理
     
     document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
     document.getElementById('textInput').addEventListener('input', toggleClearButton);
@@ -1911,7 +1954,7 @@ window.addEventListener('resize', function() {
     }
 });
 
-// ---- 手書きサイン印刷（マニュアル準拠URLスキーム） ----
+// ---- 手書きサイン印刷（サンプル準拠URLスキーム） ----
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
     
@@ -1934,14 +1977,20 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     return;
                 }
                 
-                // Step 3: マニュアル準拠 SII URLスキーム
-                var url = "siiprintagent://1.0/print";
-                url += "?Format=pdf";
-                url += "&Data=" + pdfBase64; // 生Base64データ（エンコードなし）
-                url += "&PaperWidth=58";
-                url += "&Copies=" + selectedCopies; // 枚数指定を追加
+                // Step 3: サンプル準拠 SII URLスキーム
+                var thisPage = window.location.href;
+                var url = 'siiprintagent://1.0/print?' +
+                    'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                    'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+                    'Format=' + 'pdf' + '&' +
+                    'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                    'SelectOnError=' + 'yes' + '&' +
+                    'CutType=' + 'full' + '&' +
+                    'CutFeed=' + 'yes' + '&' +
+                    'FitToWidth=' + 'no' + '&' +
+                    'PaperWidth=' + '58';
                 
-                console.log("SII PRINT URL (マニュアル準拠):", url);
+                console.log("SII PRINT URL (サンプル準拠):", url);
                 console.log("PDF Base64 Length:", pdfBase64.length);
                 console.log("印刷枚数:", selectedCopies);
                 window.location.href = url;
