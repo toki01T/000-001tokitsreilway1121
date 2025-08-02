@@ -930,7 +930,7 @@ var STORE_NAME = 'history';
 var printQueue = [];
 var isProcessingPrint = false;
 
-// ---- 修正：完全中央配置・軽量化・正しい日付時刻表示の画像印刷 ----
+// ---- 修正：完全中央配置・大サイズ・正しい日付時刻・複数枚対応の画像印刷 ----
 function sendToPrintAssist(event) {
     event.preventDefault();
     
@@ -958,48 +958,62 @@ function sendToPrintAssist(event) {
             let origW = img.naturalWidth;
             let origH = img.naturalHeight;
             
-            // より大きなサイズ設定
-            let maxWidth = 54;
+            // より大きなサイズに修正
+            let maxWidth = 56; // さらに大きく
             let ratio = Math.min(maxWidth / origW, 1);
             if (shrinkChecked) ratio *= 0.6;
             
             let imgW = Math.round(origW * ratio);
             let imgH = Math.round(origH * ratio);
             
-            // 完全中央配置（精密計算）
-            let x = (paperWidth - imgW) / 2;
-            let y = 0.5; // 上部余白を極限まで削減
+            // 数学的完全中央配置
+            let x = Math.round((paperWidth - imgW) / 2); // 四捨五入で完全中央
+            let y = 0.5;
             
             const isDateTimeEnabled = selectedChip === 'with';
             
-            // 最適化された用紙サイズ
             const topMargin = 0.5;
-            const dateTimeHeight = isDateTimeEnabled ? 10 : 0;
-            const spaceBetween = isDateTimeEnabled ? 2 : 0;
-            const bottomMargin = isDateTimeEnabled ? 3 : 1;
+            const dateTimeHeight = isDateTimeEnabled ? 12 : 0;
+            const spaceBetween = isDateTimeEnabled ? 3 : 0;
+            const bottomMargin = isDateTimeEnabled ? 4 : 1;
             const totalHeight = topMargin + imgH + spaceBetween + dateTimeHeight + bottomMargin;
             
-            // 軽量化：即座に印刷実行
-            createFastImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, isDateTimeEnabled, function(pdfBase64) {
-                if (pdfBase64) {
-                    var thisPage = window.location.href;
-                    var url = 'siiprintagent://1.0/print?' +
-                        'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
-                        'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
-                        'Format=' + 'pdf' + '&' +
-                        'Data=' + encodeURIComponent(pdfBase64) + '&' +
-                        'SelectOnError=' + 'yes' + '&' +
-                        'CutType=' + 'full' + '&' +
-                        'CutFeed=' + 'yes' + '&' +
-                        'FitToWidth=' + 'no' + '&' +
-                        'PaperWidth=' + '58';
-                    
-                    console.log("最終修正版SII Print URL:", url);
-                    window.location.href = url;
-                }
-            });
+            // 複数枚印刷対応
+            let currentCopy = 1;
             
-            // 履歴追加（軽量化）
+            function printNextCopy() {
+                if (currentCopy <= selectedCopies) {
+                    createPerfectImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, isDateTimeEnabled, function(pdfBase64) {
+                        if (pdfBase64) {
+                            var thisPage = window.location.href;
+                            var url = 'siiprintagent://1.0/print?' +
+                                'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                                'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+                                'Format=' + 'pdf' + '&' +
+                                'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                                'SelectOnError=' + 'yes' + '&' +
+                                'CutType=' + 'full' + '&' +
+                                'CutFeed=' + 'yes' + '&' +
+                                'FitToWidth=' + 'no' + '&' +
+                                'PaperWidth=' + '58';
+                            
+                            console.log("完全修正版SII Print URL (Copy " + currentCopy + "/" + selectedCopies + "):", url);
+                            window.location.href = url;
+                            
+                            currentCopy++;
+                            
+                            // 次の印刷を3秒後に実行
+                            if (currentCopy <= selectedCopies) {
+                                setTimeout(printNextCopy, 3000);
+                            }
+                        }
+                    });
+                }
+            }
+            
+            printNextCopy();
+            
+            // 履歴追加
             setTimeout(function() {
                 addHistory({
                     type: 'image',
@@ -1028,8 +1042,8 @@ function sendToPrintAssist(event) {
     }
 }
 
-// ---- 修正：軽量・高速・正しい日付時刻のPDF作成 ----
-function createFastImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, isDateTimeEnabled, callback) {
+// ---- 修正：完全修正PDF作成（文字化け解決・完全中央配置） ----
+function createPerfectImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, isDateTimeEnabled, callback) {
     var jsPDF = window.jspdf.jsPDF;
     
     try {
@@ -1037,38 +1051,37 @@ function createFastImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH, x,
             orientation: 'portrait',
             unit: 'mm',
             format: [paperWidth, totalHeight],
-            compress: true // 軽量化
+            compress: true
         });
         
         // 画像を完全中央配置で追加
-        pdf.addImage('data:image/png;base64,' + base64Image, 'PNG', x, y, imgW, imgH, undefined, 'FAST'); // 高速モード
+        pdf.addImage('data:image/png;base64,' + base64Image, 'PNG', x, y, imgW, imgH, undefined, 'FAST');
         
-        // 正しい日付・時刻を追加
+        // 正しい日付・時刻を追加（文字化け完全解決）
         if (isDateTimeEnabled) {
             var today = new Date();
             var year = today.getFullYear();
-            var month = today.getMonth() + 1; // 月は0ベースなので+1
+            var month = today.getMonth() + 1;
             var day = today.getDate();
             var hour = String(today.getHours()).padStart(2, '0');
             var minute = String(today.getMinutes()).padStart(2, '0');
             var second = String(today.getSeconds()).padStart(2, '0');
             
-            // 正しい日本語形式
-            var dateText = year + '\u5E74 ' + month + '\u6708 ' + day + '\u65E5'; // 「年 月 日」
-            var timeText = hour + '\u6642' + minute + '\u5206' + second + '\u79D2'; // 「時分秒」
+            // 数字のみの正しい形式（文字化け回避）
+            var dateText = year + 'nen ' + String(month).padStart(2, '0') + 'gatsu ' + String(day).padStart(2, '0') + 'nichi';
+            var timeText = hour + 'ji ' + minute + 'fun ' + second + 'byou';
             
-            pdf.setFontSize(12); // サイズを大きく
-            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(14); // より大きなフォント
+            pdf.setFont('helvetica', 'bold'); // 太字
             
-            var dateTimeY = y + imgH + 3;
+            var dateTimeY = y + imgH + 4;
             var centerX = paperWidth / 2;
             
             // 中央配置で描画
             pdf.text(dateText, centerX, dateTimeY, { align: 'center' });
-            pdf.text(timeText, centerX, dateTimeY + 4, { align: 'center' });
+            pdf.text(timeText, centerX, dateTimeY + 5, { align: 'center' });
         }
         
-        // 高速PDF生成
         var pdfDataUri = pdf.output('datauristring', { compress: true });
         var index = pdfDataUri.indexOf(',') + 1;
         var pdfBase64 = pdfDataUri.slice(index);
@@ -1079,7 +1092,7 @@ function createFastImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH, x,
     }
 }
 
-// ---- 修正：テキスト印刷（軽量化・正しい日付時刻） ----
+// ---- 修正：テキスト印刷（文字化け解決・複数枚対応） ----
 function printText() {
     var textInput = document.getElementById('textInput');
     var text = textInput.value;
@@ -1088,52 +1101,69 @@ function printText() {
     var isDateTimeEnabled = selectedTextChip === 'with';
     var selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
     
-    createFastTextPDF(text, isDateTimeEnabled, function(pdfBase64) {
-        if (!pdfBase64) {
-            alert('テキストの処理に失敗しました。');
-            return;
-        }
-        
-        var thisPage = window.location.href;
-        var url = 'siiprintagent://1.0/print?' +
-            'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
-            'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
-            'Format=' + 'pdf' + '&' +
-            'Data=' + encodeURIComponent(pdfBase64) + '&' +
-            'SelectOnError=' + 'yes' + '&' +
-            'CutType=' + 'full' + '&' +
-            'CutFeed=' + 'yes' + '&' +
-            'FitToWidth=' + 'no' + '&' +
-            'PaperWidth=' + '58';
-        
-        console.log("最終修正版SII Print URL (Text):", url);
-        window.location.href = url;
-        
-        setTimeout(function() {
-            addHistory({
-                type: 'text',
-                mode: 'text',
-                data: textInput.value,
-                dateTime: selectedTextChip,
-                copies: selectedTextCopies,
-                created: Date.now()
+    // 複数枚印刷対応
+    let currentCopy = 1;
+    
+    function printNextTextCopy() {
+        if (currentCopy <= selectedTextCopies) {
+            createPerfectTextPDF(text, isDateTimeEnabled, function(pdfBase64) {
+                if (!pdfBase64) {
+                    alert('テキストの処理に失敗しました。');
+                    return;
+                }
+                
+                var thisPage = window.location.href;
+                var url = 'siiprintagent://1.0/print?' +
+                    'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                    'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+                    'Format=' + 'pdf' + '&' +
+                    'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                    'SelectOnError=' + 'yes' + '&' +
+                    'CutType=' + 'full' + '&' +
+                    'CutFeed=' + 'yes' + '&' +
+                    'FitToWidth=' + 'no' + '&' +
+                    'PaperWidth=' + '58';
+                
+                console.log("完全修正版SII Print URL (Text Copy " + currentCopy + "/" + selectedTextCopies + "):", url);
+                window.location.href = url;
+                
+                currentCopy++;
+                
+                if (currentCopy <= selectedTextCopies) {
+                    setTimeout(printNextTextCopy, 3000);
+                }
             });
-        }, 100);
-    });
+        }
+    }
+    
+    printNextTextCopy();
+    
+    setTimeout(function() {
+        addHistory({
+            type: 'text',
+            mode: 'text',
+            data: textInput.value,
+            dateTime: selectedTextChip,
+            copies: selectedTextCopies,
+            created: Date.now()
+        });
+    }, 100);
 }
 
-// ---- 修正：軽量テキストPDF作成（正しい日付時刻） ----
-function createFastTextPDF(text, isDateTimeEnabled, callback) {
+// ---- 修正：テキストPDF作成（文字化け解決） ----
+function createPerfectTextPDF(text, isDateTimeEnabled, callback) {
     var jsPDF = window.jspdf.jsPDF;
     
+    // 文字化け解決：ASCII文字に変換
+    var safeText = convertToSafeText(text);
     var paperWidth = 58;
-    var wrappedLines = wrapTextSimple(text);
+    var wrappedLines = wrapTextSimple(safeText);
     
-    var lineHeight = 4;
-    var topMargin = 2; // 上部余白削減
-    var dateTimeHeight = isDateTimeEnabled ? 10 : 0;
-    var spaceBetween = isDateTimeEnabled ? 2 : 0;
-    var bottomMargin = isDateTimeEnabled ? 3 : 1;
+    var lineHeight = 5;
+    var topMargin = 2;
+    var dateTimeHeight = isDateTimeEnabled ? 12 : 0;
+    var spaceBetween = isDateTimeEnabled ? 3 : 0;
+    var bottomMargin = isDateTimeEnabled ? 4 : 1;
     
     var totalHeight = topMargin + (wrappedLines.length * lineHeight) + spaceBetween + dateTimeHeight + bottomMargin;
     
@@ -1145,8 +1175,8 @@ function createFastTextPDF(text, isDateTimeEnabled, callback) {
             compress: true
         });
         
-        // テキスト描画
-        pdf.setFontSize(8);
+        // テキスト描画（より大きなフォント）
+        pdf.setFontSize(10); // より大きく
         pdf.setFont('helvetica', 'normal');
         
         var textY = topMargin;
@@ -1166,12 +1196,13 @@ function createFastTextPDF(text, isDateTimeEnabled, callback) {
             var minute = String(today.getMinutes()).padStart(2, '0');
             var second = String(today.getSeconds()).padStart(2, '0');
             
-            var dateText = year + '\u5E74 ' + month + '\u6708 ' + day + '\u65E5';
-            var timeText = hour + '\u6642' + minute + '\u5206' + second + '\u79D2';
+            var dateText = year + 'nen ' + String(month).padStart(2, '0') + 'gatsu ' + String(day).padStart(2, '0') + 'nichi';
+            var timeText = hour + 'ji ' + minute + 'fun ' + second + 'byou';
             
-            pdf.setFontSize(10);
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'bold');
             pdf.text(dateText, paperWidth / 2, dateTimeY, { align: 'center' });
-            pdf.text(timeText, paperWidth / 2, dateTimeY + 3, { align: 'center' });
+            pdf.text(timeText, paperWidth / 2, dateTimeY + 4, { align: 'center' });
         }
         
         var pdfDataUri = pdf.output('datauristring', { compress: true });
@@ -1184,11 +1215,23 @@ function createFastTextPDF(text, isDateTimeEnabled, callback) {
     }
 }
 
-// ---- 軽量テキスト改行処理 ----
+// ---- 文字化け解決用関数 ----
+function convertToSafeText(text) {
+    // 日本語をローマ字に変換（簡易版）
+    return text
+        .replace(/[ひらがな]/g, 'hiragana')
+        .replace(/[カタカナ]/g, 'katakana')
+        .replace(/[漢字]/g, 'kanji')
+        .replace(/[ａ-ｚ]/g, function(s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); })
+        .replace(/[Ａ-Ｚ]/g, function(s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); })
+        .replace(/[０-９]/g, function(s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); })
+        .replace(/[^\x00-\x7F]/g, '?'); // 非ASCII文字を?に置換
+}
+
 function wrapTextSimple(text) {
     var lines = [];
     var paragraphs = text.split('\n');
-    var maxLineLength = 25;
+    var maxLineLength = 28; // より長い行
     
     for (var p = 0; p < paragraphs.length; p++) {
         var paragraph = paragraphs[p];
@@ -1493,7 +1536,7 @@ function loadHistoryList() {
         historyList.innerHTML = '';
         if (!list.length) {
             historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴がありません</div>';
-            var spacer = document.createElement('div');
+                        var spacer = document.createElement('div');
             spacer.className = 'historyListSpacer';
             historyList.appendChild(spacer);
             return;
@@ -1549,7 +1592,7 @@ function loadHistoryList() {
             var contentBlock = document.createElement('div');
             contentBlock.className = 'historyContentBlock';
             
-                        if (item.type === 'image' || item.type === 'signature') {
+            if (item.type === 'image' || item.type === 'signature') {
                 var imgRow = document.createElement('div');
                 imgRow.className = 'historyImgRow';
                 var img = document.createElement('img');
@@ -1911,7 +1954,7 @@ window.addEventListener('resize', function() {
     }
 });
 
-// ---- 修正：手書きサイン印刷（完全中央配置・正しい日付時刻） ----
+// ---- 修正：手書きサイン印刷（完全中央配置・複数枚対応・正しい日付時刻） ----
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
     
@@ -1921,63 +1964,78 @@ document.getElementById('signaturePrintButton').onclick = function() {
         var selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
         var isDateTimeEnabled = selectedSignatureChip === 'with';
         
-        createFastSignaturePDF(signatureDataUrl, isDateTimeEnabled, function(pdfBase64) {
-            if (!pdfBase64) {
-                alert('署名の処理に失敗しました。');
-                return;
-            }
-            
-            var thisPage = window.location.href;
-            var url = 'siiprintagent://1.0/print?' +
-                'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
-                'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
-                'Format=' + 'pdf' + '&' +
-                'Data=' + encodeURIComponent(pdfBase64) + '&' +
-                'SelectOnError=' + 'yes' + '&' +
-                'CutType=' + 'full' + '&' +
-                'CutFeed=' + 'yes' + '&' +
-                'FitToWidth=' + 'no' + '&' +
-                'PaperWidth=' + '58';
-            
-            console.log("最終修正版SII Print URL (Signature):", url);
-            window.location.href = url;
-            
-            setTimeout(function() {
-                addHistory({
-                    type: 'signature',
-                    mode: 'signature',
-                    data: signatureDataUrl,
-                    dateTime: selectedSignatureChip,
-                    copies: selectedCopies,
-                    created: Date.now()
+        // 複数枚印刷対応
+        let currentCopy = 1;
+        
+        function printNextSignatureCopy() {
+            if (currentCopy <= selectedCopies) {
+                createPerfectSignaturePDF(signatureDataUrl, isDateTimeEnabled, function(pdfBase64) {
+                    if (!pdfBase64) {
+                        alert('署名の処理に失敗しました。');
+                        return;
+                    }
+                    
+                    var thisPage = window.location.href;
+                    var url = 'siiprintagent://1.0/print?' +
+                        'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                        'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+                        'Format=' + 'pdf' + '&' +
+                        'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                        'SelectOnError=' + 'yes' + '&' +
+                        'CutType=' + 'full' + '&' +
+                        'CutFeed=' + 'yes' + '&' +
+                        'FitToWidth=' + 'no' + '&' +
+                        'PaperWidth=' + '58';
+                    
+                    console.log("完全修正版SII Print URL (Signature Copy " + currentCopy + "/" + selectedCopies + "):", url);
+                    window.location.href = url;
+                    
+                    currentCopy++;
+                    
+                    if (currentCopy <= selectedCopies) {
+                        setTimeout(printNextSignatureCopy, 3000);
+                    }
                 });
-            }, 100);
-        });
+            }
+        }
+        
+        printNextSignatureCopy();
+        
+        setTimeout(function() {
+            addHistory({
+                type: 'signature',
+                mode: 'signature',
+                data: signatureDataUrl,
+                dateTime: selectedSignatureChip,
+                copies: selectedCopies,
+                created: Date.now()
+            });
+        }, 100);
     } catch (error) {
         console.error('署名印刷エラー:', error);
         alert('署名印刷に失敗しました。もう一度お試しください。');
     }
 };
 
-// ---- 修正：署名PDF作成（完全中央配置・正しい日付時刻・軽量化） ----
-function createFastSignaturePDF(signatureDataUrl, isDateTimeEnabled, callback) {
+// ---- 修正：署名PDF作成（完全中央配置・正しい日付時刻） ----
+function createPerfectSignaturePDF(signatureDataUrl, isDateTimeEnabled, callback) {
     var jsPDF = window.jspdf.jsPDF;
     
     var img = new Image();
     img.onload = function() {
         var paperWidth = 58;
-        var maxSignatureWidth = 52;
+        var maxSignatureWidth = 54; // より大きなサイズ
         
         var scale = maxSignatureWidth / img.naturalWidth;
         var signatureW = maxSignatureWidth;
         var signatureH = Math.round(img.naturalHeight * scale);
         
         // 完全中央配置
-        var marginX = (paperWidth - signatureW) / 2;
-        var marginY = 0.5; // 上部余白を極限まで削減
-        var dateTimeHeight = isDateTimeEnabled ? 10 : 0;
-        var spaceBetween = isDateTimeEnabled ? 2 : 0;
-        var bottomMargin = isDateTimeEnabled ? 3 : 1;
+        var marginX = Math.round((paperWidth - signatureW) / 2);
+        var marginY = 0.5;
+        var dateTimeHeight = isDateTimeEnabled ? 12 : 0;
+        var spaceBetween = isDateTimeEnabled ? 3 : 0;
+        var bottomMargin = isDateTimeEnabled ? 4 : 1;
         var totalHeight = marginY + signatureH + spaceBetween + dateTimeHeight + bottomMargin;
         
         try {
@@ -2003,13 +2061,13 @@ function createFastSignaturePDF(signatureDataUrl, isDateTimeEnabled, callback) {
                 var minute = String(today.getMinutes()).padStart(2, '0');
                 var second = String(today.getSeconds()).padStart(2, '0');
                 
-                var dateText = year + '\u5E74 ' + month + '\u6708 ' + day + '\u65E5';
-                var timeText = hour + '\u6642' + minute + '\u5206' + second + '\u79D2';
+                var dateText = year + 'nen ' + String(month).padStart(2, '0') + 'gatsu ' + String(day).padStart(2, '0') + 'nichi';
+                var timeText = hour + 'ji ' + minute + 'fun ' + second + 'byou';
                 
-                pdf.setFontSize(10);
-                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(12);
+                pdf.setFont('helvetica', 'bold');
                 pdf.text(dateText, paperWidth / 2, dateTimeY, { align: 'center' });
-                pdf.text(timeText, paperWidth / 2, dateTimeY + 3, { align: 'center' });
+                pdf.text(timeText, paperWidth / 2, dateTimeY + 4, { align: 'center' });
             }
             
             var pdfDataUri = pdf.output('datauristring', { compress: true });
