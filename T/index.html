@@ -959,7 +959,7 @@ function sendToPrintAssist(event) {
             let origH = img.naturalHeight;
             
             // より大きなサイズに修正
-            let maxWidth = 56; // さらに大きく
+            let maxWidth = 60; // さらに大きく
             let ratio = Math.min(maxWidth / origW, 1);
             if (shrinkChecked) ratio *= 0.6;
             
@@ -1068,8 +1068,8 @@ function createPerfectImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH,
             var second = String(today.getSeconds()).padStart(2, '0');
             
             // 数字のみの正しい形式（文字化け回避）
-            var dateText = year + 'nen ' + String(month).padStart(2, '0') + 'gatsu ' + String(day).padStart(2, '0') + 'nichi';
-            var timeText = hour + 'ji ' + minute + 'fun ' + second + 'byou';
+            var dateText = year + '年 ' + String(month).padStart(2, '0') + '月 ' + String(day).padStart(2, '0') + '日';
+            var timeText = hour + '時 ' + minute + '分 ' + second + '秒';
             
             pdf.setFontSize(14); // より大きなフォント
             pdf.setFont('helvetica', 'bold'); // 太字
@@ -2186,3 +2186,4 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
+
