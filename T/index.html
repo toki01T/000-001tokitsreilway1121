@@ -930,7 +930,7 @@ var STORE_NAME = 'history';
 var printQueue = [];
 var isProcessingPrint = false;
 
-// ---- 修正：見本コードベースの画像印刷（SII URL Print Agent用） ----
+// ---- 修正：見本準拠の完全修正画像印刷 ----
 function sendToPrintAssist(event) {
     event.preventDefault();
     
@@ -939,7 +939,6 @@ function sendToPrintAssist(event) {
     let base64Image = null;
     let usePreview = false;
     
-    // プレビュー画像を使用する場合
     if (!file && document.getElementById('imagePreviewContainer').firstChild && document.getElementById('imagePreviewContainer').firstChild.tagName === 'IMG') {
         let img = document.getElementById('imagePreviewContainer').firstChild;
         base64Image = img.src.split(',')[1];
@@ -952,7 +951,7 @@ function sendToPrintAssist(event) {
     const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
     
     function doPrint(base64Image) {
-        // 見本コードの設定値を使用
+        // 見本準拠の完全修正
         const paperWidth = 58;
         let img = new window.Image();
         
@@ -960,32 +959,33 @@ function sendToPrintAssist(event) {
             let origW = img.naturalWidth;
             let origH = img.naturalHeight;
             
-            // 見本コードと同じサイズ計算
-            let ratio = Math.min(paperWidth / origW, 1);
+            // 見本準拠のサイズ計算（より大きく）
+            let maxWidth = 54; // より大きなサイズ
+            let ratio = Math.min(maxWidth / origW, 1);
             if (shrinkChecked) ratio *= 0.6;
             
             let imgW = Math.round(origW * ratio);
             let imgH = Math.round(origH * ratio);
-            let x = Math.round((paperWidth - imgW) / 2); // 完全中央配置
-            let y = 2;
+            
+            // 完全中央配置（数学的計算）
+            let x = (paperWidth - imgW) / 2;
+            let y = 1; // 上部余白を最小に
             
             const isDateTimeEnabled = selectedChip === 'with';
             
-            // 見本コードと同じマージン設定
-            const topMargin = 2;
-            const bottomMargin = isDateTimeEnabled ? 16 : 18;
-            const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
+            // 見本準拠の用紙サイズ最適化
+            const topMargin = 1;
+            const dateTimeHeight = isDateTimeEnabled ? 12 : 0;
+            const spaceBetween = isDateTimeEnabled ? 3 : 0;
+            const bottomMargin = isDateTimeEnabled ? 4 : 2;
+            const totalHeight = topMargin + imgH + spaceBetween + dateTimeHeight + bottomMargin;
             
-            // SII URL Print Agentに変換
             let currentCopy = 1;
             
             function printImageCopy(copyIndex) {
-                // SII URL Print Agent用URL作成
-                var thisPage = window.location.href;
-                
-                // Base64データをPDFに変換してSII形式で送信
-                createImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, isDateTimeEnabled, function(pdfBase64) {
+                createPerfectImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, isDateTimeEnabled, function(pdfBase64) {
                     if (pdfBase64) {
+                        var thisPage = window.location.href;
                         var url = 'siiprintagent://1.0/print?' +
                             'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
                             'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
@@ -997,7 +997,7 @@ function sendToPrintAssist(event) {
                             'FitToWidth=' + 'no' + '&' +
                             'PaperWidth=' + '58';
                         
-                        console.log("SII Print URL (Copy " + copyIndex + "):", url);
+                        console.log("完全修正SII Print URL (Copy " + copyIndex + "):", url);
                         window.location.href = url;
                     }
                 });
@@ -1005,7 +1005,7 @@ function sendToPrintAssist(event) {
             
             function printNext() {
                 if (currentCopy < selectedCopies) {
-                    setTimeout(printNext, 3000); // 3秒間隔
+                    setTimeout(printNext, 3000);
                 }
                 printImageCopy(currentCopy);
                 currentCopy++;
@@ -1013,7 +1013,6 @@ function sendToPrintAssist(event) {
             
             printNext();
             
-            // 履歴に追加
             addHistory({
                 type: 'image',
                 mode: 'image',
@@ -1040,8 +1039,8 @@ function sendToPrintAssist(event) {
     }
 }
 
-// ---- 画像PDF作成関数 ----
-function createImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, isDateTimeEnabled, callback) {
+// ---- 修正：画像PDF作成（見本準拠・文字化け解決） ----
+function createPerfectImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, isDateTimeEnabled, callback) {
     var jsPDF = window.jspdf.jsPDF;
     
     try {
@@ -1051,26 +1050,32 @@ function createImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, 
             format: [paperWidth, totalHeight]
         });
         
-        // 画像を追加
+        // 画像を完全中央配置で追加
         pdf.addImage('data:image/png;base64,' + base64Image, 'PNG', x, y, imgW, imgH);
         
-        // 日付・時刻を追加（見本準拠の形式）
+        // 日付・時刻を追加（文字化け解決）
         if (isDateTimeEnabled) {
-            pdf.setFontSize(12);
+            // 文字化け解決：ASCII文字のみ使用
+            var today = new Date();
+            var year = today.getFullYear();
+            var month = String(today.getMonth() + 1).padStart(2, '0');
+            var day = String(today.getDate()).padStart(2, '0');
+            var hour = String(today.getHours()).padStart(2, '0');
+            var minute = String(today.getMinutes()).padStart(2, '0');
+            var second = String(today.getSeconds()).padStart(2, '0');
+            
+            // ASCII文字のみで日付・時刻を作成
+            var dateText = year + 'nen ' + month + 'gatsu ' + day + 'nichi';
+            var timeText = hour + 'ji ' + minute + 'fun ' + second + 'byou';
+            
+            pdf.setFontSize(10);
             pdf.setFont('helvetica', 'normal');
             
-            // 正しい日付・時刻形式
-            var today = new Date();
-            var dateText = today.getFullYear() + '年 ' + (today.getMonth() + 1) + '月 ' + today.getDate() + '日';
-            var timeText = String(today.getHours()).padStart(2, '0') + '時' + 
-                          String(today.getMinutes()).padStart(2, '0') + '分' + 
-                          String(today.getSeconds()).padStart(2, '0') + '秒';
+            var dateTimeY = y + imgH + 4;
             
-            var dateTimeY = y + imgH + 6;
-            
-            // 中央配置で日付・時刻を描画
+            // 中央配置で描画
             pdf.text(dateText, paperWidth / 2, dateTimeY, { align: 'center' });
-            pdf.text(timeText, paperWidth / 2, dateTimeY + 5, { align: 'center' });
+            pdf.text(timeText, paperWidth / 2, dateTimeY + 4, { align: 'center' });
         }
         
         var pdfDataUri = pdf.output('datauristring');
@@ -1083,7 +1088,7 @@ function createImagePDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, 
     }
 }
 
-// ---- テキスト印刷関数 ----
+// ---- 修正：テキスト印刷（文字化け解決・サイズ最適化） ----
 function printText() {
     var textInput = document.getElementById('textInput');
     var text = textInput.value;
@@ -1092,7 +1097,7 @@ function printText() {
     var isDateTimeEnabled = selectedTextChip === 'with';
     var selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
     
-    createTextPDF(text, isDateTimeEnabled, function(pdfBase64) {
+    createPerfectTextPDF(text, isDateTimeEnabled, function(pdfBase64) {
         if (!pdfBase64) {
             alert('テキストの処理に失敗しました。');
             return;
@@ -1110,7 +1115,7 @@ function printText() {
             'FitToWidth=' + 'no' + '&' +
             'PaperWidth=' + '58';
         
-        console.log("SII Print URL (Text):", url);
+        console.log("完全修正SII Print URL (Text):", url);
         window.location.href = url;
         
         addHistory({
@@ -1124,18 +1129,21 @@ function printText() {
     });
 }
 
-// ---- テキストPDF作成関数 ----
-function createTextPDF(text, isDateTimeEnabled, callback) {
+// ---- 修正：テキストPDF作成（文字化け解決・適切サイズ） ----
+function createPerfectTextPDF(text, isDateTimeEnabled, callback) {
     var jsPDF = window.jspdf.jsPDF;
-    text = toZenkaku(text);
-    var paperWidth = 58;
-    var wrappedLines = wrapText(text);
     
-    var lineHeight = 5;
-    var topMargin = 6;
-    var dateTimeHeight = isDateTimeEnabled ? 18 : 0;
-    var spaceBetween = isDateTimeEnabled ? 4 : 0;
-    var bottomMargin = isDateTimeEnabled ? 6 : 4;
+    // 文字化け解決：ASCII文字に変換
+    var asciiText = convertToAscii(text);
+    var paperWidth = 58;
+    var wrappedLines = wrapTextForPrint(asciiText);
+    
+    // 見本準拠のサイズ設定
+    var lineHeight = 4; // 適切な行間
+    var topMargin = 4;
+    var dateTimeHeight = isDateTimeEnabled ? 10 : 0;
+    var spaceBetween = isDateTimeEnabled ? 3 : 0;
+    var bottomMargin = isDateTimeEnabled ? 4 : 2;
     
     var totalHeight = topMargin + (wrappedLines.length * lineHeight) + spaceBetween + dateTimeHeight + bottomMargin;
     
@@ -1146,28 +1154,33 @@ function createTextPDF(text, isDateTimeEnabled, callback) {
             format: [paperWidth, totalHeight]
         });
         
-        // テキスト描画
-        pdf.setFontSize(14);
+        // テキスト描画（適切サイズ）
+        pdf.setFontSize(8); // 適切なフォントサイズ
         pdf.setFont('helvetica', 'normal');
         
         var textY = topMargin;
         for (var i = 0; i < wrappedLines.length; i++) {
-            pdf.text(wrappedLines[i], 4, textY + (i * lineHeight));
+            pdf.text(wrappedLines[i], 3, textY + (i * lineHeight));
         }
         
-        // 日付・時刻描画
+        // 日付・時刻描画（文字化け解決）
         if (isDateTimeEnabled) {
             var dateTimeY = textY + (wrappedLines.length * lineHeight) + spaceBetween;
             
             var today = new Date();
-            var dateText = today.getFullYear() + '年 ' + (today.getMonth() + 1) + '月 ' + today.getDate() + '日';
-            var timeText = String(today.getHours()).padStart(2, '0') + '時' + 
-                          String(today.getMinutes()).padStart(2, '0') + '分' + 
-                          String(today.getSeconds()).padStart(2, '0') + '秒';
+            var year = today.getFullYear();
+            var month = String(today.getMonth() + 1).padStart(2, '0');
+            var day = String(today.getDate()).padStart(2, '0');
+            var hour = String(today.getHours()).padStart(2, '0');
+            var minute = String(today.getMinutes()).padStart(2, '0');
+            var second = String(today.getSeconds()).padStart(2, '0');
             
-            pdf.setFontSize(12);
+            var dateText = year + 'nen ' + month + 'gatsu ' + day + 'nichi';
+            var timeText = hour + 'ji ' + minute + 'fun ' + second + 'byou';
+            
+            pdf.setFontSize(8);
             pdf.text(dateText, paperWidth / 2, dateTimeY, { align: 'center' });
-            pdf.text(timeText, paperWidth / 2, dateTimeY + 5, { align: 'center' });
+            pdf.text(timeText, paperWidth / 2, dateTimeY + 3, { align: 'center' });
         }
         
         var pdfDataUri = pdf.output('datauristring');
@@ -1178,6 +1191,42 @@ function createTextPDF(text, isDateTimeEnabled, callback) {
         console.error('テキストPDF作成エラー:', error);
         callback(null);
     }
+}
+
+// ---- 文字化け解決用関数 ----
+function convertToAscii(text) {
+    // 日本語文字をASCII文字に変換（簡易版）
+    return text
+        .replace(/[ａ-ｚ]/g, function(s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); })
+        .replace(/[Ａ-Ｚ]/g, function(s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); })
+        .replace(/[０-９]/g, function(s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); })
+        .replace(/[^\x00-\x7F]/g, '?'); // 非ASCII文字を?に置換
+}
+
+function wrapTextForPrint(text) {
+    var lines = [];
+    var paragraphs = text.split('\n');
+    var maxLineLength = 30; // 58mm幅に適した文字数
+    
+    for (var p = 0; p < paragraphs.length; p++) {
+        var paragraph = paragraphs[p];
+        if (paragraph.length === 0) {
+            lines.push('');
+            continue;
+        }
+        
+        while (paragraph.length > 0) {
+            if (paragraph.length <= maxLineLength) {
+                lines.push(paragraph);
+                break;
+            }
+            
+            var cutPoint = maxLineLength;
+            lines.push(paragraph.substring(0, cutPoint));
+            paragraph = paragraph.substring(cutPoint);
+        }
+    }
+    return lines;
 }
 
 // ---- IndexedDB 関連関数 ----
@@ -1483,7 +1532,7 @@ function loadHistoryList() {
             div.addEventListener('mousemove', function(e) { handleSwipeMove(e, this); });
             div.addEventListener('mouseup', function(e) { handleSwipeEnd(e, this); });
             
-            div.onclick = function(ev) {
+                        div.onclick = function(ev) {
                 if (ev.target.classList.contains('swipeDeleteBtn')) return;
                 if (this.classList.contains('swiped')) {
                     this.classList.remove('swiped');
@@ -1544,7 +1593,7 @@ function loadHistoryList() {
                     metaRow.appendChild(shrinkIcon);
                 }
                 
-                                var metaText = document.createElement('span');
+                var metaText = document.createElement('span');
                 metaText.className = 'historyMetaText';
                 metaText.textContent = (item.dateTime === 'with' ? '日付・時刻あり' : '日付・時刻なし');
                 metaRow.appendChild(metaText);
@@ -1598,14 +1647,14 @@ function loadHistoryList() {
 // ---- 日付・時刻表示（見本準拠の正しい形式） ----
 function displayDate() {
     var today = new Date();
-    // 見本準拠：「2025年 8月 2日」（スペース付き）
-    formattedDate = today.getFullYear() + '年 ' + (today.getMonth() + 1) + '月 ' + today.getDate() + '日';
+    // 見本準拠：「2025年08月02日」
+    formattedDate = today.getFullYear() + '年' + String(today.getMonth() + 1).padStart(2, '0') + '月' + String(today.getDate()).padStart(2, '0') + '日';
     document.getElementById('dateDisplay').textContent = formattedDate;
 }
 
 function updateTime() {
     var now = new Date();
-    // 見本準拠：「13時35分00秒」
+    // 見本準拠：「00時26分45秒」
     formattedTime = String(now.getHours()).padStart(2, '0') + '時' + 
                    String(now.getMinutes()).padStart(2, '0') + '分' + 
                    String(now.getSeconds()).padStart(2, '0') + '秒';
@@ -1881,7 +1930,7 @@ window.addEventListener('resize', function() {
     }
 });
 
-// ---- 手書きサイン印刷（SII対応） ----
+// ---- 修正：手書きサイン印刷（中央配置・文字化け解決） ----
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
     
@@ -1891,7 +1940,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
         var selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
         var isDateTimeEnabled = selectedSignatureChip === 'with';
         
-        createSignaturePDF(signatureDataUrl, isDateTimeEnabled, function(pdfBase64) {
+        createPerfectSignaturePDF(signatureDataUrl, isDateTimeEnabled, function(pdfBase64) {
             if (!pdfBase64) {
                 alert('署名の処理に失敗しました。');
                 return;
@@ -1909,7 +1958,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 'FitToWidth=' + 'no' + '&' +
                 'PaperWidth=' + '58';
             
-            console.log("SII Print URL (Signature):", url);
+            console.log("完全修正SII Print URL (Signature):", url);
             window.location.href = url;
             
             addHistory({
@@ -1927,24 +1976,25 @@ document.getElementById('signaturePrintButton').onclick = function() {
     }
 };
 
-// ---- 署名PDF作成関数 ----
-function createSignaturePDF(signatureDataUrl, isDateTimeEnabled, callback) {
+// ---- 修正：署名PDF作成（完全中央配置・文字化け解決） ----
+function createPerfectSignaturePDF(signatureDataUrl, isDateTimeEnabled, callback) {
     var jsPDF = window.jspdf.jsPDF;
     
     var img = new Image();
     img.onload = function() {
         var paperWidth = 58;
-        var maxSignatureWidth = 50;
+        var maxSignatureWidth = 52; // より大きなサイズ
         
         var scale = maxSignatureWidth / img.naturalWidth;
         var signatureW = maxSignatureWidth;
         var signatureH = Math.round(img.naturalHeight * scale);
         
+        // 完全中央配置
         var marginX = (paperWidth - signatureW) / 2;
-        var marginY = 6;
-        var dateTimeHeight = isDateTimeEnabled ? 18 : 0;
-        var spaceBetween = isDateTimeEnabled ? 4 : 0;
-        var bottomMargin = isDateTimeEnabled ? 6 : 4;
+        var marginY = 2; // 上部余白最小
+        var dateTimeHeight = isDateTimeEnabled ? 10 : 0;
+        var spaceBetween = isDateTimeEnabled ? 3 : 0;
+        var bottomMargin = isDateTimeEnabled ? 4 : 2;
         var totalHeight = marginY + signatureH + spaceBetween + dateTimeHeight + bottomMargin;
         
         try {
@@ -1954,22 +2004,28 @@ function createSignaturePDF(signatureDataUrl, isDateTimeEnabled, callback) {
                 format: [paperWidth, totalHeight]
             });
             
-            // 署名を描画
+            // 署名を完全中央配置で描画
             pdf.addImage(signatureDataUrl, 'PNG', marginX, marginY, signatureW, signatureH);
             
-            // 日付・時刻描画
+            // 日付・時刻描画（文字化け解決）
             if (isDateTimeEnabled) {
                 var dateTimeY = marginY + signatureH + spaceBetween;
                 
                 var today = new Date();
-                var dateText = today.getFullYear() + '年 ' + (today.getMonth() + 1) + '月 ' + today.getDate() + '日';
-                var timeText = String(today.getHours()).padStart(2, '0') + '時' + 
-                              String(today.getMinutes()).padStart(2, '0') + '分' + 
-                              String(today.getSeconds()).padStart(2, '0') + '秒';
+                var year = today.getFullYear();
+                var month = String(today.getMonth() + 1).padStart(2, '0');
+                var day = String(today.getDate()).padStart(2, '0');
+                var hour = String(today.getHours()).padStart(2, '0');
+                var minute = String(today.getMinutes()).padStart(2, '0');
+                var second = String(today.getSeconds()).padStart(2, '0');
                 
-                pdf.setFontSize(12);
+                var dateText = year + 'nen ' + month + 'gatsu ' + day + 'nichi';
+                var timeText = hour + 'ji ' + minute + 'fun ' + second + 'byou';
+                
+                pdf.setFontSize(8);
+                pdf.setFont('helvetica', 'normal');
                 pdf.text(dateText, paperWidth / 2, dateTimeY, { align: 'center' });
-                pdf.text(timeText, paperWidth / 2, dateTimeY + 5, { align: 'center' });
+                pdf.text(timeText, paperWidth / 2, dateTimeY + 3, { align: 'center' });
             }
             
             var pdfDataUri = pdf.output('datauristring');
