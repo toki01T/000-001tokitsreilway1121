@@ -967,7 +967,7 @@ function sendToPrintAssist(event) {
             let imgH = origH * ratio;
             
             // 完全修正：toki01Tさんの提案通り負の値で左に強制移動
-            let x = -4; // 負の値で右寄り問題完全解決
+            let x = -6; // 負の値で右寄り問題完全解決
             let y = -2; // 上部余白完全削除
             
             console.log("=== 完全修正座標計算（右寄り解決） ===");
@@ -2202,6 +2202,7 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
+
 
 
 
