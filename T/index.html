@@ -959,7 +959,7 @@ function sendToPrintAssist(event) {
             let origH = img.naturalHeight;
             
             // 完全修正：右寄り問題解決
-            const maxUsableWidth = 58; // フル幅使用
+            const maxUsableWidth = 62; // フル幅使用
             let ratio = Math.min(maxUsableWidth / origW, 1);
             if (shrinkChecked) ratio *= 0.6;
             
@@ -967,7 +967,7 @@ function sendToPrintAssist(event) {
             let imgH = origH * ratio;
             
             // 完全修正：toki01Tさんの提案通り負の値で左に強制移動
-            let x = -4; // 負の値で右寄り問題完全解決
+            let x = 0; // 負の値で右寄り問題完全解決
             let y = 0; // 上部余白完全削除
             
             console.log("=== 完全修正座標計算（右寄り解決） ===");
@@ -2202,6 +2202,7 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
+
 
 
 
