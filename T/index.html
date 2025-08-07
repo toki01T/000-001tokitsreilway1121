@@ -959,7 +959,7 @@ function sendToPrintAssist(event) {
             let origH = img.naturalHeight;
             
             // 完全修正：toki01T成功値適用
-            const maxUsableWidth = 60; // 拡大サイズ
+            const maxUsableWidth = 59; // 拡大サイズ
             let ratio = Math.min(maxUsableWidth / origW, 1);
             if (shrinkChecked) ratio *= 0.6;
             
@@ -2338,3 +2338,4 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
+
