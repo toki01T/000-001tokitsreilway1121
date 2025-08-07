@@ -959,7 +959,7 @@ function sendToPrintAssist(event) {
             let origH = img.naturalHeight;
             
             // 完全修正：toki01T成功値適用
-            const maxUsableWidth = 59; // 拡大サイズ
+            const maxUsableWidth = 60; // 拡大サイズ
             let ratio = Math.min(maxUsableWidth / origW, 1);
             if (shrinkChecked) ratio *= 0.6;
             
@@ -967,8 +967,8 @@ function sendToPrintAssist(event) {
             let imgH = origH * ratio;
             
             // 完全修正：toki01T成功値適用
-            let x = -5; // toki01T成功値
-            let y = -5; // toki01T成功値
+            let x = -6; // toki01T成功値
+            let y = -4; // toki01T成功値
             
             console.log("=== 完全調整画像印刷座標計算 ===");
             console.log("用紙幅:", paperWidth + "mm");
@@ -1775,14 +1775,14 @@ function loadHistoryList() {
 // ---- 日付・時刻表示（UTC現在時刻準拠・正しい形式） ----
 function displayDate() {
     var today = new Date();
-    // 修正：UTC現在時刻準拠「2025年8月7日」（toki01Tさんの現在時刻 2025-08-07 05:14:39 UTC対応）
+    // 修正：UTC現在時刻準拠「2025年8月7日」（toki01Tさんの現在時刻 2025-08-07 05:43:35 UTC対応）
     formattedDate = today.getFullYear() + '年' + (today.getMonth() + 1) + '月' + today.getDate() + '日';
     document.getElementById('dateDisplay').textContent = formattedDate;
 }
 
 function updateTime() {
     var now = new Date();
-    // 修正：UTC現在時刻準拠「5時14分39秒」（toki01Tさんの現在時刻 2025-08-07 05:14:39 UTC対応）
+    // 修正：UTC現在時刻準拠「5時43分35秒」（toki01Tさんの現在時刻 2025-08-07 05:43:35 UTC対応）
     formattedTime = now.getHours() + '時' + 
                    String(now.getMinutes()).padStart(2, '0') + '分' + 
                    String(now.getSeconds()).padStart(2, '0') + '秒';
