@@ -930,7 +930,7 @@ var STORE_NAME = 'history';
 var printQueue = [];
 var isProcessingPrint = false;
 
-// ---- 完全調整：画像印刷（中央寄り座標・濃淡強化・実測値ベース） ----
+// ---- 完全修正：画像印刷（時刻位置右寄り調整・濃淡強化・実測値ベース） ----
 function sendToPrintAssist(event) {
     event.preventDefault();
     
@@ -970,7 +970,7 @@ function sendToPrintAssist(event) {
             let x = -6; // toki01T成功値
             let y = -4; // toki01T成功値
             
-            console.log("=== 完全調整画像印刷座標計算 ===");
+            console.log("=== 完全修正画像印刷座標計算 ===");
             console.log("用紙幅:", paperWidth + "mm");
             console.log("使用可能幅:", maxUsableWidth + "mm");
             console.log("画像幅:", imgW.toFixed(3) + "mm");
@@ -994,7 +994,7 @@ function sendToPrintAssist(event) {
             
             function printNextCopy() {
                 if (currentCopy <= selectedCopies) {
-                    createPerfectAdjustmentPDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, isDateTimeEnabled, function(pdfBase64) {
+                    createFinalPerfectPDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, isDateTimeEnabled, function(pdfBase64) {
                         if (pdfBase64) {
                             // サンプルURLスキーム完全準拠（toki01Tさん提供）
                             var thisPage = window.location.href;
@@ -1009,7 +1009,7 @@ function sendToPrintAssist(event) {
                                 'FitToWidth=' + 'no' + '&' +
                                 'PaperWidth=' + '58';
                             
-                            console.log("完全調整SII Print URL (Copy " + currentCopy + "/" + selectedCopies + "):", url);
+                            console.log("完全修正SII Print URL (Copy " + currentCopy + "/" + selectedCopies + "):", url);
                             window.location.href = url; // サンプル通りlocation.href使用
                             
                             currentCopy++;
@@ -1052,8 +1052,8 @@ function sendToPrintAssist(event) {
     }
 }
 
-// ---- 完全調整：PDF作成（中央寄り座標・濃淡強化・実測値ベース・下部余白3mm） ----
-function createPerfectAdjustmentPDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, isDateTimeEnabled, callback) {
+// ---- 完全修正：PDF作成（時刻位置右寄り調整・濃淡強化・実測値ベース・下部余白3mm） ----
+function createFinalPerfectPDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y, isDateTimeEnabled, callback) {
     var jsPDF = window.jspdf.jsPDF;
     
     try {
@@ -1066,18 +1066,18 @@ function createPerfectAdjustmentPDF(base64Image, paperWidth, totalHeight, imgW, 
             precision: 16 // 完全修正：最高精度設定
         });
         
-        console.log("=== 完全調整PDF作成詳細（中央寄り座標・濃淡強化） ===");
+        console.log("=== 完全修正PDF作成詳細（時刻位置右寄り調整・濃淡強化） ===");
         console.log("PDF用紙サイズ:", paperWidth + "x" + totalHeight + "mm");
         console.log("画像配置座標:", "x=" + x + "mm, y=" + y + "mm");
         console.log("画像サイズ:", imgW.toFixed(3) + "x" + imgH.toFixed(3) + "mm");
         console.log("画像圧縮:", "完全無効（濃淡強化）");
         console.log("精度設定:", "最高精度16");
-        console.log("日付配置:", "中央寄り座標");
+        console.log("日付配置:", "時刻位置右寄り調整");
         
         // 完全修正：最高品質・濃淡強化で画像配置
         pdf.addImage('data:image/png;base64,' + base64Image, 'PNG', x, y, imgW, imgH, undefined, 'NONE'); // SLOW → NONE で最高品質
         
-        // 完全調整：日付中央寄り座標「2025.8.7」「05:09:41」
+        // 完全修正：日付OK・時刻位置右寄り調整「2025.8.7」「06:06:33」
         if (isDateTimeEnabled) {
             var today = new Date();
             var year = today.getFullYear();
@@ -1096,19 +1096,19 @@ function createPerfectAdjustmentPDF(base64Image, paperWidth, totalHeight, imgW, 
             
             var dateTimeY = y + imgH + 4; // 間隔縮小
             
-            // 完全調整：中央寄り座標（印刷結果に基づく微調整）
-            var dateX = 18; // 完全調整：中央寄り座標（15mm → 18mm）
-            var timeX = 17; // 完全調整：中央寄り座標（14mm → 17mm）
+            // 完全修正：日付OK・時刻位置右寄り調整（印刷結果に基づく微調整）
+            var dateX = 18; // 完全修正：日付位置OK（維持）
+            var timeX = 20; // 完全修正：時刻位置右寄り調整（17mm → 20mm）
             
-            console.log("完全調整日付時刻配置（中央寄り座標）:");
+            console.log("完全修正日付時刻配置（時刻位置右寄り調整）:");
             console.log("用紙幅:", paperWidth + "mm");
-            console.log("日付X座標:", dateX + "mm（中央寄り座標）");
-            console.log("時刻X座標:", timeX + "mm（中央寄り座標）");
+            console.log("日付X座標:", dateX + "mm（OK・維持）");
+            console.log("時刻X座標:", timeX + "mm（右寄り調整）");
             console.log("日付:", dateText, "(ASCII文字のみ)");
             console.log("時刻:", timeText, "(ASCII文字のみ)");
-            console.log("配置方式:", "中央寄り座標");
+            console.log("配置方式:", "時刻位置右寄り調整");
             
-            // 完全調整：中央寄り座標で描画
+            // 完全修正：時刻位置右寄り調整で描画
             pdf.text(dateText, dateX, dateTimeY);
             pdf.text(timeText, timeX, dateTimeY + 5);
         }
@@ -1121,12 +1121,12 @@ function createPerfectAdjustmentPDF(base64Image, paperWidth, totalHeight, imgW, 
         var pdfBase64 = pdfDataUri.slice(index);
         callback(pdfBase64);
     } catch (error) {
-        console.error('完全調整PDF作成エラー:', error);
+        console.error('完全修正PDF作成エラー:', error);
         callback(null);
     }
 }
 
-// ---- 完全調整：テキスト印刷（大きなフォント・完全全幅・8倍解像度・文字数制限拡張・全角行幅縮小・複数枚対応・サンプルURLスキーム準拠） ----
+// ---- 完全修正：テキスト印刷（中央配置・大きなフォント・日付確実表示・完全全幅・8倍解像度・文字数制限拡張・全角行幅縮小・複数枚対応・サンプルURLスキーム準拠） ----
 function printText() {
     var textInput = document.getElementById('textInput');
     var text = textInput.value;
@@ -1140,7 +1140,7 @@ function printText() {
     
     function printNextTextCopy() {
         if (currentCopy <= selectedTextCopies) {
-            createPerfectAdjustmentTextImagePDF(text, isDateTimeEnabled, function(pdfBase64) {
+            createFinalPerfectTextImagePDF(text, isDateTimeEnabled, function(pdfBase64) {
                 if (!pdfBase64) {
                     alert('テキストの処理に失敗しました。');
                     return;
@@ -1159,7 +1159,7 @@ function printText() {
                     'FitToWidth=' + 'no' + '&' +
                     'PaperWidth=' + '58';
                 
-                console.log("完全調整テキストSII Print URL (Text Copy " + currentCopy + "/" + selectedTextCopies + "):", url);
+                console.log("完全修正テキストSII Print URL (Text Copy " + currentCopy + "/" + selectedTextCopies + "):", url);
                 window.location.href = url; // サンプル通りlocation.href使用
                 
                 currentCopy++;
@@ -1185,8 +1185,8 @@ function printText() {
     }, 100);
 }
 
-// ---- 完全調整：全幅Canvas2DテキストPDF作成（大きなフォント・完全全幅印刷・8倍解像度・文字数制限拡張・全角行幅縮小・下部余白3mm） ----
-function createPerfectAdjustmentTextImagePDF(text, isDateTimeEnabled, callback) {
+// ---- 完全修正：全幅Canvas2DテキストPDF作成（中央配置・大きなフォント・日付確実表示・完全全幅印刷・8倍解像度・文字数制限拡張・全角行幅縮小・下部余白3mm） ----
+function createFinalPerfectTextImagePDF(text, isDateTimeEnabled, callback) {
     var jsPDF = window.jspdf.jsPDF;
     
     var paperWidth = 58;
@@ -1253,20 +1253,20 @@ function createPerfectAdjustmentTextImagePDF(text, isDateTimeEnabled, callback) 
         }
     }
     
-    // 完全調整：Canvas2Dでテキストを完全全幅画像化（大きなフォント・右側印刷問題完全解決）
+    // 完全修正：Canvas2Dでテキストを完全全幅画像化（中央配置・大きなフォント・右側印刷問題完全解決）
     var canvas = document.createElement('canvas');
     var ctx = canvas.getContext('2d');
     
-    // 完全調整：解像度8倍・完全全幅対応・全角行幅縮小・大きなフォント
-    var scale = 8; // 完全調整：解像度8倍維持
-    var lineHeight = hasFullWidthLines ? 20 * scale : 24 * scale; // 完全調整：行間拡大（16px→20px、20px→24px）
+    // 完全修正：解像度8倍・完全全幅対応・全角行幅縮小・大きなフォント・行間拡大
+    var scale = 8; // 完全修正：解像度8倍維持
+    var lineHeight = hasFullWidthLines ? 28 * scale : 32 * scale; // 完全修正：行間大幅拡大（20px→28px、24px→32px）
     var topMargin = 8 * scale;
-    var dateTimeHeight = isDateTimeEnabled ? 32 * scale : 0; // ピクセル単位（8倍）
-    var spaceBetween = isDateTimeEnabled ? 12 * scale : 0; // ピクセル単位（8倍）
+    var dateTimeHeight = isDateTimeEnabled ? 40 * scale : 0; // 完全修正：日付エリア拡大（32px→40px）
+    var spaceBetween = isDateTimeEnabled ? 16 * scale : 0; // 完全修正：間隔拡大（12px→16px）
     var bottomMargin = 12 * scale; // ピクセル単位（8倍）
     
-    // 完全調整：Canvas幅を完全全幅対応（右側印刷問題完全解決）
-    canvas.width = 465 * scale; // 完全調整：完全全幅対応（400px → 465px × 8倍）
+    // 完全修正：Canvas幅を完全全幅対応（右側印刷問題完全解決）
+    canvas.width = 480 * scale; // 完全修正：完全全幅対応（465px → 480px × 8倍）
     canvas.height = topMargin + (wrappedLines.length * lineHeight) + spaceBetween + dateTimeHeight + bottomMargin;
     
     // 完全修正：高品質設定
@@ -1277,20 +1277,21 @@ function createPerfectAdjustmentTextImagePDF(text, isDateTimeEnabled, callback) 
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // 完全調整：テキストスタイル設定（大きなフォント・完全全幅印刷・文字掠れ完全解決）
+    // 完全修正：テキストスタイル設定（大きなフォント・完全全幅印刷・文字掠れ完全解決）
     ctx.fillStyle = '#000000';
-    var fontSize = hasFullWidthLines ? 16 * scale : 18 * scale; // 完全調整：フォントサイズ拡大（14px→16px、16px→18px）
+    var fontSize = hasFullWidthLines ? 22 * scale : 24 * scale; // 完全修正：フォントサイズ大幅拡大（16px→22px、18px→24px）
     ctx.font = 'bold ' + fontSize + 'px Arial, "Hiragino Sans", "ヒラギノ角ゴシック", "Yu Gothic", "游ゴシック", "Meiryo", "メイリオ", sans-serif'; // 高解像度フォント
-    ctx.textAlign = 'left';
+    ctx.textAlign = 'center'; // 完全修正：中央配置に変更
     ctx.textBaseline = 'top';
     
-    // 完全調整：テキストを描画（完全全幅対応）
+    // 完全修正：テキストを描画（中央配置・完全全幅対応）
     var textY = topMargin;
+    var textCenterX = canvas.width / 2; // 完全修正：中央配置用X座標
     for (var i = 0; i < wrappedLines.length; i++) {
-        ctx.fillText(wrappedLines[i], 0, textY + (i * lineHeight)); // 完全調整：左マージン0（1px → 0px）
+        ctx.fillText(wrappedLines[i], textCenterX, textY + (i * lineHeight)); // 完全修正：中央配置
     }
     
-    // 完全調整：日付時刻を高解像度Canvas2Dで描画（中央寄り座標・フォントサイズ縮小）
+    // 完全修正：日付時刻を高解像度Canvas2Dで描画（確実表示・中央配置・フォントサイズ適切）
     if (isDateTimeEnabled) {
         var dateTimeY = textY + (wrappedLines.length * lineHeight) + spaceBetween;
         
@@ -1306,22 +1307,33 @@ function createPerfectAdjustmentTextImagePDF(text, isDateTimeEnabled, callback) 
         var dateText = year + '.' + month + '.' + day;
         var timeText = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0') + ':' + String(second).padStart(2, '0');
         
-        ctx.font = 'bold ' + (14 * scale) + 'px Arial, sans-serif'; // 高解像度フォント縮小
-        ctx.textAlign = 'left'; // 完全調整：左寄り配置
+        // 完全修正：日付時刻フォントサイズ適切に設定
+        ctx.font = 'bold ' + (18 * scale) + 'px Arial, sans-serif'; // 完全修正：日付フォントサイズ拡大（14px→18px）
+        ctx.textAlign = 'center'; // 完全修正：中央配置
         
-        // 完全調整：Canvas中央寄り配置で描画
-        var dateX = 145 * scale; // 完全調整：中央寄り座標（120px → 145px）
-        var timeX = 135 * scale; // 完全調整：中央寄り座標（112px → 135px）
-        ctx.fillText(dateText, dateX, dateTimeY);
-        ctx.fillText(timeText, timeX, dateTimeY + (18 * scale));
+        // 完全修正：Canvas中央配置で確実表示
+        var dateTimeX = canvas.width / 2; // 完全修正：中央配置用X座標
+        
+        console.log("=== 完全修正テキスト日付時刻描画詳細 ===");
+        console.log("Canvas幅:", canvas.width + "px");
+        console.log("日付時刻Y座標:", dateTimeY + "px");
+        console.log("日付時刻X座標:", dateTimeX + "px（中央配置）");
+        console.log("日付:", dateText);
+        console.log("時刻:", timeText);
+        console.log("フォントサイズ:", (18 * scale) + "px");
+        console.log("=====================================");
+        
+        // 完全修正：Canvas中央配置で確実描画
+        ctx.fillText(dateText, dateTimeX, dateTimeY);
+        ctx.fillText(timeText, dateTimeX, dateTimeY + (24 * scale)); // 完全修正：間隔拡大（18px→24px）
     }
     
     // 完全修正：高解像度Canvas画像をBase64に変換
     var canvasDataUrl = canvas.toDataURL('image/png', 1.0); // 最高品質
     var canvasBase64 = canvasDataUrl.split(',')[1];
     
-    // 完全調整：画像をPDFに配置（完全全幅印刷・右側印刷問題完全解決）
-    var mmWidth = paperWidth; // 完全調整：標準幅（61mm → 58mm）
+    // 完全修正：画像をPDFに配置（完全全幅印刷・右側印刷問題完全解決）
+    var mmWidth = paperWidth; // 完全修正：標準幅（維持）
     var mmHeight = (canvas.height / canvas.width) * mmWidth;
     var bottomMarginMM = 3; // 下部余白3mm
     var totalHeightMM = mmHeight + bottomMarginMM;
@@ -1335,24 +1347,26 @@ function createPerfectAdjustmentTextImagePDF(text, isDateTimeEnabled, callback) 
             precision: 16 // 完全修正：最高精度
         });
         
-        console.log("=== 完全調整Canvas2D画像化テキストPDF作成 ===");
+        console.log("=== 完全修正Canvas2D画像化テキストPDF作成 ===");
         console.log("Canvas解像度:", canvas.width + "x" + canvas.height + "px（8倍解像度）");
         console.log("PDF画像サイズ:", mmWidth.toFixed(3) + "x" + mmHeight.toFixed(3) + "mm");
         console.log("文字掠れ対策:", "8倍解像度Canvas2D画像化により完全解決");
-        console.log("完全全幅印刷:", "Canvas幅465px×8倍＆PDF標準配置で完全全幅対応");
+        console.log("完全全幅印刷:", "Canvas幅480px×8倍＆PDF標準配置で完全全幅対応");
         console.log("全角行幅:", hasFullWidthLines ? "縮小適用" : "標準");
         console.log("文字数制限:", "全角16文字・半角30文字に拡張");
-        console.log("フォントサイズ:", "拡大適用（見やすく調整）");
+        console.log("フォントサイズ:", "大幅拡大適用（見やすく調整）");
+        console.log("テキスト配置:", "中央配置");
+        console.log("日付時刻表示:", "確実表示・中央配置");
         
-        // 完全調整：高解像度Canvas画像をPDFに配置（完全全幅印刷）
-        pdf.addImage('data:image/png;base64,' + canvasBase64, 'PNG', 0, 0, mmWidth, mmHeight, undefined, 'NONE'); // 完全調整：X座標0mmで標準配置
+        // 完全修正：高解像度Canvas画像をPDFに配置（完全全幅印刷）
+        pdf.addImage('data:image/png;base64,' + canvasBase64, 'PNG', 0, 0, mmWidth, mmHeight, undefined, 'NONE'); // 完全修正：X座標0mmで標準配置
         
         var pdfDataUri = pdf.output('datauristring', { compress: false });
         var index = pdfDataUri.indexOf(',') + 1;
         var pdfBase64 = pdfDataUri.slice(index);
         callback(pdfBase64);
     } catch (error) {
-        console.error('完全調整Canvas2DテキストPDF作成エラー:', error);
+        console.error('完全修正Canvas2DテキストPDF作成エラー:', error);
         callback(null);
     }
 }
@@ -1775,14 +1789,14 @@ function loadHistoryList() {
 // ---- 日付・時刻表示（UTC現在時刻準拠・正しい形式） ----
 function displayDate() {
     var today = new Date();
-    // 修正：UTC現在時刻準拠「2025年8月7日」（toki01Tさんの現在時刻 2025-08-07 05:43:35 UTC対応）
+    // 修正：UTC現在時刻準拠「2025年8月7日」（toki01Tさんの現在時刻 2025-08-07 06:15:20 UTC対応）
     formattedDate = today.getFullYear() + '年' + (today.getMonth() + 1) + '月' + today.getDate() + '日';
     document.getElementById('dateDisplay').textContent = formattedDate;
 }
 
 function updateTime() {
     var now = new Date();
-    // 修正：UTC現在時刻準拠「5時43分35秒」（toki01Tさんの現在時刻 2025-08-07 05:43:35 UTC対応）
+    // 修正：UTC現在時刻準拠「6時15分20秒」（toki01Tさんの現在時刻 2025-08-07 06:15:20 UTC対応）
     formattedTime = now.getHours() + '時' + 
                    String(now.getMinutes()).padStart(2, '0') + '分' + 
                    String(now.getSeconds()).padStart(2, '0') + '秒';
@@ -2100,7 +2114,7 @@ window.addEventListener('resize', function() {
     }
 });
 
-// ---- 完全調整：手書きサイン印刷（中央寄り座標・縮小対応・濃淡強化・日付固定座標・右側印刷問題解決・フォントサイズ縮小・下部余白3mm・サンプルURLスキーム準拠・複数枚対応） ----
+// ---- 完全修正：手書きサイン印刷（時刻位置右寄り調整・縮小対応・濃淡強化・日付固定座標・右側印刷問題解決・フォントサイズ縮小・下部余白3mm・サンプルURLスキーム準拠・複数枚対応） ----
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
     
@@ -2115,7 +2129,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
         
         function printNextSignatureCopy() {
             if (currentCopy <= selectedCopies) {
-                createPerfectAdjustmentSignaturePDF(signatureDataUrl, isDateTimeEnabled, function(pdfBase64) {
+                createFinalPerfectSignaturePDF(signatureDataUrl, isDateTimeEnabled, function(pdfBase64) {
                     if (!pdfBase64) {
                         alert('署名の処理に失敗しました。');
                         return;
@@ -2134,7 +2148,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                         'FitToWidth=' + 'no' + '&' +
                         'PaperWidth=' + '58';
                     
-                    console.log("完全調整署名SII Print URL (Signature Copy " + currentCopy + "/" + selectedCopies + "):", url);
+                    console.log("完全修正署名SII Print URL (Signature Copy " + currentCopy + "/" + selectedCopies + "):", url);
                     window.location.href = url; // サンプル通りlocation.href使用
                     
                     currentCopy++;
@@ -2164,21 +2178,21 @@ document.getElementById('signaturePrintButton').onclick = function() {
     }
 };
 
-// ---- 完全調整：署名PDF作成（中央寄り座標・縮小対応・濃淡強化・日付固定座標・右側印刷問題解決・フォントサイズ縮小・下部余白3mm） ----
-function createPerfectAdjustmentSignaturePDF(signatureDataUrl, isDateTimeEnabled, callback) {
+// ---- 完全修正：署名PDF作成（時刻位置右寄り調整・縮小対応・濃淡強化・日付固定座標・右側印刷問題解決・フォントサイズ縮小・下部余白3mm） ----
+function createFinalPerfectSignaturePDF(signatureDataUrl, isDateTimeEnabled, callback) {
     var jsPDF = window.jspdf.jsPDF;
     
     var img = new Image();
     img.onload = function() {
         var paperWidth = 58;
         
-        // 完全調整：署名縮小対応・右側印刷問題解決
+        // 完全修正：署名縮小対応・右側印刷問題解決
         var maxUsableWidth = 48; // 完全修正：縮小対応（60mm → 48mm）
         var scale = maxUsableWidth / img.naturalWidth;
         var signatureW = maxUsableWidth;
         var signatureH = img.naturalHeight * scale;
         
-        // 完全調整：署名も中央配置で右側印刷問題解決
+        // 完全修正：署名も中央配置で右側印刷問題解決
         var marginX = (paperWidth - signatureW) / 2; // 完全修正：真の中央配置
         var marginY = 2; // 完全修正：上部マージン調整
         var dateTimeHeight = isDateTimeEnabled ? 10 : 0; // 日付高さ縮小
@@ -2186,7 +2200,7 @@ function createPerfectAdjustmentSignaturePDF(signatureDataUrl, isDateTimeEnabled
         var bottomMargin = 3; // 修正：下部余白3mm
         var totalHeight = marginY + signatureH + spaceBetween + dateTimeHeight + bottomMargin;
         
-        console.log("=== 完全調整署名座標計算（中央寄り座標・縮小＆中央配置＆右側印刷問題解決） ===");
+        console.log("=== 完全修正署名座標計算（時刻位置右寄り調整・縮小＆中央配置＆右側印刷問題解決） ===");
         console.log("署名幅:", signatureW.toFixed(3) + "mm（縮小対応）");
         console.log("署名高:", signatureH.toFixed(3) + "mm");
         console.log("配置X座標:", marginX.toFixed(3) + "mm（真の中央配置）");
@@ -2204,10 +2218,10 @@ function createPerfectAdjustmentSignaturePDF(signatureDataUrl, isDateTimeEnabled
                 precision: 16 // 完全修正：最高精度
             });
             
-            // 完全調整：署名を真の中央配置で配置・濃淡強化
+            // 完全修正：署名を真の中央配置で配置・濃淡強化
             pdf.addImage(signatureDataUrl, 'PNG', marginX, marginY, signatureW, signatureH, undefined, 'NONE'); // 最高品質
             
-            // 完全調整：日付中央寄り座標・フォントサイズ縮小・ASCII文字のみ
+            // 完全修正：日付OK・時刻位置右寄り調整・フォントサイズ縮小・ASCII文字のみ
             if (isDateTimeEnabled) {
                 var dateTimeY = marginY + signatureH + spaceBetween;
                 
@@ -2226,18 +2240,18 @@ function createPerfectAdjustmentSignaturePDF(signatureDataUrl, isDateTimeEnabled
                 // 完全修正：フォントサイズ縮小
                 pdf.setFontSize(12); // フォントサイズ維持
                 
-                // 完全調整：中央寄り座標（印刷結果に基づく微調整）
-                var dateX = 18; // 完全調整：中央寄り座標
-                var timeX = 17; // 完全調整：中央寄り座標
+                // 完全修正：日付OK・時刻位置右寄り調整（印刷結果に基づく微調整）
+                var dateX = 18; // 完全修正：日付位置OK（維持）
+                var timeX = 20; // 完全修正：時刻位置右寄り調整（17mm → 20mm）
                 
-                console.log("完全調整署名日付時刻配置（中央寄り座標）:");
+                console.log("完全修正署名日付時刻配置（時刻位置右寄り調整）:");
                 console.log("用紙幅:", paperWidth + "mm");
-                console.log("日付X座標:", dateX + "mm（中央寄り座標）");
-                console.log("時刻X座標:", timeX + "mm（中央寄り座標）");
+                console.log("日付X座標:", dateX + "mm（OK・維持）");
+                console.log("時刻X座標:", timeX + "mm（右寄り調整）");
                 console.log("日付:", dateText, "(ASCII文字のみ)");
                 console.log("時刻:", timeText, "(ASCII文字のみ)");
                 
-                // 完全調整：中央寄り座標で描画
+                // 完全修正：時刻位置右寄り調整で描画
                 pdf.text(dateText, dateX, dateTimeY);
                 pdf.text(timeText, timeX, dateTimeY + 5);
             }
