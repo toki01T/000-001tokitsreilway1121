@@ -1045,11 +1045,13 @@ function createWorkingPDF(base64Image, paperWidth, totalHeight, imgW, imgH, x, y
             orientation: 'portrait',
             unit: 'mm',
             format: [paperWidth, totalHeight],
-            compress: false,
-            precision: 16
+            compress: false, // **品質=1（最高品質）：圧縮無効**
+            precision: 16,
+            userUnit: 1.0
         });
         
-        pdf.addImage('data:image/png;base64,' + base64Image, 'PNG', x, y, imgW, imgH, undefined, 'NONE');
+        // **印刷品質向上：画像追加時の品質設定**
+        pdf.addImage('data:image/png;base64,' + base64Image, 'PNG', x, y, imgW, imgH, undefined, 'SLOW');
         
         if (isDateTimeEnabled) {
             var today = new Date();
@@ -1207,33 +1209,40 @@ function createWorkingTextImagePDF(text, isDateTimeEnabled, callback) {
         }
     }
     
-    // **確実動作：Canvas2D設定（58mm用紙最適化）**
+    // **印刷品質向上：Canvas2D設定（58mm用紙最適化）**
     var canvas = document.createElement('canvas');
     var ctx = canvas.getContext('2d');
     
-    var scale = 8; // **確実動作：解像度8倍**
+    var scale = 12; // **解像度向上：8倍→12倍**
     var lineHeight = hasFullWidthLines ? 16 * scale : 18 * scale; // **確実動作：行間58mm用紙最適化**
     var topMargin = 8 * scale;
     var dateTimeHeight = isDateTimeEnabled ? 32 * scale : 0;
     var spaceBetween = isDateTimeEnabled ? 12 * scale : 0;
     var bottomMargin = 12 * scale;
     
-    // **確実動作：Canvas幅58mm用紙最適化（全角18文字・半角30文字対応）**
-    canvas.width = 440 * scale; // **確実動作：58mm用紙最適化幅**
+    // **印刷品質向上：Canvas幅58mm用紙最適化（全角18文字・半角30文字対応）**
+    canvas.width = 440 * scale; // **印刷品質向上：58mm用紙最適化幅**
     canvas.height = topMargin + (wrappedLines.length * lineHeight) + spaceBetween + dateTimeHeight + bottomMargin;
     
+    // **画像品質向上設定**
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
+    ctx.textRenderingOptimization = 'optimizeQuality';
     
+    // **コントラスト改善：完全な白背景**
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // **確実動作：フォント設定（58mm用紙最適化）**
-    ctx.fillStyle = '#000000';
-    var fontSize = hasFullWidthLines ? 12 * scale : 14 * scale; // **確実動作：フォントサイズ58mm用紙最適化**
+    // **フォント最適化：読みやすいサイズと完全な黒色**
+    ctx.fillStyle = '#000000'; // 完全な黒文字
+    var fontSize = hasFullWidthLines ? 13 * scale : 15 * scale; // **フォントサイズ改善**
     ctx.font = 'bold ' + fontSize + 'px Arial, "Hiragino Sans", "ヒラギノ角ゴシック", "Yu Gothic", "游ゴシック", "Meiryo", "メイリオ", sans-serif';
     ctx.textAlign = 'center'; // **確実動作：中央配置**
     ctx.textBaseline = 'top';
+    
+    // **文字描画品質向上**
+    ctx.shadowColor = 'transparent';
+    ctx.globalCompositeOperation = 'source-over';
     
     var textY = topMargin;
     var textCenterX = canvas.width / 2; // **確実動作：中央配置用X座標**
@@ -1271,6 +1280,7 @@ function createWorkingTextImagePDF(text, isDateTimeEnabled, callback) {
         ctx.fillText(timeText, dateTimeX, dateTimeY + (16 * scale));
     }
     
+    // **品質=1（最高品質）でデータURL生成**
     var canvasDataUrl = canvas.toDataURL('image/png', 1.0);
     var canvasBase64 = canvasDataUrl.split(',')[1];
     
@@ -1284,17 +1294,19 @@ function createWorkingTextImagePDF(text, isDateTimeEnabled, callback) {
             orientation: 'portrait',
             unit: 'mm',
             format: [paperWidth, totalHeightMM],
-            compress: false,
-            precision: 16
+            compress: false, // **品質=1（最高品質）：圧縮無効**
+            precision: 16,
+            userUnit: 1.0
         });
         
-        console.log("=== 確実動作Canvas2D画像化テキストPDF作成 ===");
-        console.log("Canvas解像度:", canvas.width + "x" + canvas.height + "px（8倍解像度）");
-        console.log("58mm用紙最適化:", "Canvas幅440px×8倍で全角18文字/半角30文字対応");
+        console.log("=== 印刷品質向上Canvas2D画像化テキストPDF作成 ===");
+        console.log("Canvas解像度:", canvas.width + "x" + canvas.height + "px（12倍解像度）");
+        console.log("58mm用紙最適化:", "Canvas幅440px×12倍で全角18文字/半角30文字対応");
         console.log("文字数制限:", "全角18文字・半角30文字");
-        console.log("フォントサイズ:", "58mm用紙最適化");
+        console.log("フォントサイズ:", "読みやすさ最適化");
         
-        pdf.addImage('data:image/png;base64,' + canvasBase64, 'PNG', 0, 0, mmWidth, mmHeight, undefined, 'NONE');
+        // **印刷品質向上：テキスト画像追加時の品質設定**
+        pdf.addImage('data:image/png;base64,' + canvasBase64, 'PNG', 0, 0, mmWidth, mmHeight, undefined, 'SLOW');
         
         var pdfDataUri = pdf.output('datauristring', { compress: false });
         var index = pdfDataUri.indexOf(',') + 1;
@@ -1976,13 +1988,24 @@ function getSignaturePadSize() {
 
 function resizeSignaturePadCanvas(canvas, ctx, size, ratio, imageDataUrl) {
     var dataUrl = imageDataUrl || canvas.toDataURL();
-    canvas.width = size.width * ratio;
-    canvas.height = size.height * ratio;
+    
+    // **解像度向上：高DPI対応**
+    const highDPIRatio = Math.max(ratio, 2.0); // 最低2倍の解像度
+    canvas.width = size.width * highDPIRatio;
+    canvas.height = size.height * highDPIRatio;
     canvas.style.width = size.width + "px";
     canvas.style.height = size.height + "px";
+    
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.scale(ratio, ratio);
+    ctx.scale(highDPIRatio, highDPIRatio);
+    
+    // **画像品質向上設定**
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
     if (dataUrl) {
         var img = new window.Image();
         img.onload = function() {
@@ -2001,14 +2024,17 @@ function initSignaturePad(imageDataUrl, fromHistory) {
     
     resizeSignaturePadCanvas(canvas, ctx, size, ratio, dataUrl);
     
-    // **確実動作：署名線の太さ縮小設定**
+    // **印刷品質向上：署名線の太さと品質改善**
     signaturePad = new window.SignaturePad(canvas, {
-        backgroundColor: "#fff",
-        penColor: "#222",
-        minWidth: 1.0, // **確実動作：線の太さ縮小（1.5 → 1.0）**
-        maxWidth: 1.8, // **確実動作：最大幅縮小（2.5 → 1.8）**
-        throttle: 10,
-        velocityFilterWeight: 0.7
+        backgroundColor: "#ffffff", // 完全な白背景
+        penColor: "#000000", // 完全な黒文字
+        minWidth: 0.8, // **線の太さ改善（より細く精密に）**
+        maxWidth: 1.5, // **最大幅改善（より読みやすく）**
+        throttle: 5, // **応答性向上**
+        velocityFilterWeight: 0.8, // **線の滑らかさ向上**
+        dotSize: function () {
+            return (this.minWidth + this.maxWidth) / 2;
+        }
     });
     
     if (imageDataUrl) {
@@ -2056,7 +2082,35 @@ document.getElementById('signaturePrintButton').onclick = function() {
     
     try {
         var canvas = document.getElementById('signaturePad');
-        var signatureDataUrl = canvas.toDataURL("image/png");
+        
+        // **印刷品質向上：高解像度処理**
+        const pxPerMm = 6.0; // 1mm=6.0px（印刷品質向上）
+        const srcW = canvas.width;
+        const srcH = canvas.height;
+        const printW = 48; // 印刷幅48mm
+        const outW = Math.round(printW * pxPerMm);
+        const scale = outW / srcW;
+        const outH = Math.round(srcH * scale);
+        
+        // 高解像度キャンバス作成
+        const highResCanvas = document.createElement('canvas');
+        highResCanvas.width = outW;
+        highResCanvas.height = outH;
+        const highResCtx = highResCanvas.getContext('2d');
+        
+        // **画像品質向上設定**
+        highResCtx.imageSmoothingEnabled = true;
+        highResCtx.imageSmoothingQuality = 'high';
+        
+        // **コントラスト改善：完全な白背景、完全な黒文字**
+        highResCtx.fillStyle = '#ffffff'; // 完全な白背景
+        highResCtx.fillRect(0, 0, outW, outH);
+        
+        // 元のキャンバスを高解像度で描画
+        highResCtx.drawImage(canvas, 0, 0, outW, outH);
+        
+        // **品質=1（最高品質）でデータURL生成**
+        var signatureDataUrl = highResCanvas.toDataURL("image/png", 1.0);
         var selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
         var isDateTimeEnabled = selectedSignatureChip === 'with';
         
@@ -2133,23 +2187,25 @@ function createWorkingSignaturePDF(signatureDataUrl, isDateTimeEnabled, callback
         var bottomMargin = 3;
         var totalHeight = marginY + signatureH + spaceBetween + dateTimeHeight + bottomMargin;
         
-        console.log("=== 確実動作署名座標計算（署名線太さ縮小・時刻微調整） ===");
-        console.log("署名幅:", signatureW.toFixed(3) + "mm（線太さ縮小対応）");
+        console.log("=== 印刷品質向上署名座標計算（線の太さ・品質改善） ===");
+        console.log("署名幅:", signatureW.toFixed(3) + "mm（品質改善対応）");
         console.log("署名高:", signatureH.toFixed(3) + "mm");
         console.log("配置X座標:", marginX.toFixed(3) + "mm（中央配置）");
-        console.log("線太さ設定:", "minWidth: 1.0, maxWidth: 1.8（縮小）");
-        console.log("=========================");
+        console.log("線太さ設定:", "minWidth: 0.8, maxWidth: 1.5（改善）");
+        console.log("==========================");;
         
         try {
             var pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
                 format: [paperWidth, totalHeight],
-                compress: false,
-                precision: 16
+                compress: false, // **品質=1（最高品質）：圧縮無効**
+                precision: 16,
+                userUnit: 1.0
             });
             
-            pdf.addImage(signatureDataUrl, 'PNG', marginX, marginY, signatureW, signatureH, undefined, 'NONE');
+            // **印刷品質向上：署名画像追加時の品質設定**
+            pdf.addImage(signatureDataUrl, 'PNG', marginX, marginY, signatureW, signatureH, undefined, 'SLOW');
             
             if (isDateTimeEnabled) {
                 var dateTimeY = marginY + signatureH + spaceBetween;
