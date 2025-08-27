@@ -1464,16 +1464,17 @@ document.getElementById('signaturePrintButton').onclick = function() {
         // キャンバスから画像データを取得
         let canvasDataUrl = tmpCanvas.toDataURL("image/png");
         
-        // 画像のサイズを計算（58mm幅ギリギリまで使用）
+        // 画像のサイズを計算（58mm幅から左右余白を差し引く）
         const paperWidth = 58; // mm
-        const imgWidth = 58; // mm（幅を最大限使用）
-        const imgHeight = Math.round(outH / pxPerMm);
+        const leftMargin = 6; // mm（左に6mm余白）
+        const topMargin = 6; // mm（上部に6mm余白）
+        const imgWidth = 46; // mm（58 - 6 - 6 = 46mm）
+        const imgHeight = Math.round(outH / pxPerMm * (imgWidth / 50)); // 比率調整
         
-        // PDFの高さを最小限に設定
-        const topMargin = 0; // mm（上部余白を完全に削除）
-        const bottomMargin = isDateTimeEnabled ? 5 : 0; // mm
-        const dateTimeHeight = isDateTimeEnabled ? 3 : 0; // mm
-        const calculatedHeight = Math.max(topMargin + imgHeight + dateTimeHeight + bottomMargin, 10);
+        // PDFの高さを計算
+        const bottomMargin = isDateTimeEnabled ? 8 : 2; // mm
+        const dateTimeHeight = isDateTimeEnabled ? 4 : 0; // mm
+        const calculatedHeight = Math.max(topMargin + imgHeight + dateTimeHeight + bottomMargin, 20);
         
         // jsPDFを使用してPDFを生成
         const { jsPDF } = window.jspdf;
@@ -1485,20 +1486,15 @@ document.getElementById('signaturePrintButton').onclick = function() {
             compress: true
         });
         
-        // マージンを完全に削除
-        pdf.setPage(1);
-        pdf.internal.pageSize.width = 58;
-        pdf.internal.pageSize.height = calculatedHeight;
-        
-        // 画像を完全に左端から描画（0mmの位置）
-        pdf.addImage(canvasDataUrl, 'PNG', 0, topMargin, imgWidth, imgHeight);
+        // 画像を左に6mm、上に6mmから描画
+        pdf.addImage(canvasDataUrl, 'PNG', leftMargin, topMargin, imgWidth, imgHeight);
         
         // 日付・時刻を追加
         if (isDateTimeEnabled) {
             pdf.setFont('helvetica');
             pdf.setFontSize(7);
             const dateTimeText = toZenkaku(`${formattedDate} ${formattedTime}`);
-            pdf.text(dateTimeText, 0, topMargin + imgHeight + 3, { align: 'left' });
+            pdf.text(dateTimeText, leftMargin, topMargin + imgHeight + 6, { align: 'left' });
         }
         
         // PDFをBase64形式で取得
@@ -1568,19 +1564,20 @@ function sendToPrintAssist(event) {
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
-                // 画像のサイズを58mm幅ギリギリまで使用
+                // 画像のサイズを計算（58mm幅から左右余白を差し引く）
                 const paperWidth = 58; // mm
-                const maxImgWidth = 58; // mm（幅を最大限使用）
+                const leftMargin = 6; // mm（左に6mm余白）
+                const topMargin = 6; // mm（上部に6mm余白）
+                const maxImgWidth = 46; // mm（58 - 6 - 6 = 46mm）
                 
                 // 元画像のアスペクト比を保持して適切なサイズを計算
                 let finalImgWidth = Math.min(maxImgWidth, imgW);
                 let finalImgHeight = Math.round(imgH * (finalImgWidth / imgW));
                 
-                // PDFの高さを最小限に設定
-                const topMargin = 0; // mm（上部余白を完全に削除）
-                const bottomMargin = isDateTimeEnabled ? 5 : 0; // mm
-                const dateTimeHeight = isDateTimeEnabled ? 3 : 0; // mm
-                const calculatedHeight = Math.max(topMargin + finalImgHeight + dateTimeHeight + bottomMargin, 10);
+                // PDFの高さを計算
+                const bottomMargin = isDateTimeEnabled ? 8 : 2; // mm
+                const dateTimeHeight = isDateTimeEnabled ? 4 : 0; // mm
+                const calculatedHeight = Math.max(topMargin + finalImgHeight + dateTimeHeight + bottomMargin, 20);
                 
                 // jsPDFを使用してPDFを生成
                 const { jsPDF } = window.jspdf;
@@ -1592,21 +1589,16 @@ function sendToPrintAssist(event) {
                     compress: true
                 });
                 
-                // マージンを完全に削除
-                pdf.setPage(1);
-                pdf.internal.pageSize.width = 58;
-                pdf.internal.pageSize.height = calculatedHeight;
-                
-                // 画像を完全に左端から描画（0mmの位置）
+                // 画像を左に6mm、上に6mmから描画
                 const imageDataUrl = 'data:image/png;base64,' + base64Image;
-                pdf.addImage(imageDataUrl, 'PNG', 0, topMargin, finalImgWidth, finalImgHeight);
+                pdf.addImage(imageDataUrl, 'PNG', leftMargin, topMargin, finalImgWidth, finalImgHeight);
                 
                 // 日付・時刻を追加
                 if (isDateTimeEnabled) {
                     pdf.setFont('helvetica');
                     pdf.setFontSize(7);
                     const dateTimeText = toZenkaku(`${formattedDate} ${formattedTime}`);
-                    pdf.text(dateTimeText, 0, topMargin + finalImgHeight + 3, { align: 'left' });
+                    pdf.text(dateTimeText, leftMargin, topMargin + finalImgHeight + 6, { align: 'left' });
                 }
                 
                 // PDFをBase64形式で取得
@@ -1750,9 +1742,10 @@ function printText() {
         // テキストの行数に基づいて適切な高さを計算
         const lines = printText.split('\n');
         const lineHeight = 3; // mm
-        const topMargin = 0; // mm（上部余白を完全に削除）
-        const bottomMargin = 1; // mm（下部余白を最小限に）
-        const calculatedHeight = Math.max((lines.length * lineHeight) + topMargin + bottomMargin, 10);
+        const topMargin = 6; // mm（上部に6mm余白）
+        const leftMargin = 6; // mm（左に6mm余白）
+        const bottomMargin = 2; // mm
+        const calculatedHeight = Math.max((lines.length * lineHeight) + topMargin + bottomMargin, 15);
         
         const pdf = new jsPDF({
             orientation: 'portrait',
@@ -1762,21 +1755,15 @@ function printText() {
             compress: true
         });
         
-        // マージンを完全に削除
-        pdf.setPage(1);
-        pdf.internal.pageSize.width = 58;
-        pdf.internal.pageSize.height = calculatedHeight;
-        
         // 日本語フォント設定
         pdf.setFont('helvetica');
         pdf.setFontSize(7);
         
-        // テキストを完全に左端から描画（0mmの位置）
-        let yPosition = 2.5; // 最初の行の位置
+        // テキストを左に6mm、上に6mmから描画
+        let yPosition = topMargin + 2.5; // 最初の行の位置
         
         for (let i = 0; i < lines.length; i++) {
-            // 完全に左端から描画、中央寄せや右寄せを避ける
-            pdf.text(lines[i], 0, yPosition, { align: 'left' });
+            pdf.text(lines[i], leftMargin, yPosition, { align: 'left' });
             yPosition += lineHeight;
         }
         
