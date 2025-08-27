@@ -1469,13 +1469,13 @@ document.getElementById('signaturePrintButton').onclick = function() {
         
         // 画像サイズを用紙幅いっぱいに調整
         const paperWidth = 58; // mm
-        const imgWidth = 56; // mm (左右1mmずつの最小余白)
+        const imgWidth = 57; // mm (余白をほぼなくす)
         const imgHeight = Math.round((outH / pxPerMm) * (imgWidth / 50)); // 比例計算で高さ調整
         
         // 必要な高さを計算
-        const topMargin = 2;
-        const bottomMargin = 2;
-        const dateTimeHeight = isDateTimeEnabled ? 6 : 0;
+        const topMargin = 0.5; // 上部余白を最小限に
+        const bottomMargin = 0.5; // 下部余白を最小限に
+        const dateTimeHeight = isDateTimeEnabled ? 4 : 0;
         const calculatedHeight = topMargin + imgHeight + dateTimeHeight + bottomMargin;
         
         const pdf = new jsPDF({
@@ -1484,8 +1484,8 @@ document.getElementById('signaturePrintButton').onclick = function() {
             format: [58, calculatedHeight]
         });
         
-        // 画像をPDFに追加（左右余白最小）
-        const xPosition = 1; // 左端から1mm
+        // 画像をPDFに追加（完全に左端から）
+        const xPosition = 0.5; // 左端から0.5mm
         pdf.addImage(canvasDataUrl, 'PNG', xPosition, topMargin, imgWidth, imgHeight);
         
         // 日付・時刻を追加
@@ -1493,7 +1493,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             pdf.setFont('helvetica');
             pdf.setFontSize(8);
             const dateTimeText = toZenkaku(`${formattedDate} ${formattedTime}`);
-            pdf.text(dateTimeText, 1, topMargin + imgHeight + 4);
+            pdf.text(dateTimeText, 0.5, topMargin + imgHeight + 3);
         }
         
         // PDFをBase64形式で取得
@@ -1568,7 +1568,7 @@ function sendToPrintAssist(event) {
                 
                 // 画像サイズを用紙幅いっぱいに調整
                 const paperWidth = 58; // mm
-                const maxImgWidth = 56; // mm (左右1mmずつの最小余白)
+                const maxImgWidth = 57; // mm (余白をほぼなくす)
                 
                 // 元画像のアスペクト比を保持してサイズ調整
                 let finalImgWidth = Math.min(maxImgWidth, imgW);
@@ -1581,9 +1581,9 @@ function sendToPrintAssist(event) {
                 }
                 
                 // 必要な高さを計算
-                const topMargin = 2;
-                const bottomMargin = 2;
-                const dateTimeHeight = isDateTimeEnabled ? 6 : 0;
+                const topMargin = 0.5; // 上部余白を最小限に
+                const bottomMargin = 0.5; // 下部余白を最小限に
+                const dateTimeHeight = isDateTimeEnabled ? 4 : 0;
                 const calculatedHeight = topMargin + finalImgHeight + dateTimeHeight + bottomMargin;
                 
                 const pdf = new jsPDF({
@@ -1592,8 +1592,8 @@ function sendToPrintAssist(event) {
                     format: [58, calculatedHeight]
                 });
                 
-                // 画像をPDFに追加（左右余白最小）
-                const xPosition = 1; // 左端から1mm
+                // 画像をPDFに追加（完全に左端から）
+                const xPosition = 0.5; // 左端から0.5mm
                 const imageDataUrl = 'data:image/png;base64,' + base64Image;
                 pdf.addImage(imageDataUrl, 'PNG', xPosition, topMargin, finalImgWidth, finalImgHeight);
                 
@@ -1602,7 +1602,7 @@ function sendToPrintAssist(event) {
                     pdf.setFont('helvetica');
                     pdf.setFontSize(8);
                     const dateTimeText = toZenkaku(`${formattedDate} ${formattedTime}`);
-                    pdf.text(dateTimeText, 1, topMargin + finalImgHeight + 4);
+                    pdf.text(dateTimeText, 0.5, topMargin + finalImgHeight + 3);
                 }
                 
                 // PDFをBase64形式で取得
@@ -1745,8 +1745,8 @@ function printText() {
         
         // 必要な高さを計算
         const lineHeight = 4;
-        const topMargin = 3;
-        const bottomMargin = 3;
+        const topMargin = 1; // 上部余白を最小限に
+        const bottomMargin = 1; // 下部余白を最小限に
         const lines = printText.split('\n');
         const calculatedHeight = topMargin + (lines.length * lineHeight) + bottomMargin;
         
@@ -1760,11 +1760,11 @@ function printText() {
         pdf.setFont('helvetica');
         pdf.setFontSize(8);
         
-        // テキストを改行で分割して描画（左右余白なし）
-        let yPosition = topMargin + 4;
+        // テキストを改行で分割して描画（完全に左端から）
+        let yPosition = topMargin + 3;
         
         for (let i = 0; i < lines.length; i++) {
-            pdf.text(lines[i], 1, yPosition); // x=1mmで左端から描画
+            pdf.text(lines[i], 0.5, yPosition); // x=0.5mmで完全に左端から描画
             yPosition += lineHeight;
         }
         
