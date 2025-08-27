@@ -1460,6 +1460,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     let currentCopy = 1;
     function printSignatureCopy(copyIndex) {
+        // 手書きパッドのキャンバスから画像データを取得
         let dataUrl = tmpCanvas.toDataURL("image/png");
         let imageData = dataUrl.split(',')[1]; // Base64部分のみ取得
         
@@ -1467,7 +1468,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
         let printUrl = 'siiprintagent://1.0/print?' +
                       'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                       'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                      'Format='           + 'pdf' + '&' +
+                      'Format='           + 'image' + '&' +
                       'Data='             + encodeURIComponent(imageData) + '&' +
                       'SelectOnError='    + 'yes' + '&' +
                       'CutType='          + 'full' + '&' +
@@ -1531,7 +1532,7 @@ function sendToPrintAssist(event) {
                 let printUrlImage = 'siiprintagent://1.0/print?' +
                                   'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                                   'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                                  'Format='           + 'pdf' + '&' +
+                                  'Format='           + 'image' + '&' +
                                   'Data='             + encodeURIComponent(base64Image) + '&' +
                                   'SelectOnError='    + 'yes' + '&' +
                                   'CutType='          + 'full' + '&' +
@@ -1654,22 +1655,45 @@ function printText() {
     const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
     let currentCopy = 1;
     function printTextCopy(copyIndex) {
-        // SII公式仕様: siiprintagent://1.0/print? 形式で呼び出し
         let printText = wrappedLines.join("\n");
         if (isDateTimeEnabled) {
             printText += "\n" + toZenkaku(`${formattedDate} ${formattedTime}`);
         }
         
-        // テキストを簡易PDFバイナリ形式に変換してBase64エンコード
-        // 実際のPDF生成は複雑なため、ここでは簡易的にテキストデータをBase64化
-        let textData = btoa(unescape(encodeURIComponent(printText)));
+        // キャンバスにテキストを描画してPNG画像として生成
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const lineHeight = 24;
+        const fontSize = 16;
+        const padding = 10;
+        
+        canvas.width = 200; // 58mm幅相当
+        canvas.height = (wrappedLines.length + (isDateTimeEnabled ? 2 : 0)) * lineHeight + padding * 2;
+        
+        // 背景を白に設定
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // テキストスタイル設定
+        ctx.fillStyle = '#000000';
+        ctx.font = `${fontSize}px monospace`;
+        ctx.textAlign = 'left';
+        
+        // テキストを描画
+        let lines = printText.split('\n');
+        lines.forEach((line, index) => {
+            ctx.fillText(line, padding, padding + (index + 1) * lineHeight);
+        });
+        
+        // PNG画像をBase64で取得
+        let imageData = canvas.toDataURL('image/png').split(',')[1];
         
         let thisPage = window.location.href;
         let printUrl = 'siiprintagent://1.0/print?' +
                       'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                       'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
                       'Format='           + 'pdf' + '&' +
-                      'Data='             + encodeURIComponent(textData) + '&' +
+                      'Data='             + encodeURIComponent(imageData) + '&' +
                       'SelectOnError='    + 'yes' + '&' +
                       'CutType='          + 'full' + '&' +
                       'CutFeed='          + 'yes' + '&' +
