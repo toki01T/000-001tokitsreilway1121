@@ -6,6 +6,7 @@
 <title>toki01Ⓣ 発券</title>
 <link rel="icon" href="favicon.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -1460,16 +1461,39 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     let currentCopy = 1;
     function printSignatureCopy(copyIndex) {
-        // 手書きパッドのキャンバスから画像データを取得
-        let dataUrl = tmpCanvas.toDataURL("image/png");
-        let imageData = dataUrl.split(',')[1]; // Base64部分のみ取得
+        // キャンバスから画像データを取得
+        let canvasDataUrl = tmpCanvas.toDataURL("image/png");
+        
+        // jsPDFを使用してPDFを生成
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: [58, totalHeight]
+        });
+        
+        // 画像をPDFに追加
+        const imgWidth = 50; // mm
+        const imgHeight = Math.round(outH / pxPerMm);
+        pdf.addImage(canvasDataUrl, 'PNG', marginX, marginY, imgWidth, imgHeight);
+        
+        // 日付・時刻を追加
+        if (isDateTimeEnabled) {
+            pdf.setFont('helvetica');
+            pdf.setFontSize(8);
+            const dateTimeText = toZenkaku(`${formattedDate} ${formattedTime}`);
+            pdf.text(dateTimeText, marginX, marginY + imgHeight + 8);
+        }
+        
+        // PDFをBase64形式で取得
+        const pdfBase64 = pdf.output('datauristring').split(',')[1];
         
         let thisPage = window.location.href;
         let printUrl = 'siiprintagent://1.0/print?' +
                       'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                       'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                      'Format='           + 'image' + '&' +
-                      'Data='             + encodeURIComponent(imageData) + '&' +
+                      'Format='           + 'pdf' + '&' +
+                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
                       'SelectOnError='    + 'yes' + '&' +
                       'CutType='          + 'full' + '&' +
                       'CutFeed='          + 'yes' + '&' +
@@ -1528,12 +1552,35 @@ function sendToPrintAssist(event) {
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
+                // jsPDFを使用してPDFを生成
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: [58, totalHeight]
+                });
+                
+                // 画像をPDFに追加
+                const imageDataUrl = 'data:image/png;base64,' + base64Image;
+                pdf.addImage(imageDataUrl, 'PNG', x, y, imgW, imgH);
+                
+                // 日付・時刻を追加
+                if (isDateTimeEnabled) {
+                    pdf.setFont('helvetica');
+                    pdf.setFontSize(8);
+                    const dateTimeText = toZenkaku(`${formattedDate} ${formattedTime}`);
+                    pdf.text(dateTimeText, x, y + imgH + 8);
+                }
+                
+                // PDFをBase64形式で取得
+                const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                
                 let thisPage = window.location.href;
                 let printUrlImage = 'siiprintagent://1.0/print?' +
                                   'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                                   'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                                  'Format='           + 'image' + '&' +
-                                  'Data='             + encodeURIComponent(base64Image) + '&' +
+                                  'Format='           + 'pdf' + '&' +
+                                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
                                   'SelectOnError='    + 'yes' + '&' +
                                   'CutType='          + 'full' + '&' +
                                   'CutFeed='          + 'yes' + '&' +
@@ -1660,40 +1707,36 @@ function printText() {
             printText += "\n" + toZenkaku(`${formattedDate} ${formattedTime}`);
         }
         
-        // キャンバスにテキストを描画してPNG画像として生成
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const lineHeight = 24;
-        const fontSize = 16;
-        const padding = 10;
-        
-        canvas.width = 200; // 58mm幅相当
-        canvas.height = (wrappedLines.length + (isDateTimeEnabled ? 2 : 0)) * lineHeight + padding * 2;
-        
-        // 背景を白に設定
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        // テキストスタイル設定
-        ctx.fillStyle = '#000000';
-        ctx.font = `${fontSize}px monospace`;
-        ctx.textAlign = 'left';
-        
-        // テキストを描画
-        let lines = printText.split('\n');
-        lines.forEach((line, index) => {
-            ctx.fillText(line, padding, padding + (index + 1) * lineHeight);
+        // jsPDFを使用してPDFを生成
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: [58, 100] // 58mm幅、高さは適当に設定
         });
         
-        // PNG画像をBase64で取得
-        let imageData = canvas.toDataURL('image/png').split(',')[1];
+        // 日本語フォント設定
+        pdf.setFont('helvetica');
+        pdf.setFontSize(8);
+        
+        // テキストを改行で分割して描画
+        const lines = printText.split('\n');
+        let yPosition = 10;
+        
+        for (let i = 0; i < lines.length; i++) {
+            pdf.text(lines[i], 2, yPosition);
+            yPosition += 4;
+        }
+        
+        // PDFをBase64形式で取得
+        const pdfBase64 = pdf.output('datauristring').split(',')[1];
         
         let thisPage = window.location.href;
         let printUrl = 'siiprintagent://1.0/print?' +
                       'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                       'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
                       'Format='           + 'pdf' + '&' +
-                      'Data='             + encodeURIComponent(imageData) + '&' +
+                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
                       'SelectOnError='    + 'yes' + '&' +
                       'CutType='          + 'full' + '&' +
                       'CutFeed='          + 'yes' + '&' +
