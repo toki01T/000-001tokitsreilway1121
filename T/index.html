@@ -1464,25 +1464,38 @@ document.getElementById('signaturePrintButton').onclick = function() {
         // キャンバスから画像データを取得
         let canvasDataUrl = tmpCanvas.toDataURL("image/png");
         
+        // 画像のサイズを計算（左右余白なし、中央配置）
+        const paperWidth = 58; // mm
+        const imgWidth = 54; // mm（余白を最小にして画像を大きく）
+        const imgHeight = Math.round(outH / pxPerMm * (imgWidth / 50)); // アスペクト比を維持
+        const leftMargin = (paperWidth - imgWidth) / 2; // 中央揃え
+        const topMargin = 2; // mm
+        
+        // 高さを動的に計算
+        let calculatedHeight = topMargin + imgHeight + 2; // mm
+        if (isDateTimeEnabled) {
+            calculatedHeight += 8; // 日付・時刻用の余白
+        }
+        
         // jsPDFを使用してPDFを生成
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
-            format: [58, totalHeight]
+            format: [58, calculatedHeight]
         });
         
         // 画像をPDFに追加
-        const imgWidth = 50; // mm
-        const imgHeight = Math.round(outH / pxPerMm);
-        pdf.addImage(canvasDataUrl, 'PNG', marginX, marginY, imgWidth, imgHeight);
+        pdf.addImage(canvasDataUrl, 'PNG', leftMargin, topMargin, imgWidth, imgHeight);
         
         // 日付・時刻を追加
         if (isDateTimeEnabled) {
             pdf.setFont('helvetica');
             pdf.setFontSize(8);
             const dateTimeText = toZenkaku(`${formattedDate} ${formattedTime}`);
-            pdf.text(dateTimeText, marginX, marginY + imgHeight + 8);
+            const textWidth = pdf.getTextWidth(dateTimeText);
+            const textX = (paperWidth - textWidth) / 2; // 中央揃え
+            pdf.text(dateTimeText, textX, topMargin + imgHeight + 6);
         }
         
         // PDFをBase64形式で取得
@@ -1552,24 +1565,46 @@ function sendToPrintAssist(event) {
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
+                // 画像サイズの再計算（左右余白なし、中央配置）
+                const paperWidth = 58; // mm
+                let finalImgW = Math.min(paperWidth - 2, imgW); // 最大56mm（1mmずつ余白）
+                let finalImgH = Math.round(imgH * (finalImgW / imgW)); // アスペクト比を維持
+                
+                // 縮小オプションが有効な場合
+                if (shrinkChecked) {
+                    finalImgW *= 0.8;
+                    finalImgH *= 0.8;
+                }
+                
+                const leftMargin = (paperWidth - finalImgW) / 2; // 中央揃え
+                const topMargin = 2; // mm
+                
+                // 高さを動的に計算
+                let calculatedHeight = topMargin + finalImgH + 2; // mm
+                if (isDateTimeEnabled) {
+                    calculatedHeight += 8; // 日付・時刻用の余白
+                }
+                
                 // jsPDFを使用してPDFを生成
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF({
                     orientation: 'portrait',
                     unit: 'mm',
-                    format: [58, totalHeight]
+                    format: [58, calculatedHeight]
                 });
                 
                 // 画像をPDFに追加
                 const imageDataUrl = 'data:image/png;base64,' + base64Image;
-                pdf.addImage(imageDataUrl, 'PNG', x, y, imgW, imgH);
+                pdf.addImage(imageDataUrl, 'PNG', leftMargin, topMargin, finalImgW, finalImgH);
                 
                 // 日付・時刻を追加
                 if (isDateTimeEnabled) {
                     pdf.setFont('helvetica');
                     pdf.setFontSize(8);
                     const dateTimeText = toZenkaku(`${formattedDate} ${formattedTime}`);
-                    pdf.text(dateTimeText, x, y + imgH + 8);
+                    const textWidth = pdf.getTextWidth(dateTimeText);
+                    const textX = (paperWidth - textWidth) / 2; // 中央揃え
+                    pdf.text(dateTimeText, textX, topMargin + finalImgH + 6);
                 }
                 
                 // PDFをBase64形式で取得
@@ -1709,23 +1744,36 @@ function printText() {
         
         // jsPDFを使用してPDFを生成
         const { jsPDF } = window.jspdf;
+        
+        // テキストの行数に基づいて高さを計算
+        const lines = printText.split('\n');
+        const lineHeight = 4; // mm
+        const topMargin = 3; // mm
+        const bottomMargin = 3; // mm
+        const calculatedHeight = topMargin + (lines.length * lineHeight) + bottomMargin;
+        
         const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
-            format: [58, 100] // 58mm幅、高さは適当に設定
+            format: [58, calculatedHeight]
         });
+        
+        // マージン設定（左右の余白を最小に）
+        const leftMargin = 1; // mm
         
         // 日本語フォント設定
         pdf.setFont('helvetica');
         pdf.setFontSize(8);
         
-        // テキストを改行で分割して描画
-        const lines = printText.split('\n');
-        let yPosition = 10;
+        // テキストを中央揃えで描画
+        let yPosition = topMargin + 3;
         
         for (let i = 0; i < lines.length; i++) {
-            pdf.text(lines[i], 2, yPosition);
-            yPosition += 4;
+            // テキストの幅を測定して中央揃え
+            const textWidth = pdf.getTextWidth(lines[i]);
+            const xPosition = (58 - textWidth) / 2; // 中央揃え
+            pdf.text(lines[i], Math.max(leftMargin, xPosition), yPosition);
+            yPosition += lineHeight;
         }
         
         // PDFをBase64形式で取得
