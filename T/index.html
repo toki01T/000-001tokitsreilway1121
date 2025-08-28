@@ -1513,10 +1513,14 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 compositeCtx.textAlign = 'center';
                 compositeCtx.textBaseline = 'top';
                 
-                // 中央位置を計算
-                const centerX = canvasWidth / 2;
+                // 正確な中央位置を計算
+                const centerX = Math.round(canvasWidth / 2);
                 
                 let yPos = signatureY + signatureH + 20; // サインの下
+                
+                // 日付・時刻を確実に中央配置
+                compositeCtx.save();
+                compositeCtx.textAlign = 'center';
                 
                 // 日付行
                 const dateText = `${year}年 ${month}月${day}日`;
@@ -1526,6 +1530,8 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 // 時刻行
                 const timeText = `${hour}時${minute}分${second}秒`;
                 compositeCtx.fillText(timeText, centerX, yPos);
+                
+                compositeCtx.restore();
             }
             
             // 合成キャンバスをPNGデータURLに変換
@@ -1673,10 +1679,14 @@ function sendToPrintAssist(event) {
                         compositeCtx.textAlign = 'center';
                         compositeCtx.textBaseline = 'top';
                         
-                        // 中央位置を計算
-                        const centerX = canvasWidth / 2;
+                        // 正確な中央位置を計算
+                        const centerX = Math.round(canvasWidth / 2);
                         
                         let yPos = imgY + finalImgHeight + 20; // 画像の下
+                        
+                        // 日付・時刻を確実に中央配置
+                        compositeCtx.save();
+                        compositeCtx.textAlign = 'center';
                         
                         // 日付行
                         const dateText = `${year}年 ${month}月${day}日`;
@@ -1686,6 +1696,8 @@ function sendToPrintAssist(event) {
                         // 時刻行
                         const timeText = `${hour}時${minute}分${second}秒`;
                         compositeCtx.fillText(timeText, centerX, yPos);
+                        
+                        compositeCtx.restore();
                     }
                     
                     // 合成キャンバスをPNGデータURLに変換
@@ -1880,13 +1892,17 @@ function printText() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         
-        // 中央位置を計算
-        const centerX = canvasWidth / 2;
+        // 正確な中央位置を計算（58mmの半分）
+        const centerX = Math.round(canvasWidth / 2);
         
         // テキストを描画
         let yPos = 20; // 上余白
         for (let i = 0; i < lines.length; i++) {
-            ctx.fillText(lines[i], centerX, yPos); // 完全中央揃え
+            // 各行を確実に中央に配置
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.fillText(lines[i], centerX, yPos);
+            ctx.restore();
             yPos += lineHeight;
         }
         
@@ -1902,8 +1918,12 @@ function printText() {
             
             yPos += lineHeight * 0.5; // 余白
             
-            // 中央位置を計算
-            const centerX = canvasWidth / 2;
+            // 正確な中央位置を計算
+            const centerX = Math.round(canvasWidth / 2);
+            
+            // 日付・時刻を確実に中央配置
+            ctx.save();
+            ctx.textAlign = 'center';
             
             // 日付行
             const dateText = `${year}年 ${month}月${day}日`;
@@ -1913,6 +1933,8 @@ function printText() {
             // 時刻行
             const timeText = `${hour}時${minute}分${second}秒`;
             ctx.fillText(timeText, centerX, yPos);
+            
+            ctx.restore();
         }
         
         // キャンバスをPNGデータURLに変換
