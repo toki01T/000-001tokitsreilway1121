@@ -76,6 +76,7 @@ header {
     padding: 0 1rem;
     box-sizing: border-box;
     position: relative;
+    overflow: hidden;
 }
 .navbar-brand {
     color: #fff;
@@ -101,9 +102,13 @@ header {
     font-size: 1.5rem;
     cursor: pointer;
     z-index: 12;
-    padding: 0.2rem;
-    max-width: 3rem;
-    text-align: center;
+    padding: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
 }
 #historyMenuBtn:focus { outline: none; }
 #historyDrawer {
@@ -203,12 +208,6 @@ header {
 }
 @media (max-width: 600px) {
     #modeToggleUnified { font-size: 0.93rem; padding: 0.3rem 0.2rem; }
-    #historyMenuBtn {
-        right: 0.3rem;
-        font-size: 1.3rem;
-        padding: 0.1rem;
-        max-width: 2.5rem;
-    }
 }
 #historyList {
     flex: 1;
@@ -1521,19 +1520,19 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 compositeCtx.textAlign = 'center';
                 compositeCtx.textBaseline = 'top';
                 
-                // 完全に中央の位置を計算
-                const centerX = Math.round(canvasWidth / 2);
+                // 真ん中の位置を正確に計算
+                const exactCenterX = Math.round(canvasWidth / 2);
                 
                 let yPos = signatureY + signatureH + 20; // サインの下
                 
                 // 日付行
                 const dateText = `${year}年 ${month}月${day}日`;
-                compositeCtx.fillText(dateText, centerX, yPos);
+                compositeCtx.fillText(dateText, exactCenterX, yPos);
                 yPos += fontSize * 1.2;
                 
                 // 時刻行
                 const timeText = `${hour}時${minute}分${second}秒`;
-                compositeCtx.fillText(timeText, centerX, yPos);
+                compositeCtx.fillText(timeText, exactCenterX, yPos);
             }
             
             // 合成キャンバスをPNGデータURLに変換
@@ -1681,19 +1680,19 @@ function sendToPrintAssist(event) {
                         compositeCtx.textAlign = 'center';
                         compositeCtx.textBaseline = 'top';
                         
-                        // 完全に中央の位置を計算
-                        const centerX = Math.round(canvasWidth / 2);
+                        // 真ん中の位置を正確に計算
+                        const exactCenterX = Math.round(canvasWidth / 2);
                         
                         let yPos = imgY + finalImgHeight + 20; // 画像の下
                         
                         // 日付行
                         const dateText = `${year}年 ${month}月${day}日`;
-                        compositeCtx.fillText(dateText, centerX, yPos);
+                        compositeCtx.fillText(dateText, exactCenterX, yPos);
                         yPos += fontSize * 1.2;
                         
                         // 時刻行
                         const timeText = `${hour}時${minute}分${second}秒`;
-                        compositeCtx.fillText(timeText, centerX, yPos);
+                        compositeCtx.fillText(timeText, exactCenterX, yPos);
                     }
                     
                     // 合成キャンバスをPNGデータURLに変換
@@ -1888,14 +1887,13 @@ function printText() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         
-        // 完全に中央の位置を計算
-        const centerX = Math.round(canvasWidth / 2);
+        // 真ん中の位置を正確に計算
+        const exactCenterX = Math.round(canvasWidth / 2);
         
         // テキストを描画
         let yPos = 20; // 上余白
         for (let i = 0; i < lines.length; i++) {
-            // 各行を完全に中央に配置
-            ctx.fillText(lines[i], centerX, yPos);
+            ctx.fillText(lines[i], exactCenterX, yPos); // 真ん中に配置
             yPos += lineHeight;
         }
         
@@ -1911,20 +1909,17 @@ function printText() {
             
             yPos += lineHeight * 0.5; // 余白
             
-            // 完全に中央の位置を計算
-            const centerX = Math.round(canvasWidth / 2);
-            
-            // 日付・時刻描画設定
-            ctx.textAlign = 'center';
+            // 真ん中の位置を正確に計算
+            const exactCenterX = Math.round(canvasWidth / 2);
             
             // 日付行
             const dateText = `${year}年 ${month}月${day}日`;
-            ctx.fillText(dateText, centerX, yPos);
+            ctx.fillText(dateText, exactCenterX, yPos);
             yPos += lineHeight;
             
             // 時刻行
             const timeText = `${hour}時${minute}分${second}秒`;
-            ctx.fillText(timeText, centerX, yPos);
+            ctx.fillText(timeText, exactCenterX, yPos);
         }
         
         // キャンバスをPNGデータURLに変換
