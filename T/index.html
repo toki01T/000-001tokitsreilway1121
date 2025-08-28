@@ -6,7 +6,6 @@
 <title>toki01Ⓣ 発券</title>
 <link rel="icon" href="favicon.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -76,7 +75,6 @@ header {
     padding: 0 1rem;
     box-sizing: border-box;
     position: relative;
-    overflow: hidden;
 }
 .navbar-brand {
     color: #fff;
@@ -93,22 +91,16 @@ header {
 }
 #historyMenuBtn {
     position: absolute;
-    right: 0.5rem;
+    right: 1rem;
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
     border: none;
     color: #fff;
-    font-size: 1.5rem;
+    font-size: 1.7rem;
     cursor: pointer;
     z-index: 12;
     padding: 0;
-    width: 2rem;
-    height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
 }
 #historyMenuBtn:focus { outline: none; }
 #historyDrawer {
@@ -1468,112 +1460,16 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     let currentCopy = 1;
     function printSignatureCopy(copyIndex) {
-        // 新しいキャンバスで全体を合成
-        const compositeCanvas = document.createElement('canvas');
-        const compositeCtx = compositeCanvas.getContext('2d');
-        
-        const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
-        const canvasWidth = Math.round(58 * mmToPx); // 58mm
-        
-        // サイン画像のサイズを取得
-        const signatureImg = new Image();
-        signatureImg.onload = function() {
-            // 日付・時刻の高さを計算
-            let dateTimeHeight = 0;
-            if (isDateTimeEnabled) {
-                const fontSize = 40; // 40px
-                dateTimeHeight = fontSize * 2.5; // 2行 + 余白
-            }
-            
-            // 全体の高さを計算
-            const signatureHeight = Math.round(outH / pxPerMm * mmToPx);
-            const totalHeight = signatureHeight + dateTimeHeight + 40; // 上下余白
-            
-            compositeCanvas.width = canvasWidth;
-            compositeCanvas.height = totalHeight;
-            
-            // 背景を白にする
-            compositeCtx.fillStyle = '#FFFFFF';
-            compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
-            
-            // サインを描画（中央配置）
-            const signatureX = 20; // 左余白
-            const signatureY = 20; // 上余白
-            const signatureW = canvasWidth - 40; // 左右余白を除く
-            const signatureH = signatureHeight;
-            
-            compositeCtx.drawImage(tmpCanvas, signatureX, signatureY, signatureW, signatureH);
-            
-            // 日付・時刻を描画
-            if (isDateTimeEnabled) {
-                const now = new Date();
-                const year = now.getFullYear();
-                const month = now.getMonth() + 1;
-                const day = now.getDate();
-                const hour = now.getHours();
-                const minute = now.getMinutes();
-                const second = now.getSeconds();
-                
-                const fontSize = 40;
-                compositeCtx.fillStyle = '#000000';
-                compositeCtx.font = `${fontSize}px Arial, sans-serif`;
-                compositeCtx.textAlign = 'center';
-                compositeCtx.textBaseline = 'top';
-                
-                // 真ん中の位置を正確に計算
-                const exactCenterX = Math.round(canvasWidth / 2);
-                
-                let yPos = signatureY + signatureH + 20; // サインの下
-                
-                // 日付行
-                const dateText = `${year}年 ${month}月${day}日`;
-                compositeCtx.fillText(dateText, exactCenterX, yPos);
-                yPos += fontSize * 1.2;
-                
-                // 時刻行
-                const timeText = `${hour}時${minute}分${second}秒`;
-                compositeCtx.fillText(timeText, exactCenterX, yPos);
-            }
-            
-            // 合成キャンバスをPNGデータURLに変換
-            const compositeDataUrl = compositeCanvas.toDataURL('image/png');
-            
-            // jsPDFを使用してPDFを生成
-            const { jsPDF } = window.jspdf;
-            const pdfHeight = Math.round(totalHeight / mmToPx);
-            
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'mm',
-                format: [58, pdfHeight]
-            });
-            
-            // PDFの設定を直接操作
-            pdf.internal.pageSize.width = 58;
-            pdf.internal.pageSize.height = pdfHeight;
-            
-            // 合成画像をPDFに追加
-            pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
-            
-            // PDFをBase64形式で取得
-            const pdfBase64 = pdf.output('datauristring').split(',')[1];
-            
-            let thisPage = window.location.href;
-            let printUrl = 'siiprintagent://1.0/print?' +
-                          'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                          'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                          'Format='           + 'pdf' + '&' +
-                          'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                          'SelectOnError='    + 'yes' + '&' +
-                          'CutType='          + 'full' + '&' +
-                          'CutFeed='          + 'yes' + '&' +
-                          'FitToWidth='       + 'no' + '&' +
-                          'PaperWidth='       + '58';
-            
-            window.location.href = printUrl;
-        };
-        
-        signatureImg.src = tmpCanvas.toDataURL("image/png");
+        let dataUrl = tmpCanvas.toDataURL("image/png");
+        let printUrl = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${marginX},${marginY},${imgW},${imgH},${dataUrl.split(',')[1]}`;
+        if (isDateTimeEnabled) {
+            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
+            printUrl += `&2=${safeEncodeURIComponent(dateTimeString)},0,${marginY + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+        }
+        if (copyIndex === selectedCopies) {
+            printUrl += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+        }
+        window.location.href = printUrl;
     }
     function printNext() {
         if (currentCopy < selectedCopies) {
@@ -1625,115 +1521,15 @@ function sendToPrintAssist(event) {
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
-                // 新しいキャンバスで全体を合成
-                const compositeCanvas = document.createElement('canvas');
-                const compositeCtx = compositeCanvas.getContext('2d');
-                
-                const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
-                const canvasWidth = Math.round(58 * mmToPx); // 58mm
-                
-                // アップロードされた画像を読み込み
-                const uploadedImg = new Image();
-                uploadedImg.onload = function() {
-                    // 日付・時刻の高さを計算
-                    let dateTimeHeight = 0;
-                    if (isDateTimeEnabled) {
-                        const fontSize = 40; // 40px
-                        dateTimeHeight = fontSize * 2.5; // 2行 + 余白
-                    }
-                    
-                    // 画像のサイズを58mm幅に合わせて計算
-                    const maxImgWidth = canvasWidth - 40; // 左右余白を除く
-                    const imgRatio = uploadedImg.naturalHeight / uploadedImg.naturalWidth;
-                    const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth);
-                    const finalImgHeight = finalImgWidth * imgRatio;
-                    
-                    // 全体の高さを計算
-                    const totalHeight = finalImgHeight + dateTimeHeight + 40; // 上下余白
-                    
-                    compositeCanvas.width = canvasWidth;
-                    compositeCanvas.height = totalHeight;
-                    
-                    // 背景を白にする
-                    compositeCtx.fillStyle = '#FFFFFF';
-                    compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
-                    
-                    // 画像を描画（中央配置）
-                    const imgX = 20; // 左余白
-                    const imgY = 20; // 上余白
-                    
-                    compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
-                    
-                    // 日付・時刻を描画
-                    if (isDateTimeEnabled) {
-                        const now = new Date();
-                        const year = now.getFullYear();
-                        const month = now.getMonth() + 1;
-                        const day = now.getDate();
-                        const hour = now.getHours();
-                        const minute = now.getMinutes();
-                        const second = now.getSeconds();
-                        
-                        const fontSize = 40;
-                        compositeCtx.fillStyle = '#000000';
-                        compositeCtx.font = `${fontSize}px Arial, sans-serif`;
-                        compositeCtx.textAlign = 'center';
-                        compositeCtx.textBaseline = 'top';
-                        
-                        // 真ん中の位置を正確に計算
-                        const exactCenterX = Math.round(canvasWidth / 2);
-                        
-                        let yPos = imgY + finalImgHeight + 20; // 画像の下
-                        
-                        // 日付行
-                        const dateText = `${year}年 ${month}月${day}日`;
-                        compositeCtx.fillText(dateText, exactCenterX, yPos);
-                        yPos += fontSize * 1.2;
-                        
-                        // 時刻行
-                        const timeText = `${hour}時${minute}分${second}秒`;
-                        compositeCtx.fillText(timeText, exactCenterX, yPos);
-                    }
-                    
-                    // 合成キャンバスをPNGデータURLに変換
-                    const compositeDataUrl = compositeCanvas.toDataURL('image/png');
-                    
-                    // jsPDFを使用してPDFを生成
-                    const { jsPDF } = window.jspdf;
-                    const pdfHeight = Math.round(totalHeight / mmToPx);
-                    
-                    const pdf = new jsPDF({
-                        orientation: 'portrait',
-                        unit: 'mm',
-                        format: [58, pdfHeight]
-                    });
-                    
-                    // PDFの設定を直接操作
-                    pdf.internal.pageSize.width = 58;
-                    pdf.internal.pageSize.height = pdfHeight;
-                    
-                    // 合成画像をPDFに追加
-                    pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
-                    
-                    // PDFをBase64形式で取得
-                    const pdfBase64 = pdf.output('datauristring').split(',')[1];
-                    
-                    let thisPage = window.location.href;
-                    let printUrlImage = 'siiprintagent://1.0/print?' +
-                                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                                      'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                                      'Format='           + 'pdf' + '&' +
-                                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                                      'SelectOnError='    + 'yes' + '&' +
-                                      'CutType='          + 'full' + '&' +
-                                      'CutFeed='          + 'yes' + '&' +
-                                      'FitToWidth='       + 'no' + '&' +
-                                      'PaperWidth='       + '58';
-                    
-                    window.location.href = printUrlImage;
-                };
-                
-                uploadedImg.src = 'data:image/png;base64,' + base64Image;
+                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${base64Image}`;
+                if (isDateTimeEnabled) {
+                    const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
+                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                }
+                if (copyIndex === selectedCopies) {
+                    printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+                }
+                window.location.href = printUrlImage;
             }
             function printNext() {
                 if (currentCopy < selectedCopies) {
@@ -1848,116 +1644,20 @@ function printText() {
     const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
     let currentCopy = 1;
     function printTextCopy(copyIndex) {
-        let printText = wrappedLines.join("\n");
-        
-        // キャンバスでテキストを画像として生成
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        // キャンバスサイズ設定（58mm × 適切な高さ）
-        const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
-        const canvasWidth = Math.round(58 * mmToPx); // 58mm
-        
-        // フォントサイズ設定（40px）
-        const fontSize = 40;
-        ctx.font = `${fontSize}px Arial, sans-serif`;
-        ctx.fillStyle = '#000000';
-        
-        // テキストの行数から高さを計算
-        const lines = printText.split('\n');
-        const lineHeight = fontSize * 1.2;
-        let textHeight = lines.length * lineHeight;
-        
-        // 日付・時刻のスペースを追加
-        if (isDateTimeEnabled) {
-            textHeight += lineHeight * 3; // 日付2行 + 余白1行
-        }
-        
-        const canvasHeight = Math.round(textHeight + 40); // 上下余白
-        canvas.width = canvasWidth;
-        canvas.height = canvasHeight;
-        
-        // 背景を白にする
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-        
-        // テキスト描画設定
-        ctx.fillStyle = '#000000';
-        ctx.font = `${fontSize}px Arial, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        
-        // 真ん中の位置を正確に計算
-        const exactCenterX = Math.round(canvasWidth / 2);
-        
-        // テキストを描画
-        let yPos = 20; // 上余白
-        for (let i = 0; i < lines.length; i++) {
-            ctx.fillText(lines[i], exactCenterX, yPos); // 真ん中に配置
-            yPos += lineHeight;
-        }
-        
-        // 日付・時刻を描画
-        if (isDateTimeEnabled) {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth() + 1;
-            const day = now.getDate();
-            const hour = now.getHours();
-            const minute = now.getMinutes();
-            const second = now.getSeconds();
-            
-            yPos += lineHeight * 0.5; // 余白
-            
-            // 真ん中の位置を正確に計算
-            const exactCenterX = Math.round(canvasWidth / 2);
-            
-            // 日付行
-            const dateText = `${year}年 ${month}月${day}日`;
-            ctx.fillText(dateText, exactCenterX, yPos);
-            yPos += lineHeight;
-            
-            // 時刻行
-            const timeText = `${hour}時${minute}分${second}秒`;
-            ctx.fillText(timeText, exactCenterX, yPos);
-        }
-        
-        // キャンバスをPNGデータURLに変換
-        const pngDataUrl = canvas.toDataURL('image/png');
-        
-        // jsPDFを使用してPDFを生成
-        const { jsPDF } = window.jspdf;
-        const pdfHeight = Math.round(canvasHeight / mmToPx);
-        
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: [58, pdfHeight]
+        let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
+        wrappedLines.forEach((line, index) => {
+            const encodedLine = safeEncodeURIComponent(line);
+            printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
         });
-        
-        // PDFの設定を直接操作
-        pdf.internal.pageSize.width = 58;
-        pdf.internal.pageSize.height = pdfHeight;
-        
-        // PNG画像をPDFに追加（位置調整なし、フルサイズ）
-        pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
-        
-        // PDFをBase64形式で取得
-        const pdfBase64 = pdf.output('datauristring').split(',')[1];
-        
-        let thisPage = window.location.href;
-        let printUrl = 'siiprintagent://1.0/print?' +
-                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                      'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                      'Format='           + 'pdf' + '&' +
-                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                      'SelectOnError='    + 'yes' + '&' +
-                      'CutType='          + 'full' + '&' +
-                      'CutFeed='          + 'yes' + '&' +
-                      'FitToWidth='       + 'no' + '&' +
-                      'PaperWidth='       + '58';
-        
-        window.location.href = printUrl;
+        if (isDateTimeEnabled) {
+            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
+            const encodedDateTime = safeEncodeURIComponent(dateTimeString);
+            printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+        }
+        if (copyIndex === selectedTextCopies) {
+            printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+        }
+        window.location.href = printUrlText;
     }
     function printNext() {
         if (currentCopy < selectedTextCopies) {
