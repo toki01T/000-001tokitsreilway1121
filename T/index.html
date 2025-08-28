@@ -1461,82 +1461,109 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     let currentCopy = 1;
     function printSignatureCopy(copyIndex) {
-        // キャンバスから画像データを取得
-        let canvasDataUrl = tmpCanvas.toDataURL("image/png");
+        // 新しいキャンバスで全体を合成
+        const compositeCanvas = document.createElement('canvas');
+        const compositeCtx = compositeCanvas.getContext('2d');
         
-        // 画像のサイズを計算
-        const paperWidth = 58; // mm
-        const leftMargin = 0; // mm（余白を完全に削除）
-        const topMargin = 0; // mm（余白を完全に削除）
-        const imgWidth = 58; // mm（最大幅使用）
-        const imgHeight = Math.round(outH / pxPerMm * (imgWidth / 50)); // 比率調整
+        const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
+        const canvasWidth = Math.round(58 * mmToPx); // 58mm
         
-        // 日付・時刻のサイズを計算
-        let dateTimeHeight = 0;
-        let dateTimeLines = [];
-        if (isDateTimeEnabled) {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth() + 1;
-            const day = now.getDate();
-            const hours = now.getHours();
-            const minutes = now.getMinutes();
-            const seconds = now.getSeconds();
-            
-            // 指定の形式で日付を作成
-            const dateLine = `${year}年 ${month}月${day}日`;
-            const timeLine = `${hours}時${minutes < 10 ? ' ' : ''}${minutes}分${seconds}秒`;
-            dateTimeLines = [dateLine, timeLine];
-            dateTimeHeight = dateTimeLines.length * 12 + 4; // 12mm per line + spacing
-        }
-        
-        // PDFの高さを計算
-        const bottomMargin = 1; // mm
-        const calculatedHeight = Math.max(topMargin + imgHeight + dateTimeHeight + bottomMargin, 20);
-        
-        // jsPDFを使用してPDFを生成
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: [58, calculatedHeight]
-        });
-        
-        // PDFの設定を強制的に調整
-        pdf.internal.pageSize.width = 58;
-        pdf.internal.pageSize.height = calculatedHeight;
-        
-        // 画像を描画
-        pdf.addImage(canvasDataUrl, 'PNG', leftMargin, topMargin, imgWidth, imgHeight);
-        
-        // 日付・時刻をPDFに描画
-        if (isDateTimeEnabled) {
-            pdf.setFont('helvetica');
-            pdf.setFontSize(28); // 約10mm相当
-            
-            let yPosition = topMargin + imgHeight + 10;
-            for (let i = 0; i < dateTimeLines.length; i++) {
-                pdf.text(dateTimeLines[i], leftMargin, yPosition);
-                yPosition += 12; // 12mm間隔
+        // サイン画像のサイズを取得
+        const signatureImg = new Image();
+        signatureImg.onload = function() {
+            // 日付・時刻の高さを計算
+            let dateTimeHeight = 0;
+            if (isDateTimeEnabled) {
+                const fontSize = Math.round(10 * mmToPx); // 10mm
+                dateTimeHeight = fontSize * 2.5; // 2行 + 余白
             }
-        }
+            
+            // 全体の高さを計算
+            const signatureHeight = Math.round(outH / pxPerMm * mmToPx);
+            const totalHeight = signatureHeight + dateTimeHeight + 40; // 上下余白
+            
+            compositeCanvas.width = canvasWidth;
+            compositeCanvas.height = totalHeight;
+            
+            // 背景を白にする
+            compositeCtx.fillStyle = '#FFFFFF';
+            compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
+            
+            // サインを描画（中央配置）
+            const signatureX = 20; // 左余白
+            const signatureY = 20; // 上余白
+            const signatureW = canvasWidth - 40; // 左右余白を除く
+            const signatureH = signatureHeight;
+            
+            compositeCtx.drawImage(tmpCanvas, signatureX, signatureY, signatureW, signatureH);
+            
+            // 日付・時刻を描画
+            if (isDateTimeEnabled) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth() + 1;
+                const day = now.getDate();
+                const hour = now.getHours();
+                const minute = now.getMinutes();
+                const second = now.getSeconds();
+                
+                const fontSize = Math.round(10 * mmToPx);
+                compositeCtx.fillStyle = '#000000';
+                compositeCtx.font = `${fontSize}px Arial, sans-serif`;
+                compositeCtx.textAlign = 'left';
+                compositeCtx.textBaseline = 'top';
+                
+                let yPos = signatureY + signatureH + 20; // サインの下
+                
+                // 日付行
+                const dateText = `${year}年 ${month}月${day}日`;
+                compositeCtx.fillText(dateText, 20, yPos);
+                yPos += fontSize * 1.2;
+                
+                // 時刻行
+                const timeText = `${hour}時${minute}分${second}秒`;
+                compositeCtx.fillText(timeText, 20, yPos);
+            }
+            
+            // 合成キャンバスをPNGデータURLに変換
+            const compositeDataUrl = compositeCanvas.toDataURL('image/png');
+            
+            // jsPDFを使用してPDFを生成
+            const { jsPDF } = window.jspdf;
+            const pdfHeight = Math.round(totalHeight / mmToPx);
+            
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: [58, pdfHeight]
+            });
+            
+            // PDFの設定を直接操作
+            pdf.internal.pageSize.width = 58;
+            pdf.internal.pageSize.height = pdfHeight;
+            
+            // 合成画像をPDFに追加
+            pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+            
+            // PDFをBase64形式で取得
+            const pdfBase64 = pdf.output('datauristring').split(',')[1];
+            
+            let thisPage = window.location.href;
+            let printUrl = 'siiprintagent://1.0/print?' +
+                          'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                          'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                          'Format='           + 'pdf' + '&' +
+                          'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                          'SelectOnError='    + 'yes' + '&' +
+                          'CutType='          + 'full' + '&' +
+                          'CutFeed='          + 'yes' + '&' +
+                          'FitToWidth='       + 'no' + '&' +
+                          'PaperWidth='       + '58';
+            
+            window.location.href = printUrl;
+        };
         
-        // PDFをBase64形式で取得
-        const pdfBase64 = pdf.output('datauristring').split(',')[1];
-        
-        let thisPage = window.location.href;
-        let printUrl = 'siiprintagent://1.0/print?' +
-                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                      'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                      'Format='           + 'pdf' + '&' +
-                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                      'SelectOnError='    + 'yes' + '&' +
-                      'CutType='          + 'full' + '&' +
-                      'CutFeed='          + 'yes' + '&' +
-                      'FitToWidth='       + 'no' + '&' +
-                      'PaperWidth='       + '58';
-        
-        window.location.href = printUrl;
+        signatureImg.src = tmpCanvas.toDataURL("image/png");
     }
     function printNext() {
         if (currentCopy < selectedCopies) {
@@ -1588,83 +1615,112 @@ function sendToPrintAssist(event) {
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
-                // 画像のサイズを計算
-                const paperWidth = 58; // mm
-                const leftMargin = 0; // mm（余白を完全に削除）
-                const topMargin = 0; // mm（余白を完全に削除）
-                const maxImgWidth = 58; // mm（最大幅使用）
+                // 新しいキャンバスで全体を合成
+                const compositeCanvas = document.createElement('canvas');
+                const compositeCtx = compositeCanvas.getContext('2d');
                 
-                // 元画像のアスペクト比を保持して適切なサイズを計算
-                let finalImgWidth = Math.min(maxImgWidth, imgW);
-                let finalImgHeight = Math.round(imgH * (finalImgWidth / imgW));
+                const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
+                const canvasWidth = Math.round(58 * mmToPx); // 58mm
                 
-                // 日付・時刻のサイズを計算
-                let dateTimeHeight = 0;
-                let dateTimeLines = [];
-                if (isDateTimeEnabled) {
-                    const now = new Date();
-                    const year = now.getFullYear();
-                    const month = now.getMonth() + 1;
-                    const day = now.getDate();
-                    const hours = now.getHours();
-                    const minutes = now.getMinutes();
-                    const seconds = now.getSeconds();
-                    
-                    // 指定の形式で日付を作成
-                    const dateLine = `${year}年 ${month}月${day}日`;
-                    const timeLine = `${hours}時${minutes < 10 ? ' ' : ''}${minutes}分${seconds}秒`;
-                    dateTimeLines = [dateLine, timeLine];
-                    dateTimeHeight = dateTimeLines.length * 12 + 4; // 12mm per line + spacing
-                }
-                
-                // PDFの高さを計算
-                const bottomMargin = 1; // mm
-                const calculatedHeight = Math.max(topMargin + finalImgHeight + dateTimeHeight + bottomMargin, 20);
-                
-                // jsPDFを使用してPDFを生成
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF({
-                    orientation: 'portrait',
-                    unit: 'mm',
-                    format: [58, calculatedHeight]
-                });
-                
-                // PDFの設定を強制的に調整
-                pdf.internal.pageSize.width = 58;
-                pdf.internal.pageSize.height = calculatedHeight;
-                
-                // 画像を描画
-                const imageDataUrl = 'data:image/png;base64,' + base64Image;
-                pdf.addImage(imageDataUrl, 'PNG', leftMargin, topMargin, finalImgWidth, finalImgHeight);
-                
-                // 日付・時刻をPDFに描画
-                if (isDateTimeEnabled) {
-                    pdf.setFont('helvetica');
-                    pdf.setFontSize(28); // 約10mm相当
-                    
-                    let yPosition = topMargin + finalImgHeight + 10;
-                    for (let i = 0; i < dateTimeLines.length; i++) {
-                        pdf.text(dateTimeLines[i], leftMargin, yPosition);
-                        yPosition += 12; // 12mm間隔
+                // アップロードされた画像を読み込み
+                const uploadedImg = new Image();
+                uploadedImg.onload = function() {
+                    // 日付・時刻の高さを計算
+                    let dateTimeHeight = 0;
+                    if (isDateTimeEnabled) {
+                        const fontSize = Math.round(10 * mmToPx); // 10mm
+                        dateTimeHeight = fontSize * 2.5; // 2行 + 余白
                     }
-                }
+                    
+                    // 画像のサイズを58mm幅に合わせて計算
+                    const maxImgWidth = canvasWidth - 40; // 左右余白を除く
+                    const imgRatio = uploadedImg.naturalHeight / uploadedImg.naturalWidth;
+                    const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth);
+                    const finalImgHeight = finalImgWidth * imgRatio;
+                    
+                    // 全体の高さを計算
+                    const totalHeight = finalImgHeight + dateTimeHeight + 40; // 上下余白
+                    
+                    compositeCanvas.width = canvasWidth;
+                    compositeCanvas.height = totalHeight;
+                    
+                    // 背景を白にする
+                    compositeCtx.fillStyle = '#FFFFFF';
+                    compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
+                    
+                    // 画像を描画（中央配置）
+                    const imgX = 20; // 左余白
+                    const imgY = 20; // 上余白
+                    
+                    compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
+                    
+                    // 日付・時刻を描画
+                    if (isDateTimeEnabled) {
+                        const now = new Date();
+                        const year = now.getFullYear();
+                        const month = now.getMonth() + 1;
+                        const day = now.getDate();
+                        const hour = now.getHours();
+                        const minute = now.getMinutes();
+                        const second = now.getSeconds();
+                        
+                        const fontSize = Math.round(10 * mmToPx);
+                        compositeCtx.fillStyle = '#000000';
+                        compositeCtx.font = `${fontSize}px Arial, sans-serif`;
+                        compositeCtx.textAlign = 'left';
+                        compositeCtx.textBaseline = 'top';
+                        
+                        let yPos = imgY + finalImgHeight + 20; // 画像の下
+                        
+                        // 日付行
+                        const dateText = `${year}年 ${month}月${day}日`;
+                        compositeCtx.fillText(dateText, 20, yPos);
+                        yPos += fontSize * 1.2;
+                        
+                        // 時刻行
+                        const timeText = `${hour}時${minute}分${second}秒`;
+                        compositeCtx.fillText(timeText, 20, yPos);
+                    }
+                    
+                    // 合成キャンバスをPNGデータURLに変換
+                    const compositeDataUrl = compositeCanvas.toDataURL('image/png');
+                    
+                    // jsPDFを使用してPDFを生成
+                    const { jsPDF } = window.jspdf;
+                    const pdfHeight = Math.round(totalHeight / mmToPx);
+                    
+                    const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: [58, pdfHeight]
+                    });
+                    
+                    // PDFの設定を直接操作
+                    pdf.internal.pageSize.width = 58;
+                    pdf.internal.pageSize.height = pdfHeight;
+                    
+                    // 合成画像をPDFに追加
+                    pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+                    
+                    // PDFをBase64形式で取得
+                    const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                    
+                    let thisPage = window.location.href;
+                    let printUrlImage = 'siiprintagent://1.0/print?' +
+                                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                      'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                                      'Format='           + 'pdf' + '&' +
+                                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                      'SelectOnError='    + 'yes' + '&' +
+                                      'CutType='          + 'full' + '&' +
+                                      'CutFeed='          + 'yes' + '&' +
+                                      'FitToWidth='       + 'no' + '&' +
+                                      'PaperWidth='       + '58';
+                    
+                    window.location.href = printUrlImage;
+                };
                 
-                // PDFをBase64形式で取得
-                const pdfBase64 = pdf.output('datauristring').split(',')[1];
-                
-                let thisPage = window.location.href;
-                let printUrlImage = 'siiprintagent://1.0/print?' +
-                                  'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                                  'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                                  'Format='           + 'pdf' + '&' +
-                                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                                  'SelectOnError='    + 'yes' + '&' +
-                                  'CutType='          + 'full' + '&' +
-                                  'CutFeed='          + 'yes' + '&' +
-                                  'FitToWidth='       + 'no' + '&' +
-                                  'PaperWidth='       + '58';
-                
-                window.location.href = printUrlImage;
+                uploadedImg.src = 'data:image/png;base64,' + base64Image;
             }
             function printNext() {
                 if (currentCopy < selectedCopies) {
@@ -1779,67 +1835,93 @@ function printText() {
     const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
     let currentCopy = 1;
     function printTextCopy(copyIndex) {
-        // jsPDFを使用してPDFを生成
-        const { jsPDF } = window.jspdf;
+        let printText = wrappedLines.join("\n");
         
-        // テキストの行数に基づいて適切な高さを計算
-        const lines = wrappedLines;
-        const lineHeight = 4; // mm（文字サイズ10mmに対応）
-        const topMargin = 0; // mm（余白を完全に削除）
-        const leftMargin = 0; // mm（余白を完全に削除）
-        const bottomMargin = 1; // mm
+        // キャンバスでテキストを画像として生成
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
         
-        // 日付・時刻のサイズを計算
-        let dateTimeLines = [];
+        // キャンバスサイズ設定（58mm × 適切な高さ）
+        const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
+        const canvasWidth = Math.round(58 * mmToPx); // 58mm
+        
+        // フォントサイズ設定（10mm = 約118px）
+        const fontSize = Math.round(10 * mmToPx);
+        ctx.font = `${fontSize}px Arial, sans-serif`;
+        ctx.fillStyle = '#000000';
+        
+        // テキストの行数から高さを計算
+        const lines = printText.split('\n');
+        const lineHeight = fontSize * 1.2;
+        let textHeight = lines.length * lineHeight;
+        
+        // 日付・時刻のスペースを追加
+        if (isDateTimeEnabled) {
+            textHeight += lineHeight * 3; // 日付2行 + 余白1行
+        }
+        
+        const canvasHeight = Math.round(textHeight + 40); // 上下余白
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        
+        // 背景を白にする
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        
+        // テキスト描画設定
+        ctx.fillStyle = '#000000';
+        ctx.font = `${fontSize}px Arial, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        
+        // テキストを描画
+        let yPos = 20; // 上余白
+        for (let i = 0; i < lines.length; i++) {
+            ctx.fillText(lines[i], 20, yPos); // 左余白20px
+            yPos += lineHeight;
+        }
+        
+        // 日付・時刻を描画
         if (isDateTimeEnabled) {
             const now = new Date();
             const year = now.getFullYear();
             const month = now.getMonth() + 1;
             const day = now.getDate();
-            const hours = now.getHours();
-            const minutes = now.getMinutes();
-            const seconds = now.getSeconds();
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            const second = now.getSeconds();
             
-            // 指定の形式で日付を作成
-            const dateLine = `${year}年 ${month}月${day}日`;
-            const timeLine = `${hours}時${minutes < 10 ? ' ' : ''}${minutes}分${seconds}秒`;
-            dateTimeLines = [dateLine, timeLine];
+            yPos += lineHeight * 0.5; // 余白
+            
+            // 日付行
+            const dateText = `${year}年 ${month}月${day}日`;
+            ctx.fillText(dateText, 20, yPos);
+            yPos += lineHeight;
+            
+            // 時刻行
+            const timeText = `${hour}時${minute}分${second}秒`;
+            ctx.fillText(timeText, 20, yPos);
         }
         
-        const totalLines = lines.length + (isDateTimeEnabled ? dateTimeLines.length + 1 : 0); // +1は空行
-        const calculatedHeight = Math.max((totalLines * lineHeight) + topMargin + bottomMargin, 15);
+        // キャンバスをPNGデータURLに変換
+        const pngDataUrl = canvas.toDataURL('image/png');
+        
+        // jsPDFを使用してPDFを生成
+        const { jsPDF } = window.jspdf;
+        const pdfHeight = Math.round(canvasHeight / mmToPx);
         
         const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
-            format: [58, calculatedHeight]
+            format: [58, pdfHeight]
         });
         
-        // PDFの設定を強制的に調整
+        // PDFの設定を直接操作
         pdf.internal.pageSize.width = 58;
-        pdf.internal.pageSize.height = calculatedHeight;
+        pdf.internal.pageSize.height = pdfHeight;
         
-        // フォント設定（10mmサイズ）
-        pdf.setFont('helvetica');
-        pdf.setFontSize(28); // 約10mm相当
-        
-        // テキストを描画
-        let yPosition = topMargin + 10; // 最初の行の位置
-        
-        // メインテキストを描画
-        for (let i = 0; i < lines.length; i++) {
-            pdf.text(lines[i], leftMargin, yPosition);
-            yPosition += lineHeight;
-        }
-        
-        // 日付・時刻を追加
-        if (isDateTimeEnabled) {
-            yPosition += 2; // 空行
-            for (let i = 0; i < dateTimeLines.length; i++) {
-                pdf.text(dateTimeLines[i], leftMargin, yPosition);
-                yPosition += lineHeight;
-            }
-        }
+        // PNG画像をPDFに追加（位置調整なし、フルサイズ）
+        pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
         
         // PDFをBase64形式で取得
         const pdfBase64 = pdf.output('datauristring').split(',')[1];
