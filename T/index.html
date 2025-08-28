@@ -1474,7 +1474,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             // 日付・時刻の高さを計算
             let dateTimeHeight = 0;
             if (isDateTimeEnabled) {
-                const fontSize = Math.round(10 * mmToPx); // 10mm
+                const fontSize = Math.round(8.5 * mmToPx); // 8.5mm
                 dateTimeHeight = fontSize * 2.5; // 2行 + 余白
             }
             
@@ -1507,7 +1507,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 const minute = now.getMinutes();
                 const second = now.getSeconds();
                 
-                const fontSize = Math.round(10 * mmToPx);
+                const fontSize = Math.round(8.5 * mmToPx);
                 compositeCtx.fillStyle = '#000000';
                 compositeCtx.font = `${fontSize}px Arial, sans-serif`;
                 compositeCtx.textAlign = 'left';
@@ -1628,7 +1628,7 @@ function sendToPrintAssist(event) {
                     // 日付・時刻の高さを計算
                     let dateTimeHeight = 0;
                     if (isDateTimeEnabled) {
-                        const fontSize = Math.round(10 * mmToPx); // 10mm
+                        const fontSize = Math.round(8.5 * mmToPx); // 8.5mm
                         dateTimeHeight = fontSize * 2.5; // 2行 + 余白
                     }
                     
@@ -1664,7 +1664,7 @@ function sendToPrintAssist(event) {
                         const minute = now.getMinutes();
                         const second = now.getSeconds();
                         
-                        const fontSize = Math.round(10 * mmToPx);
+                        const fontSize = Math.round(8.5 * mmToPx);
                         compositeCtx.fillStyle = '#000000';
                         compositeCtx.font = `${fontSize}px Arial, sans-serif`;
                         compositeCtx.textAlign = 'left';
@@ -1845,8 +1845,8 @@ function printText() {
         const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
         const canvasWidth = Math.round(58 * mmToPx); // 58mm
         
-        // フォントサイズ設定（10mm = 約118px）
-        const fontSize = Math.round(10 * mmToPx);
+        // フォントサイズ設定（8.5mm = 約100px）
+        const fontSize = Math.round(8.5 * mmToPx);
         ctx.font = `${fontSize}px Arial, sans-serif`;
         ctx.fillStyle = '#000000';
         
