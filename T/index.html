@@ -6,6 +6,7 @@
 <title>toki01Ⓣ 発券</title>
 <link rel="icon" href="favicon.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -1460,16 +1461,103 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     let currentCopy = 1;
     function printSignatureCopy(copyIndex) {
-        let dataUrl = tmpCanvas.toDataURL("image/png");
-        let printUrl = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${marginX},${marginY},${imgW},${imgH},${dataUrl.split(',')[1]}`;
+        // jsPDFを使用してPDFを生成
+        const { jsPDF } = window.jspdf;
+        
+        // キャンバスから画像データを取得
+        let canvasDataUrl = tmpCanvas.toDataURL("image/png");
+        
+        // 画像のサイズを計算
+        const paperWidth = 58; // mm
+        const imgWidth = 56; // mm
+        const imgHeight = Math.round(outH / pxPerMm * (imgWidth / 50));
+        
+        // 日付・時刻のサイズを計算
+        let dateTimeHeight = 0;
         if (isDateTimeEnabled) {
-            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-            printUrl += `&2=${safeEncodeURIComponent(dateTimeString)},0,${marginY + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+            dateTimeHeight = 8; // mm（2行分）
         }
-        if (copyIndex === selectedCopies) {
-            printUrl += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-        }
-        window.location.href = printUrl;
+        
+        // PDFの高さを計算
+        const topMargin = 0; // mm
+        const bottomMargin = 1; // mm
+        const calculatedHeight = Math.max(topMargin + imgHeight + dateTimeHeight + bottomMargin, 20);
+        
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: [58, calculatedHeight]
+        });
+        
+        // PDFの余白を完全に削除
+        pdf.internal.pageSize.width = 58;
+        pdf.internal.pageSize.height = calculatedHeight;
+        pdf.setDisplayMode('fullwidth');
+        
+        // Canvas要素を作成
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 高解像度設定
+        const dpi = 300;
+        const mmToPx = dpi / 25.4;
+        canvas.width = 58 * mmToPx;
+        canvas.height = calculatedHeight * mmToPx;
+        
+        // 背景を白に設定
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // 手書き画像を描画
+        const img = new Image();
+        img.onload = function() {
+            ctx.drawImage(img, 1 * mmToPx, 1 * mmToPx, imgWidth * mmToPx, imgHeight * mmToPx);
+            
+            // 日付・時刻を描画
+            if (isDateTimeEnabled) {
+                ctx.fillStyle = '#000000';
+                ctx.font = '12px monospace';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth() + 1;
+                const day = now.getDate();
+                const hour = now.getHours();
+                const min = now.getMinutes();
+                const sec = now.getSeconds();
+                
+                const dateLine = `    ${year}年 ${month}月${day}日`;
+                const timeLine = `    ${hour}時${min}分${sec}秒`;
+                
+                const dateY = (1 + imgHeight + 1) * mmToPx;
+                ctx.fillText(dateLine, 1 * mmToPx, dateY);
+                ctx.fillText(timeLine, 1 * mmToPx, dateY + (4 * mmToPx));
+            }
+            
+            // CanvasをPDFに変換
+            const finalCanvasDataUrl = canvas.toDataURL('image/png');
+            pdf.addImage(finalCanvasDataUrl, 'PNG', 0, 0, 58, calculatedHeight);
+            
+            // PDFをBase64形式で取得
+            const pdfBase64 = pdf.output('datauristring').split(',')[1];
+            
+            let thisPage = window.location.href;
+            let printUrl = 'siiprintagent://1.0/print?' +
+                          'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                          'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                          'Format='           + 'pdf' + '&' +
+                          'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                          'SelectOnError='    + 'yes' + '&' +
+                          'CutType='          + 'full' + '&' +
+                          'CutFeed='          + 'yes' + '&' +
+                          'FitToWidth='       + 'no' + '&' +
+                          'PaperWidth='       + '58';
+            
+            window.location.href = printUrl;
+        };
+        img.src = canvasDataUrl;
     }
     function printNext() {
         if (currentCopy < selectedCopies) {
@@ -1521,15 +1609,103 @@ function sendToPrintAssist(event) {
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             let currentCopy = 1;
             function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${base64Image}`;
+                // jsPDFを使用してPDFを生成
+                const { jsPDF } = window.jspdf;
+                
+                // 画像のサイズを計算
+                const paperWidth = 58; // mm
+                const maxImgWidth = 56; // mm
+                
+                // 元画像のアスペクト比を保持して適切なサイズを計算
+                let finalImgWidth = Math.min(maxImgWidth, imgW);
+                let finalImgHeight = Math.round(imgH * (finalImgWidth / imgW));
+                
+                // 日付・時刻のサイズを計算
+                let dateTimeHeight = 0;
                 if (isDateTimeEnabled) {
-                    const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                    dateTimeHeight = 8; // mm（2行分）
                 }
-                if (copyIndex === selectedCopies) {
-                    printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-                }
-                window.location.href = printUrlImage;
+                
+                // PDFの高さを計算
+                const topMargin = 0; // mm
+                const bottomMargin = 1; // mm
+                const calculatedHeight = Math.max(topMargin + finalImgHeight + dateTimeHeight + bottomMargin, 20);
+                
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: [58, calculatedHeight]
+                });
+                
+                // PDFの余白を完全に削除
+                pdf.internal.pageSize.width = 58;
+                pdf.internal.pageSize.height = calculatedHeight;
+                pdf.setDisplayMode('fullwidth');
+                
+                // Canvas要素を作成
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // 高解像度設定
+                const dpi = 300;
+                const mmToPx = dpi / 25.4;
+                canvas.width = 58 * mmToPx;
+                canvas.height = calculatedHeight * mmToPx;
+                
+                // 背景を白に設定
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 画像を描画
+                const img = new Image();
+                img.onload = function() {
+                    ctx.drawImage(img, 1 * mmToPx, 1 * mmToPx, finalImgWidth * mmToPx, finalImgHeight * mmToPx);
+                    
+                    // 日付・時刻を描画
+                    if (isDateTimeEnabled) {
+                        ctx.fillStyle = '#000000';
+                        ctx.font = '12px monospace';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'top';
+                        
+                        const now = new Date();
+                        const year = now.getFullYear();
+                        const month = now.getMonth() + 1;
+                        const day = now.getDate();
+                        const hour = now.getHours();
+                        const min = now.getMinutes();
+                        const sec = now.getSeconds();
+                        
+                        const dateLine = `    ${year}年 ${month}月${day}日`;
+                        const timeLine = `    ${hour}時${min}分${sec}秒`;
+                        
+                        const dateY = (1 + finalImgHeight + 1) * mmToPx;
+                        ctx.fillText(dateLine, 1 * mmToPx, dateY);
+                        ctx.fillText(timeLine, 1 * mmToPx, dateY + (4 * mmToPx));
+                    }
+                    
+                    // CanvasをPDFに変換
+                    const finalCanvasDataUrl = canvas.toDataURL('image/png');
+                    pdf.addImage(finalCanvasDataUrl, 'PNG', 0, 0, 58, calculatedHeight);
+                    
+                    // PDFをBase64形式で取得
+                    const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                    
+                    let thisPage = window.location.href;
+                    let printUrlImage = 'siiprintagent://1.0/print?' +
+                                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                      'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                                      'Format='           + 'pdf' + '&' +
+                                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                      'SelectOnError='    + 'yes' + '&' +
+                                      'CutType='          + 'full' + '&' +
+                                      'CutFeed='          + 'yes' + '&' +
+                                      'FitToWidth='       + 'no' + '&' +
+                                      'PaperWidth='       + '58';
+                    
+                    window.location.href = printUrlImage;
+                };
+                img.src = 'data:image/png;base64,' + base64Image;
             }
             function printNext() {
                 if (currentCopy < selectedCopies) {
@@ -1644,20 +1820,106 @@ function printText() {
     const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
     let currentCopy = 1;
     function printTextCopy(copyIndex) {
-        let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=3&monochrome=0&pages=1`;
-        wrappedLines.forEach((line, index) => {
-            const encodedLine = safeEncodeURIComponent(line);
-            printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-        });
+        // jsPDFを使用してPDFを生成
+        const { jsPDF } = window.jspdf;
+        
+        let printText = wrappedLines.join("\n");
+        let dateTimeLines = [];
+        
         if (isDateTimeEnabled) {
-            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-            const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-            printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+            // 指定された日付形式で作成
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const day = now.getDate();
+            const hour = now.getHours();
+            const min = now.getMinutes();
+            const sec = now.getSeconds();
+            
+            const dateLine = `    ${year}年 ${month}月${day}日`;
+            const timeLine = `    ${hour}時${min}分${sec}秒`;
+            dateTimeLines = [dateLine, timeLine];
         }
-        if (copyIndex === selectedTextCopies) {
-            printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+        
+        // テキストと日付を合わせた総行数を計算
+        const textLines = printText.split('\n');
+        const totalLines = textLines.concat(dateTimeLines);
+        
+        const lineHeight = 3.5; // mm
+        const topMargin = 0; // mm（上部余白を完全に削除）
+        const leftMargin = 0; // mm（左余白を完全に削除）
+        const bottomMargin = 1; // mm
+        const calculatedHeight = Math.max((totalLines.length * lineHeight) + topMargin + bottomMargin, 15);
+        
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: [58, calculatedHeight]
+        });
+        
+        // PDFの余白を完全に削除
+        pdf.internal.pageSize.width = 58;
+        pdf.internal.pageSize.height = calculatedHeight;
+        pdf.setDisplayMode('fullwidth');
+        
+        // Canvas要素を作成してテキストを描画
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 高解像度設定
+        const dpi = 300;
+        const mmToPx = dpi / 25.4;
+        canvas.width = 58 * mmToPx;
+        canvas.height = calculatedHeight * mmToPx;
+        
+        // 背景を白に設定
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // テキスト設定
+        ctx.fillStyle = '#000000';
+        ctx.font = '12px monospace'; // 等幅フォントで安定した表示
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        
+        // テキストを描画
+        let yPosition = 2 * mmToPx; // 上端から2mm
+        const lineHeightPx = lineHeight * mmToPx;
+        
+        // メインテキストを描画
+        for (let i = 0; i < textLines.length; i++) {
+            if (textLines[i].trim() !== '') {
+                ctx.fillText(textLines[i], 1 * mmToPx, yPosition); // 左端から1mm
+            }
+            yPosition += lineHeightPx;
         }
-        window.location.href = printUrlText;
+        
+        // 日付・時刻を描画
+        for (let i = 0; i < dateTimeLines.length; i++) {
+            ctx.fillText(dateTimeLines[i], 1 * mmToPx, yPosition);
+            yPosition += lineHeightPx;
+        }
+        
+        // CanvasをPDFに変換
+        const canvasDataUrl = canvas.toDataURL('image/png');
+        pdf.addImage(canvasDataUrl, 'PNG', 0, 0, 58, calculatedHeight);
+        
+        // PDFをBase64形式で取得
+        const pdfBase64 = pdf.output('datauristring').split(',')[1];
+        
+        let thisPage = window.location.href;
+        let printUrl = 'siiprintagent://1.0/print?' +
+                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                      'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                      'Format='           + 'pdf' + '&' +
+                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                      'SelectOnError='    + 'yes' + '&' +
+                      'CutType='          + 'full' + '&' +
+                      'CutFeed='          + 'yes' + '&' +
+                      'FitToWidth='       + 'no' + '&' +
+                      'PaperWidth='       + '58';
+        
+        window.location.href = printUrl;
     }
     function printNext() {
         if (currentCopy < selectedTextCopies) {
