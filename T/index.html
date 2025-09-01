@@ -104,7 +104,6 @@ header {
     padding: 0;
     width: auto;
     height: auto;
-    display: block;
 }
 #historyMenuBtn:focus { outline: none; }
 #historyDrawer {
@@ -1481,9 +1480,11 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 dateTimeHeight = fontSize * 2.5; // 2行 + 余白
             }
             
-            // 全体の高さを計算
+            // 全体の高さを計算（手書き用の余白設定）
+            const signatureTopMargin = 15; // 手書き用上余白
+            const signatureBottomMargin = 20; // 手書き用下余白
             const signatureHeight = Math.round(outH / pxPerMm * mmToPx);
-            const totalHeight = signatureHeight + dateTimeHeight + 40; // 上下余白
+            const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin;
             
             compositeCanvas.width = canvasWidth;
             compositeCanvas.height = totalHeight;
@@ -1494,7 +1495,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             
             // サインを描画（中央配置）
             const signatureX = 20; // 左余白
-            const signatureY = 20; // 上余白
+            const signatureY = signatureTopMargin; // 手書き用上余白
             const signatureW = canvasWidth - 40; // 左右余白を除く
             const signatureH = signatureHeight;
             
@@ -1516,10 +1517,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 compositeCtx.textAlign = 'center';
                 compositeCtx.textBaseline = 'top';
                 
-                // 真ん中の位置を正確に計算（整数で）
-                const exactCenterX = Math.floor(canvasWidth / 2);
+                // 真ん中の位置を正確に計算
+                const exactCenterX = Math.round(canvasWidth / 2);
                 
-                let yPos = signatureY + signatureH + 30; // サインの下
+                let yPos = signatureY + signatureH + 20; // サインの下
                 
                 // 日付行
                 const dateText = `${year}年 ${month}月${day}日`;
@@ -1644,8 +1645,10 @@ function sendToPrintAssist(event) {
                     const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth);
                     const finalImgHeight = finalImgWidth * imgRatio;
                     
-                    // 全体の高さを計算
-                    const totalHeight = finalImgHeight + dateTimeHeight + 40; // 上下余白
+                    // 全体の高さを計算（画像用の余白設定）
+                    const imageTopMargin = 10; // 画像用上余白
+                    const imageBottomMargin = 15; // 画像用下余白
+                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin;
                     
                     compositeCanvas.width = canvasWidth;
                     compositeCanvas.height = totalHeight;
@@ -1656,7 +1659,7 @@ function sendToPrintAssist(event) {
                     
                     // 画像を描画（中央配置）
                     const imgX = 20; // 左余白
-                    const imgY = 20; // 上余白
+                    const imgY = imageTopMargin; // 画像用上余白
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
@@ -1676,8 +1679,8 @@ function sendToPrintAssist(event) {
                         compositeCtx.textAlign = 'center';
                         compositeCtx.textBaseline = 'top';
                         
-                        // 真ん中の位置を正確に計算（整数で）
-                        const exactCenterX = Math.floor(canvasWidth / 2);
+                        // 真ん中の位置を正確に計算
+                        const exactCenterX = Math.round(canvasWidth / 2);
                         
                         let yPos = imgY + finalImgHeight + 20; // 画像の下
                         
@@ -1864,16 +1867,12 @@ function printText() {
         const lineHeight = fontSize * 1.2;
         let textHeight = lines.length * lineHeight;
         
-        // 上下の余白を個別に設定
-        const topMargin = 10; // 上余白を小さく
-        const bottomMargin = 20; // 下余白
-        
         // 日付・時刻のスペースを追加
         if (isDateTimeEnabled) {
-            textHeight += lineHeight * 2.5; // 日付2行 + 余白
+            textHeight += lineHeight * 2.5; // 日付2行 + 少ない余白
         }
         
-        const canvasHeight = Math.round(textHeight + topMargin + bottomMargin);
+        const canvasHeight = Math.round(textHeight + 60); // 上下余白調整
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
         
@@ -1887,11 +1886,11 @@ function printText() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         
-        // 真ん中の位置を正確に計算（整数で）
-        const exactCenterX = Math.floor(canvasWidth / 2);
+        // 真ん中の位置を正確に計算
+        const exactCenterX = Math.round(canvasWidth / 2);
         
-        // テキストを描画
-        let yPos = topMargin; // 上余白から開始
+        // テキストを描画（上部余白を小さく）
+        let yPos = 30; // 上余白を30pxに調整
         for (let i = 0; i < lines.length; i++) {
             ctx.fillText(lines[i], exactCenterX, yPos); // 真ん中に配置
             yPos += lineHeight;
@@ -1907,10 +1906,10 @@ function printText() {
             const minute = now.getMinutes();
             const second = now.getSeconds();
             
-            yPos += lineHeight * 0.5; // 余白
+            yPos += lineHeight * 0.3; // 余白を小さく
             
-            // 真ん中の位置を正確に計算（整数で）
-            const exactCenterX = Math.floor(canvasWidth / 2);
+            // 真ん中の位置を正確に計算
+            const exactCenterX = Math.round(canvasWidth / 2);
             
             // 日付行
             const dateText = `${year}年 ${month}月${day}日`;
@@ -2011,4 +2010,3 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
-
