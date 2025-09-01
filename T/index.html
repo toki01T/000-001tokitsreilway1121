@@ -1640,7 +1640,7 @@ function sendToPrintAssist(event) {
                     }
                     
                     // 画像のサイズを58mm幅に合わせて計算
-                    const maxImgWidth = canvasWidth - 30; // 左右余白を除く
+                    const maxImgWidth = canvasWidth - 20; // 左右余白を除く
                     const imgRatio = uploadedImg.naturalHeight / uploadedImg.naturalWidth;
                     const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth);
                     const finalImgHeight = finalImgWidth * imgRatio;
