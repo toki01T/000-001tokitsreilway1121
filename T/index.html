@@ -1481,8 +1481,8 @@ document.getElementById('signaturePrintButton').onclick = function() {
             }
             
             // 全体の高さを計算（手書き用の余白設定）
-            const signatureTopMargin = 15; // 手書き用上余白
-            const signatureBottomMargin = 20; // 手書き用下余白
+            const signatureTopMargin = 8; // 手書き用上余白
+            const signatureBottomMargin = 25; // 手書き用下余白
             const signatureHeight = Math.round(outH / pxPerMm * mmToPx);
             const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin;
             
