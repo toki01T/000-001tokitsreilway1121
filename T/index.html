@@ -65,7 +65,6 @@ header {
     height: 48px;
     display: flex;
     align-items: center;
-    overflow: hidden;
 }
 .navbar {
     display: flex;
@@ -74,10 +73,9 @@ header {
     max-width: 1200px;
     margin: 0 auto;
     height: 48px;
-    padding: 0 0.5rem;
+    padding: 0 1rem;
     box-sizing: border-box;
     position: relative;
-    overflow: hidden;
 }
 .navbar-brand {
     color: #fff;
@@ -94,7 +92,7 @@ header {
 }
 #historyMenuBtn {
     position: absolute;
-    right: 0.5rem;
+    right: 1rem;
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
@@ -104,7 +102,8 @@ header {
     cursor: pointer;
     z-index: 12;
     padding: 0;
-    line-height: 1;
+    min-width: 2.5rem;
+    text-align: center;
 }
 #historyMenuBtn:focus { outline: none; }
 #historyDrawer {
@@ -1492,10 +1491,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
             compositeCtx.fillStyle = '#FFFFFF';
             compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
             
-            // サインを描画（中央配置）
-            const signatureX = 20; // 左余白
-            const signatureY = 20; // 上余白
-            const signatureW = canvasWidth - 40; // 左右余白を除く
+            // サインを描画（中央配置、58mm幅確保）
+            const signatureX = 10; // 左余白を小さく
+            const signatureY = 10; // 上余白を小さく
+            const signatureW = canvasWidth - 20; // 左右余白を除く（58mm幅をフル活用）
             const signatureH = signatureHeight;
             
             compositeCtx.drawImage(tmpCanvas, signatureX, signatureY, signatureW, signatureH);
@@ -1516,19 +1515,19 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 compositeCtx.textAlign = 'center';
                 compositeCtx.textBaseline = 'top';
                 
-                // キャンバス幅の正確な中央
-                const trueCenterX = canvasWidth / 2;
+                // 完全な中央位置を計算
+                const perfectCenterX = Math.floor(canvasWidth / 2);
                 
-                let yPos = signatureY + signatureH + 20; // サインの下
+                let yPos = signatureY + signatureH + 10; // サインの下（余白小さく）
                 
-                // 日付行を中央配置
+                // 日付行
                 const dateText = `${year}年 ${month}月${day}日`;
-                compositeCtx.fillText(dateText, trueCenterX, yPos);
+                compositeCtx.fillText(dateText, perfectCenterX, yPos);
                 yPos += fontSize * 1.2;
                 
-                // 時刻行を中央配置
+                // 時刻行
                 const timeText = `${hour}時${minute}分${second}秒`;
-                compositeCtx.fillText(timeText, trueCenterX, yPos);
+                compositeCtx.fillText(timeText, perfectCenterX, yPos);
             }
             
             // 合成キャンバスをPNGデータURLに変換
@@ -1638,14 +1637,14 @@ function sendToPrintAssist(event) {
                         dateTimeHeight = fontSize * 2.5; // 2行 + 余白
                     }
                     
-                    // 画像のサイズを58mm幅に合わせて計算
-                    const maxImgWidth = canvasWidth - 40; // 左右余白を除く
+                    // 画像のサイズを58mm幅に合わせて計算（フル活用）
+                    const maxImgWidth = canvasWidth - 20; // 左右余白を小さく（58mm幅をフル活用）
                     const imgRatio = uploadedImg.naturalHeight / uploadedImg.naturalWidth;
                     const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth);
                     const finalImgHeight = finalImgWidth * imgRatio;
                     
-                    // 全体の高さを計算
-                    const totalHeight = finalImgHeight + dateTimeHeight + 40; // 上下余白
+                    // 全体の高さを計算（余白を小さく）
+                    const totalHeight = finalImgHeight + dateTimeHeight + 20; // 上下余白を小さく
                     
                     compositeCanvas.width = canvasWidth;
                     compositeCanvas.height = totalHeight;
@@ -1654,9 +1653,9 @@ function sendToPrintAssist(event) {
                     compositeCtx.fillStyle = '#FFFFFF';
                     compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
                     
-                    // 画像を描画（中央配置）
-                    const imgX = 20; // 左余白
-                    const imgY = 20; // 上余白
+                    // 画像を描画（中央配置、58mm幅確保）
+                    const imgX = 10; // 左余白を小さく
+                    const imgY = 10; // 上余白を小さく
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
@@ -1676,19 +1675,19 @@ function sendToPrintAssist(event) {
                         compositeCtx.textAlign = 'center';
                         compositeCtx.textBaseline = 'top';
                         
-                        // キャンバス幅の正確な中央
-                        const trueCenterX = canvasWidth / 2;
+                        // 完全な中央位置を計算
+                        const perfectCenterX = Math.floor(canvasWidth / 2);
                         
-                        let yPos = imgY + finalImgHeight + 20; // 画像の下
+                        let yPos = imgY + finalImgHeight + 10; // 画像の下（余白小さく）
                         
-                        // 日付行を中央配置
+                        // 日付行
                         const dateText = `${year}年 ${month}月${day}日`;
-                        compositeCtx.fillText(dateText, trueCenterX, yPos);
+                        compositeCtx.fillText(dateText, perfectCenterX, yPos);
                         yPos += fontSize * 1.2;
                         
-                        // 時刻行を中央配置
+                        // 時刻行
                         const timeText = `${hour}時${minute}分${second}秒`;
-                        compositeCtx.fillText(timeText, trueCenterX, yPos);
+                        compositeCtx.fillText(timeText, perfectCenterX, yPos);
                     }
                     
                     // 合成キャンバスをPNGデータURLに変換
@@ -1869,7 +1868,8 @@ function printText() {
             textHeight += lineHeight * 3; // 日付2行 + 余白1行
         }
         
-        const canvasHeight = Math.round(textHeight + 40); // 上下余白
+        // 全体の高さを計算（余白を小さく）
+        const canvasHeight = Math.round(textHeight + 20); // 上下余白を小さく
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
         
@@ -1877,20 +1877,19 @@ function printText() {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvasWidth, canvasHeight);
         
-        // テキスト描画設定 - 完全中央揃え
+        // テキスト描画設定
         ctx.fillStyle = '#000000';
         ctx.font = `${fontSize}px Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         
-        // キャンバス幅の正確な中央
-        const trueCenterX = canvasWidth / 2;
+        // 完全な中央位置を計算
+        const perfectCenterX = Math.floor(canvasWidth / 2);
         
-        // テキストを描画
-        let yPos = 20; // 上余白
+        // テキストを描画（上部余白を小さく）
+        let yPos = 10; // 上余白を小さく
         for (let i = 0; i < lines.length; i++) {
-            // 各行を完全に中央配置
-            ctx.fillText(lines[i], trueCenterX, yPos);
+            ctx.fillText(lines[i], perfectCenterX, yPos);
             yPos += lineHeight;
         }
         
@@ -1904,19 +1903,19 @@ function printText() {
             const minute = now.getMinutes();
             const second = now.getSeconds();
             
-            yPos += lineHeight * 0.5; // 余白
+            yPos += lineHeight * 0.3; // 余白を小さく
             
-            // キャンバス幅の正確な中央
-            const trueCenterX = canvasWidth / 2;
+            // 完全な中央位置を計算
+            const perfectCenterX = Math.floor(canvasWidth / 2);
             
-            // 日付行を中央配置
+            // 日付行
             const dateText = `${year}年 ${month}月${day}日`;
-            ctx.fillText(dateText, trueCenterX, yPos);
+            ctx.fillText(dateText, perfectCenterX, yPos);
             yPos += lineHeight;
             
-            // 時刻行を中央配置
+            // 時刻行
             const timeText = `${hour}時${minute}分${second}秒`;
-            ctx.fillText(timeText, trueCenterX, yPos);
+            ctx.fillText(timeText, perfectCenterX, yPos);
         }
         
         // キャンバスをPNGデータURLに変換
