@@ -1673,7 +1673,7 @@ function sendToPrintAssist(event) {
                         const minute = now.getMinutes();
                         const second = now.getSeconds();
                         
-                        const fontSize = 50;
+                        const fontSize = 40;
                         compositeCtx.fillStyle = '#000000';
                         compositeCtx.font = `${fontSize}px Arial, sans-serif`;
                         compositeCtx.textAlign = 'center';
@@ -1682,7 +1682,7 @@ function sendToPrintAssist(event) {
                         // 真ん中の位置を正確に計算
                         const exactCenterX = Math.round(canvasWidth / -2);
                         
-                        let yPos = imgY + finalImgHeight + 20; // 画像の下
+                        let yPos = imgY + finalImgHeight + 30; // 画像の下
                         
                         // 日付行
                         const dateText = `${year}年 ${month}月${day}日`;
