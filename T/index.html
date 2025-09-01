@@ -1519,7 +1519,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 // 真ん中の位置を正確に計算（整数で）
                 const exactCenterX = Math.floor(canvasWidth / 2);
                 
-                let yPos = signatureY + signatureH + 20; // サインの下
+                let yPos = signatureY + signatureH + 30; // サインの下
                 
                 // 日付行
                 const dateText = `${year}年 ${month}月${day}日`;
@@ -2011,3 +2011,4 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
+
