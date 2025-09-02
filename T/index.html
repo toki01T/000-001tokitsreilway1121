@@ -1573,12 +1573,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
         signatureImg.src = tmpCanvas.toDataURL("image/png");
     }
     function printNext() {
+        printSignatureCopy(currentCopy);
+        currentCopy++;
         if (currentCopy <= selectedCopies) {
-            printSignatureCopy(currentCopy);
-            currentCopy++;
-            if (currentCopy <= selectedCopies) {
-                setTimeout(printNext, 10000);
-            }
+            setTimeout(printNext, 10000);
         }
     }
     printNext();
@@ -1622,7 +1620,11 @@ function sendToPrintAssist(event) {
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
             const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
-            let currentCopy = 1;
+            
+            // URL管理による印刷回数制御
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentCopy = parseInt(urlParams.get('imagePrintCount')) || 1;
+            
             function printImageCopy(copyIndex) {
                 // 新しいキャンバスで全体を合成
                 const compositeCanvas = document.createElement('canvas');
@@ -1680,83 +1682,80 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // 画像描画後、白黒濃淡を極限まで強化する処理
+                    // 画像描画後、印刷用白黒濃淡を極限まで強化する処理
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 極限的な濃淡強化処理（印刷機向け最適化）
+                    // 印刷用に最適化された超強力な濃淡処理
                     for (let i = 0; i < data.length; i += 4) {
                         let r = data[i];
                         let g = data[i + 1];
                         let b = data[i + 2];
                         
-                        // グレースケール変換
-                        const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                        // Step 1: 高精度グレースケール変換
+                        const gray = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
                         
-                        // 極端なコントラスト強化（印刷機に最適化）
-                        let result;
-                        if (gray < 32) {
-                            // 非常に暗い部分 → 完全に黒に近づける
-                            result = 0;
-                        } else if (gray < 64) {
-                            // 暗い部分 → 大幅に暗くする
-                            result = Math.round((gray - 32) * 0.5);
-                        } else if (gray < 96) {
-                            // 中間暗部 → 暗めに調整
-                            result = Math.round(16 + (gray - 64) * 1.2);
-                        } else if (gray < 128) {
-                            // 中間部下 → コントラストを強化
-                            result = Math.round(54 + (gray - 96) * 1.8);
-                        } else if (gray < 160) {
-                            // 中間部上 → コントラストを強化
-                            result = Math.round(112 + (gray - 128) * 2.0);
-                        } else if (gray < 192) {
-                            // 明るい部分 → 明度を上げる
-                            result = Math.round(176 + (gray - 160) * 1.5);
-                        } else if (gray < 224) {
-                            // 非常に明るい部分 → より明るく
-                            result = Math.round(224 + (gray - 192) * 0.7);
+                        // Step 2: 印刷用ヒストグラム強化（8段階の細かい制御）
+                        let enhanced;
+                        if (gray <= 32) {
+                            // 最暗部: 完全に黒に近づける
+                            enhanced = Math.round(gray * 0.15);
+                        } else if (gray <= 64) {
+                            // 暗部: 大幅に暗くする
+                            enhanced = Math.round(5 + (gray - 32) * 0.4);
+                        } else if (gray <= 96) {
+                            // 中暗部: 中程度に暗くする
+                            enhanced = Math.round(18 + (gray - 64) * 0.8);
+                        } else if (gray <= 128) {
+                            // 中央暗: 少し暗くする
+                            enhanced = Math.round(44 + (gray - 96) * 1.1);
+                        } else if (gray <= 160) {
+                            // 中央明: 少し明るくする
+                            enhanced = Math.round(79 + (gray - 128) * 1.3);
+                        } else if (gray <= 192) {
+                            // 中明部: 中程度に明るくする
+                            enhanced = Math.round(121 + (gray - 160) * 1.6);
+                        } else if (gray <= 224) {
+                            // 明部: 大幅に明るくする
+                            enhanced = Math.round(172 + (gray - 192) * 1.9);
                         } else {
-                            // 最明部 → 完全に白に近づける
-                            result = 255;
+                            // 最明部: 完全に白に近づける
+                            enhanced = Math.round(233 + (gray - 224) * 0.7);
                         }
                         
-                        // エッジ強化処理（隣接ピクセルとの差を拡大）
-                        const pixelIndex = Math.floor(i / 4);
-                        const width = finalImgWidth;
-                        const height = finalImgHeight;
-                        const x = pixelIndex % width;
-                        const y = Math.floor(pixelIndex / width);
+                        // Step 3: 極端なコントラスト強化（印刷用特化）
+                        const contrast = 2.5;
+                        const midpoint = 128;
+                        let contrasted = Math.round((enhanced - midpoint) * contrast + midpoint);
+                        contrasted = Math.min(255, Math.max(0, contrasted));
                         
-                        // 隣接ピクセルがある場合のエッジ強化
-                        if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
-                            const leftIndex = (y * width + (x - 1)) * 4;
-                            const rightIndex = (y * width + (x + 1)) * 4;
-                            const topIndex = ((y - 1) * width + x) * 4;
-                            const bottomIndex = ((y + 1) * width + x) * 4;
-                            
-                            const leftGray = Math.round(0.299 * data[leftIndex] + 0.587 * data[leftIndex + 1] + 0.114 * data[leftIndex + 2]);
-                            const rightGray = Math.round(0.299 * data[rightIndex] + 0.587 * data[rightIndex + 1] + 0.114 * data[rightIndex + 2]);
-                            const topGray = Math.round(0.299 * data[topIndex] + 0.587 * data[topIndex + 1] + 0.114 * data[topIndex + 2]);
-                            const bottomGray = Math.round(0.299 * data[bottomIndex] + 0.587 * data[bottomIndex + 1] + 0.114 * data[bottomIndex + 2]);
-                            
-                            const avgNeighbor = (leftGray + rightGray + topGray + bottomGray) / 4;
-                            const diff = gray - avgNeighbor;
-                            
-                            // エッジを強調（差を2倍に拡大）
-                            result = Math.min(255, Math.max(0, Math.round(result + diff * 1.5)));
+                        // Step 4: 最終二値化的強化（細かい濃淡を保持しつつ）
+                        let final;
+                        if (contrasted < 45) {
+                            final = Math.round(contrasted * 0.2); // 超暗部
+                        } else if (contrasted < 90) {
+                            final = Math.round(9 + (contrasted - 45) * 0.6); // 暗部
+                        } else if (contrasted < 135) {
+                            final = Math.round(36 + (contrasted - 90) * 1.0); // 中間部
+                        } else if (contrasted < 180) {
+                            final = Math.round(81 + (contrasted - 135) * 1.4); // 明部
+                        } else {
+                            final = Math.round(144 + (contrasted - 180) * 1.5); // 超明部
                         }
                         
-                        // 最終的な二値化強化
-                        if (result < 85) {
-                            result = Math.round(result * 0.3); // 暗部をさらに暗く
-                        } else if (result > 170) {
-                            result = Math.round(170 + (result - 170) * 1.3); // 明部をさらに明るく
+                        // Step 5: エッジ強化（隣接ピクセルとの差を拡大）
+                        if (i > 4 && i < data.length - 4) {
+                            const prevGray = Math.round(0.2126 * data[i-4] + 0.7152 * data[i-3] + 0.0722 * data[i-2]);
+                            const nextGray = Math.round(0.2126 * data[i+4] + 0.7152 * data[i+5] + 0.0722 * data[i+6]);
+                            const diff = Math.abs(gray - prevGray) + Math.abs(gray - nextGray);
+                            if (diff > 30) { // エッジ部分
+                                final = Math.min(255, Math.max(0, Math.round(final * 1.2)));
+                            }
                         }
                         
-                        data[i] = result;
-                        data[i + 1] = result;
-                        data[i + 2] = result;
+                        data[i] = final;
+                        data[i + 1] = final;
+                        data[i + 2] = final;
                     }
                     
                     // 強化されたピクセルデータを再描画
@@ -1819,9 +1818,19 @@ function sendToPrintAssist(event) {
                     // PDFをBase64形式で取得
                     const pdfBase64 = pdf.output('datauristring').split(',')[1];
                     
+                    // 複数枚印刷用のURL管理
                     let thisPage = window.location.href;
+                    
+                    // 次の印刷へのコールバックURL作成
+                    let callbackUrl = thisPage;
+                    if (currentCopy < selectedCopies) {
+                        const url = new URL(thisPage);
+                        url.searchParams.set('imagePrintCount', (currentCopy + 1).toString());
+                        callbackUrl = url.toString();
+                    }
+                    
                     let printUrlImage = 'siiprintagent://1.0/print?' +
-                                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                      'CallbackSuccess='  + encodeURIComponent(callbackUrl) + '&' +
                                       'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
                                       'Format='           + 'pdf' + '&' +
                                       'Data='             + encodeURIComponent(pdfBase64) + '&' +
@@ -1836,16 +1845,10 @@ function sendToPrintAssist(event) {
                 
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
             }
-            function printNext() {
-                if (currentCopy <= selectedCopies) {
-                    printImageCopy(currentCopy);
-                    currentCopy++;
-                    if (currentCopy <= selectedCopies) {
-                        setTimeout(printNext, 10000);
-                    }
-                }
-            }
-            printNext();
+            
+            // 直接印刷を実行
+            printImageCopy(currentCopy);
+            
             addHistory({
                 type: 'image',
                 mode: 'image',
