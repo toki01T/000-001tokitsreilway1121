@@ -1573,10 +1573,12 @@ document.getElementById('signaturePrintButton').onclick = function() {
         signatureImg.src = tmpCanvas.toDataURL("image/png");
     }
     function printNext() {
-        printSignatureCopy(currentCopy);
-        currentCopy++;
         if (currentCopy <= selectedCopies) {
-            setTimeout(printNext, 10000);
+            printSignatureCopy(currentCopy);
+            currentCopy++;
+            if (currentCopy <= selectedCopies) {
+                setTimeout(printNext, 10000);
+            }
         }
     }
     printNext();
@@ -1678,48 +1680,78 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // 画像描画後、白黒濃淡を劇的に強化する処理
+                    // 画像描画後、白黒濃淡を極限まで強化する処理
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 白黒の濃淡を劇的に強化する多段階処理
+                    // 極限的な濃淡強化処理（印刷機向け最適化）
                     for (let i = 0; i < data.length; i += 4) {
                         let r = data[i];
                         let g = data[i + 1];
                         let b = data[i + 2];
                         
-                        // Step 1: グレースケール変換（適切な重み付け）
+                        // グレースケール変換
                         const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // Step 2: 強力なコントラスト強化（非線形変換）
-                        let enhanced;
-                        if (gray < 64) {
-                            // 暗い部分をより暗く
-                            enhanced = Math.round(gray * 0.3);
+                        // 極端なコントラスト強化（印刷機に最適化）
+                        let result;
+                        if (gray < 32) {
+                            // 非常に暗い部分 → 完全に黒に近づける
+                            result = 0;
+                        } else if (gray < 64) {
+                            // 暗い部分 → 大幅に暗くする
+                            result = Math.round((gray - 32) * 0.5);
+                        } else if (gray < 96) {
+                            // 中間暗部 → 暗めに調整
+                            result = Math.round(16 + (gray - 64) * 1.2);
                         } else if (gray < 128) {
-                            // 中間暗部を強化
-                            enhanced = Math.round(16 + (gray - 64) * 1.5);
+                            // 中間部下 → コントラストを強化
+                            result = Math.round(54 + (gray - 96) * 1.8);
+                        } else if (gray < 160) {
+                            // 中間部上 → コントラストを強化
+                            result = Math.round(112 + (gray - 128) * 2.0);
                         } else if (gray < 192) {
-                            // 中間明部を強化
-                            enhanced = Math.round(112 + (gray - 128) * 1.8);
+                            // 明るい部分 → 明度を上げる
+                            result = Math.round(176 + (gray - 160) * 1.5);
+                        } else if (gray < 224) {
+                            // 非常に明るい部分 → より明るく
+                            result = Math.round(224 + (gray - 192) * 0.7);
                         } else {
-                            // 明い部分をより明るく
-                            enhanced = Math.round(227 + (gray - 192) * 0.4);
+                            // 最明部 → 完全に白に近づける
+                            result = 255;
                         }
                         
-                        // Step 3: アンシャープマスク効果を適用
-                        const sharpness = 1.5;
-                        const finalValue = Math.min(255, Math.max(0, 
-                            Math.round(enhanced * sharpness - (255 - enhanced) * 0.2)));
+                        // エッジ強化処理（隣接ピクセルとの差を拡大）
+                        const pixelIndex = Math.floor(i / 4);
+                        const width = finalImgWidth;
+                        const height = finalImgHeight;
+                        const x = pixelIndex % width;
+                        const y = Math.floor(pixelIndex / width);
                         
-                        // Step 4: 二値化に近い強化（濃淡を保ちつつ）
-                        let result;
-                        if (finalValue < 85) {
-                            result = Math.round(finalValue * 0.4); // 暗部をさらに暗く
-                        } else if (finalValue < 170) {
-                            result = Math.round(60 + (finalValue - 85) * 1.4); // 中間調を強調
-                        } else {
-                            result = Math.round(179 + (finalValue - 170) * 0.9); // 明部を保持
+                        // 隣接ピクセルがある場合のエッジ強化
+                        if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
+                            const leftIndex = (y * width + (x - 1)) * 4;
+                            const rightIndex = (y * width + (x + 1)) * 4;
+                            const topIndex = ((y - 1) * width + x) * 4;
+                            const bottomIndex = ((y + 1) * width + x) * 4;
+                            
+                            const leftGray = Math.round(0.299 * data[leftIndex] + 0.587 * data[leftIndex + 1] + 0.114 * data[leftIndex + 2]);
+                            const rightGray = Math.round(0.299 * data[rightIndex] + 0.587 * data[rightIndex + 1] + 0.114 * data[rightIndex + 2]);
+                            const topGray = Math.round(0.299 * data[topIndex] + 0.587 * data[topIndex + 1] + 0.114 * data[topIndex + 2]);
+                            const bottomGray = Math.round(0.299 * data[bottomIndex] + 0.587 * data[bottomIndex + 1] + 0.114 * data[bottomIndex + 2]);
+                            
+                            const avgNeighbor = (leftGray + rightGray + topGray + bottomGray) / 4;
+                            const diff = gray - avgNeighbor;
+                            
+                            // エッジを強調（差を2倍に拡大）
+                            result = Math.min(255, Math.max(0, Math.round(result + diff * 1.5)));
+                        }
+                        
+                        // 最終的な二値化強化
+                        if (result < 85) {
+                            result = Math.round(result * 0.3); // 暗部をさらに暗く
+                        } else if (result > 170) {
+                            result = Math.round(170 + (result - 170) * 1.3); // 明部をさらに明るく
                         }
                         
                         data[i] = result;
@@ -1805,10 +1837,12 @@ function sendToPrintAssist(event) {
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
             }
             function printNext() {
-                printImageCopy(currentCopy);
-                currentCopy++;
                 if (currentCopy <= selectedCopies) {
-                    setTimeout(printNext, 10000);
+                    printImageCopy(currentCopy);
+                    currentCopy++;
+                    if (currentCopy <= selectedCopies) {
+                        setTimeout(printNext, 10000);
+                    }
                 }
             }
             printNext();
