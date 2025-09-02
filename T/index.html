@@ -1520,7 +1520,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 // 真ん中の位置を正確に計算
                 const exactCenterX = Math.round(canvasWidth / 2);
                 
-                let yPos = signatureY + signatureH + 20; // サインの下
+                let yPos = signatureY + signatureH + 10; // サインの下
                 
                 // 日付行
                 const dateText = `${year}年 ${month}月${day}日`;
@@ -1640,14 +1640,14 @@ function sendToPrintAssist(event) {
                     }
                     
                     // 画像のサイズを58mm幅に合わせて計算
-                    const maxImgWidth = canvasWidth - -10; // 左右余白を除く
+                    const maxImgWidth = canvasWidth - 20; // 左右余白を除く
                     const imgRatio = uploadedImg.naturalHeight / uploadedImg.naturalWidth;
                     const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth);
                     const finalImgHeight = finalImgWidth * imgRatio;
                     
                     // 全体の高さを計算（画像用の余白設定）
-                    const imageTopMargin = -40; // 画像用上余白
-                    const imageBottomMargin = 30; // 画像用下余白
+                    const imageTopMargin = -5; // 画像用上余白
+                    const imageBottomMargin = 20; // 画像用下余白
                     const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin;
                     
                     compositeCanvas.width = canvasWidth;
@@ -1658,7 +1658,7 @@ function sendToPrintAssist(event) {
                     compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
                     
                     // 画像を描画（中央配置）
-                    const imgX = -50; // 左余白
+                    const imgX = -30; // 左余白
                     const imgY = imageTopMargin; // 画像用上余白
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
@@ -1680,9 +1680,9 @@ function sendToPrintAssist(event) {
                         compositeCtx.textBaseline = 'top';
                         
                         // 真ん中の位置を正確に計算
-                        const exactCenterX = Math.round(canvasWidth / 2)-50;
+                        const exactCenterX = Math.round(canvasWidth / 2);
                         
-                        let yPos = imgY + finalImgHeight + 20; // 画像の下
+                        let yPos = imgY + finalImgHeight + 10; // 画像の下
                         
                         // 日付行
                         const dateText = `${year}年 ${month}月${day}日`;
@@ -1911,14 +1911,17 @@ function printText() {
             // 真ん中の位置を正確に計算
             const exactCenterX = Math.round(canvasWidth / 2);
             
+            // テキスト印刷用の日付位置調整
+            let dateYPos = yPos + 10; // テキストの下 + 10px余白
+            
             // 日付行
             const dateText = `${year}年 ${month}月${day}日`;
-            ctx.fillText(dateText, exactCenterX, yPos);
-            yPos += lineHeight;
+            ctx.fillText(dateText, exactCenterX, dateYPos);
+            dateYPos += lineHeight;
             
             // 時刻行
             const timeText = `${hour}時${minute}分${second}秒`;
-            ctx.fillText(timeText, exactCenterX, yPos);
+            ctx.fillText(timeText, exactCenterX, dateYPos);
         }
         
         // キャンバスをPNGデータURLに変換
