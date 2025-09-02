@@ -1511,7 +1511,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 const minute = now.getMinutes();
                 const second = now.getSeconds();
                 
-                const fontSize = 50;
+                const fontSize = 50; // 50px
                 compositeCtx.fillStyle = '#000000';
                 compositeCtx.font = `${fontSize}px Arial, sans-serif`;
                 compositeCtx.textAlign = 'center';
@@ -1635,7 +1635,7 @@ function sendToPrintAssist(event) {
                     // 日付・時刻の高さを計算
                     let dateTimeHeight = 0;
                     if (isDateTimeEnabled) {
-                        const fontSize = 40; // 40px
+                        const fontSize = 50; // 50px
                         dateTimeHeight = fontSize * 2.5; // 2行 + 余白
                     }
                     
@@ -1673,7 +1673,7 @@ function sendToPrintAssist(event) {
                         const minute = now.getMinutes();
                         const second = now.getSeconds();
                         
-                        const fontSize = 40;
+                        const fontSize = 50;// 50px
                         compositeCtx.fillStyle = '#000000';
                         compositeCtx.font = `${fontSize}px Arial, sans-serif`;
                         compositeCtx.textAlign = 'center';
@@ -1857,8 +1857,8 @@ function printText() {
         const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
         const canvasWidth = Math.round(58 * mmToPx); // 58mm
         
-        // フォントサイズ設定（40px）
-        const fontSize = 40;
+        // フォントサイズ設定（50px）
+        const fontSize = 50;
         ctx.font = `${fontSize}px Arial, sans-serif`;
         ctx.fillStyle = '#000000';
         
@@ -1887,7 +1887,7 @@ function printText() {
         ctx.textBaseline = 'top';
         
         // 真ん中の位置を正確に計算
-        const exactCenterX = Math.round(canvasWidth / 2);
+        const exactCenterX = Math.round(canvasWidth / 2)-30;
         
         // テキストを描画（上部余白を小さく）
         let yPos = 30; // 上余白を30pxに調整
