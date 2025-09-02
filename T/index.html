@@ -1678,34 +1678,53 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // 画像描画後、濃淡を強化する処理
+                    // 画像描画後、白黒濃淡を劇的に強化する処理
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // ガンマ補正とコントラスト強化で濃淡を明確にする
+                    // 白黒の濃淡を劇的に強化する多段階処理
                     for (let i = 0; i < data.length; i += 4) {
-                        const r = data[i];
-                        const g = data[i + 1];
-                        const b = data[i + 2];
+                        let r = data[i];
+                        let g = data[i + 1];
+                        let b = data[i + 2];
                         
-                        // 各チャンネルにガンマ補正を適用（γ=0.8で明度階調を強化）
-                        const gamma = 0.8;
-                        const newR = Math.round(255 * Math.pow(r / 255, gamma));
-                        const newG = Math.round(255 * Math.pow(g / 255, gamma));
-                        const newB = Math.round(255 * Math.pow(b / 255, gamma));
+                        // Step 1: グレースケール変換（適切な重み付け）
+                        const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // コントラストを強化（S字カーブ補正）
-                        const contrastFactor = 1.3;
-                        const enhancedR = Math.min(255, Math.max(0, 
-                            Math.round(((newR / 255 - 0.5) * contrastFactor + 0.5) * 255)));
-                        const enhancedG = Math.min(255, Math.max(0, 
-                            Math.round(((newG / 255 - 0.5) * contrastFactor + 0.5) * 255)));
-                        const enhancedB = Math.min(255, Math.max(0, 
-                            Math.round(((newB / 255 - 0.5) * contrastFactor + 0.5) * 255)));
+                        // Step 2: 強力なコントラスト強化（非線形変換）
+                        let enhanced;
+                        if (gray < 64) {
+                            // 暗い部分をより暗く
+                            enhanced = Math.round(gray * 0.3);
+                        } else if (gray < 128) {
+                            // 中間暗部を強化
+                            enhanced = Math.round(16 + (gray - 64) * 1.5);
+                        } else if (gray < 192) {
+                            // 中間明部を強化
+                            enhanced = Math.round(112 + (gray - 128) * 1.8);
+                        } else {
+                            // 明い部分をより明るく
+                            enhanced = Math.round(227 + (gray - 192) * 0.4);
+                        }
                         
-                        data[i] = enhancedR;
-                        data[i + 1] = enhancedG;
-                        data[i + 2] = enhancedB;
+                        // Step 3: アンシャープマスク効果を適用
+                        const sharpness = 1.5;
+                        const finalValue = Math.min(255, Math.max(0, 
+                            Math.round(enhanced * sharpness - (255 - enhanced) * 0.2)));
+                        
+                        // Step 4: 二値化に近い強化（濃淡を保ちつつ）
+                        let result;
+                        if (finalValue < 85) {
+                            result = Math.round(finalValue * 0.4); // 暗部をさらに暗く
+                        } else if (finalValue < 170) {
+                            result = Math.round(60 + (finalValue - 85) * 1.4); // 中間調を強調
+                        } else {
+                            result = Math.round(179 + (finalValue - 170) * 0.9); // 明部を保持
+                        }
+                        
+                        data[i] = result;
+                        data[i + 1] = result;
+                        data[i + 2] = result;
                     }
                     
                     // 強化されたピクセルデータを再描画
