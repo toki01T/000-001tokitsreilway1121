@@ -1640,7 +1640,7 @@ function sendToPrintAssist(event) {
                     }
                     
                     // 画像のサイズを58mm幅に合わせて計算
-                    const maxImgWidth = canvasWidth - -30; // 左右余白を除く
+                    const maxImgWidth = canvasWidth - -40; // 左右余白を除く
                     const imgRatio = uploadedImg.naturalHeight / uploadedImg.naturalWidth;
                     const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth);
                     const finalImgHeight = finalImgWidth * imgRatio;
@@ -1658,7 +1658,7 @@ function sendToPrintAssist(event) {
                     compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
                     
                     // 画像を描画（中央配置）
-                    const imgX = -40; // 左余白
+                    const imgX = -50; // 左余白
                     const imgY = imageTopMargin; // 画像用上余白
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
