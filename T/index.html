@@ -1626,7 +1626,9 @@ function sendToPrintAssist(event) {
                 const compositeCanvas = document.createElement('canvas');
                 const compositeCtx = compositeCanvas.getContext('2d', { 
                     alpha: false,
-                    willReadFrequently: false 
+                    willReadFrequently: false,
+                    colorSpace: 'srgb',
+                    desynchronized: false
                 });
                 
                 const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
@@ -1661,15 +1663,58 @@ function sendToPrintAssist(event) {
                     compositeCtx.fillStyle = '#FFFFFF';
                     compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
                     
-                    // 画像の色濃淡を改善するための設定
+                    // 画像の色濃淡を改善するための詳細設定
                     compositeCtx.imageSmoothingEnabled = true;
                     compositeCtx.imageSmoothingQuality = 'high';
+                    compositeCtx.globalCompositeOperation = 'source-over';
+                    compositeCtx.globalAlpha = 1.0;
+                    
+                    // 画像の色域とコントラストを保持するための設定
+                    compositeCtx.filter = 'contrast(1.15) saturate(1.1) brightness(1.05)';
                     
                     // 画像を描画（中央配置）
                     const imgX = -50; // 左余白
                     const imgY = imageTopMargin; // 画像用上余白
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
+                    
+                    // 画像描画後、さらに細かい色調整を実行
+                    const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const data = imageData.data;
+                    
+                    // ピクセル単位で色調整（グレースケールの諧調を改善）
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+                        
+                        // グレースケール値を計算
+                        const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                        
+                        // コントラストを強化（中間調を明確化）
+                        const enhancedGray = Math.min(255, Math.max(0, 
+                            Math.round((gray - 128) * 1.2 + 128)
+                        ));
+                        
+                        // カラー画像の場合は各チャンネルを個別に調整
+                        if (Math.abs(r - g) > 10 || Math.abs(g - b) > 10 || Math.abs(r - b) > 10) {
+                            // カラー画像：彩度とコントラストを向上
+                            data[i] = Math.min(255, Math.max(0, Math.round(r * 1.1)));
+                            data[i + 1] = Math.min(255, Math.max(0, Math.round(g * 1.1)));
+                            data[i + 2] = Math.min(255, Math.max(0, Math.round(b * 1.1)));
+                        } else {
+                            // グレースケール画像：強化されたグレー値を適用
+                            data[i] = enhancedGray;
+                            data[i + 1] = enhancedGray;
+                            data[i + 2] = enhancedGray;
+                        }
+                    }
+                    
+                    // 調整されたピクセルデータを再描画
+                    compositeCtx.putImageData(imageData, imgX, imgY);
+                    
+                    // フィルターをリセット（日付・時刻描画のため）
+                    compositeCtx.filter = 'none';
                     
                     // 日付・時刻を描画
                     if (isDateTimeEnabled) {
@@ -1702,8 +1747,11 @@ function sendToPrintAssist(event) {
                         compositeCtx.fillText(timeText, exactCenterX, yPos);
                     }
                     
-                    // 合成キャンバスをPNGデータURLに変換
-                    const compositeDataUrl = compositeCanvas.toDataURL('image/png');
+                    // 合成キャンバスを高品質PNGデータURLに変換
+                    const compositeDataUrl = compositeCanvas.toDataURL('image/png', 1.0);
+                    
+                    // さらに画質を向上させるため、中間的にJPEGでも作成
+                    const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.95);
                     
                     // jsPDFを使用してPDFを生成
                     const { jsPDF } = window.jspdf;
