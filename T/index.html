@@ -1624,13 +1624,17 @@ function sendToPrintAssist(event) {
             function printImageCopy(copyIndex) {
                 // 新しいキャンバスで全体を合成
                 const compositeCanvas = document.createElement('canvas');
-                const compositeCtx = compositeCanvas.getContext('2d');
+                const compositeCtx = compositeCanvas.getContext('2d', { 
+                    alpha: false,
+                    willReadFrequently: false 
+                });
                 
                 const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
                 const canvasWidth = Math.round(58 * mmToPx); // 58mm
                 
                 // アップロードされた画像を読み込み
                 const uploadedImg = new Image();
+                uploadedImg.crossOrigin = 'anonymous'; // 画像品質向上
                 uploadedImg.onload = function() {
                     // 日付・時刻の高さを計算
                     let dateTimeHeight = 0;
@@ -1657,6 +1661,10 @@ function sendToPrintAssist(event) {
                     compositeCtx.fillStyle = '#FFFFFF';
                     compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
                     
+                    // 画像の色濃淡を改善するための設定
+                    compositeCtx.imageSmoothingEnabled = true;
+                    compositeCtx.imageSmoothingQuality = 'high';
+                    
                     // 画像を描画（中央配置）
                     const imgX = -50; // 左余白
                     const imgY = imageTopMargin; // 画像用上余白
@@ -1680,7 +1688,7 @@ function sendToPrintAssist(event) {
                         compositeCtx.textBaseline = 'top';
                         
                         // 真ん中の位置を正確に計算
-                        const exactCenterX = Math.round(canvasWidth / 2)-10;
+                        const exactCenterX = Math.round(canvasWidth / 2)-30;// 30
                         
                         let yPos = imgY + finalImgHeight + 10; // 画像の下
                         
@@ -1857,19 +1865,22 @@ function printText() {
         const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
         const canvasWidth = Math.round(58 * mmToPx); // 58mm
         
-        // フォントサイズ設定（50px）
-        const fontSize = 50;
-        ctx.font = `${fontSize}px Arial, sans-serif`;
+        // フォントサイズ設定
+        const textFontSize = 30;  // テキスト用のフォントサイズ 30px
+        const dateFontSize = 50;  // 日付・時刻用のフォントサイズ 50px
+        
+        ctx.font = `${textFontSize}px Arial, sans-serif`;
         ctx.fillStyle = '#000000';
         
         // テキストの行数から高さを計算
         const lines = printText.split('\n');
-        const lineHeight = fontSize * 1.2;
+        const lineHeight = textFontSize * 1.2;
         let textHeight = lines.length * lineHeight;
         
         // 日付・時刻のスペースを追加
         if (isDateTimeEnabled) {
-            textHeight += lineHeight * 2.5; // 日付2行 + 少ない余白
+            const dateLineHeight = dateFontSize * 1.2;
+            textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
         }
         
         const canvasHeight = Math.round(textHeight + 60); // 上下余白調整
@@ -1882,12 +1893,12 @@ function printText() {
         
         // テキスト描画設定
         ctx.fillStyle = '#000000';
-        ctx.font = `${fontSize}px Arial, sans-serif`;
+        ctx.font = `${textFontSize}px Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         
         // 真ん中の位置を正確に計算
-        const exactCenterX = Math.round(canvasWidth / 2)-30;
+        const exactCenterX = Math.round(canvasWidth / 2)-30;// 30
         
         // テキストを描画（上部余白を小さく）
         let yPos = 30; // 上余白を30pxに調整
@@ -1908,6 +1919,10 @@ function printText() {
             
             yPos += lineHeight * 0.3; // 余白を小さく
             
+            // 日付・時刻用のフォント設定
+            ctx.font = `${dateFontSize}px Arial, sans-serif`;
+            const dateLineHeight = dateFontSize * 1.2;
+            
             // 真ん中の位置を正確に計算
             const exactCenterX = Math.round(canvasWidth / 2);
             
@@ -1918,7 +1933,7 @@ function printText() {
             // 日付行
             const dateText = `${year}年 ${month}月${day}日`;
             ctx.fillText(dateText, finalDateX, yPos);
-            yPos += lineHeight;
+            yPos += dateLineHeight;
             
             // 時刻行
             const timeText = `${hour}時${minute}分${second}秒`;
@@ -1962,14 +1977,34 @@ function printText() {
         
         window.location.href = printUrl;
     }
-    function printNext() {
-        if (currentCopy < selectedTextCopies) {
-            setTimeout(printNext, 10000);
+    
+    // 最初の1枚目を印刷
+    printTextCopy(1);
+    
+    // 複数枚の場合は、ページ読み込み時に続きを印刷
+    if (selectedTextCopies > 1) {
+        // URLパラメータで現在の印刷回数を管理
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentPrintCount = parseInt(urlParams.get('textPrintCount') || '1');
+        
+        if (currentPrintCount < selectedTextCopies) {
+            // 次の印刷のためにURLパラメータを更新
+            const nextCount = currentPrintCount + 1;
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('textPrintCount', nextCount.toString());
+            
+            // 5秒後に次の印刷を実行
+            setTimeout(() => {
+                printTextCopy(nextCount);
+                // 再度同じページを読み込んで次の印刷へ
+                if (nextCount < selectedTextCopies) {
+                    setTimeout(() => {
+                        window.location.href = newUrl.toString();
+                    }, 1000);
+                }
+            }, 5000);
         }
-        printTextCopy(currentCopy);
-        currentCopy++;
     }
-    printNext();
     addHistory({
         type: 'text',
         mode: 'text',
