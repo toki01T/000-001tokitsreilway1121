@@ -1217,6 +1217,13 @@ window.onload = function() {
     setTextChipsEnabled(false);
     loadHistoryList();
     initSignaturePad();
+    
+    // 継続印刷の自動実行チェック
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('imagePrintCount')) {
+        // 画像印刷の継続処理を自動実行
+        sendToPrintAssist(new Event('load'));
+    }
 };
 function showSection(mode) {
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
@@ -1592,6 +1599,29 @@ document.getElementById('signaturePrintButton').onclick = function() {
 // --- 画像印刷 ---
 function sendToPrintAssist(event) {
     event.preventDefault();
+    
+    // URLパラメータで継続印刷かどうかを確認
+    const urlParams = new URLSearchParams(window.location.search);
+    const continuePrint = urlParams.get('imagePrintCount');
+    
+    if (continuePrint) {
+        // 継続印刷の場合、URLパラメータから情報を復元
+        const base64Image = decodeURIComponent(urlParams.get('base64Image'));
+        const isDateTimeEnabled = urlParams.get('isDateTimeEnabled') === 'true';
+        const selectedChip = decodeURIComponent(urlParams.get('selectedChip'));
+        const shrinkChecked = urlParams.get('shrinkChecked') === 'true';
+        
+        // 継続印刷用に必要な要素を一時的に設定
+        document.getElementById('imageChipSelect').value = selectedChip;
+        document.getElementById('shrinkCheckbox').checked = shrinkChecked;
+        document.getElementById('copiesSelect').value = urlParams.get('selectedCopies');
+        
+        // 継続印刷を実行
+        doPrint(base64Image);
+        return;
+    }
+    
+    // 通常の新規印刷処理
     let fileInput = document.getElementById('imageUpload');
     let file = fileInput.files[0];
     let base64Image = null;
@@ -1603,6 +1633,7 @@ function sendToPrintAssist(event) {
     }
     if ((!file && !usePreview) || selectedChip === '') return;
     const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
+    
     function doPrint(base64Image) {
         const paperWidth = 58;
         let img = new window.Image();
@@ -1682,11 +1713,11 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // 画像描画後、印刷用白黒濃淡を極限まで強化する処理
+                    // 画像描画後、淡い色を適切な薄いグレーで表現する処理
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 印刷用に最適化された超強力な濃淡処理
+                    // 淡い色を薄いグレーで表現し、濃い色はコントラストを強化
                     for (let i = 0; i < data.length; i += 4) {
                         let r = data[i];
                         let g = data[i + 1];
@@ -1695,70 +1726,64 @@ function sendToPrintAssist(event) {
                         // Step 1: 高精度グレースケール変換
                         const gray = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
                         
-                        // Step 2: 印刷用ヒストグラム強化（8段階の細かい制御）
-                        let enhanced;
-                        if (gray <= 32) {
-                            // 最暗部: 完全に黒に近づける
-                            enhanced = Math.round(gray * 0.15);
-                        } else if (gray <= 64) {
-                            // 暗部: 大幅に暗くする
-                            enhanced = Math.round(5 + (gray - 32) * 0.4);
-                        } else if (gray <= 96) {
-                            // 中暗部: 中程度に暗くする
-                            enhanced = Math.round(18 + (gray - 64) * 0.8);
-                        } else if (gray <= 128) {
-                            // 中央暗: 少し暗くする
-                            enhanced = Math.round(44 + (gray - 96) * 1.1);
-                        } else if (gray <= 160) {
-                            // 中央明: 少し明るくする
-                            enhanced = Math.round(79 + (gray - 128) * 1.3);
-                        } else if (gray <= 192) {
-                            // 中明部: 中程度に明るくする
-                            enhanced = Math.round(121 + (gray - 160) * 1.6);
-                        } else if (gray <= 224) {
-                            // 明部: 大幅に明るくする
-                            enhanced = Math.round(172 + (gray - 192) * 1.9);
+                        // Step 2: 色の彩度を判定（淡い色かどうかの判断）
+                        const maxRGB = Math.max(r, g, b);
+                        const minRGB = Math.min(r, g, b);
+                        const saturation = maxRGB === 0 ? 0 : (maxRGB - minRGB) / maxRGB;
+                        
+                        // Step 3: 明度に基づく分類
+                        let result;
+                        
+                        if (gray >= 200) {
+                            // 非常に明るい色（薄いグレー、薄い黄色など）→ 薄いグレーで表現
+                            if (saturation < 0.3) {
+                                // 既に薄い色 → そのまま薄いグレーに
+                                result = Math.round(180 + (gray - 200) * 0.8);
+                            } else {
+                                // 薄い有彩色（薄い黄色など）→ 薄いグレーに変換
+                                result = Math.round(160 + (gray - 200) * 0.6);
+                            }
+                        } else if (gray >= 160) {
+                            // 明るい色 → 中程度の薄いグレー
+                            result = Math.round(120 + (gray - 160) * 1.5);
+                        } else if (gray >= 120) {
+                            // 中間色 → 中間グレー（少しコントラスト強化）
+                            result = Math.round(80 + (gray - 120) * 1.2);
+                        } else if (gray >= 80) {
+                            // やや暗い色 → やや暗いグレー（コントラスト強化）
+                            result = Math.round(40 + (gray - 80) * 1.3);
+                        } else if (gray >= 40) {
+                            // 暗い色 → 暗いグレー（強化）
+                            result = Math.round(15 + (gray - 40) * 0.8);
                         } else {
-                            // 最明部: 完全に白に近づける
-                            enhanced = Math.round(233 + (gray - 224) * 0.7);
+                            // 非常に暗い色 → 濃いグレー
+                            result = Math.round(gray * 0.4);
                         }
                         
-                        // Step 3: 極端なコントラスト強化（印刷用特化）
-                        const contrast = 2.5;
-                        const midpoint = 128;
-                        let contrasted = Math.round((enhanced - midpoint) * contrast + midpoint);
-                        contrasted = Math.min(255, Math.max(0, contrasted));
+                        // Step 4: 最終調整（印刷での視認性を確保）
+                        result = Math.min(255, Math.max(0, result));
                         
-                        // Step 4: 最終二値化的強化（細かい濃淡を保持しつつ）
-                        let final;
-                        if (contrasted < 45) {
-                            final = Math.round(contrasted * 0.2); // 超暗部
-                        } else if (contrasted < 90) {
-                            final = Math.round(9 + (contrasted - 45) * 0.6); // 暗部
-                        } else if (contrasted < 135) {
-                            final = Math.round(36 + (contrasted - 90) * 1.0); // 中間部
-                        } else if (contrasted < 180) {
-                            final = Math.round(81 + (contrasted - 135) * 1.4); // 明部
-                        } else {
-                            final = Math.round(144 + (contrasted - 180) * 1.5); // 超明部
-                        }
-                        
-                        // Step 5: エッジ強化（隣接ピクセルとの差を拡大）
-                        if (i > 4 && i < data.length - 4) {
-                            const prevGray = Math.round(0.2126 * data[i-4] + 0.7152 * data[i-3] + 0.0722 * data[i-2]);
-                            const nextGray = Math.round(0.2126 * data[i+4] + 0.7152 * data[i+5] + 0.0722 * data[i+6]);
-                            const diff = Math.abs(gray - prevGray) + Math.abs(gray - nextGray);
-                            if (diff > 30) { // エッジ部分
-                                final = Math.min(255, Math.max(0, Math.round(final * 1.2)));
+                        // Step 5: 薄い色の特別処理（黄色、薄いピンクなど）
+                        if (gray >= 180 && saturation > 0.1) {
+                            // 薄い有彩色を薄いグレーに統一
+                            if (r > 200 && g > 200 && b < 180) {
+                                // 薄い黄色系 → 薄いグレー
+                                result = Math.round(170 + (gray - 180) * 0.5);
+                            } else if (r > 200 && g < 180 && b < 180) {
+                                // 薄いピンク系 → 薄いグレー
+                                result = Math.round(165 + (gray - 180) * 0.6);
+                            } else if (r < 180 && g > 200 && b < 180) {
+                                // 薄い緑系 → 薄いグレー
+                                result = Math.round(160 + (gray - 180) * 0.7);
                             }
                         }
                         
-                        data[i] = final;
-                        data[i + 1] = final;
-                        data[i + 2] = final;
+                        data[i] = result;
+                        data[i + 1] = result;
+                        data[i + 2] = result;
                     }
                     
-                    // 強化されたピクセルデータを再描画
+                    // 調整されたピクセルデータを再描画
                     compositeCtx.putImageData(imageData, imgX, imgY);
                     
                     // 日付・時刻を描画
@@ -1818,15 +1843,20 @@ function sendToPrintAssist(event) {
                     // PDFをBase64形式で取得
                     const pdfBase64 = pdf.output('datauristring').split(',')[1];
                     
-                    // 複数枚印刷用のURL管理
-                    let thisPage = window.location.href;
+                    // 複数枚印刷用のURL管理（確実な枚数制御）
+                    let thisPage = window.location.href.split('?')[0]; // クエリパラメータを除去
                     
                     // 次の印刷へのコールバックURL作成
                     let callbackUrl = thisPage;
                     if (currentCopy < selectedCopies) {
-                        const url = new URL(thisPage);
-                        url.searchParams.set('imagePrintCount', (currentCopy + 1).toString());
-                        callbackUrl = url.toString();
+                        // 次の印刷用URLを明確に作成
+                        callbackUrl = thisPage + '?imagePrintCount=' + (currentCopy + 1) + 
+                                     '&selectedCopies=' + selectedCopies + 
+                                     '&base64Image=' + encodeURIComponent(base64Image) +
+                                     '&isDateTimeEnabled=' + isDateTimeEnabled +
+                                     '&selectedChip=' + encodeURIComponent(selectedChip) +
+                                     '&shrinkChecked=' + shrinkChecked +
+                                     '&imageTopMargin=' + imageTopMargin;
                     }
                     
                     let printUrlImage = 'siiprintagent://1.0/print?' +
