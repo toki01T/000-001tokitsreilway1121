@@ -1511,7 +1511,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 const minute = now.getMinutes();
                 const second = now.getSeconds();
                 
-                const fontSize = 40;
+                const fontSize = 50;
                 compositeCtx.fillStyle = '#000000';
                 compositeCtx.font = `${fontSize}px Arial, sans-serif`;
                 compositeCtx.textAlign = 'center';
@@ -1520,7 +1520,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 // 真ん中の位置を正確に計算
                 const exactCenterX = Math.round(canvasWidth / 2);
                 
-                let yPos = signatureY + signatureH + 10; // サインの下
+                let yPos = signatureY + signatureH + 5; // サインの下
                 
                 // 日付行
                 const dateText = `${year}年 ${month}月${day}日`;
@@ -1911,14 +1911,18 @@ function printText() {
             // 真ん中の位置を正確に計算
             const exactCenterX = Math.round(canvasWidth / 2);
             
+            // 日付の横位置調整（中央揃え微調整）
+            const dateOffsetX = -10; // 日付の横位置調整（マイナス値で左に、プラス値で右に移動）
+            const finalDateX = exactCenterX + dateOffsetX;
+            
             // 日付行
             const dateText = `${year}年 ${month}月${day}日`;
-            ctx.fillText(dateText, exactCenterX, yPos);
+            ctx.fillText(dateText, finalDateX, yPos);
             yPos += lineHeight;
             
             // 時刻行
             const timeText = `${hour}時${minute}分${second}秒`;
-            ctx.fillText(timeText, exactCenterX, yPos);
+            ctx.fillText(timeText, finalDateX, yPos);
         }
         
         // キャンバスをPNGデータURLに変換
