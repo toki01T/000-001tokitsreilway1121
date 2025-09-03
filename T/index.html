@@ -1777,13 +1777,43 @@ function sendToPrintAssist(event) {
                     const height = finalImgHeight;
                     
                     // 一次グレースケール変換配列を作成
+                    // 【革新技術】サーマルプリンター専用濃淡保持変換
                     const grayData = new Uint8Array(width * height);
+                    
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
                         const b = data[i + 2];
-                        // ITU-R BT.709 高精度グレースケール変換
-                        grayData[i / 4] = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+                        
+                        // カラーコード見本対応：複数方式でグレースケール値を計算
+                        const luminance = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);  // 輝度
+                        const average = Math.round((r + g + b) / 3);                          // 平均値
+                        const lightness = Math.round((Math.max(r, g, b) + Math.min(r, g, b)) / 2); // 明度
+                        
+                        // 【濃淡保持技術】最も濃淡を保持する値を選択
+                        let bestGray;
+                        if (Math.abs(luminance - average) < 10) {
+                            // 色が均等な場合は輝度を優先
+                            bestGray = luminance;
+                        } else {
+                            // 色に偏りがある場合は最大濃淡範囲を選択
+                            const candidates = [luminance, average, lightness];
+                            const max = Math.max(...candidates);
+                            const min = Math.min(...candidates);
+                            bestGray = (max - min > 20) ? max : luminance; // 濃淡範囲が広い方を選択
+                        }
+                        
+                        // 【サーマル特化】初期濃淡強化処理
+                        if (bestGray >= 200) {
+                            bestGray = Math.min(255, bestGray * 1.15); // 薄いグレー15%強化
+                        } else if (bestGray >= 150) {
+                            bestGray = Math.min(200, bestGray * 1.1);  // 中薄グレー10%強化
+                        } else if (bestGray >= 100) {
+                            bestGray = Math.min(150, bestGray * 1.05); // 中間グレー5%強化
+                        }
+                        // 濃いグレー（100未満）はそのまま
+                        
+                        grayData[i / 4] = Math.round(bestGray);
                     }
                     
                     // エッジ保持フィルタを適用して細かな濃淡を強化
@@ -1840,62 +1870,78 @@ function sendToPrintAssist(event) {
                             }
                         }
                         
-                        // 【サーマルプリンター特化】極限濃淡強化処理
+                        // 【カラーコード見本対応】サーマルプリンター極限濃淡技術
                         let result;
                         
-                        // ステップ1: 強力なガンマ補正（サーマルプリンター最適化）
-                        const gamma = 0.5; // より強力なガンマ値で濃淡を極限強化
+                        // ステップ1: 【革新的】適応型ガンマ補正（濃度別最適化）
+                        let gamma;
+                        if (finalGray >= 200) {
+                            gamma = 0.3; // 薄いグレー：超強力ガンマ
+                        } else if (finalGray >= 150) {
+                            gamma = 0.4; // 中薄グレー：強力ガンマ
+                        } else if (finalGray >= 100) {
+                            gamma = 0.5; // 中間グレー：標準ガンマ
+                        } else if (finalGray >= 50) {
+                            gamma = 0.6; // 濃グレー：軽度ガンマ
+                        } else {
+                            gamma = 0.7; // 最暗部：保持ガンマ
+                        }
                         const gammaGray = Math.pow(finalGray / 255, gamma) * 255;
                         
-                        // ステップ2: 濃淡の大幅拡張（薄いグレーを極限まで強化）
-                        const enhancedGray = gammaGray * 1.3; // 30%濃度アップ
+                        // ステップ2: 【カラーコード対応】濃淡の完全保持拡張
+                        const enhancedGray = gammaGray * 1.5; // 50%濃度大幅アップ
                         const clampedGray = Math.min(255, Math.max(0, enhancedGray));
                         
-                        // ステップ3: サーマルプリンター認識最適化階調（極細分化）
-                        if (clampedGray >= 250) result = 255;      // 純白
-                        else if (clampedGray >= 240) result = 250;  // 極薄グレー1
-                        else if (clampedGray >= 230) result = 240;  // 極薄グレー2
-                        else if (clampedGray >= 220) result = 230;  // 極薄グレー3
-                        else if (clampedGray >= 210) result = 220;  // 薄グレー1
-                        else if (clampedGray >= 200) result = 210;  // 薄グレー2
-                        else if (clampedGray >= 190) result = 200;  // 薄グレー3
-                        else if (clampedGray >= 180) result = 190;  // 薄グレー4
-                        else if (clampedGray >= 170) result = 180;  // 薄グレー5
-                        else if (clampedGray >= 160) result = 170;  // 中薄グレー1
-                        else if (clampedGray >= 150) result = 160;  // 中薄グレー2
-                        else if (clampedGray >= 140) result = 150;  // 中薄グレー3
-                        else if (clampedGray >= 130) result = 140;  // 中薄グレー4
-                        else if (clampedGray >= 120) result = 130;  // 中間グレー1
-                        else if (clampedGray >= 110) result = 120;  // 中間グレー2
-                        else if (clampedGray >= 100) result = 110;  // 中間グレー3
-                        else if (clampedGray >= 90) result = 100;   // 中間グレー4
-                        else if (clampedGray >= 80) result = 90;    // 中濃グレー1
-                        else if (clampedGray >= 70) result = 80;    // 中濃グレー2
-                        else if (clampedGray >= 60) result = 70;    // 中濃グレー3
-                        else if (clampedGray >= 50) result = 60;    // 濃グレー1
-                        else if (clampedGray >= 40) result = 50;    // 濃グレー2
-                        else if (clampedGray >= 30) result = 40;    // 濃グレー3
-                        else if (clampedGray >= 20) result = 30;    // 暗グレー1
-                        else if (clampedGray >= 10) result = 20;    // 暗グレー2
-                        else if (clampedGray >= 5) result = 10;     // 極暗グレー
-                        else result = 0;                            // 最暗部（純黒）
+                        // ステップ3: 【見本対応】16階調精密マッピング（カラーコード見本基準）
+                        if (clampedGray >= 248) result = 255;      // #FFFFFF 純白
+                        else if (clampedGray >= 240) result = 248;  // #F8F8F8 極薄グレー
+                        else if (clampedGray >= 232) result = 240;  // #F0F0F0 薄グレー1
+                        else if (clampedGray >= 224) result = 232;  // #E8E8E8 薄グレー2
+                        else if (clampedGray >= 216) result = 224;  // #E0E0E0 薄グレー3
+                        else if (clampedGray >= 208) result = 216;  // #D8D8D8 薄グレー4
+                        else if (clampedGray >= 200) result = 208;  // #D0D0D0 薄グレー5
+                        else if (clampedGray >= 192) result = 200;  // #C8C8C8 中薄グレー1
+                        else if (clampedGray >= 184) result = 192;  // #C0C0C0 中薄グレー2
+                        else if (clampedGray >= 176) result = 184;  // #B8B8B8 中薄グレー3
+                        else if (clampedGray >= 168) result = 176;  // #B0B0B0 中薄グレー4
+                        else if (clampedGray >= 160) result = 168;  // #A8A8A8 中間グレー1
+                        else if (clampedGray >= 152) result = 160;  // #A0A0A0 中間グレー2
+                        else if (clampedGray >= 144) result = 152;  // #989898 中間グレー3
+                        else if (clampedGray >= 136) result = 144;  // #909090 中間グレー4
+                        else if (clampedGray >= 128) result = 136;  // #888888 中間グレー5
+                        else if (clampedGray >= 120) result = 128;  // #808080 中濃グレー1
+                        else if (clampedGray >= 112) result = 120;  // #787878 中濃グレー2
+                        else if (clampedGray >= 104) result = 112;  // #707070 中濃グレー3
+                        else if (clampedGray >= 96) result = 104;   // #686868 中濃グレー4
+                        else if (clampedGray >= 88) result = 96;    // #606060 濃グレー1
+                        else if (clampedGray >= 80) result = 88;    // #585858 濃グレー2
+                        else if (clampedGray >= 72) result = 80;    // #505050 濃グレー3
+                        else if (clampedGray >= 64) result = 72;    // #484848 濃グレー4
+                        else if (clampedGray >= 56) result = 64;    // #404040 暗グレー1
+                        else if (clampedGray >= 48) result = 56;    // #383838 暗グレー2
+                        else if (clampedGray >= 40) result = 48;    // #303030 暗グレー3
+                        else if (clampedGray >= 32) result = 40;    // #282828 暗グレー4
+                        else if (clampedGray >= 24) result = 32;    // #202020 極暗グレー1
+                        else if (clampedGray >= 16) result = 24;    // #181818 極暗グレー2
+                        else if (clampedGray >= 8) result = 16;     // #101010 極暗グレー3
+                        else result = 0;                            // #000000 純黒
                         
-                        // ステップ4: 薄いグレー範囲の極限強化（サーマル印刷専用）
-                        if (result >= 200) {
-                            // 極薄グレー：最大限のコントラスト強化
-                            const boost = (result - 200) * 0.3; // 薄い部分ほど強化
-                            result = Math.max(120, Math.min(255, result - 50 + boost));
-                        } else if (result >= 150) {
-                            // 薄グレー：大幅強化
-                            result = Math.max(80, Math.min(200, result - 35));
-                        } else if (result >= 100) {
-                            // 中間グレー：中程度強化
-                            result = Math.max(60, Math.min(150, result - 20));
-                        } else if (result >= 50) {
-                            // 濃グレー：軽度強化
-                            result = Math.max(30, Math.min(100, result - 10));
+                        // ステップ4: 【濃淡完全保持】薄いグレー範囲の特別処理
+                        if (result >= 216) {
+                            // 極薄グレー：最大限の可視化
+                            const contrast = (result - 216) * 0.5;
+                            result = Math.max(160, Math.min(255, result - 40 + contrast));
+                        } else if (result >= 168) {
+                            // 薄グレー：強力な可視化
+                            result = Math.max(120, Math.min(216, result - 25));
+                        } else if (result >= 120) {
+                            // 中間グレー：適度な可視化
+                            result = Math.max(80, Math.min(168, result - 15));
+                        } else if (result >= 72) {
+                            // 濃グレー：軽度な可視化
+                            result = Math.max(40, Math.min(120, result - 8));
                         }
-                        // 最暗部（50未満）はそのまま保持
+                        // 最暗部（72未満）は保持
                         
                         // 最終値を設定
                         data[i] = result;
@@ -1992,17 +2038,25 @@ function sendToPrintAssist(event) {
                             const idx = (y * finalImgWidth + x) * 4;
                             const oldPixel = ditherPixels[idx];
                             
-                            // より多階調での量子化（サーマルプリンター最適化）
+                            // 【カラーコード見本対応】16階調精密量子化
                             let newPixel;
-                            if (oldPixel >= 240) newPixel = 255;
-                            else if (oldPixel >= 210) newPixel = 225;
-                            else if (oldPixel >= 180) newPixel = 195;
-                            else if (oldPixel >= 150) newPixel = 165;
-                            else if (oldPixel >= 120) newPixel = 135;
-                            else if (oldPixel >= 90) newPixel = 105;
-                            else if (oldPixel >= 60) newPixel = 75;
-                            else if (oldPixel >= 30) newPixel = 45;
-                            else newPixel = 0;
+                            if (oldPixel >= 248) newPixel = 255;        // #FFFFFF
+                            else if (oldPixel >= 232) newPixel = 240;    // #F0F0F0
+                            else if (oldPixel >= 216) newPixel = 224;    // #E0E0E0
+                            else if (oldPixel >= 200) newPixel = 208;    // #D0D0D0
+                            else if (oldPixel >= 184) newPixel = 192;    // #C0C0C0
+                            else if (oldPixel >= 168) newPixel = 176;    // #B0B0B0
+                            else if (oldPixel >= 152) newPixel = 160;    // #A0A0A0
+                            else if (oldPixel >= 136) newPixel = 144;    // #909090
+                            else if (oldPixel >= 120) newPixel = 128;    // #808080
+                            else if (oldPixel >= 104) newPixel = 112;    // #707070
+                            else if (oldPixel >= 88) newPixel = 96;      // #606060
+                            else if (oldPixel >= 72) newPixel = 80;      // #505050
+                            else if (oldPixel >= 56) newPixel = 64;      // #404040
+                            else if (oldPixel >= 40) newPixel = 48;      // #303030
+                            else if (oldPixel >= 24) newPixel = 32;      // #202020
+                            else if (oldPixel >= 8) newPixel = 16;       // #101010
+                            else newPixel = 0;                           // #000000
                             
                             ditherPixels[idx] = newPixel;
                             ditherPixels[idx + 1] = newPixel;
@@ -2047,6 +2101,43 @@ function sendToPrintAssist(event) {
                     
                     // ディザリング後のデータを最終描画
                     compositeCtx.putImageData(ditherData, imgX, imgY);
+                    
+                    // 【最終仕上げ】サーマルプリンター濃淡認識向上処理
+                    const thermalData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const thermalPixels = thermalData.data;
+                    
+                    for (let i = 0; i < thermalPixels.length; i += 4) {
+                        const current = thermalPixels[i];
+                        let thermal;
+                        
+                        // サーマルプリンター熱量対応調整
+                        if (current >= 240) {
+                            thermal = 255; // 最大熱量（白紙）
+                        } else if (current >= 224) {
+                            thermal = Math.max(200, current - 20); // 極薄グレー強化
+                        } else if (current >= 192) {
+                            thermal = Math.max(160, current - 15); // 薄グレー強化
+                        } else if (current >= 160) {
+                            thermal = Math.max(120, current - 10); // 中薄グレー強化
+                        } else if (current >= 128) {
+                            thermal = Math.max(80, current - 8);   // 中間グレー強化
+                        } else if (current >= 96) {
+                            thermal = Math.max(60, current - 5);   // 中濃グレー強化
+                        } else if (current >= 64) {
+                            thermal = Math.max(40, current - 3);   // 濃グレー軽度強化
+                        } else if (current >= 32) {
+                            thermal = Math.max(20, current - 2);   // 暗グレー軽度強化
+                        } else {
+                            thermal = current; // 最暗部保持
+                        }
+                        
+                        thermalPixels[i] = thermal;
+                        thermalPixels[i + 1] = thermal;
+                        thermalPixels[i + 2] = thermal;
+                    }
+                    
+                    // 最終処理済みデータを描画
+                    compositeCtx.putImageData(thermalData, imgX, imgY);
                     
                     // 日付・時刻を描画
                     if (isDateTimeEnabled) {
