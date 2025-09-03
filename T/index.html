@@ -1469,6 +1469,8 @@ document.getElementById('signaturePrintButton').onclick = function() {
     
     // 自動待機が必要な場合は6-7秒待ってから印刷実行
     if (autoWait && currentCopy > 1) {
+        // 待機表示
+        document.body.innerHTML = '<div style="text-align:center; padding:50px; font-size:24px;">印刷準備中... (' + currentCopy + '/' + selectedCopies + ')</div>';
         setTimeout(() => {
             printSignatureCopy(currentCopy);
         }, 6500); // 6.5秒待機
@@ -1497,8 +1499,8 @@ document.getElementById('signaturePrintButton').onclick = function() {
             const signatureTopMargin = 8; // 手書き用上余白
             const signatureBottomMargin = 25; // 手書き用下余白
             
-            // サインサイズを縮小（右側はみ出し防止）
-            const signatureScale = 0.75; // 75%にスケール
+            // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
+            const signatureScale = 0.85; // 85%にスケール（75%から修正）
             const signatureWidth = Math.round((outW / pxPerMm * mmToPx) * signatureScale);
             const signatureHeight = Math.round((outH / pxPerMm * mmToPx) * signatureScale);
             const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin;
@@ -1604,8 +1606,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
         signatureImg.src = tmpCanvas.toDataURL("image/png");
     }
     
-    // 直接印刷を実行
-    printSignatureCopy(currentCopy);
+    // 待機処理がない場合のみ直接印刷を実行
+    if (!autoWait || currentCopy === 1) {
+        printSignatureCopy(currentCopy);
+    }
     
     addHistory({
         type: 'signature',
@@ -1655,6 +1659,8 @@ function sendToPrintAssist(event) {
             
             // 自動待機が必要な場合は6-7秒待ってから印刷実行
             if (autoWait && currentCopy > 1) {
+                // 待機表示
+                document.body.innerHTML = '<div style="text-align:center; padding:50px; font-size:24px;">印刷準備中... (' + currentCopy + '/' + selectedCopies + ')</div>';
                 setTimeout(() => {
                     printImageCopy(currentCopy);
                 }, 6500); // 6.5秒待機
@@ -1718,11 +1724,11 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // 画像描画後、薄いグレーの濃淡を確実に印刷反映させる処理
+                    // 画像描画後、薄いグレーを確実に印刷させるための徹底処理
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 薄いグレー濃淡を印刷で確実に表現する最適化処理
+                    // 薄いグレーも確実に印刷される強力処理
                     for (let i = 0; i < data.length; i += 4) {
                         let r = data[i];
                         let g = data[i + 1];
@@ -1731,88 +1737,53 @@ function sendToPrintAssist(event) {
                         // Step 1: 高精度グレースケール変換
                         const gray = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
                         
-                        // Step 2: 印刷機用ディザリング風の濃淡強化
+                        // Step 2: 印刷機で確実に認識される濃度に強制変換
                         let result;
                         
-                        if (gray >= 250) {
-                            // 最明部：わずかに薄いグレーで印刷
-                            result = 245;
-                        } else if (gray >= 230) {
-                            // 非常に薄いグレー：印刷で認識される濃度に
-                            result = Math.round(215 + (gray - 230) * 1.5);
-                        } else if (gray >= 210) {
-                            // 薄いグレー：印刷確実性を保ちつつ薄さ維持
-                            result = Math.round(190 + (gray - 210) * 1.25);
-                        } else if (gray >= 190) {
-                            // やや薄いグレー：適度な濃度で印刷保証
-                            result = Math.round(165 + (gray - 190) * 1.25);
-                        } else if (gray >= 170) {
-                            // 中薄グレー：しっかり印刷される濃度
-                            result = Math.round(140 + (gray - 170) * 1.25);
-                        } else if (gray >= 150) {
-                            // 中間グレー：コントラスト適度強化
-                            result = Math.round(115 + (gray - 150) * 1.25);
-                        } else if (gray >= 130) {
+                        if (gray >= 240) {
+                            // 最明部：薄いが確実に印刷される濃度
+                            result = 200; // 固定値で確実に
+                        } else if (gray >= 220) {
+                            // 非常に薄いグレー：印刷で見える濃度に
+                            result = 180; // 固定値で確実に
+                        } else if (gray >= 200) {
+                            // 薄いグレー：中程度の薄さで印刷
+                            result = 160; // 固定値で確実に
+                        } else if (gray >= 180) {
+                            // やや薄いグレー：明確に印刷される
+                            result = 140; // 固定値で確実に
+                        } else if (gray >= 160) {
+                            // 中薄グレー：しっかり印刷
+                            result = 120; // 固定値で確実に
+                        } else if (gray >= 140) {
+                            // 中間グレー：明確に印刷
+                            result = 100; // 固定値で確実に
+                        } else if (gray >= 120) {
                             // やや濃いグレー：強化
-                            result = Math.round(90 + (gray - 130) * 1.25);
-                        } else if (gray >= 110) {
+                            result = 80; // 固定値で確実に
+                        } else if (gray >= 100) {
                             // 濃いグレー：強化
-                            result = Math.round(65 + (gray - 110) * 1.25);
-                        } else if (gray >= 90) {
+                            result = 60; // 固定値で確実に
+                        } else if (gray >= 80) {
                             // 暗いグレー：強化
-                            result = Math.round(40 + (gray - 90) * 1.25);
-                        } else if (gray >= 70) {
+                            result = 40; // 固定値で確実に
+                        } else if (gray >= 60) {
                             // より暗いグレー：強化
-                            result = Math.round(20 + (gray - 70) * 1.0);
-                        } else if (gray >= 50) {
+                            result = 25; // 固定値で確実に
+                        } else if (gray >= 40) {
                             // 非常に暗いグレー：強化
-                            result = Math.round(5 + (gray - 50) * 0.75);
+                            result = 15; // 固定値で確実に
+                        } else if (gray >= 20) {
+                            // 最暗部手前：ほぼ黒
+                            result = 5; // 固定値で確実に
                         } else {
-                            // 最暗部：黒に近く
-                            result = Math.round(gray * 0.1);
+                            // 最暗部：完全に黒
+                            result = 0; // 固定値で確実に
                         }
                         
-                        // Step 3: 印刷用トーンカーブ調整
-                        const adjustedResult = Math.round(result * 0.85 + 25);
-                        
-                        // Step 4: 薄いグレー専用の印刷保証処理
-                        let finalResult = adjustedResult;
-                        if (gray >= 200) {
-                            // 薄いグレー範囲：印刷で必ず認識される濃度に調整
-                            finalResult = Math.max(adjustedResult, 180);
-                            finalResult = Math.min(finalResult, 230);
-                        } else if (gray >= 150) {
-                            // 中間薄グレー範囲：適度な濃度保証
-                            finalResult = Math.max(adjustedResult, 120);
-                            finalResult = Math.min(finalResult, 180);
-                        }
-                        
-                        // Step 5: 隣接ピクセルとの差によるエッジ強調
-                        if (i >= 4 && i < data.length - 8) {
-                            const leftGray = Math.round(0.2126 * data[i-4] + 0.7152 * data[i-3] + 0.0722 * data[i-2]);
-                            const rightGray = Math.round(0.2126 * data[i+4] + 0.7152 * data[i+5] + 0.0722 * data[i+6]);
-                            const diff = Math.abs(leftGray - rightGray);
-                            
-                            if (diff > 30) {
-                                // 大きな境界では強調
-                                if (gray > (leftGray + rightGray) / 2) {
-                                    finalResult = Math.min(255, Math.round(finalResult * 1.08));
-                                } else {
-                                    finalResult = Math.max(0, Math.round(finalResult * 0.92));
-                                }
-                            } else if (diff > 15) {
-                                // 小さな境界では軽い強調
-                                if (gray > (leftGray + rightGray) / 2) {
-                                    finalResult = Math.min(255, Math.round(finalResult * 1.03));
-                                } else {
-                                    finalResult = Math.max(0, Math.round(finalResult * 0.97));
-                                }
-                            }
-                        }
-                        
-                        data[i] = finalResult;
-                        data[i + 1] = finalResult;
-                        data[i + 2] = finalResult;
+                        data[i] = result;
+                        data[i + 1] = result;
+                        data[i + 2] = result;
                     }
                     
                     // 調整されたピクセルデータを再描画
@@ -1909,8 +1880,10 @@ function sendToPrintAssist(event) {
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
             }
             
-            // 直接印刷を実行
-            printImageCopy(currentCopy);
+            // 待機処理がない場合のみ直接印刷を実行
+            if (!autoWait || currentCopy === 1) {
+                printImageCopy(currentCopy);
+            }
             
             addHistory({
                 type: 'image',
