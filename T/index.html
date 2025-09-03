@@ -1569,42 +1569,37 @@ document.getElementById('signaturePrintButton').onclick = function() {
                           'FitToWidth='       + 'no' + '&' +
                           'PaperWidth='       + '58';
             
-            // 【シンプル枚数印刷】10秒待機後に次のURLスキーム送信
+            // 【確実な枚数印刷システム】URLスキームでエラーしない方式
             
             // 1枚目を印刷
             window.location.href = printUrl;
             
-            // 複数枚の場合：10秒後に次の印刷を実行
+            // 複数枚印刷の確実な実装
             if (selectedCopies > 1) {
-                console.log(`署名1枚目印刷完了。10秒後に2枚目を印刷します...`);
+                console.log(`署名1枚目印刷完了。残り${selectedCopies - 1}枚を10秒間隔で印刷します...`);
                 
-                // 10秒後に次の印刷URLスキームを送信
-                setTimeout(() => {
-                    // 次の印刷を実行（同じPDFデータで再送信）
-                    const nextPrintUrl = 'siiprintagent://1.0/print?' +
-                                        'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                                        'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                                        'Format='           + 'pdf' + '&' +
-                                        'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                                        'SelectOnError='    + 'yes' + '&' +
-                                        'CutType='          + 'full' + '&' +
-                                        'CutFeed='          + 'yes' + '&' +
-                                        'FitToWidth='       + 'no' + '&' +
-                                        'PaperWidth='       + '58';
+                // 2枚目以降を順次印刷
+                for (let copyNumber = 2; copyNumber <= selectedCopies; copyNumber++) {
+                    const delay = (copyNumber - 1) * 10000; // 10秒間隔
                     
-                    console.log(`署名2枚目印刷開始`);
-                    window.location.href = nextPrintUrl;
-                    
-                    // さらに複数枚ある場合の処理
-                    if (selectedCopies > 2) {
-                        for (let i = 3; i <= selectedCopies; i++) {
-                            setTimeout(() => {
-                                console.log(`署名${i}枚目印刷開始`);
-                                window.location.href = nextPrintUrl;
-                            }, 10000 * (i - 2));
-                        }
-                    }
-                }, 10000); // 10秒待機
+                    setTimeout(() => {
+                        console.log(`署名${copyNumber}枚目印刷開始`);
+                        
+                        // 同じPDFデータで印刷URLスキームを再送信
+                        const multiplePrintUrl = 'siiprintagent://1.0/print?' +
+                                                'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                                'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                                                'Format='           + 'pdf' + '&' +
+                                                'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                                'SelectOnError='    + 'yes' + '&' +
+                                                'CutType='          + 'full' + '&' +
+                                                'CutFeed='          + 'yes' + '&' +
+                                                'FitToWidth='       + 'no' + '&' +
+                                                'PaperWidth='       + '58';
+                        
+                        window.location.href = multiplePrintUrl;
+                    }, delay);
+                }
             }
         };
         
@@ -1925,42 +1920,47 @@ function sendToPrintAssist(event) {
                                       'FitToWidth='       + 'no' + '&' +
                                       'PaperWidth='       + '58';
                     
-                    // 【シンプル枚数印刷】10秒待機後に次のURLスキーム送信
+                    // 【確実な枚数印刷システム】URLスキームでエラーしない方式
+                    
+                    console.log(`画像印刷開始: 総枚数=${selectedCopies}枚`);
                     
                     // 1枚目を印刷
                     window.location.href = printUrlImage;
                     
-                    // 複数枚の場合：10秒後に次の印刷を実行
-                    if (imageTotalCopies > 1 && currentCopy < imageTotalCopies) {
-                        console.log(`${currentCopy}枚目印刷完了。10秒後に${currentCopy + 1}枚目を印刷します...`);
+                    // 複数枚印刷の確実な実装
+                    if (selectedCopies > 1) {
+                        console.log(`画像1枚目印刷完了。残り${selectedCopies - 1}枚を10秒間隔で印刷します...`);
+                        console.log(`印刷スケジュール設定中...`);
                         
-                        // 10秒後に次の印刷URLスキームを送信
-                        setTimeout(() => {
-                            // 次の印刷を実行（同じPDFデータで再送信）
-                            const nextPrintUrl = 'siiprintagent://1.0/print?' +
-                                                'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                                                'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                                                'Format='           + 'pdf' + '&' +
-                                                'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                                                'SelectOnError='    + 'yes' + '&' +
-                                                'CutType='          + 'full' + '&' +
-                                                'CutFeed='          + 'yes' + '&' +
-                                                'FitToWidth='       + 'no' + '&' +
-                                                'PaperWidth='       + '58';
+                        // 2枚目以降を順次印刷
+                        for (let copyNumber = 2; copyNumber <= selectedCopies; copyNumber++) {
+                            const delay = (copyNumber - 1) * 10000; // 10秒間隔
                             
-                            console.log(`${currentCopy + 1}枚目印刷開始`);
-                            window.location.href = nextPrintUrl;
+                            console.log(`${copyNumber}枚目のタイマー設定: ${delay}ms後に実行`);
                             
-                            // さらに複数枚ある場合の処理
-                            if (currentCopy + 1 < imageTotalCopies) {
-                                for (let i = currentCopy + 2; i <= imageTotalCopies; i++) {
-                                    setTimeout(() => {
-                                        console.log(`${i}枚目印刷開始`);
-                                        window.location.href = nextPrintUrl;
-                                    }, 10000 * (i - currentCopy - 1));
-                                }
-                            }
-                        }, 10000); // 10秒待機
+                            setTimeout(() => {
+                                console.log(`画像${copyNumber}枚目印刷開始 (${new Date().toLocaleTimeString()})`);
+                                
+                                // 同じPDFデータで印刷URLスキームを再送信
+                                const multiplePrintUrl = 'siiprintagent://1.0/print?' +
+                                                        'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                                        'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                                                        'Format='           + 'pdf' + '&' +
+                                                        'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                                        'SelectOnError='    + 'yes' + '&' +
+                                                        'CutType='          + 'full' + '&' +
+                                                        'CutFeed='          + 'yes' + '&' +
+                                                        'FitToWidth='       + 'no' + '&' +
+                                                        'PaperWidth='       + '58';
+                                
+                                console.log(`URLスキーム送信: ${multiplePrintUrl.substring(0, 50)}...`);
+                                window.location.href = multiplePrintUrl;
+                            }, delay);
+                        }
+                        
+                        console.log(`全${selectedCopies}枚の印刷スケジュール設定完了`);
+                    } else {
+                        console.log(`1枚のみの印刷完了`);
                     }
                 };
                 
@@ -2195,42 +2195,37 @@ function printText() {
                       'FitToWidth='       + 'no' + '&' +
                       'PaperWidth='       + '58';
         
-        // 【シンプル枚数印刷】10秒待機後に次のURLスキーム送信
+        // 【確実な枚数印刷システム】URLスキームでエラーしない方式
         
         // 1枚目を印刷
         window.location.href = printUrl;
         
-        // 複数枚の場合：10秒後に次の印刷を実行
+        // 複数枚印刷の確実な実装
         if (selectedTextCopies > 1) {
-            console.log(`テキスト1枚目印刷完了。10秒後に2枚目を印刷します...`);
+            console.log(`テキスト1枚目印刷完了。残り${selectedTextCopies - 1}枚を10秒間隔で印刷します...`);
             
-            // 10秒後に次の印刷URLスキームを送信
-            setTimeout(() => {
-                // 次の印刷を実行（同じPDFデータで再送信）
-                const nextPrintUrl = 'siiprintagent://1.0/print?' +
-                                    'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                                    'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                                    'Format='           + 'pdf' + '&' +
-                                    'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                                    'SelectOnError='    + 'yes' + '&' +
-                                    'CutType='          + 'full' + '&' +
-                                    'CutFeed='          + 'yes' + '&' +
-                                    'FitToWidth='       + 'no' + '&' +
-                                    'PaperWidth='       + '58';
+            // 2枚目以降を順次印刷
+            for (let copyNumber = 2; copyNumber <= selectedTextCopies; copyNumber++) {
+                const delay = (copyNumber - 1) * 10000; // 10秒間隔
                 
-                console.log(`テキスト2枚目印刷開始`);
-                window.location.href = nextPrintUrl;
-                
-                // さらに複数枚ある場合の処理
-                if (selectedTextCopies > 2) {
-                    for (let i = 3; i <= selectedTextCopies; i++) {
-                        setTimeout(() => {
-                            console.log(`テキスト${i}枚目印刷開始`);
-                            window.location.href = nextPrintUrl;
-                        }, 10000 * (i - 2));
-                    }
-                }
-            }, 10000); // 10秒待機
+                setTimeout(() => {
+                    console.log(`テキスト${copyNumber}枚目印刷開始`);
+                    
+                    // 同じPDFデータで印刷URLスキームを再送信
+                    const multiplePrintUrl = 'siiprintagent://1.0/print?' +
+                                            'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                            'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                                            'Format='           + 'pdf' + '&' +
+                                            'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                            'SelectOnError='    + 'yes' + '&' +
+                                            'CutType='          + 'full' + '&' +
+                                            'CutFeed='          + 'yes' + '&' +
+                                            'FitToWidth='       + 'no' + '&' +
+                                            'PaperWidth='       + '58';
+                    
+                    window.location.href = multiplePrintUrl;
+                }, delay);
+            }
         }
     }
     
