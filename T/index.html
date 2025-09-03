@@ -2149,7 +2149,7 @@ function printText() {
         const canvasWidth = Math.round(58 * mmToPx); // 58mm
         
         // フォントサイズ設定
-        const textFontSize = 37;  // テキスト用のフォントサイズ 37px
+        const textFontSize = 33;  // テキスト用のフォントサイズ 37px
         const dateFontSize = 50;  // 日付・時刻用のフォントサイズ 50px
         
         ctx.font = `${textFontSize}px Arial, sans-serif`;
@@ -2181,7 +2181,7 @@ function printText() {
         ctx.textBaseline = 'top';
         
         // 真ん中の位置を正確に計算
-        const exactCenterX = Math.round(canvasWidth / 2)-40;// 30
+        const exactCenterX = Math.round(canvasWidth / 2)-30;// 30
         
         // テキストを描画（上部余白を小さく）
         let yPos = 30; // 上余白を30pxに調整
