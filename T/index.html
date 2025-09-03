@@ -1217,7 +1217,63 @@ window.onload = function() {
     setTextChipsEnabled(false);
     loadHistoryList();
     initSignaturePad();
+    
+    // 【枚数印刷の自動続行システム】
+    checkAndContinuePrinting();
 };
+
+// 枚数印刷の続行をチェックする関数
+function checkAndContinuePrinting() {
+    const printJob = sessionStorage.getItem('printJob');
+    if (!printJob) {
+        return; // 印刷ジョブなし
+    }
+    
+    const job = JSON.parse(printJob);
+    const timeSinceLastPrint = Date.now() - job.timestamp;
+    
+    // 10秒経過後に次の印刷を実行
+    if (timeSinceLastPrint >= 10000) {
+        if (job.currentCopy < job.totalCopies) {
+            job.currentCopy++;
+            job.timestamp = Date.now();
+            
+            console.log(`${job.type}印刷続行: ${job.currentCopy}/${job.totalCopies}枚目実行`);
+            
+            // 次の印刷を実行
+            const nextPrintUrl = 'siiprintagent://1.0/print?' +
+                                'CallbackSuccess='  + encodeURIComponent(job.thisPage) + '&' +
+                                'CallbackFail='     + encodeURIComponent(job.thisPage) + '&' +
+                                'Format='           + 'pdf' + '&' +
+                                'Data='             + encodeURIComponent(job.pdfData) + '&' +
+                                'SelectOnError='    + 'yes' + '&' +
+                                'CutType='          + 'full' + '&' +
+                                'CutFeed='          + 'yes' + '&' +
+                                'FitToWidth='       + 'no' + '&' +
+                                'PaperWidth='       + '58';
+            
+            if (job.currentCopy < job.totalCopies) {
+                // まだ残りがある場合は情報を更新して保存
+                sessionStorage.setItem('printJob', JSON.stringify(job));
+            } else {
+                // 全て完了した場合は削除
+                sessionStorage.removeItem('printJob');
+                console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
+            }
+            
+            window.location.href = nextPrintUrl;
+        } else {
+            // 全印刷完了
+            sessionStorage.removeItem('printJob');
+            console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
+        }
+    } else {
+        // まだ10秒経過していない場合は待機
+        const remainingTime = 10000 - timeSinceLastPrint;
+        console.log(`印刷待機中: あと${Math.ceil(remainingTime/1000)}秒`);
+        setTimeout(checkAndContinuePrinting, remainingTime);
+    }
+}
 function showSection(mode) {
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
@@ -1569,38 +1625,26 @@ document.getElementById('signaturePrintButton').onclick = function() {
                           'FitToWidth='       + 'no' + '&' +
                           'PaperWidth='       + '58';
             
-            // 【確実な枚数印刷システム】URLスキームでエラーしない方式
+            // 【革新的枚数印刷システム】sessionStorageによる永続化方式
+            
+            console.log(`署名印刷開始: 総枚数=${selectedCopies}枚`);
+            
+            // 枚数印刷情報をsessionStorageに保存
+            if (selectedCopies > 1) {
+                const printJob = {
+                    type: 'signature',
+                    totalCopies: selectedCopies,
+                    currentCopy: 1,
+                    pdfData: pdfBase64,
+                    thisPage: thisPage,
+                    timestamp: Date.now()
+                };
+                sessionStorage.setItem('printJob', JSON.stringify(printJob));
+                console.log(`署名印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
+            }
             
             // 1枚目を印刷
             window.location.href = printUrl;
-            
-            // 複数枚印刷の確実な実装
-            if (selectedCopies > 1) {
-                console.log(`署名1枚目印刷完了。残り${selectedCopies - 1}枚を10秒間隔で印刷します...`);
-                
-                // 2枚目以降を順次印刷
-                for (let copyNumber = 2; copyNumber <= selectedCopies; copyNumber++) {
-                    const delay = (copyNumber - 1) * 10000; // 10秒間隔
-                    
-                    setTimeout(() => {
-                        console.log(`署名${copyNumber}枚目印刷開始`);
-                        
-                        // 同じPDFデータで印刷URLスキームを再送信
-                        const multiplePrintUrl = 'siiprintagent://1.0/print?' +
-                                                'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                                                'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                                                'Format='           + 'pdf' + '&' +
-                                                'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                                                'SelectOnError='    + 'yes' + '&' +
-                                                'CutType='          + 'full' + '&' +
-                                                'CutFeed='          + 'yes' + '&' +
-                                                'FitToWidth='       + 'no' + '&' +
-                                                'PaperWidth='       + '58';
-                        
-                        window.location.href = multiplePrintUrl;
-                    }, delay);
-                }
-            }
         };
         
         signatureImg.src = tmpCanvas.toDataURL("image/png");
@@ -1920,48 +1964,26 @@ function sendToPrintAssist(event) {
                                       'FitToWidth='       + 'no' + '&' +
                                       'PaperWidth='       + '58';
                     
-                    // 【確実な枚数印刷システム】URLスキームでエラーしない方式
+                    // 【革新的枚数印刷システム】sessionStorageによる永続化方式
                     
                     console.log(`画像印刷開始: 総枚数=${selectedCopies}枚`);
                     
+                    // 枚数印刷情報をsessionStorageに保存
+                    if (selectedCopies > 1) {
+                        const printJob = {
+                            type: 'image',
+                            totalCopies: selectedCopies,
+                            currentCopy: 1,
+                            pdfData: pdfBase64,
+                            thisPage: thisPage,
+                            timestamp: Date.now()
+                        };
+                        sessionStorage.setItem('printJob', JSON.stringify(printJob));
+                        console.log(`印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
+                    }
+                    
                     // 1枚目を印刷
                     window.location.href = printUrlImage;
-                    
-                    // 複数枚印刷の確実な実装
-                    if (selectedCopies > 1) {
-                        console.log(`画像1枚目印刷完了。残り${selectedCopies - 1}枚を10秒間隔で印刷します...`);
-                        console.log(`印刷スケジュール設定中...`);
-                        
-                        // 2枚目以降を順次印刷
-                        for (let copyNumber = 2; copyNumber <= selectedCopies; copyNumber++) {
-                            const delay = (copyNumber - 1) * 10000; // 10秒間隔
-                            
-                            console.log(`${copyNumber}枚目のタイマー設定: ${delay}ms後に実行`);
-                            
-                            setTimeout(() => {
-                                console.log(`画像${copyNumber}枚目印刷開始 (${new Date().toLocaleTimeString()})`);
-                                
-                                // 同じPDFデータで印刷URLスキームを再送信
-                                const multiplePrintUrl = 'siiprintagent://1.0/print?' +
-                                                        'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                                                        'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                                                        'Format='           + 'pdf' + '&' +
-                                                        'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                                                        'SelectOnError='    + 'yes' + '&' +
-                                                        'CutType='          + 'full' + '&' +
-                                                        'CutFeed='          + 'yes' + '&' +
-                                                        'FitToWidth='       + 'no' + '&' +
-                                                        'PaperWidth='       + '58';
-                                
-                                console.log(`URLスキーム送信: ${multiplePrintUrl.substring(0, 50)}...`);
-                                window.location.href = multiplePrintUrl;
-                            }, delay);
-                        }
-                        
-                        console.log(`全${selectedCopies}枚の印刷スケジュール設定完了`);
-                    } else {
-                        console.log(`1枚のみの印刷完了`);
-                    }
                 };
                 
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
@@ -2195,38 +2217,26 @@ function printText() {
                       'FitToWidth='       + 'no' + '&' +
                       'PaperWidth='       + '58';
         
-        // 【確実な枚数印刷システム】URLスキームでエラーしない方式
+        // 【革新的枚数印刷システム】sessionStorageによる永続化方式
+        
+        console.log(`テキスト印刷開始: 総枚数=${selectedTextCopies}枚`);
+        
+        // 枚数印刷情報をsessionStorageに保存
+        if (selectedTextCopies > 1) {
+            const printJob = {
+                type: 'text',
+                totalCopies: selectedTextCopies,
+                currentCopy: 1,
+                pdfData: pdfBase64,
+                thisPage: thisPage,
+                timestamp: Date.now()
+            };
+            sessionStorage.setItem('printJob', JSON.stringify(printJob));
+            console.log(`テキスト印刷ジョブ保存: ${selectedTextCopies}枚中1枚目実行`);
+        }
         
         // 1枚目を印刷
         window.location.href = printUrl;
-        
-        // 複数枚印刷の確実な実装
-        if (selectedTextCopies > 1) {
-            console.log(`テキスト1枚目印刷完了。残り${selectedTextCopies - 1}枚を10秒間隔で印刷します...`);
-            
-            // 2枚目以降を順次印刷
-            for (let copyNumber = 2; copyNumber <= selectedTextCopies; copyNumber++) {
-                const delay = (copyNumber - 1) * 10000; // 10秒間隔
-                
-                setTimeout(() => {
-                    console.log(`テキスト${copyNumber}枚目印刷開始`);
-                    
-                    // 同じPDFデータで印刷URLスキームを再送信
-                    const multiplePrintUrl = 'siiprintagent://1.0/print?' +
-                                            'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                                            'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                                            'Format='           + 'pdf' + '&' +
-                                            'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                                            'SelectOnError='    + 'yes' + '&' +
-                                            'CutType='          + 'full' + '&' +
-                                            'CutFeed='          + 'yes' + '&' +
-                                            'FitToWidth='       + 'no' + '&' +
-                                            'PaperWidth='       + '58';
-                    
-                    window.location.href = multiplePrintUrl;
-                }, delay);
-            }
-        }
     }
     
     // 現在の1枚を印刷（シンプル実行）
