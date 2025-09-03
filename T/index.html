@@ -1462,8 +1462,27 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     
-    // 枚数印刷用の管理（シンプルな方式に変更）
-    let currentPrintIndex = 1;
+    // 【根本修正】確実な枚数印刷システム（署名）
+    // URLパラメータから現在の印刷状況を確認
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentPrintCount = parseInt(urlParams.get('signaturePrintCount') || '0');
+    const totalCopies = parseInt(urlParams.get('totalCopies') || selectedCopies);
+    
+    // 初回印刷の場合（URLパラメータが無い場合）
+    if (currentPrintCount === 0) {
+        console.log('署名印刷開始: 合計' + selectedCopies + '枚');
+        
+        // 1枚目の印刷のためのURLに遷移
+        const baseUrl = window.location.href.split('?')[0];
+        const firstPrintUrl = baseUrl + '?signaturePrintCount=1&totalCopies=' + selectedCopies;
+        
+        // 1枚目印刷に遷移
+        window.location.replace(firstPrintUrl);
+        return;
+    }
+    
+    // 実際の印刷処理（URLパラメータがある場合）
+    console.log('署名印刷実行: ' + currentPrintCount + '/' + totalCopies + '枚目');
     
     function printSignatureCopy(copyIndex) {
         // 新しいキャンバスで全体を合成
@@ -1578,86 +1597,81 @@ document.getElementById('signaturePrintButton').onclick = function() {
         signatureImg.src = tmpCanvas.toDataURL("image/png");
     }
     
-    // 【確実な連続印刷システム】署名印刷対応
     
-    // URLパラメータで現在の印刷回数を確認
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentPrintCount = parseInt(urlParams.get('signaturePrintCount') || '1');
-    const totalCopies = parseInt(urlParams.get('totalCopies') || selectedCopies);
-    
-    console.log('署名印刷開始: ' + currentPrintCount + '/' + totalCopies + '枚');
-    
-    // 1枚分を印刷
-    printSignatureCopy(currentPrintCount);
-    
-    // 複数枚の場合の処理
-    if (totalCopies > 1 && currentPrintCount < totalCopies) {
-        // 次の印刷準備中の画面を即座に表示
-        setTimeout(() => {
-            const progressHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; 
-                           height: 100vh; background: linear-gradient(135deg, #8B4CF7 0%, #6366F1 100%); 
-                           color: white; font-family: Arial, sans-serif;">
-                    <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; 
-                               backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-                        <div style="font-size: 28px; margin-bottom: 20px; font-weight: bold;">署名印刷中</div>
-                        <div style="font-size: 48px; margin: 20px 0; color: #FFD700;">${currentPrintCount} / ${totalCopies}</div>
-                        <div style="font-size: 18px; opacity: 0.9;">次の印刷を準備しています...</div>
-                        <div style="margin-top: 20px; width: 100px; height: 100px; border: 4px solid rgba(255,255,255,0.3); 
-                                   border-top: 4px solid #FFD700; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto;"></div>
-                    </div>
-                </div>
-                <style>
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                </style>`;
-            document.body.innerHTML = progressHTML;
-        }, 2000);
+    // 印刷実行（URLパラメータがある場合のみ）
+    if (currentPrintCount > 0) {
+        printSignatureCopy(currentPrintCount);
         
-        // 次の印刷を確実に実行
-        const nextCount = currentPrintCount + 1;
-        const baseUrl = window.location.href.split('?')[0];
-        const nextUrl = baseUrl + '?signaturePrintCount=' + nextCount + '&totalCopies=' + totalCopies;
-        
-        // 7秒後に次の印刷ページに遷移
-        setTimeout(() => {
-            console.log('次の署名印刷実行: ' + nextCount + '/' + totalCopies);
-            window.location.replace(nextUrl);
-        }, 7000);
-        
-    } else if (currentPrintCount >= totalCopies) {
-        // 全ての印刷が完了
-        setTimeout(() => {
-            const completionHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; 
-                           height: 100vh; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
-                           color: white; font-family: Arial, sans-serif;">
-                    <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; 
-                               backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-                        <div style="font-size: 32px; margin-bottom: 20px; font-weight: bold;">✓ 署名印刷完了</div>
-                        <div style="font-size: 24px; margin: 10px 0;">合計 ${totalCopies} 枚</div>
-                        <div style="font-size: 16px; opacity: 0.9; margin-top: 20px;">3秒後に自動で戻ります</div>
-                    </div>
-                </div>`;
-            document.body.innerHTML = completionHTML;
-            
-            // 3秒後に元のページに戻る
+        // 複数枚の場合の処理
+        if (totalCopies > 1 && currentPrintCount < totalCopies) {
+            // 次の印刷準備中の画面を即座に表示
             setTimeout(() => {
-                window.location.replace(baseUrl);
-            }, 3000);
-        }, 2000);
+                const progressHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                               height: 100vh; background: linear-gradient(135deg, #8B4CF7 0%, #6366F1 100%); 
+                               color: white; font-family: Arial, sans-serif;">
+                        <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; 
+                                   backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                            <div style="font-size: 28px; margin-bottom: 20px; font-weight: bold;">署名印刷中</div>
+                            <div style="font-size: 48px; margin: 20px 0; color: #FFD700;">${currentPrintCount} / ${totalCopies}</div>
+                            <div style="font-size: 18px; opacity: 0.9;">次の印刷を準備しています...</div>
+                            <div style="margin-top: 20px; width: 100px; height: 100px; border: 4px solid rgba(255,255,255,0.3); 
+                                       border-top: 4px solid #FFD700; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto;"></div>
+                        </div>
+                    </div>
+                    <style>
+                        @keyframes spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                        }
+                    </style>`;
+                document.body.innerHTML = progressHTML;
+            }, 2000);
+            
+            // 次の印刷を確実に実行
+            const nextCount = currentPrintCount + 1;
+            const baseUrl = window.location.href.split('?')[0];
+            const nextUrl = baseUrl + '?signaturePrintCount=' + nextCount + '&totalCopies=' + totalCopies;
+            
+            // 7秒後に次の印刷ページに遷移
+            setTimeout(() => {
+                console.log('次の署名印刷実行: ' + nextCount + '/' + totalCopies);
+                window.location.replace(nextUrl);
+            }, 7000);
+            
+        } else if (currentPrintCount >= totalCopies) {
+            // 全ての印刷が完了
+            setTimeout(() => {
+                const completionHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                               height: 100vh; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
+                               color: white; font-family: Arial, sans-serif;">
+                        <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; 
+                                   backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                            <div style="font-size: 32px; margin-bottom: 20px; font-weight: bold;">✓ 署名印刷完了</div>
+                            <div style="font-size: 24px; margin: 10px 0;">合計 ${totalCopies} 枚</div>
+                            <div style="font-size: 16px; opacity: 0.9; margin-top: 20px;">3秒後に自動で戻ります</div>
+                        </div>
+                    </div>`;
+                document.body.innerHTML = completionHTML;
+                
+                // 3秒後に元のページに戻る
+                setTimeout(() => {
+                    const baseUrl = window.location.href.split('?')[0];
+                    window.location.replace(baseUrl);
+                }, 3000);
+            }, 2000);
+        }
+        
+        addHistory({
+            type: 'signature',
+            mode: 'signature',
+            data: tmpCanvas.toDataURL("image/png"),
+            dateTime: selectedSignatureChip,
+            copies: totalCopies,
+            created: Date.now()
+        });
     }
-    
-    addHistory({
-        type: 'signature',
-        mode: 'signature',
-        data: tmpCanvas.toDataURL("image/png"),
-        dateTime: selectedSignatureChip,
-        copies: selectedCopies,
-        created: Date.now()
-    });
 };
 // --- 画像印刷 ---
 function sendToPrintAssist(event) {
@@ -1691,8 +1705,27 @@ function sendToPrintAssist(event) {
             const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             
-            // 枚数印刷用の管理（シンプルな方式に変更）
-            let currentPrintIndex = 1;
+            // 【根本修正】確実な枚数印刷システム
+            // URLパラメータから現在の印刷状況を確認
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentPrintCount = parseInt(urlParams.get('imagePrintCount') || '0');
+            const totalCopies = parseInt(urlParams.get('totalCopies') || selectedCopies);
+            
+            // 初回印刷の場合（URLパラメータが無い場合）
+            if (currentPrintCount === 0) {
+                console.log('画像印刷開始: 合計' + selectedCopies + '枚');
+                
+                // 1枚目の印刷のためのURLに遷移
+                const baseUrl = window.location.href.split('?')[0];
+                const firstPrintUrl = baseUrl + '?imagePrintCount=1&totalCopies=' + selectedCopies;
+                
+                // 1枚目印刷に遷移
+                window.location.replace(firstPrintUrl);
+                return;
+            }
+            
+            // 実際の印刷処理（URLパラメータがある場合）
+            console.log('画像印刷実行: ' + currentPrintCount + '/' + totalCopies + '枚目');
             
             function printImageCopy(copyIndex) {
                 // 新しいキャンバスで全体を合成
@@ -1970,87 +2003,81 @@ function sendToPrintAssist(event) {
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
             }
             
-            // 【確実な連続印刷システム】複数枚印刷対応
-            
-            // URLパラメータで現在の印刷回数を確認
-            const urlParams = new URLSearchParams(window.location.search);
-            const currentPrintCount = parseInt(urlParams.get('imagePrintCount') || '1');
-            const totalCopies = parseInt(urlParams.get('totalCopies') || selectedCopies);
-            
-            console.log('画像印刷開始: ' + currentPrintCount + '/' + totalCopies + '枚');
-            
-            // 1枚分を印刷
-            printImageCopy(currentPrintCount);
-            
-            // 複数枚の場合の処理
-            if (totalCopies > 1 && currentPrintCount < totalCopies) {
-                // 次の印刷準備中の画面を即座に表示
-                setTimeout(() => {
-                    const progressHTML = `
-                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; 
-                                   height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                                   color: white; font-family: Arial, sans-serif;">
-                            <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; 
-                                       backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-                                <div style="font-size: 28px; margin-bottom: 20px; font-weight: bold;">印刷処理中</div>
-                                <div style="font-size: 48px; margin: 20px 0; color: #FFD700;">${currentPrintCount} / ${totalCopies}</div>
-                                <div style="font-size: 18px; opacity: 0.9;">次の印刷を準備しています...</div>
-                                <div style="margin-top: 20px; width: 100px; height: 100px; border: 4px solid rgba(255,255,255,0.3); 
-                                           border-top: 4px solid #FFD700; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto;"></div>
-                            </div>
-                        </div>
-                        <style>
-                            @keyframes spin {
-                                0% { transform: rotate(0deg); }
-                                100% { transform: rotate(360deg); }
-                            }
-                        </style>`;
-                    document.body.innerHTML = progressHTML;
-                }, 2000);
+            // 印刷実行（URLパラメータがある場合のみ）
+            if (currentPrintCount > 0) {
+                printImageCopy(currentPrintCount);
                 
-                // 次の印刷を確実に実行
-                const nextCount = currentPrintCount + 1;
-                const baseUrl = window.location.href.split('?')[0];
-                const nextUrl = baseUrl + '?imagePrintCount=' + nextCount + '&totalCopies=' + totalCopies;
-                
-                // 7秒後に次の印刷ページに遷移（確実な印刷完了を待つ）
-                setTimeout(() => {
-                    console.log('次の印刷実行: ' + nextCount + '/' + totalCopies);
-                    window.location.replace(nextUrl); // replaceを使用してブラウザ履歴を汚さない
-                }, 7000);
-                
-            } else if (currentPrintCount >= totalCopies) {
-                // 全ての印刷が完了
-                setTimeout(() => {
-                    const completionHTML = `
-                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; 
-                                   height: 100vh; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
-                                   color: white; font-family: Arial, sans-serif;">
-                            <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; 
-                                       backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-                                <div style="font-size: 32px; margin-bottom: 20px; font-weight: bold;">✓ 印刷完了</div>
-                                <div style="font-size: 24px; margin: 10px 0;">合計 ${totalCopies} 枚</div>
-                                <div style="font-size: 16px; opacity: 0.9; margin-top: 20px;">3秒後に自動で戻ります</div>
-                            </div>
-                        </div>`;
-                    document.body.innerHTML = completionHTML;
-                    
-                    // 3秒後に元のページに戻る
+                // 複数枚の場合の処理
+                if (totalCopies > 1 && currentPrintCount < totalCopies) {
+                    // 次の印刷準備中の画面を即座に表示
                     setTimeout(() => {
-                        window.location.replace(baseUrl);
-                    }, 3000);
-                }, 2000);
+                        const progressHTML = `
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                                       height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                                       color: white; font-family: Arial, sans-serif;">
+                                <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; 
+                                           backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                                    <div style="font-size: 28px; margin-bottom: 20px; font-weight: bold;">印刷処理中</div>
+                                    <div style="font-size: 48px; margin: 20px 0; color: #FFD700;">${currentPrintCount} / ${totalCopies}</div>
+                                    <div style="font-size: 18px; opacity: 0.9;">次の印刷を準備しています...</div>
+                                    <div style="margin-top: 20px; width: 100px; height: 100px; border: 4px solid rgba(255,255,255,0.3); 
+                                               border-top: 4px solid #FFD700; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto;"></div>
+                                </div>
+                            </div>
+                            <style>
+                                @keyframes spin {
+                                    0% { transform: rotate(0deg); }
+                                    100% { transform: rotate(360deg); }
+                                }
+                            </style>`;
+                        document.body.innerHTML = progressHTML;
+                    }, 2000);
+                    
+                    // 次の印刷を確実に実行
+                    const nextCount = currentPrintCount + 1;
+                    const baseUrl = window.location.href.split('?')[0];
+                    const nextUrl = baseUrl + '?imagePrintCount=' + nextCount + '&totalCopies=' + totalCopies;
+                    
+                    // 7秒後に次の印刷ページに遷移（確実な印刷完了を待つ）
+                    setTimeout(() => {
+                        console.log('次の印刷実行: ' + nextCount + '/' + totalCopies);
+                        window.location.replace(nextUrl); // replaceを使用してブラウザ履歴を汚さない
+                    }, 7000);
+                    
+                } else if (currentPrintCount >= totalCopies) {
+                    // 全ての印刷が完了
+                    setTimeout(() => {
+                        const completionHTML = `
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                                       height: 100vh; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
+                                       color: white; font-family: Arial, sans-serif;">
+                                <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; 
+                                           backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                                    <div style="font-size: 32px; margin-bottom: 20px; font-weight: bold;">✓ 印刷完了</div>
+                                    <div style="font-size: 24px; margin: 10px 0;">合計 ${totalCopies} 枚</div>
+                                    <div style="font-size: 16px; opacity: 0.9; margin-top: 20px;">3秒後に自動で戻ります</div>
+                                </div>
+                            </div>`;
+                        document.body.innerHTML = completionHTML;
+                        
+                        // 3秒後に元のページに戻る
+                        setTimeout(() => {
+                            const baseUrl = window.location.href.split('?')[0];
+                            window.location.replace(baseUrl);
+                        }, 3000);
+                    }, 2000);
+                }
+                
+                addHistory({
+                    type: 'image',
+                    mode: 'image',
+                    data: 'data:image/png;base64,' + base64Image,
+                    dateTime: selectedChip,
+                    copies: totalCopies,
+                    shrink: shrinkChecked,
+                    created: Date.now()
+                });
             }
-            
-            addHistory({
-                type: 'image',
-                mode: 'image',
-                data: 'data:image/png;base64,' + base64Image,
-                dateTime: selectedChip,
-                copies: selectedCopies,
-                shrink: shrinkChecked,
-                created: Date.now()
-            });
         };
         img.src = 'data:image/png;base64,' + base64Image;
     }
@@ -2145,7 +2172,29 @@ function printText() {
     }
     totalHeight += bottomMargin;
     const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-    let currentCopy = 1;
+    
+    // 【根本修正】確実な枚数印刷システム（テキスト）
+    // URLパラメータから現在の印刷状況を確認
+    const textUrlParams = new URLSearchParams(window.location.search);
+    const textCurrentPrintCount = parseInt(textUrlParams.get('textPrintCount') || '0');
+    const textTotalCopies = parseInt(textUrlParams.get('totalCopies') || selectedTextCopies);
+    
+    // 初回印刷の場合（URLパラメータが無い場合）
+    if (textCurrentPrintCount === 0) {
+        console.log('テキスト印刷開始: 合計' + selectedTextCopies + '枚');
+        
+        // 1枚目の印刷のためのURLに遷移
+        const baseUrl = window.location.href.split('?')[0];
+        const firstPrintUrl = baseUrl + '?textPrintCount=1&totalCopies=' + selectedTextCopies;
+        
+        // 1枚目印刷に遷移
+        window.location.replace(firstPrintUrl);
+        return;
+    }
+    
+    // 実際の印刷処理（URLパラメータがある場合）
+    console.log('テキスト印刷実行: ' + textCurrentPrintCount + '/' + textTotalCopies + '枚目');
+    
     function printTextCopy(copyIndex) {
         let printText = wrappedLines.join("\n");
         
@@ -2270,85 +2319,80 @@ function printText() {
         window.location.href = printUrl;
     }
     
-    // 【確実な連続印刷システム】テキスト印刷対応
-    
-    // URLパラメータで現在の印刷回数を確認
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentPrintCount = parseInt(urlParams.get('textPrintCount') || '1');
-    const totalCopies = parseInt(urlParams.get('totalCopies') || selectedTextCopies);
-    
-    console.log('テキスト印刷開始: ' + currentPrintCount + '/' + totalCopies + '枚');
-    
-    // 1枚分を印刷
-    printTextCopy(currentPrintCount);
-    
-    // 複数枚の場合の処理
-    if (totalCopies > 1 && currentPrintCount < totalCopies) {
-        // 次の印刷準備中の画面を即座に表示
-        setTimeout(() => {
-            const progressHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; 
-                           height: 100vh; background: linear-gradient(135deg, #FF6B6B 0%, #FFE66D 100%); 
-                           color: white; font-family: Arial, sans-serif;">
-                    <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; 
-                               backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-                        <div style="font-size: 28px; margin-bottom: 20px; font-weight: bold;">テキスト印刷中</div>
-                        <div style="font-size: 48px; margin: 20px 0; color: #FFD700;">${currentPrintCount} / ${totalCopies}</div>
-                        <div style="font-size: 18px; opacity: 0.9;">次の印刷を準備しています...</div>
-                        <div style="margin-top: 20px; width: 100px; height: 100px; border: 4px solid rgba(255,255,255,0.3); 
-                                   border-top: 4px solid #FFD700; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto;"></div>
-                    </div>
-                </div>
-                <style>
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                </style>`;
-            document.body.innerHTML = progressHTML;
-        }, 2000);
+    // 印刷実行（URLパラメータがある場合のみ）
+    if (textCurrentPrintCount > 0) {
+        printTextCopy(textCurrentPrintCount);
         
-        // 次の印刷を確実に実行
-        const nextCount = currentPrintCount + 1;
-        const baseUrl = window.location.href.split('?')[0];
-        const nextUrl = baseUrl + '?textPrintCount=' + nextCount + '&totalCopies=' + totalCopies;
-        
-        // 5秒後に次の印刷ページに遷移（テキストは処理が軽いため短縮）
-        setTimeout(() => {
-            console.log('次のテキスト印刷実行: ' + nextCount + '/' + totalCopies);
-            window.location.replace(nextUrl);
-        }, 5000);
-        
-    } else if (currentPrintCount >= totalCopies) {
-        // 全ての印刷が完了
-        setTimeout(() => {
-            const completionHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; 
-                           height: 100vh; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
-                           color: white; font-family: Arial, sans-serif;">
-                    <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; 
-                               backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-                        <div style="font-size: 32px; margin-bottom: 20px; font-weight: bold;">✓ テキスト印刷完了</div>
-                        <div style="font-size: 24px; margin: 10px 0;">合計 ${totalCopies} 枚</div>
-                        <div style="font-size: 16px; opacity: 0.9; margin-top: 20px;">3秒後に自動で戻ります</div>
-                    </div>
-                </div>`;
-            document.body.innerHTML = completionHTML;
-            
-            // 3秒後に元のページに戻る
+        // 複数枚の場合の処理
+        if (textTotalCopies > 1 && textCurrentPrintCount < textTotalCopies) {
+            // 次の印刷準備中の画面を即座に表示
             setTimeout(() => {
-                window.location.replace(baseUrl);
-            }, 3000);
-        }, 2000);
+                const progressHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                               height: 100vh; background: linear-gradient(135deg, #FF6B6B 0%, #FFE66D 100%); 
+                               color: white; font-family: Arial, sans-serif;">
+                        <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; 
+                                   backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                            <div style="font-size: 28px; margin-bottom: 20px; font-weight: bold;">テキスト印刷中</div>
+                            <div style="font-size: 48px; margin: 20px 0; color: #FFD700;">${textCurrentPrintCount} / ${textTotalCopies}</div>
+                            <div style="font-size: 18px; opacity: 0.9;">次の印刷を準備しています...</div>
+                            <div style="margin-top: 20px; width: 100px; height: 100px; border: 4px solid rgba(255,255,255,0.3); 
+                                       border-top: 4px solid #FFD700; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto;"></div>
+                        </div>
+                    </div>
+                    <style>
+                        @keyframes spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                        }
+                    </style>`;
+                document.body.innerHTML = progressHTML;
+            }, 2000);
+            
+            // 次の印刷を確実に実行
+            const nextCount = textCurrentPrintCount + 1;
+            const baseUrl = window.location.href.split('?')[0];
+            const nextUrl = baseUrl + '?textPrintCount=' + nextCount + '&totalCopies=' + textTotalCopies;
+            
+            // 5秒後に次の印刷ページに遷移（テキストは処理が軽いため短縮）
+            setTimeout(() => {
+                console.log('次のテキスト印刷実行: ' + nextCount + '/' + textTotalCopies);
+                window.location.replace(nextUrl);
+            }, 5000);
+            
+        } else if (textCurrentPrintCount >= textTotalCopies) {
+            // 全ての印刷が完了
+            setTimeout(() => {
+                const completionHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                               height: 100vh; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
+                               color: white; font-family: Arial, sans-serif;">
+                        <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; 
+                                   backdrop-filter: blur(10px); text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                            <div style="font-size: 32px; margin-bottom: 20px; font-weight: bold;">✓ テキスト印刷完了</div>
+                            <div style="font-size: 24px; margin: 10px 0;">合計 ${textTotalCopies} 枚</div>
+                            <div style="font-size: 16px; opacity: 0.9; margin-top: 20px;">3秒後に自動で戻ります</div>
+                        </div>
+                    </div>`;
+                document.body.innerHTML = completionHTML;
+                
+                // 3秒後に元のページに戻る
+                setTimeout(() => {
+                    const baseUrl = window.location.href.split('?')[0];
+                    window.location.replace(baseUrl);
+                }, 3000);
+            }, 2000);
+        }
+        
+        addHistory({
+            type: 'text',
+            mode: 'text',
+            data: textInput.value,
+            dateTime: selectedTextChip,
+            copies: textTotalCopies,
+            created: Date.now()
+        });
     }
-    addHistory({
-        type: 'text',
-        mode: 'text',
-        data: textInput.value,
-        dateTime: selectedTextChip,
-        copies: selectedTextCopies,
-        created: Date.now()
-    });
 }
 function toggleClearButton() {
     const textInput = document.getElementById('textInput');
