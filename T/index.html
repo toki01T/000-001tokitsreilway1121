@@ -1462,9 +1462,21 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     
-    // 【SII URL PRINT Agent ネイティブ枚数印刷】
-    // アプリ側の枚数機能を使用し、連続印刷システムは無効化
-    console.log('署名印刷開始: ' + selectedCopies + '枚（ネイティブ枚数機能使用）');
+    // 【新方式】確実な署名枚数印刷システム
+    const signaturePrintJobId = 'signature_print_' + Date.now();
+    let signatureCurrentCopy = 1;
+    let signatureTotalCopies = selectedCopies;
+    
+    // URLパラメータから印刷状況を復元
+    const signatureUrlParams = new URLSearchParams(window.location.search);
+    if (signatureUrlParams.has('signaturePrintJobId')) {
+        const jobId = signatureUrlParams.get('signaturePrintJobId');
+        signatureCurrentCopy = parseInt(signatureUrlParams.get('currentCopy') || '1');
+        signatureTotalCopies = parseInt(signatureUrlParams.get('totalCopies') || '1');
+        console.log(`署名継続印刷: ${signatureCurrentCopy}/${signatureTotalCopies} (Job: ${jobId})`);
+    } else {
+        console.log(`署名新規印刷開始: 1/${signatureTotalCopies} (Job: ${signaturePrintJobId})`);
+    }
     
     function printSignatureCopy() {
         // 新しいキャンバスで全体を合成
@@ -1567,9 +1579,6 @@ document.getElementById('signaturePrintButton').onclick = function() {
                           'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
                           'Format='           + 'pdf' + '&' +
                           'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                          'Copy='             + selectedCopies + '&' +
-                          'Copies='           + selectedCopies + '&' +
-                          'Quantity='         + selectedCopies + '&' +
                           'SelectOnError='    + 'yes' + '&' +
                           'CutType='          + 'full' + '&' +
                           'CutFeed='          + 'yes' + '&' +
@@ -1582,9 +1591,75 @@ document.getElementById('signaturePrintButton').onclick = function() {
         signatureImg.src = tmpCanvas.toDataURL("image/png");
     }
     
+    // 【新方式】確実な署名連続印刷の実行
     
-    // SII URL PRINT Agent ネイティブ枚数機能で印刷実行
+    // 現在の1枚を印刷
     printSignatureCopy();
+    
+    // 複数枚印刷の場合の処理
+    if (signatureTotalCopies > 1 && signatureCurrentCopy < signatureTotalCopies) {
+        // 次の印刷を準備
+        const nextCopy = signatureCurrentCopy + 1;
+        const baseUrl = window.location.href.split('?')[0];
+        const nextUrl = baseUrl + 
+            '?signaturePrintJobId=' + encodeURIComponent(signaturePrintJobId) +
+            '&currentCopy=' + nextCopy +
+            '&totalCopies=' + signatureTotalCopies;
+        
+        console.log(`次の署名印刷準備: ${nextCopy}/${signatureTotalCopies}`);
+        
+        // 印刷待機画面を表示
+        setTimeout(() => {
+            document.body.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+                           background: linear-gradient(135deg, #8B4CF7 0%, #6366F1 100%); 
+                           display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                    <div style="background: rgba(255,255,255,0.95); padding: 50px; border-radius: 20px; 
+                               text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+                        <h2 style="color: #333; margin-bottom: 20px; font-size: 28px;">✍️ 署名印刷中</h2>
+                        <div style="font-size: 48px; color: #8B4CF7; margin: 20px 0; font-weight: bold;">
+                            ${signatureCurrentCopy} / ${signatureTotalCopies}
+                        </div>
+                        <p style="color: #666; font-size: 18px; margin-bottom: 30px;">
+                            次の印刷を準備しています...
+                        </p>
+                        <div style="width: 60px; height: 60px; border: 4px solid #f3f3f3; 
+                                   border-top: 4px solid #8B4CF7; border-radius: 50%; 
+                                   animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                    </div>
+                </div>
+                <style>
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                </style>`;
+        }, 1000);
+        
+        // 8秒後に次の印刷を実行
+        setTimeout(() => {
+            window.location.href = nextUrl;
+        }, 8000);
+        
+    } else if (signatureCurrentCopy >= signatureTotalCopies) {
+        // 全印刷完了
+        setTimeout(() => {
+            document.body.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+                           background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
+                           display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                    <div style="background: rgba(255,255,255,0.95); padding: 50px; border-radius: 20px; 
+                               text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+                        <h2 style="color: #333; margin-bottom: 20px; font-size: 32px;">✅ 署名印刷完了！</h2>
+                        <div style="font-size: 24px; color: #4CAF50; margin: 20px 0;">
+                            合計 ${signatureTotalCopies} 枚の印刷が完了しました
+                        </div>
+                        <p style="color: #666; font-size: 16px;">3秒後に自動で戻ります</p>
+                    </div>
+                </div>`;
+            
+            setTimeout(() => {
+                window.location.href = baseUrl;
+            }, 3000);
+        }, 1000);
+    }
     
     addHistory({
         type: 'signature',
@@ -1627,9 +1702,23 @@ function sendToPrintAssist(event) {
             const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             
-            // 【SII URL PRINT Agent ネイティブ枚数印刷】
-            // アプリ側の枚数機能を使用し、連続印刷システムは無効化
-            console.log('画像印刷開始: ' + selectedCopies + '枚（ネイティブ枚数機能使用）');
+            // 【新方式】確実な枚数印刷システム
+            
+            // 現在の印刷状況をセッションストレージで管理
+            const printJobId = 'image_print_' + Date.now();
+            let currentCopy = 1;
+            let imageTotalCopies = selectedCopies;
+            
+            // URLパラメータから印刷状況を復元
+            const imageUrlParams = new URLSearchParams(window.location.search);
+            if (imageUrlParams.has('printJobId')) {
+                const jobId = imageUrlParams.get('printJobId');
+                currentCopy = parseInt(imageUrlParams.get('currentCopy') || '1');
+                imageTotalCopies = parseInt(imageUrlParams.get('totalCopies') || '1');
+                console.log(`継続印刷: ${currentCopy}/${imageTotalCopies} (Job: ${jobId})`);
+            } else {
+                console.log(`新規印刷開始: 1/${imageTotalCopies} (Job: ${printJobId})`);
+            }
             
             function printImageCopy() {
                 // 新しいキャンバスで全体を合成
@@ -1895,9 +1984,6 @@ function sendToPrintAssist(event) {
                                       'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
                                       'Format='           + 'pdf' + '&' +
                                       'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                                      'Copy='             + selectedCopies + '&' +
-                                      'Copies='           + selectedCopies + '&' +
-                                      'Quantity='         + selectedCopies + '&' +
                                       'SelectOnError='    + 'yes' + '&' +
                                       'CutType='          + 'full' + '&' +
                                       'CutFeed='          + 'yes' + '&' +
@@ -1910,8 +1996,75 @@ function sendToPrintAssist(event) {
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
             }
             
-            // SII URL PRINT Agent ネイティブ枚数機能で印刷実行
+            // 【新方式】確実な連続印刷の実行
+            
+            // 現在の1枚を印刷
             printImageCopy();
+            
+            // 複数枚印刷の場合の処理
+            if (imageTotalCopies > 1 && currentCopy < imageTotalCopies) {
+                // 次の印刷を準備
+                const nextCopy = currentCopy + 1;
+                const baseUrl = window.location.href.split('?')[0];
+                const nextUrl = baseUrl + 
+                    '?printJobId=' + encodeURIComponent(printJobId) +
+                    '&currentCopy=' + nextCopy +
+                    '&totalCopies=' + imageTotalCopies;
+                
+                console.log(`次の印刷準備: ${nextCopy}/${imageTotalCopies}`);
+                
+                // 印刷待機画面を表示
+                setTimeout(() => {
+                    document.body.innerHTML = `
+                        <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+                                   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                                   display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                            <div style="background: rgba(255,255,255,0.95); padding: 50px; border-radius: 20px; 
+                                       text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+                                <h2 style="color: #333; margin-bottom: 20px; font-size: 28px;">📄 印刷処理中</h2>
+                                <div style="font-size: 48px; color: #667eea; margin: 20px 0; font-weight: bold;">
+                                    ${currentCopy} / ${imageTotalCopies}
+                                </div>
+                                <p style="color: #666; font-size: 18px; margin-bottom: 30px;">
+                                    次の印刷を準備しています...
+                                </p>
+                                <div style="width: 60px; height: 60px; border: 4px solid #f3f3f3; 
+                                           border-top: 4px solid #667eea; border-radius: 50%; 
+                                           animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                            </div>
+                        </div>
+                        <style>
+                            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                        </style>`;
+                }, 1000);
+                
+                // 8秒後に次の印刷を実行
+                setTimeout(() => {
+                    window.location.href = nextUrl;
+                }, 8000);
+                
+            } else if (currentCopy >= imageTotalCopies) {
+                // 全印刷完了
+                setTimeout(() => {
+                    document.body.innerHTML = `
+                        <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+                                   background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
+                                   display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                            <div style="background: rgba(255,255,255,0.95); padding: 50px; border-radius: 20px; 
+                                       text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+                                <h2 style="color: #333; margin-bottom: 20px; font-size: 32px;">✅ 印刷完了！</h2>
+                                <div style="font-size: 24px; color: #4CAF50; margin: 20px 0;">
+                                    合計 ${imageTotalCopies} 枚の印刷が完了しました
+                                </div>
+                                <p style="color: #666; font-size: 16px;">3秒後に自動で戻ります</p>
+                            </div>
+                        </div>`;
+                    
+                    setTimeout(() => {
+                        window.location.href = baseUrl;
+                    }, 3000);
+                }, 1000);
+            }
             
             addHistory({
                 type: 'image',
@@ -2017,9 +2170,21 @@ function printText() {
     totalHeight += bottomMargin;
     const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
     
-    // 【SII URL PRINT Agent ネイティブ枚数印刷】
-    // アプリ側の枚数機能を使用し、連続印刷システムは無効化
-    console.log('テキスト印刷開始: ' + selectedTextCopies + '枚（ネイティブ枚数機能使用）');
+    // 【新方式】確実なテキスト枚数印刷システム
+    const textPrintJobId = 'text_print_' + Date.now();
+    let textCurrentCopy = 1;
+    let textTotalCopies = selectedTextCopies;
+    
+    // URLパラメータから印刷状況を復元
+    const textUrlParams = new URLSearchParams(window.location.search);
+    if (textUrlParams.has('textPrintJobId')) {
+        const jobId = textUrlParams.get('textPrintJobId');
+        textCurrentCopy = parseInt(textUrlParams.get('currentCopy') || '1');
+        textTotalCopies = parseInt(textUrlParams.get('totalCopies') || '1');
+        console.log(`テキスト継続印刷: ${textCurrentCopy}/${textTotalCopies} (Job: ${jobId})`);
+    } else {
+        console.log(`テキスト新規印刷開始: 1/${textTotalCopies} (Job: ${textPrintJobId})`);
+    }
     
     function printTextCopy() {
         let printText = wrappedLines.join("\n");
@@ -2136,9 +2301,6 @@ function printText() {
                       'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
                       'Format='           + 'pdf' + '&' +
                       'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                      'Copy='             + selectedTextCopies + '&' +
-                      'Copies='           + selectedTextCopies + '&' +
-                      'Quantity='         + selectedTextCopies + '&' +
                       'SelectOnError='    + 'yes' + '&' +
                       'CutType='          + 'full' + '&' +
                       'CutFeed='          + 'yes' + '&' +
@@ -2148,9 +2310,75 @@ function printText() {
         window.location.href = printUrl;
     }
     
-    // SII URL PRINT Agent ネイティブ枚数機能で印刷実行
+    // 【新方式】確実なテキスト連続印刷の実行
+    
+    // 現在の1枚を印刷
     printTextCopy();
     
+    // 複数枚印刷の場合の処理
+    if (textTotalCopies > 1 && textCurrentCopy < textTotalCopies) {
+        // 次の印刷を準備
+        const nextCopy = textCurrentCopy + 1;
+        const baseUrl = window.location.href.split('?')[0];
+        const nextUrl = baseUrl + 
+            '?textPrintJobId=' + encodeURIComponent(textPrintJobId) +
+            '&currentCopy=' + nextCopy +
+            '&totalCopies=' + textTotalCopies;
+        
+        console.log(`次のテキスト印刷準備: ${nextCopy}/${textTotalCopies}`);
+        
+        // 印刷待機画面を表示
+        setTimeout(() => {
+            document.body.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+                           background: linear-gradient(135deg, #FF6B6B 0%, #FFE66D 100%); 
+                           display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                    <div style="background: rgba(255,255,255,0.95); padding: 50px; border-radius: 20px; 
+                               text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+                        <h2 style="color: #333; margin-bottom: 20px; font-size: 28px;">📝 テキスト印刷中</h2>
+                        <div style="font-size: 48px; color: #FF6B6B; margin: 20px 0; font-weight: bold;">
+                            ${textCurrentCopy} / ${textTotalCopies}
+                        </div>
+                        <p style="color: #666; font-size: 18px; margin-bottom: 30px;">
+                            次の印刷を準備しています...
+                        </p>
+                        <div style="width: 60px; height: 60px; border: 4px solid #f3f3f3; 
+                                   border-top: 4px solid #FF6B6B; border-radius: 50%; 
+                                   animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                    </div>
+                </div>
+                <style>
+                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                </style>`;
+        }, 1000);
+        
+        // 6秒後に次の印刷を実行（テキストは処理が軽いため短縮）
+        setTimeout(() => {
+            window.location.href = nextUrl;
+        }, 6000);
+        
+    } else if (textCurrentCopy >= textTotalCopies) {
+        // 全印刷完了
+        setTimeout(() => {
+            document.body.innerHTML = `
+                <div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+                           background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); 
+                           display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                    <div style="background: rgba(255,255,255,0.95); padding: 50px; border-radius: 20px; 
+                               text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+                        <h2 style="color: #333; margin-bottom: 20px; font-size: 32px;">✅ テキスト印刷完了！</h2>
+                        <div style="font-size: 24px; color: #4CAF50; margin: 20px 0;">
+                            合計 ${textTotalCopies} 枚の印刷が完了しました
+                        </div>
+                        <p style="color: #666; font-size: 16px;">3秒後に自動で戻ります</p>
+                    </div>
+                </div>`;
+            
+            setTimeout(() => {
+                window.location.href = baseUrl;
+            }, 3000);
+        }, 1000);
+    }
     addHistory({
         type: 'text',
         mode: 'text',
