@@ -1795,81 +1795,107 @@ function sendToPrintAssist(event) {
                         
                         let finalGray = gray;
                         
-                        // エッジ検出：周辺ピクセルとの差分を計算
-                        if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
-                            const neighbors = [
-                                grayData[(y - 1) * width + (x - 1)], // 左上
-                                grayData[(y - 1) * width + x],       // 上
-                                grayData[(y - 1) * width + (x + 1)], // 右上
-                                grayData[y * width + (x - 1)],       // 左
-                                grayData[y * width + (x + 1)],       // 右
-                                grayData[(y + 1) * width + (x - 1)], // 左下
-                                grayData[(y + 1) * width + x],       // 下
-                                grayData[(y + 1) * width + (x + 1)]  // 右下
-                            ];
+                        // 【サーマル特化】5x5カーネル強力エッジ強化
+                        if (x >= 2 && x < width - 2 && y >= 2 && y < height - 2) {
+                            // 5x5カーネルでより精密なエッジ検出
+                            let kernelSum = 0;
+                            let kernelCount = 0;
                             
-                            // エッジ強度計算
-                            const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
+                            for (let dy = -2; dy <= 2; dy++) {
+                                for (let dx = -2; dx <= 2; dx++) {
+                                    if (dx !== 0 || dy !== 0) { // 中心ピクセル以外
+                                        kernelSum += grayData[(y + dy) * width + (x + dx)];
+                                        kernelCount++;
+                                    }
+                                }
+                            }
+                            
+                            const avgNeighbor = kernelSum / kernelCount;
                             const edgeStrength = Math.abs(gray - avgNeighbor);
                             
-                            // エッジが検出された場合のシャープネス強化
-                            if (edgeStrength > 10) {
-                                const sharpFactor = Math.min(0.4, edgeStrength / 100);
-                                if (gray > avgNeighbor) {
-                                    finalGray = Math.min(255, gray + (gray - avgNeighbor) * sharpFactor);
+                            // 【極限エッジ強化】サーマルプリンター濃淡特化
+                            if (edgeStrength > 5) { // より敏感な閾値
+                                // 濃度別の極限シャープニング係数
+                                let sharpFactor;
+                                if (gray >= 200) {
+                                    sharpFactor = 2.5; // 極薄グレー：超強力シャープ
+                                } else if (gray >= 150) {
+                                    sharpFactor = 2.0; // 薄グレー：強力シャープ
+                                } else if (gray >= 100) {
+                                    sharpFactor = 1.5; // 中間グレー：中強力シャープ
+                                } else if (gray >= 50) {
+                                    sharpFactor = 1.2; // 濃グレー：適度シャープ
                                 } else {
-                                    finalGray = Math.max(0, gray - (avgNeighbor - gray) * sharpFactor);
+                                    sharpFactor = 0.8; // 最暗部：軽度シャープ
+                                }
+                                
+                                // エッジ強度に応じた動的調整
+                                const dynamicFactor = Math.min(1.0, edgeStrength / 30) * sharpFactor;
+                                
+                                if (gray > avgNeighbor) {
+                                    finalGray = Math.min(255, gray + (gray - avgNeighbor) * dynamicFactor);
+                                } else {
+                                    finalGray = Math.max(0, gray - (avgNeighbor - gray) * dynamicFactor);
                                 }
                             }
                         }
                         
-                        // 【プリンター最適化】確実な濃淡印刷処理
+                        // 【サーマルプリンター特化】極限濃淡強化処理
                         let result;
                         
-                        // ガンマ補正を適用して濃淡を強調
-                        const gamma = 0.7; // プリンター用ガンマ値
+                        // ステップ1: 強力なガンマ補正（サーマルプリンター最適化）
+                        const gamma = 0.5; // より強力なガンマ値で濃淡を極限強化
                         const gammaGray = Math.pow(finalGray / 255, gamma) * 255;
                         
-                        // プリンター認識しやすい階調に変換（より多段階）
-                        if (gammaGray >= 240) result = 255;      // 純白
-                        else if (gammaGray >= 230) result = 245;  // 最薄グレー
-                        else if (gammaGray >= 220) result = 235;  // 極薄グレー
-                        else if (gammaGray >= 210) result = 225;  // 薄グレー1
-                        else if (gammaGray >= 200) result = 215;  // 薄グレー2
-                        else if (gammaGray >= 190) result = 205;  // 薄グレー3
-                        else if (gammaGray >= 180) result = 195;  // 薄グレー4
-                        else if (gammaGray >= 170) result = 185;  // 薄グレー5
-                        else if (gammaGray >= 160) result = 175;  // 中薄グレー1
-                        else if (gammaGray >= 150) result = 165;  // 中薄グレー2
-                        else if (gammaGray >= 140) result = 155;  // 中薄グレー3
-                        else if (gammaGray >= 130) result = 145;  // 中薄グレー4
-                        else if (gammaGray >= 120) result = 135;  // 中間グレー1
-                        else if (gammaGray >= 110) result = 125;  // 中間グレー2
-                        else if (gammaGray >= 100) result = 115;  // 中間グレー3
-                        else if (gammaGray >= 90) result = 105;   // 中間グレー4
-                        else if (gammaGray >= 80) result = 95;    // 中濃グレー1
-                        else if (gammaGray >= 70) result = 85;    // 中濃グレー2
-                        else if (gammaGray >= 60) result = 75;    // 中濃グレー3
-                        else if (gammaGray >= 50) result = 65;    // 濃グレー1
-                        else if (gammaGray >= 40) result = 55;    // 濃グレー2
-                        else if (gammaGray >= 30) result = 45;    // 濃グレー3
-                        else if (gammaGray >= 20) result = 35;    // 暗グレー1
-                        else if (gammaGray >= 10) result = 25;    // 暗グレー2
-                        else if (gammaGray >= 5) result = 15;     // 極暗グレー
-                        else result = 0;                          // 最暗部（純黒）
+                        // ステップ2: 濃淡の大幅拡張（薄いグレーを極限まで強化）
+                        const enhancedGray = gammaGray * 1.3; // 30%濃度アップ
+                        const clampedGray = Math.min(255, Math.max(0, enhancedGray));
                         
-                        // 薄いグレー範囲の特別強化（印刷で見えやすく）
+                        // ステップ3: サーマルプリンター認識最適化階調（極細分化）
+                        if (clampedGray >= 250) result = 255;      // 純白
+                        else if (clampedGray >= 240) result = 250;  // 極薄グレー1
+                        else if (clampedGray >= 230) result = 240;  // 極薄グレー2
+                        else if (clampedGray >= 220) result = 230;  // 極薄グレー3
+                        else if (clampedGray >= 210) result = 220;  // 薄グレー1
+                        else if (clampedGray >= 200) result = 210;  // 薄グレー2
+                        else if (clampedGray >= 190) result = 200;  // 薄グレー3
+                        else if (clampedGray >= 180) result = 190;  // 薄グレー4
+                        else if (clampedGray >= 170) result = 180;  // 薄グレー5
+                        else if (clampedGray >= 160) result = 170;  // 中薄グレー1
+                        else if (clampedGray >= 150) result = 160;  // 中薄グレー2
+                        else if (clampedGray >= 140) result = 150;  // 中薄グレー3
+                        else if (clampedGray >= 130) result = 140;  // 中薄グレー4
+                        else if (clampedGray >= 120) result = 130;  // 中間グレー1
+                        else if (clampedGray >= 110) result = 120;  // 中間グレー2
+                        else if (clampedGray >= 100) result = 110;  // 中間グレー3
+                        else if (clampedGray >= 90) result = 100;   // 中間グレー4
+                        else if (clampedGray >= 80) result = 90;    // 中濃グレー1
+                        else if (clampedGray >= 70) result = 80;    // 中濃グレー2
+                        else if (clampedGray >= 60) result = 70;    // 中濃グレー3
+                        else if (clampedGray >= 50) result = 60;    // 濃グレー1
+                        else if (clampedGray >= 40) result = 50;    // 濃グレー2
+                        else if (clampedGray >= 30) result = 40;    // 濃グレー3
+                        else if (clampedGray >= 20) result = 30;    // 暗グレー1
+                        else if (clampedGray >= 10) result = 20;    // 暗グレー2
+                        else if (clampedGray >= 5) result = 10;     // 極暗グレー
+                        else result = 0;                            // 最暗部（純黒）
+                        
+                        // ステップ4: 薄いグレー範囲の極限強化（サーマル印刷専用）
                         if (result >= 200) {
-                            // 薄いグレー：コントラストを大幅に強化
-                            result = Math.max(150, Math.min(255, result - 30));
+                            // 極薄グレー：最大限のコントラスト強化
+                            const boost = (result - 200) * 0.3; // 薄い部分ほど強化
+                            result = Math.max(120, Math.min(255, result - 50 + boost));
                         } else if (result >= 150) {
-                            // 中薄グレー：適度に強化
-                            result = Math.max(100, Math.min(200, result - 15));
+                            // 薄グレー：大幅強化
+                            result = Math.max(80, Math.min(200, result - 35));
                         } else if (result >= 100) {
-                            // 中間グレー：微調整
-                            result = Math.max(80, Math.min(150, result - 5));
+                            // 中間グレー：中程度強化
+                            result = Math.max(60, Math.min(150, result - 20));
+                        } else if (result >= 50) {
+                            // 濃グレー：軽度強化
+                            result = Math.max(30, Math.min(100, result - 10));
                         }
-                        // 濃いグレー（100未満）はそのまま
+                        // 最暗部（50未満）はそのまま保持
                         
                         // 最終値を設定
                         data[i] = result;
@@ -1880,72 +1906,147 @@ function sendToPrintAssist(event) {
                     // 調整されたピクセルデータを再描画
                     compositeCtx.putImageData(imageData, imgX, imgY);
                     
-                    // 【追加】最終シャープネス後処理で更に細かな濃淡を強化
+                    // 【極限濃淡強化】最終サーマルプリンター特化処理
                     const finalData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const finalPixels = finalData.data;
                     
-                    // 【濃淡特化】アンシャープマスク強化処理
+                    // ステップ1: 極限アンシャープマスク（サーマル専用）
                     for (let i = 0; i < finalPixels.length; i += 4) {
                         const pixelIndex = i / 4;
                         const x = pixelIndex % finalImgWidth;
                         const y = Math.floor(pixelIndex / finalImgWidth);
                         
-                        if (x > 1 && x < finalImgWidth - 2 && y > 1 && y < finalImgHeight - 2) {
-                            // 現在のピクセル値
+                        if (x > 2 && x < finalImgWidth - 3 && y > 2 && y < finalImgHeight - 3) {
                             const current = finalPixels[i];
                             
-                            // 5x5カーネルで広範囲の平均を計算（より滑らかなぼかし）
+                            // 7x7カーネルで超精密ぼかし計算
                             let sum = 0;
                             let count = 0;
-                            for (let dy = -2; dy <= 2; dy++) {
-                                for (let dx = -2; dx <= 2; dx++) {
-                                    if (y + dy >= 0 && y + dy < finalImgHeight && 
-                                        x + dx >= 0 && x + dx < finalImgWidth) {
-                                        const idx = ((y + dy) * finalImgWidth + (x + dx)) * 4;
-                                        sum += finalPixels[idx];
-                                        count++;
-                                    }
+                            for (let dy = -3; dy <= 3; dy++) {
+                                for (let dx = -3; dx <= 3; dx++) {
+                                    const idx = ((y + dy) * finalImgWidth + (x + dx)) * 4;
+                                    sum += finalPixels[idx];
+                                    count++;
                                 }
                             }
                             const blur = sum / count;
                             
-                            // 濃淡レベル別のアンシャープマスク強度調整
+                            // 【極限強化】濃淡レベル別超強力シャープニング
                             let sharpFactor;
-                            if (current >= 200) {
-                                // 薄いグレー：強力なシャープネス
-                                sharpFactor = 1.2;
-                            } else if (current >= 150) {
-                                // 中薄グレー：標準シャープネス
-                                sharpFactor = 0.9;
+                            if (current >= 220) {
+                                sharpFactor = 3.0; // 極薄グレー：超極限シャープ
+                            } else if (current >= 180) {
+                                sharpFactor = 2.5; // 薄グレー：極限シャープ
+                            } else if (current >= 140) {
+                                sharpFactor = 2.0; // 中薄グレー：超強力シャープ
                             } else if (current >= 100) {
-                                // 中間グレー：適度なシャープネス
-                                sharpFactor = 0.6;
+                                sharpFactor = 1.5; // 中間グレー：強力シャープ
+                            } else if (current >= 60) {
+                                sharpFactor = 1.2; // 中濃グレー：中強力シャープ
                             } else {
-                                // 濃いグレー：軽微なシャープネス
-                                sharpFactor = 0.3;
+                                sharpFactor = 0.8; // 濃グレー：適度シャープ
                             }
                             
                             // アンシャープマスク適用
-                            const sharpened = current + sharpFactor * (current - blur);
-                            let final = Math.max(0, Math.min(255, Math.round(sharpened)));
+                            const sharpened = current + (current - blur) * sharpFactor;
+                            const result = Math.max(0, Math.min(255, sharpened));
                             
-                            // 最終的な濃淡補正（プリンター認識向上）
-                            if (final >= 240) {
-                                final = Math.min(255, final + 10);  // 最薄部分をより明確に
-                            } else if (final >= 200) {
-                                final = Math.max(180, final - 10);  // 薄グレーをより見えやすく
-                            } else if (final >= 150) {
-                                final = Math.max(130, final - 5);   // 中薄グレーを微調整
-                            }
-                            
-                            finalPixels[i] = final;
-                            finalPixels[i + 1] = final;
-                            finalPixels[i + 2] = final;
+                            finalPixels[i] = result;
+                            finalPixels[i + 1] = result;
+                            finalPixels[i + 2] = result;
                         }
                     }
                     
-                    // 最終処理済みデータを描画
+                    // ステップ2: 【革新技術】濃淡のコントラスト極限拡張
+                    for (let i = 0; i < finalPixels.length; i += 4) {
+                        const current = finalPixels[i];
+                        let enhanced;
+                        
+                        // S字カーブによるコントラスト極限強化
+                        const normalized = current / 255;
+                        const sCurve = 1 / (1 + Math.exp(-12 * (normalized - 0.5))); // より急峻なS字
+                        enhanced = sCurve * 255;
+                        
+                        // 薄いグレー範囲の追加ブースト
+                        if (enhanced >= 180) {
+                            enhanced = Math.min(255, enhanced * 1.2); // 20%ブースト
+                        } else if (enhanced >= 120) {
+                            enhanced = Math.min(180, enhanced * 1.1); // 10%ブースト
+                        }
+                        
+                        const final = Math.max(0, Math.min(255, Math.round(enhanced)));
+                        finalPixels[i] = final;
+                        finalPixels[i + 1] = final;
+                        finalPixels[i + 2] = final;
+                    }
+                    
+                    // 処理済みデータを再描画
                     compositeCtx.putImageData(finalData, imgX, imgY);
+                    
+                    // 【革新技術】フロイド・シュタインバーグディザリングで濃淡完全再現
+                    const ditherData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const ditherPixels = ditherData.data;
+                    
+                    for (let y = 0; y < finalImgHeight - 1; y++) {
+                        for (let x = 1; x < finalImgWidth - 1; x++) {
+                            const idx = (y * finalImgWidth + x) * 4;
+                            const oldPixel = ditherPixels[idx];
+                            
+                            // より多階調での量子化（サーマルプリンター最適化）
+                            let newPixel;
+                            if (oldPixel >= 240) newPixel = 255;
+                            else if (oldPixel >= 210) newPixel = 225;
+                            else if (oldPixel >= 180) newPixel = 195;
+                            else if (oldPixel >= 150) newPixel = 165;
+                            else if (oldPixel >= 120) newPixel = 135;
+                            else if (oldPixel >= 90) newPixel = 105;
+                            else if (oldPixel >= 60) newPixel = 75;
+                            else if (oldPixel >= 30) newPixel = 45;
+                            else newPixel = 0;
+                            
+                            ditherPixels[idx] = newPixel;
+                            ditherPixels[idx + 1] = newPixel;
+                            ditherPixels[idx + 2] = newPixel;
+                            
+                            // 誤差拡散（フロイド・シュタインバーグ法）
+                            const error = oldPixel - newPixel;
+                            
+                            // 右のピクセルに7/16の誤差を拡散
+                            if (x + 1 < finalImgWidth) {
+                                const rightIdx = (y * finalImgWidth + x + 1) * 4;
+                                ditherPixels[rightIdx] = Math.max(0, Math.min(255, ditherPixels[rightIdx] + error * 7 / 16));
+                                ditherPixels[rightIdx + 1] = ditherPixels[rightIdx];
+                                ditherPixels[rightIdx + 2] = ditherPixels[rightIdx];
+                            }
+                            
+                            // 左下のピクセルに3/16の誤差を拡散
+                            if (y + 1 < finalImgHeight && x - 1 >= 0) {
+                                const leftDownIdx = ((y + 1) * finalImgWidth + x - 1) * 4;
+                                ditherPixels[leftDownIdx] = Math.max(0, Math.min(255, ditherPixels[leftDownIdx] + error * 3 / 16));
+                                ditherPixels[leftDownIdx + 1] = ditherPixels[leftDownIdx];
+                                ditherPixels[leftDownIdx + 2] = ditherPixels[leftDownIdx];
+                            }
+                            
+                            // 下のピクセルに5/16の誤差を拡散
+                            if (y + 1 < finalImgHeight) {
+                                const downIdx = ((y + 1) * finalImgWidth + x) * 4;
+                                ditherPixels[downIdx] = Math.max(0, Math.min(255, ditherPixels[downIdx] + error * 5 / 16));
+                                ditherPixels[downIdx + 1] = ditherPixels[downIdx];
+                                ditherPixels[downIdx + 2] = ditherPixels[downIdx];
+                            }
+                            
+                            // 右下のピクセルに1/16の誤差を拡散
+                            if (y + 1 < finalImgHeight && x + 1 < finalImgWidth) {
+                                const rightDownIdx = ((y + 1) * finalImgWidth + x + 1) * 4;
+                                ditherPixels[rightDownIdx] = Math.max(0, Math.min(255, ditherPixels[rightDownIdx] + error * 1 / 16));
+                                ditherPixels[rightDownIdx + 1] = ditherPixels[rightDownIdx];
+                                ditherPixels[rightDownIdx + 2] = ditherPixels[rightDownIdx];
+                            }
+                        }
+                    }
+                    
+                    // ディザリング後のデータを最終描画
+                    compositeCtx.putImageData(ditherData, imgX, imgY);
                     
                     // 日付・時刻を描画
                     if (isDateTimeEnabled) {
