@@ -1607,8 +1607,25 @@ document.getElementById('signaturePrintButton').onclick = function() {
             pdf.internal.pageSize.width = 58;
             pdf.internal.pageSize.height = pdfHeight;
             
-            // 合成画像をPDFに追加
-            pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+            // 【濃淡保持技術】最適化印刷設定でPDFに追加
+            pdf.addImage(
+                compositeDataUrl,
+                'PNG',
+                0,
+                0,
+                58,
+                pdfHeight,
+                undefined,
+                'NONE'  // 圧縮なしで追加（濃淡完全保持）
+            );
+            
+            // 【印刷品質向上】PDFに濃淡保持メタデータを設定
+            if (pdf.internal && pdf.internal.write) {
+                // 高品質印刷設定を追加
+                pdf.internal.write('/Intent /RelativeColorimetric');
+                pdf.internal.write('/OutputCondition (SWOP CGATS TR 001)');
+                pdf.internal.write('/ColorSpace /DeviceGray');
+            }
             
             // PDFをBase64形式で取得
             const pdfBase64 = pdf.output('datauristring').split(',')[1];
@@ -1806,46 +1823,53 @@ function sendToPrintAssist(event) {
                             }
                         }
                         
-                        // 20段階固定変換（超細密階調）
+                        // 【プリンター最適化】確実な濃淡印刷処理
                         let result;
-                        if (finalGray >= 248) result = 250;      // 最高明度
-                        else if (finalGray >= 235) result = 230;  // 極薄グレー
-                        else if (finalGray >= 220) result = 210;  // 薄グレー1
-                        else if (finalGray >= 205) result = 190;  // 薄グレー2
-                        else if (finalGray >= 190) result = 170;  // 薄グレー3
-                        else if (finalGray >= 175) result = 150;  // 薄グレー4
-                        else if (finalGray >= 160) result = 130;  // 中薄グレー1
-                        else if (finalGray >= 145) result = 115;  // 中薄グレー2
-                        else if (finalGray >= 130) result = 100;  // 中間グレー1
-                        else if (finalGray >= 115) result = 85;   // 中間グレー2
-                        else if (finalGray >= 100) result = 70;   // 中間グレー3
-                        else if (finalGray >= 85) result = 60;    // 中濃グレー1
-                        else if (finalGray >= 70) result = 50;    // 中濃グレー2
-                        else if (finalGray >= 55) result = 40;    // 濃グレー1
-                        else if (finalGray >= 40) result = 30;    // 濃グレー2
-                        else if (finalGray >= 30) result = 20;    // 濃グレー3
-                        else if (finalGray >= 20) result = 15;    // 暗グレー1
-                        else if (finalGray >= 15) result = 10;    // 暗グレー2
-                        else if (finalGray >= 10) result = 5;     // 極暗グレー
-                        else result = 0;                          // 最暗部
                         
-                        // 5段階精密コントラスト強化
+                        // ガンマ補正を適用して濃淡を強調
+                        const gamma = 0.7; // プリンター用ガンマ値
+                        const gammaGray = Math.pow(finalGray / 255, gamma) * 255;
+                        
+                        // プリンター認識しやすい階調に変換（より多段階）
+                        if (gammaGray >= 240) result = 255;      // 純白
+                        else if (gammaGray >= 230) result = 245;  // 最薄グレー
+                        else if (gammaGray >= 220) result = 235;  // 極薄グレー
+                        else if (gammaGray >= 210) result = 225;  // 薄グレー1
+                        else if (gammaGray >= 200) result = 215;  // 薄グレー2
+                        else if (gammaGray >= 190) result = 205;  // 薄グレー3
+                        else if (gammaGray >= 180) result = 195;  // 薄グレー4
+                        else if (gammaGray >= 170) result = 185;  // 薄グレー5
+                        else if (gammaGray >= 160) result = 175;  // 中薄グレー1
+                        else if (gammaGray >= 150) result = 165;  // 中薄グレー2
+                        else if (gammaGray >= 140) result = 155;  // 中薄グレー3
+                        else if (gammaGray >= 130) result = 145;  // 中薄グレー4
+                        else if (gammaGray >= 120) result = 135;  // 中間グレー1
+                        else if (gammaGray >= 110) result = 125;  // 中間グレー2
+                        else if (gammaGray >= 100) result = 115;  // 中間グレー3
+                        else if (gammaGray >= 90) result = 105;   // 中間グレー4
+                        else if (gammaGray >= 80) result = 95;    // 中濃グレー1
+                        else if (gammaGray >= 70) result = 85;    // 中濃グレー2
+                        else if (gammaGray >= 60) result = 75;    // 中濃グレー3
+                        else if (gammaGray >= 50) result = 65;    // 濃グレー1
+                        else if (gammaGray >= 40) result = 55;    // 濃グレー2
+                        else if (gammaGray >= 30) result = 45;    // 濃グレー3
+                        else if (gammaGray >= 20) result = 35;    // 暗グレー1
+                        else if (gammaGray >= 10) result = 25;    // 暗グレー2
+                        else if (gammaGray >= 5) result = 15;     // 極暗グレー
+                        else result = 0;                          // 最暗部（純黒）
+                        
+                        // 薄いグレー範囲の特別強化（印刷で見えやすく）
                         if (result >= 200) {
-                            // 最薄範囲：微調整
-                            result = Math.max(180, Math.min(255, result * 1.05));
+                            // 薄いグレー：コントラストを大幅に強化
+                            result = Math.max(150, Math.min(255, result - 30));
                         } else if (result >= 150) {
-                            // 薄範囲：軽度強化
-                            result = Math.max(120, Math.min(200, result * 1.15));
-                        } else if (result >= 80) {
-                            // 中間範囲：標準強化
-                            result = Math.max(60, Math.min(150, result * 1.25));
-                        } else if (result >= 30) {
-                            // 濃範囲：強度強化
-                            result = Math.max(20, Math.min(80, result * 1.4));
-                        } else {
-                            // 最濃範囲：最大強化
-                            result = Math.max(0, Math.min(30, result * 1.6));
+                            // 中薄グレー：適度に強化
+                            result = Math.max(100, Math.min(200, result - 15));
+                        } else if (result >= 100) {
+                            // 中間グレー：微調整
+                            result = Math.max(80, Math.min(150, result - 5));
                         }
+                        // 濃いグレー（100未満）はそのまま
                         
                         // 最終値を設定
                         data[i] = result;
@@ -1860,7 +1884,7 @@ function sendToPrintAssist(event) {
                     const finalData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const finalPixels = finalData.data;
                     
-                    // UnsharpMask効果で細部を強調
+                    // 【濃淡特化】アンシャープマスク強化処理
                     for (let i = 0; i < finalPixels.length; i += 4) {
                         const pixelIndex = i / 4;
                         const x = pixelIndex % finalImgWidth;
@@ -1870,21 +1894,49 @@ function sendToPrintAssist(event) {
                             // 現在のピクセル値
                             const current = finalPixels[i];
                             
-                            // 3x3カーネルで周辺平均を計算
+                            // 5x5カーネルで広範囲の平均を計算（より滑らかなぼかし）
                             let sum = 0;
                             let count = 0;
-                            for (let dy = -1; dy <= 1; dy++) {
-                                for (let dx = -1; dx <= 1; dx++) {
-                                    const idx = ((y + dy) * finalImgWidth + (x + dx)) * 4;
-                                    sum += finalPixels[idx];
-                                    count++;
+                            for (let dy = -2; dy <= 2; dy++) {
+                                for (let dx = -2; dx <= 2; dx++) {
+                                    if (y + dy >= 0 && y + dy < finalImgHeight && 
+                                        x + dx >= 0 && x + dx < finalImgWidth) {
+                                        const idx = ((y + dy) * finalImgWidth + (x + dx)) * 4;
+                                        sum += finalPixels[idx];
+                                        count++;
+                                    }
                                 }
                             }
                             const blur = sum / count;
                             
-                            // アンシャープマスク適用（細部強調）
-                            const sharpened = current + 0.6 * (current - blur);
-                            const final = Math.max(0, Math.min(255, Math.round(sharpened)));
+                            // 濃淡レベル別のアンシャープマスク強度調整
+                            let sharpFactor;
+                            if (current >= 200) {
+                                // 薄いグレー：強力なシャープネス
+                                sharpFactor = 1.2;
+                            } else if (current >= 150) {
+                                // 中薄グレー：標準シャープネス
+                                sharpFactor = 0.9;
+                            } else if (current >= 100) {
+                                // 中間グレー：適度なシャープネス
+                                sharpFactor = 0.6;
+                            } else {
+                                // 濃いグレー：軽微なシャープネス
+                                sharpFactor = 0.3;
+                            }
+                            
+                            // アンシャープマスク適用
+                            const sharpened = current + sharpFactor * (current - blur);
+                            let final = Math.max(0, Math.min(255, Math.round(sharpened)));
+                            
+                            // 最終的な濃淡補正（プリンター認識向上）
+                            if (final >= 240) {
+                                final = Math.min(255, final + 10);  // 最薄部分をより明確に
+                            } else if (final >= 200) {
+                                final = Math.max(180, final - 10);  // 薄グレーをより見えやすく
+                            } else if (final >= 150) {
+                                final = Math.max(130, final - 5);   // 中薄グレーを微調整
+                            }
                             
                             finalPixels[i] = final;
                             finalPixels[i + 1] = final;
@@ -1926,28 +1978,44 @@ function sendToPrintAssist(event) {
                         compositeCtx.fillText(timeText, exactCenterX, yPos);
                     }
                     
-                    // 合成キャンバスを高品質PNGデータURLに変換
+                    // 【濃淡保持最適化】高品質PDF生成
                     const compositeDataUrl = compositeCanvas.toDataURL('image/png', 1.0);
                     
-                    // さらに画質を向上させるため、中間的にJPEGでも作成
-                    const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.95);
-                    
-                    // jsPDFを使用してPDFを生成
+                    // jsPDFを使用してPDFを生成（濃淡保持設定）
                     const { jsPDF } = window.jspdf;
                     const pdfHeight = Math.round(totalHeight / mmToPx);
                     
                     const pdf = new jsPDF({
                         orientation: 'portrait',
                         unit: 'mm',
-                        format: [58, pdfHeight]
+                        format: [58, pdfHeight],
+                        compress: false,  // 圧縮無効化で品質保持
+                        precision: 16     // 高精度設定
                     });
                     
                     // PDFの設定を直接操作
                     pdf.internal.pageSize.width = 58;
                     pdf.internal.pageSize.height = pdfHeight;
                     
-                    // 合成画像をPDFに追加
-                    pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+                    // 【濃淡保持技術】最適化印刷設定でPDFに追加
+                    pdf.addImage(
+                        compositeDataUrl,
+                        'PNG',
+                        0,
+                        0,
+                        58,
+                        pdfHeight,
+                        undefined,
+                        'NONE'  // 圧縮なしで追加（濃淡完全保持）
+                    );
+                    
+                    // 【印刷品質向上】PDFに濃淡保持メタデータを設定
+                    if (pdf.internal && pdf.internal.write) {
+                        // 高品質印刷設定を追加
+                        pdf.internal.write('/Intent /RelativeColorimetric');
+                        pdf.internal.write('/OutputCondition (SWOP CGATS TR 001)');
+                        pdf.internal.write('/ColorSpace /DeviceGray');
+                    }
                     
                     // PDFをBase64形式で取得
                     const pdfBase64 = pdf.output('datauristring').split(',')[1];
