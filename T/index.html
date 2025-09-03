@@ -1578,34 +1578,32 @@ document.getElementById('signaturePrintButton').onclick = function() {
         signatureImg.src = tmpCanvas.toDataURL("image/png");
     }
     
-    // テキスト印刷と同じ方式で枚数印刷を実装
+    // 確実な枚数印刷の実装
     
-    // 最初の1枚目を印刷
-    printSignatureCopy(1);
+    // URLパラメータで現在の印刷回数を確認
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentPrintCount = parseInt(urlParams.get('signaturePrintCount') || '1');
     
-    // 複数枚の場合は、ページ読み込み時に続きを印刷
-    if (selectedCopies > 1) {
-        // URLパラメータで現在の印刷回数を管理
-        const urlParams = new URLSearchParams(window.location.search);
-        let currentPrintCount = parseInt(urlParams.get('signaturePrintCount') || '1');
+    // 1枚目を印刷
+    printSignatureCopy(currentPrintCount);
+    
+    // 複数枚の場合の処理
+    if (selectedCopies > 1 && currentPrintCount < selectedCopies) {
+        // 次の印刷のためのURLパラメータを準備
+        const nextCount = currentPrintCount + 1;
+        const baseUrl = window.location.href.split('?')[0];
+        const nextUrl = baseUrl + '?signaturePrintCount=' + nextCount;
         
-        if (currentPrintCount < selectedCopies) {
-            // 次の印刷のためにURLパラメータを更新
-            const nextCount = currentPrintCount + 1;
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set('signaturePrintCount', nextCount.toString());
-            
-            // 6秒後に次の印刷を実行
-            setTimeout(() => {
-                printSignatureCopy(nextCount);
-                // 再度同じページを読み込んで次の印刷へ
-                if (nextCount <= selectedCopies) {
-                    setTimeout(() => {
-                        window.location.href = newUrl.toString();
-                    }, 1000);
-                }
-            }, 6000);
-        }
+        // 印刷完了後、6秒待って次の印刷を実行
+        setTimeout(() => {
+            console.log('次の印刷準備: ' + nextCount + '/' + selectedCopies);
+            window.location.href = nextUrl;
+        }, 6000);
+        
+        // 待機中の表示
+        setTimeout(() => {
+            document.body.innerHTML = '<div style="text-align:center; padding:50px; font-size:24px;">次の印刷準備中... (' + nextCount + '/' + selectedCopies + ')</div>';
+        }, 3000);
     }
     
     addHistory({
@@ -1709,11 +1707,11 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // 画像描画後、濃淡を確実に印刷反映させる徹底処理
+                    // 画像描画後、濃淡を確実に印字させる最強処理
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 濃淡を確実に印刷できる強力な処理
+                    // 濃淡を確実に印字する最強の処理
                     for (let i = 0; i < data.length; i += 4) {
                         let r = data[i];
                         let g = data[i + 1];
@@ -1722,42 +1720,67 @@ function sendToPrintAssist(event) {
                         // Step 1: 高精度グレースケール変換
                         const gray = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
                         
-                        // Step 2: 印刷用コントラスト強化処理
+                        // Step 2: 印刷機で確実に認識される濃度変換
                         let result;
                         
-                        // 段階的なコントラスト強化（印刷で濃淡がはっきり見える）
-                        if (gray >= 230) {
-                            // 最明部：薄いグレーで印刷
-                            result = Math.round(gray * 0.85 + 30);
-                        } else if (gray >= 200) {
-                            // 薄いグレー：やや濃くして印刷確実に
-                            result = Math.round(gray * 0.75 + 40);
-                        } else if (gray >= 170) {
-                            // やや薄いグレー：コントラスト強化
-                            result = Math.round(gray * 0.7 + 35);
-                        } else if (gray >= 140) {
-                            // 中間グレー：適度な強化
-                            result = Math.round(gray * 0.65 + 30);
-                        } else if (gray >= 110) {
-                            // やや濃いグレー：強化
-                            result = Math.round(gray * 0.6 + 25);
-                        } else if (gray >= 80) {
-                            // 濃いグレー：強化
-                            result = Math.round(gray * 0.55 + 20);
-                        } else if (gray >= 50) {
-                            // 暗いグレー：強化
-                            result = Math.round(gray * 0.5 + 15);
+                        if (gray >= 245) {
+                            // 最明部：確実に印刷される薄いグレー
+                            result = 220;
+                        } else if (gray >= 225) {
+                            // 非常に薄いグレー
+                            result = 200;
+                        } else if (gray >= 205) {
+                            // 薄いグレー
+                            result = 180;
+                        } else if (gray >= 185) {
+                            // やや薄いグレー
+                            result = 160;
+                        } else if (gray >= 165) {
+                            // 中薄グレー
+                            result = 140;
+                        } else if (gray >= 145) {
+                            // 中間グレー
+                            result = 120;
+                        } else if (gray >= 125) {
+                            // やや濃いグレー
+                            result = 100;
+                        } else if (gray >= 105) {
+                            // 濃いグレー
+                            result = 80;
+                        } else if (gray >= 85) {
+                            // 暗いグレー
+                            result = 60;
+                        } else if (gray >= 65) {
+                            // より暗いグレー
+                            result = 40;
+                        } else if (gray >= 45) {
+                            // 非常に暗いグレー
+                            result = 25;
+                        } else if (gray >= 25) {
+                            // 最暗部手前
+                            result = 10;
                         } else {
-                            // 最暗部：黒に近く
-                            result = Math.round(gray * 0.3 + 5);
+                            // 最暗部
+                            result = 5;
                         }
                         
-                        // Step 3: 印刷機用ガンマ補正
-                        const gamma = 0.8;
-                        result = Math.round(255 * Math.pow(result / 255, gamma));
-                        
-                        // Step 4: 最終範囲調整
-                        result = Math.min(250, Math.max(10, result));
+                        // Step 3: コントラスト強化（薄いグレーをより明確に）
+                        if (result >= 180) {
+                            // 薄いグレー範囲はコントラストを強化
+                            const contrast = 1.3;
+                            result = Math.round(128 + (result - 128) * contrast);
+                            result = Math.min(240, Math.max(160, result));
+                        } else if (result >= 100) {
+                            // 中間範囲は適度に強化
+                            const contrast = 1.4;
+                            result = Math.round(128 + (result - 128) * contrast);
+                            result = Math.min(180, Math.max(60, result));
+                        } else {
+                            // 暗い範囲は大幅に強化
+                            const contrast = 1.6;
+                            result = Math.round(64 + (result - 64) * contrast);
+                            result = Math.min(100, Math.max(0, result));
+                        }
                         
                         data[i] = result;
                         data[i + 1] = result;
@@ -1842,34 +1865,32 @@ function sendToPrintAssist(event) {
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
             }
             
-            // テキスト印刷と同じ方式で枚数印刷を実装
+            // 確実な枚数印刷の実装
             
-            // 最初の1枚目を印刷
-            printImageCopy(1);
+            // URLパラメータで現在の印刷回数を確認
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentPrintCount = parseInt(urlParams.get('imagePrintCount') || '1');
             
-            // 複数枚の場合は、ページ読み込み時に続きを印刷
-            if (selectedCopies > 1) {
-                // URLパラメータで現在の印刷回数を管理
-                const urlParams = new URLSearchParams(window.location.search);
-                let currentPrintCount = parseInt(urlParams.get('imagePrintCount') || '1');
+            // 1枚目を印刷
+            printImageCopy(currentPrintCount);
+            
+            // 複数枚の場合の処理
+            if (selectedCopies > 1 && currentPrintCount < selectedCopies) {
+                // 次の印刷のためのURLパラメータを準備
+                const nextCount = currentPrintCount + 1;
+                const baseUrl = window.location.href.split('?')[0];
+                const nextUrl = baseUrl + '?imagePrintCount=' + nextCount;
                 
-                if (currentPrintCount < selectedCopies) {
-                    // 次の印刷のためにURLパラメータを更新
-                    const nextCount = currentPrintCount + 1;
-                    const newUrl = new URL(window.location.href);
-                    newUrl.searchParams.set('imagePrintCount', nextCount.toString());
-                    
-                    // 6秒後に次の印刷を実行
-                    setTimeout(() => {
-                        printImageCopy(nextCount);
-                        // 再度同じページを読み込んで次の印刷へ
-                        if (nextCount <= selectedCopies) {
-                            setTimeout(() => {
-                                window.location.href = newUrl.toString();
-                            }, 1000);
-                        }
-                    }, 6000);
-                }
+                // 印刷完了後、6秒待って次の印刷を実行
+                setTimeout(() => {
+                    console.log('次の印刷準備: ' + nextCount + '/' + selectedCopies);
+                    window.location.href = nextUrl;
+                }, 6000);
+                
+                // 待機中の表示
+                setTimeout(() => {
+                    document.body.innerHTML = '<div style="text-align:center; padding:50px; font-size:24px;">次の印刷準備中... (' + nextCount + '/' + selectedCopies + ')</div>';
+                }, 3000);
             }
             
             addHistory({
@@ -2100,32 +2121,32 @@ function printText() {
         window.location.href = printUrl;
     }
     
-    // 最初の1枚目を印刷
-    printTextCopy(1);
+    // 確実な枚数印刷の実装
     
-    // 複数枚の場合は、ページ読み込み時に続きを印刷
-    if (selectedTextCopies > 1) {
-        // URLパラメータで現在の印刷回数を管理
-        const urlParams = new URLSearchParams(window.location.search);
-        let currentPrintCount = parseInt(urlParams.get('textPrintCount') || '1');
+    // URLパラメータで現在の印刷回数を確認
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentPrintCount = parseInt(urlParams.get('textPrintCount') || '1');
+    
+    // 1枚目を印刷
+    printTextCopy(currentPrintCount);
+    
+    // 複数枚の場合の処理
+    if (selectedTextCopies > 1 && currentPrintCount < selectedTextCopies) {
+        // 次の印刷のためのURLパラメータを準備
+        const nextCount = currentPrintCount + 1;
+        const baseUrl = window.location.href.split('?')[0];
+        const nextUrl = baseUrl + '?textPrintCount=' + nextCount;
         
-        if (currentPrintCount < selectedTextCopies) {
-            // 次の印刷のためにURLパラメータを更新
-            const nextCount = currentPrintCount + 1;
-            const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set('textPrintCount', nextCount.toString());
-            
-            // 5秒後に次の印刷を実行
-            setTimeout(() => {
-                printTextCopy(nextCount);
-                // 再度同じページを読み込んで次の印刷へ
-                if (nextCount <= selectedTextCopies) {
-                    setTimeout(() => {
-                        window.location.href = newUrl.toString();
-                    }, 1000);
-                }
-            }, 5000);
-        }
+        // 印刷完了後、5秒待って次の印刷を実行
+        setTimeout(() => {
+            console.log('次のテキスト印刷準備: ' + nextCount + '/' + selectedTextCopies);
+            window.location.href = nextUrl;
+        }, 5000);
+        
+        // 待機中の表示
+        setTimeout(() => {
+            document.body.innerHTML = '<div style="text-align:center; padding:50px; font-size:24px;">次の印刷準備中... (' + nextCount + '/' + selectedTextCopies + ')</div>';
+        }, 2500);
     }
     addHistory({
         type: 'text',
