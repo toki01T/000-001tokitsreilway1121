@@ -1514,7 +1514,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const marginY = 4;
     const isDateTimeEnabled = selectedSignatureChip === 'with';
     const dateTimeHeight = 16;
-    const bottomMargin = isDateTimeEnabled ? 16 : 18;
+    const bottomMargin = isDateTimeEnabled ? 15 : 19;
     const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     
@@ -1690,7 +1690,7 @@ function sendToPrintAssist(event) {
             let y = 2;
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
-            const bottomMargin = isDateTimeEnabled ? 40 : 18;
+            const bottomMargin = isDateTimeEnabled ? 15 : 19;
             const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             
