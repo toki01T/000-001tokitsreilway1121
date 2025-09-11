@@ -1737,8 +1737,8 @@ function sendToPrintAssist(event) {
                     compositeCtx.fillStyle = '#FFFFFF';
                     compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
                     
-                    // 画像の色濃淡を改善するための詳細設定
-                    compositeCtx.imageSmoothingEnabled = true;
+                    // 画像の色濃淡を改善するための詳細設定（文字鮮明化）
+                    compositeCtx.imageSmoothingEnabled = false; // 文字の鮮明度を優先
                     compositeCtx.imageSmoothingQuality = 'high';
                     compositeCtx.globalCompositeOperation = 'source-over';
                     compositeCtx.globalAlpha = 1.0;
@@ -1837,11 +1837,13 @@ function sendToPrintAssist(event) {
                         const isTextLike = isTextRegion(x, y, width, height, originalData);
                         
                         if (isTextLike) {
-                            // 文字部分は通常のグレースケール変換のみ
+                            // 文字部分はコントラスト強化処理
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            data[i] = gray;
-                            data[i + 1] = gray;
-                            data[i + 2] = gray;
+                            // 文字鮮明化：コントラスト強化 + シャープニング
+                            const enhanced = gray < 128 ? Math.max(0, gray - 40) : Math.min(255, gray + 30);
+                            data[i] = enhanced;
+                            data[i + 1] = enhanced;
+                            data[i + 2] = enhanced;
                         } else {
                             // 非文字部分はディザリング結果を適用
                             const ditheredValue = ditheredData[pixelIndex];
@@ -1949,14 +1951,9 @@ function sendToPrintAssist(event) {
                         
                         const fontSize = 50;// 50px
                         compositeCtx.fillStyle = '#000000';
-                        compositeCtx.font = `bold ${fontSize}px Arial, sans-serif`; // Boldを追加で太字化
+                        compositeCtx.font = `${fontSize}px Arial, sans-serif`;
                         compositeCtx.textAlign = 'center';
                         compositeCtx.textBaseline = 'top';
-                        
-                        // 文字の鮮明度向上設定
-                        compositeCtx.imageSmoothingEnabled = false; // アンチエイリアシング無効化
-                        compositeCtx.strokeStyle = '#000000';
-                        compositeCtx.lineWidth = 1; // 輪郭線の太さ
                         
                         // 真ん中の位置を正確に計算
                         const exactCenterX = Math.round(canvasWidth / 2)-30;// 30
@@ -1965,13 +1962,11 @@ function sendToPrintAssist(event) {
                         
                         // 日付行
                         const dateText = `${year}年 ${month}月${day}日`;
-                        compositeCtx.strokeText(dateText, exactCenterX, yPos); // 輪郭描画で鮮明化
                         compositeCtx.fillText(dateText, exactCenterX, yPos);
                         yPos += fontSize * 1.2;
                         
                         // 時刻行
                         const timeText = `${hour}時${minute}分${second}秒`;
-                        compositeCtx.strokeText(timeText, exactCenterX, yPos); // 輪郭描画で鮮明化
                         compositeCtx.fillText(timeText, exactCenterX, yPos);
                         yPos += 50; // 日付有り印刷の下部余白を50px追加
                     }
