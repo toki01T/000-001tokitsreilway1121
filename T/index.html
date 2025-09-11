@@ -1554,7 +1554,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
             
             // サインを描画（中央配置、縮小サイズ）
-            const signatureXOffset = -40; // 左右調整値（プラスで右に、マイナスで左に移動）
+            const signatureXOffset = -45; // 左右調整値（プラスで右に、マイナスで左に移動）
             const signatureX = Math.round((canvasWidth - signatureWidth) / 2) + signatureXOffset;
             const signatureY = signatureTopMargin; // 手書き用上余白
             
