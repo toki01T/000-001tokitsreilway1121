@@ -1541,7 +1541,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             const signatureBottomMargin = 25; // 手書き用下余白
             
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
-            const signatureScale = 0.85; // 85%にスケール（75%から修正）
+            const signatureScale = 1.0; // 100%にスケール（85%から修正）
             const signatureWidth = Math.round((outW / pxPerMm * mmToPx) * signatureScale);
             const signatureHeight = Math.round((outH / pxPerMm * mmToPx) * signatureScale);
             const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin;
