@@ -1773,8 +1773,11 @@ function sendToPrintAssist(event) {
                         const r = data[i];
                         const g = data[i + 1];
                         const b = data[i + 2];
-                        // ITU-R BT.709 高精度変換 + 知覚補正
-                        const gray = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+                        // 高精度カラー→グレースケール変換（色の濃淡を保持）
+                        let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                        // カラー画像の色濃度を考慮した補正
+                        const colorIntensity = Math.sqrt(r*r + g*g + b*b) / Math.sqrt(3 * 255 * 255);
+                        gray = Math.round(gray * (0.8 + 0.2 * colorIntensity));
                         grayData[i / 4] = gray;
                     }
                     
@@ -1785,33 +1788,25 @@ function sendToPrintAssist(event) {
                             const index = y * width + x;
                             const oldPixel = grayData[index];
                             
-                            // サーマルプリンター用階調マッピング（細かな濃淡対応）
+                            // 超高精度階調マッピング（細かな濃淡を保持）
                             let newPixel;
                             if (oldPixel >= 250) newPixel = 255;      // 白
-                            else if (oldPixel >= 240) newPixel = 240; // 極薄グレー1
-                            else if (oldPixel >= 230) newPixel = 220; // 極薄グレー2
-                            else if (oldPixel >= 220) newPixel = 200; // 薄グレー1
-                            else if (oldPixel >= 210) newPixel = 190; // 薄グレー2
-                            else if (oldPixel >= 200) newPixel = 180; // 薄グレー3
-                            else if (oldPixel >= 190) newPixel = 170; // 薄グレー4
-                            else if (oldPixel >= 180) newPixel = 160; // 薄グレー5
-                            else if (oldPixel >= 170) newPixel = 150; // 中薄グレー1
-                            else if (oldPixel >= 160) newPixel = 140; // 中薄グレー2
-                            else if (oldPixel >= 150) newPixel = 130; // 中薄グレー3
-                            else if (oldPixel >= 140) newPixel = 120; // 中薄グレー4
-                            else if (oldPixel >= 130) newPixel = 110; // 中間グレー1
-                            else if (oldPixel >= 120) newPixel = 100; // 中間グレー2
-                            else if (oldPixel >= 110) newPixel = 90;  // 中間グレー3
-                            else if (oldPixel >= 100) newPixel = 80;  // 中間グレー4
-                            else if (oldPixel >= 90) newPixel = 70;   // 中濃グレー1
-                            else if (oldPixel >= 80) newPixel = 60;   // 中濃グレー2
-                            else if (oldPixel >= 70) newPixel = 50;   // 中濃グレー3
-                            else if (oldPixel >= 60) newPixel = 45;   // 中濃グレー4
-                            else if (oldPixel >= 50) newPixel = 40;   // 濃グレー1
-                            else if (oldPixel >= 40) newPixel = 35;   // 濃グレー2
-                            else if (oldPixel >= 30) newPixel = 25;   // 濃グレー3
-                            else if (oldPixel >= 20) newPixel = 15;   // 濃グレー4
-                            else if (oldPixel >= 10) newPixel = 10;   // 極濃グレー
+                            else if (oldPixel >= 235) newPixel = 240; // 極薄1
+                            else if (oldPixel >= 220) newPixel = 225; // 極薄2
+                            else if (oldPixel >= 205) newPixel = 210; // 薄1
+                            else if (oldPixel >= 190) newPixel = 195; // 薄2
+                            else if (oldPixel >= 175) newPixel = 180; // 薄3
+                            else if (oldPixel >= 160) newPixel = 165; // 薄中1
+                            else if (oldPixel >= 145) newPixel = 150; // 薄中2
+                            else if (oldPixel >= 130) newPixel = 135; // 中1
+                            else if (oldPixel >= 115) newPixel = 120; // 中2
+                            else if (oldPixel >= 100) newPixel = 105; // 中3
+                            else if (oldPixel >= 85) newPixel = 90;   // 中濃1
+                            else if (oldPixel >= 70) newPixel = 75;   // 中濃2
+                            else if (oldPixel >= 55) newPixel = 60;   // 濃1
+                            else if (oldPixel >= 40) newPixel = 45;   // 濃2
+                            else if (oldPixel >= 25) newPixel = 30;   // 濃3
+                            else if (oldPixel >= 10) newPixel = 15;   // 極濃
                             else newPixel = 0;                        // 黒
                             
                             ditheredData[index] = newPixel;
