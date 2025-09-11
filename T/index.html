@@ -1837,10 +1837,17 @@ function sendToPrintAssist(event) {
                         const isTextLike = isTextRegion(x, y, width, height, originalData);
                         
                         if (isTextLike) {
-                            // 文字部分はコントラスト強化処理
+                            // 文字部分は超強力コントラスト強化処理（細かい文字対応）
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            // 文字鮮明化：コントラスト強化 + シャープニング
-                            const enhanced = gray < 128 ? Math.max(0, gray - 40) : Math.min(255, gray + 30);
+                            // 細かい文字鮮明化：二値化に近い強力処理
+                            let enhanced;
+                            if (gray < 140) {
+                                // 文字部分は完全に黒く
+                                enhanced = Math.max(0, gray - 80);
+                            } else {
+                                // 背景部分は完全に白く
+                                enhanced = Math.min(255, gray + 50);
+                            }
                             data[i] = enhanced;
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
@@ -1891,10 +1898,11 @@ function sendToPrintAssist(event) {
                         const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
                         const contrast = Math.abs(centerGray - avgNeighbor);
                         
-                        // 文字判定条件（高コントラスト + 強いエッジ）
-                        return (maxDiff > 80 && contrast > 60) || 
-                               (centerGray < 50 && contrast > 40) || 
-                               (centerGray > 200 && contrast > 40);
+                        // 文字判定条件（細かい文字対応：より敏感な検出）
+                        return (maxDiff > 40 && contrast > 30) || 
+                               (centerGray < 80 && contrast > 25) || 
+                               (centerGray > 180 && contrast > 25) ||
+                               (maxDiff > 25 && (centerGray < 100 || centerGray > 155));
                     }
                     
                     // 調整されたピクセルデータを再描画
