@@ -1785,20 +1785,33 @@ function sendToPrintAssist(event) {
                             const index = y * width + x;
                             const oldPixel = grayData[index];
                             
-                            // サーマルプリンター用階調マッピング（より細かい段階）
+                            // サーマルプリンター用階調マッピング（細かな濃淡対応）
                             let newPixel;
-                            if (oldPixel >= 240) newPixel = 255;      // 白
-                            else if (oldPixel >= 220) newPixel = 200; // 極薄グレー
-                            else if (oldPixel >= 200) newPixel = 170; // 薄グレー1
-                            else if (oldPixel >= 180) newPixel = 140; // 薄グレー2
-                            else if (oldPixel >= 160) newPixel = 120; // 薄グレー3
-                            else if (oldPixel >= 140) newPixel = 100; // 中薄グレー1
-                            else if (oldPixel >= 120) newPixel = 80;  // 中薄グレー2
-                            else if (oldPixel >= 100) newPixel = 65;  // 中間グレー1
-                            else if (oldPixel >= 80) newPixel = 50;   // 中間グレー2
-                            else if (oldPixel >= 60) newPixel = 35;   // 中濃グレー1
-                            else if (oldPixel >= 40) newPixel = 25;   // 中濃グレー2
-                            else if (oldPixel >= 20) newPixel = 15;   // 濃グレー
+                            if (oldPixel >= 250) newPixel = 255;      // 白
+                            else if (oldPixel >= 240) newPixel = 240; // 極薄グレー1
+                            else if (oldPixel >= 230) newPixel = 220; // 極薄グレー2
+                            else if (oldPixel >= 220) newPixel = 200; // 薄グレー1
+                            else if (oldPixel >= 210) newPixel = 190; // 薄グレー2
+                            else if (oldPixel >= 200) newPixel = 180; // 薄グレー3
+                            else if (oldPixel >= 190) newPixel = 170; // 薄グレー4
+                            else if (oldPixel >= 180) newPixel = 160; // 薄グレー5
+                            else if (oldPixel >= 170) newPixel = 150; // 中薄グレー1
+                            else if (oldPixel >= 160) newPixel = 140; // 中薄グレー2
+                            else if (oldPixel >= 150) newPixel = 130; // 中薄グレー3
+                            else if (oldPixel >= 140) newPixel = 120; // 中薄グレー4
+                            else if (oldPixel >= 130) newPixel = 110; // 中間グレー1
+                            else if (oldPixel >= 120) newPixel = 100; // 中間グレー2
+                            else if (oldPixel >= 110) newPixel = 90;  // 中間グレー3
+                            else if (oldPixel >= 100) newPixel = 80;  // 中間グレー4
+                            else if (oldPixel >= 90) newPixel = 70;   // 中濃グレー1
+                            else if (oldPixel >= 80) newPixel = 60;   // 中濃グレー2
+                            else if (oldPixel >= 70) newPixel = 50;   // 中濃グレー3
+                            else if (oldPixel >= 60) newPixel = 45;   // 中濃グレー4
+                            else if (oldPixel >= 50) newPixel = 40;   // 濃グレー1
+                            else if (oldPixel >= 40) newPixel = 35;   // 濃グレー2
+                            else if (oldPixel >= 30) newPixel = 25;   // 濃グレー3
+                            else if (oldPixel >= 20) newPixel = 15;   // 濃グレー4
+                            else if (oldPixel >= 10) newPixel = 10;   // 極濃グレー
                             else newPixel = 0;                        // 黒
                             
                             ditheredData[index] = newPixel;
