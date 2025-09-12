@@ -1862,17 +1862,17 @@ function sendToPrintAssist(event) {
                         const isTextLike = isTextRegion(x, y, width, height, originalData);
                         
                         if (isTextLike) {
-                            // 文字部分：バランス調整・欠け防止処理
+                            // 文字部分：適度な濃度・欠け防止処理
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // 文字の適度なコントラスト強化（真っ黒防止）
+                            // 文字の適度な処理（真っ黒防止）
                             let enhanced;
-                            if (gray < 120) { // 閾値を160から120に下げて過度な黒化を防止
+                            if (gray < 150) { // 閾値を適度に設定
                                 // 文字部分を適度に黒く（真っ黒防止）
-                                enhanced = Math.max(0, gray - 60); // 100から60に減少
+                                enhanced = Math.max(20, gray - 60); // 適度な黒化
                             } else {
-                                // 背景部分は適度に白く
-                                enhanced = Math.min(255, gray + 40); // 60から40に減少
+                                // 背景部分を適度に白く
+                                enhanced = Math.min(255, gray + 40); // 適度な白化
                             }
                             data[i] = enhanced;
                             data[i + 1] = enhanced;
@@ -1896,35 +1896,35 @@ function sendToPrintAssist(event) {
                             const basePattern = blockPattern[blockY][blockX];
                             const pixelOffset = (pixelX + pixelY) % 3;
                             
-                            // バランス調整：真っ黒防止・ノイズ軽減処理
+                            // ノイズ除去のための適度濃度調整
                             let adjustedGray = originalGray;
                             
-                            // 穏やかな濃度調整（真っ黒防止）
+                            // 適度な処理：真っ黒にならない調整
                             if (originalGray > 240) {
                                 adjustedGray = 255; // 純白
                             } else if (originalGray > 200) {
-                                // 薄い色は穏やかに調整
-                                adjustedGray = Math.max(150, originalGray - 30);
+                                // 薄い色は軽微調整（真っ黒防止）
+                                adjustedGray = Math.max(150, originalGray - 20);
                             } else if (originalGray > 150) {
                                 // 中薄色は軽微調整
-                                adjustedGray = Math.max(100, originalGray - 20);
+                                adjustedGray = Math.max(120, originalGray - 15);
                             } else if (originalGray > 100) {
-                                // 中間色は最小調整
-                                adjustedGray = Math.max(70, originalGray - 10);
+                                // 中間色は微調整
+                                adjustedGray = Math.max(80, originalGray - 10);
                             } else if (originalGray > 50) {
                                 // 中濃色はそのまま保持
                                 adjustedGray = originalGray;
                             } else if (originalGray < 20) {
-                                adjustedGray = 0; // 純黒（極端に暗い場合のみ）
+                                adjustedGray = 0; // 純黒（極限定）
                             }
                             
-                            // 穏やかな閾値処理（真っ黒防止）
-                            const gentleThreshold = 120 + (basePattern * 40) + (pixelOffset * 5);
+                            // 適度な閾値処理（真っ黒防止）
+                            const moderateThreshold = 100 + (basePattern * 40) + (pixelOffset * 8);
                             
-                            // サーマルプリンター用二値化（バランス調整）
+                            // サーマルプリンター用二値化（適度濃度）
                             let finalValue;
                             
-                            if (adjustedGray > gentleThreshold) {
+                            if (adjustedGray > moderateThreshold) {
                                 finalValue = 255; // 白
                             } else {
                                 finalValue = 0;   // 黒
