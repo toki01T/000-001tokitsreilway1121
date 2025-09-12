@@ -1877,35 +1877,39 @@ function sendToPrintAssist(event) {
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：ノイズレス・サーマルプリンター用濃淡表現
+                            // 非文字部分：超細かいノイズレス濃淡表現
                             const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // 4x4ディザリングマトリックス（ノイズ軽減版）
-                            const pixelX = x % 4;
-                            const pixelY = y % 4;
+                            // 2x2ディザリングマトリックス（最小ノイズ）
+                            const pixelX = x % 2;
+                            const pixelY = y % 2;
                             
-                            // より滑らかな4x4ディザリングマトリックス
-                            const smoothDitherMatrix = [
-                                [ 0,  8,  2, 10],
-                                [12,  4, 14,  6],
-                                [ 3, 11,  1,  9],
-                                [15,  7, 13,  5]
+                            // 最小ノイズ2x2ディザリングマトリックス
+                            const miniDitherMatrix = [
+                                [0, 2],
+                                [3, 1]
                             ];
                             
-                            // 閾値を16倍にして0-240の範囲に（ノイズ軽減）
-                            const threshold = smoothDitherMatrix[pixelY][pixelX] * 16;
+                            // 閾値を64倍にして0-192の範囲に（超細かい調整）
+                            const threshold = miniDitherMatrix[pixelY][pixelX] * 64;
                             
-                            // ノイズ軽減のための濃度調整
+                            // より強力なノイズ軽減処理
                             let adjustedGray = originalGray;
                             
-                            // 極薄い色のノイズ除去
-                            if (originalGray > 240) {
+                            // 極薄い色の範囲拡大
+                            if (originalGray > 235) {
                                 adjustedGray = 255; // 純白として処理
-                            } else if (originalGray > 220) {
-                                // 薄い色は少し濃く調整してノイズ軽減
+                            } else if (originalGray > 210) {
+                                // 薄い色はさらに濃く調整
+                                adjustedGray = originalGray - 30;
+                            } else if (originalGray > 190) {
+                                // 中薄色も調整
                                 adjustedGray = originalGray - 20;
-                            } else if (originalGray < 20) {
+                            } else if (originalGray < 25) {
                                 adjustedGray = 0; // 純黒として処理
+                            } else if (originalGray < 45) {
+                                // 濃い色も調整
+                                adjustedGray = originalGray + 20;
                             }
                             
                             // サーマルプリンター用二値化（ノイズレス）
