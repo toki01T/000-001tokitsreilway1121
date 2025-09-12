@@ -1862,17 +1862,17 @@ function sendToPrintAssist(event) {
                         const isTextLike = isTextRegion(x, y, width, height, originalData);
                         
                         if (isTextLike) {
-                            // 文字部分：欠け防止・超強力コントラスト強化処理
+                            // 文字部分：バランス調整・欠け防止処理
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // 文字の欠け防止：より保守的な閾値設定
+                            // 文字の適度なコントラスト強化（真っ黒防止）
                             let enhanced;
-                            if (gray < 160) { // 閾値を140から160に上げて文字を保護
-                                // 文字部分は完全に黒く（欠け防止強化）
-                                enhanced = Math.max(0, gray - 100); // より強力に黒化
+                            if (gray < 120) { // 閾値を160から120に下げて過度な黒化を防止
+                                // 文字部分を適度に黒く（真っ黒防止）
+                                enhanced = Math.max(0, gray - 60); // 100から60に減少
                             } else {
-                                // 背景部分は完全に白く
-                                enhanced = Math.min(255, gray + 60); // より強力に白化
+                                // 背景部分は適度に白く
+                                enhanced = Math.min(255, gray + 40); // 60から40に減少
                             }
                             data[i] = enhanced;
                             data[i + 1] = enhanced;
@@ -1896,32 +1896,35 @@ function sendToPrintAssist(event) {
                             const basePattern = blockPattern[blockY][blockX];
                             const pixelOffset = (pixelX + pixelY) % 3;
                             
-                            // ノイズ除去のための大幅濃度調整
+                            // バランス調整：真っ黒防止・ノイズ軽減処理
                             let adjustedGray = originalGray;
                             
-                            // 超滑らか処理：大きな段階で調整
-                            if (originalGray > 230) {
+                            // 穏やかな濃度調整（真っ黒防止）
+                            if (originalGray > 240) {
                                 adjustedGray = 255; // 純白
-                            } else if (originalGray > 180) {
-                                // 薄い色は滑らかに段階調整
-                                adjustedGray = Math.max(80, originalGray - 60);
-                            } else if (originalGray > 120) {
-                                // 中間色は中程度調整
-                                adjustedGray = Math.max(40, originalGray - 40);
-                            } else if (originalGray > 80) {
-                                // 中濃色は軽微調整
-                                adjustedGray = Math.max(20, originalGray - 20);
-                            } else if (originalGray < 40) {
-                                adjustedGray = 0; // 純黒
+                            } else if (originalGray > 200) {
+                                // 薄い色は穏やかに調整
+                                adjustedGray = Math.max(150, originalGray - 30);
+                            } else if (originalGray > 150) {
+                                // 中薄色は軽微調整
+                                adjustedGray = Math.max(100, originalGray - 20);
+                            } else if (originalGray > 100) {
+                                // 中間色は最小調整
+                                adjustedGray = Math.max(70, originalGray - 10);
+                            } else if (originalGray > 50) {
+                                // 中濃色はそのまま保持
+                                adjustedGray = originalGray;
+                            } else if (originalGray < 20) {
+                                adjustedGray = 0; // 純黒（極端に暗い場合のみ）
                             }
                             
-                            // 超滑らか閾値処理
-                            const smoothThreshold = 128 + (basePattern * 60) + (pixelOffset * 10);
+                            // 穏やかな閾値処理（真っ黒防止）
+                            const gentleThreshold = 120 + (basePattern * 40) + (pixelOffset * 5);
                             
-                            // サーマルプリンター用二値化（超ノイズレス）
+                            // サーマルプリンター用二値化（バランス調整）
                             let finalValue;
                             
-                            if (adjustedGray > smoothThreshold) {
+                            if (adjustedGray > gentleThreshold) {
                                 finalValue = 255; // 白
                             } else {
                                 finalValue = 0;   // 黒
