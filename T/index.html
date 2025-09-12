@@ -1890,29 +1890,29 @@ function sendToPrintAssist(event) {
                                 [3, 1]
                             ];
                             
-                            // 閾値を50倍にして0-200の範囲に（濃度UP調整）
-                            const threshold = microDitherMatrix[pixelY][pixelX] * 50;
+                            // 閾値を40倍にして0-160の範囲に（印刷濃度アップ）
+                            const threshold = microDitherMatrix[pixelY][pixelX] * 40;
                             
-                            // 強力ノイズ軽減処理（濃度強化版）
+                            // 印刷濃度向上のための濃度調整
                             let adjustedGray = originalGray;
                             
-                            // より強力な範囲別ノイズ除去（濃度UP）
-                            if (originalGray > 230) {
+                            // 濃度を高めるための範囲別調整
+                            if (originalGray > 220) {
                                 adjustedGray = 255; // 純白として処理
-                            } else if (originalGray > 200) {
-                                // 薄い色は大幅に濃く調整（濃度UP）
-                                adjustedGray = originalGray - 50;
-                            } else if (originalGray > 170) {
-                                // 中薄色も調整（濃度UP）
-                                adjustedGray = originalGray - 30;
+                            } else if (originalGray > 180) {
+                                // 薄い色は大幅に濃く調整（濃度アップ）
+                                adjustedGray = originalGray - 60;
                             } else if (originalGray > 140) {
-                                // 中間色も少し濃く
-                                adjustedGray = originalGray - 15;
-                            } else if (originalGray < 30) {
+                                // 中薄色も大幅調整（濃度アップ）
+                                adjustedGray = originalGray - 40;
+                            } else if (originalGray > 100) {
+                                // 中間色も濃く調整
+                                adjustedGray = originalGray - 20;
+                            } else if (originalGray < 40) {
                                 adjustedGray = 0; // 純黒として処理
-                            } else if (originalGray < 60) {
-                                // 濃い色は少し薄く調整してノイズ軽減
-                                adjustedGray = originalGray + 15;
+                            } else if (originalGray < 80) {
+                                // 濃い色は少し薄く調整してバランス保持
+                                adjustedGray = originalGray + 10;
                             }
                             
                             // サーマルプリンター用超滑らか二値化
