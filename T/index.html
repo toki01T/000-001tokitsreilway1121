@@ -1773,16 +1773,20 @@ function sendToPrintAssist(event) {
                         const r = data[i];
                         const g = data[i + 1];
                         const b = data[i + 2];
-                        // 高精度カラー→グレー変換（色の濃淡を正確に保持）
+                        // 超高精度カラー→グレー変換（濃淡完全保持）
                         let gray;
                         // カラー画像の色調を考慮した変換
-                        if (Math.abs(r - g) < 10 && Math.abs(g - b) < 10 && Math.abs(r - b) < 10) {
-                            // グレー系の色はそのまま保持
-                            gray = Math.round((r + g + b) / 3);
+                        if (Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && Math.abs(r - b) < 15) {
+                            // グレー系の色：最も明るい値を基準に濃淡保持
+                            gray = Math.max(r, g, b);
                         } else {
-                            // カラー画像は知覚的明度を重視
-                            gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                            // カラー画像：知覚的明度 + ガンマ補正
+                            let linearGray = 0.2126 * (r/255) + 0.7152 * (g/255) + 0.0722 * (b/255);
+                            // ガンマ補正（濃淡のコントラストを強化）
+                            gray = Math.round(255 * Math.pow(linearGray, 0.8));
                         }
+                        // 濃淡の微細な差も保持
+                        gray = Math.max(0, Math.min(255, gray));
                         grayData[i / 4] = gray;
                     }
                     
@@ -1831,21 +1835,22 @@ function sendToPrintAssist(event) {
                             ditheredData[index] = newPixel;
                             const quantError = oldPixel - newPixel;
                             
-                            // Floyd-Steinbergディザリングで誤差拡散
+                            // 強化Floyd-Steinbergディザリングで微細な誤差も拡散
+                            const errorMultiplier = 1.2; // 誤差拡散を強化
                             if (x + 1 < width) {
                                 grayData[index + 1] = Math.max(0, Math.min(255, 
-                                    grayData[index + 1] + quantError * 7 / 16));
+                                    grayData[index + 1] + quantError * 7 / 16 * errorMultiplier));
                             }
                             if (y + 1 < height) {
                                 if (x - 1 >= 0) {
                                     grayData[(y + 1) * width + (x - 1)] = Math.max(0, Math.min(255,
-                                        grayData[(y + 1) * width + (x - 1)] + quantError * 3 / 16));
+                                        grayData[(y + 1) * width + (x - 1)] + quantError * 3 / 16 * errorMultiplier));
                                 }
                                 grayData[(y + 1) * width + x] = Math.max(0, Math.min(255,
-                                    grayData[(y + 1) * width + x] + quantError * 5 / 16));
+                                    grayData[(y + 1) * width + x] + quantError * 5 / 16 * errorMultiplier));
                                 if (x + 1 < width) {
                                     grayData[(y + 1) * width + (x + 1)] = Math.max(0, Math.min(255,
-                                        grayData[(y + 1) * width + (x + 1)] + quantError * 1 / 16));
+                                        grayData[(y + 1) * width + (x + 1)] + quantError * 1 / 16 * errorMultiplier));
                                 }
                             }
                         }
