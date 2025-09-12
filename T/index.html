@@ -1862,16 +1862,16 @@ function sendToPrintAssist(event) {
                         const isTextLike = isTextRegion(x, y, width, height, originalData);
                         
                         if (isTextLike) {
-                            // 文字部分は超強力コントラスト強化処理（細かい文字対応）
+                            // 文字部分は文字欠け防止強化処理
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            // 細かい文字鮮明化：二値化に近い強力処理
+                            // 文字欠け防止：より広い範囲を文字として認識
                             let enhanced;
-                            if (gray < 140) {
-                                // 文字部分は完全に黒く
-                                enhanced = Math.max(0, gray - 80);
+                            if (gray < 160) { // 140 → 160 に変更してより多くを文字として認識
+                                // 文字部分は確実に黒く
+                                enhanced = Math.max(0, gray - 100); // 80 → 100 に変更してより黒く
                             } else {
-                                // 背景部分は完全に白く
-                                enhanced = Math.min(255, gray + 50);
+                                // 背景部分は確実に白く
+                                enhanced = Math.min(255, gray + 60); // 50 → 60 に変更してより白く
                             }
                             data[i] = enhanced;
                             data[i + 1] = enhanced;
@@ -1913,17 +1913,17 @@ function sendToPrintAssist(event) {
                     
                     // 文字判定関数
                     function isTextRegion(x, y, width, height, imgData) {
-                        if (x < 2 || x >= width - 2 || y < 2 || y >= height - 2) return false;
+                        if (x < 3 || x >= width - 3 || y < 3 || y >= height - 3) return false; // 2 → 3 に拡張
                         
                         const centerIndex = (y * width + x) * 4;
                         const centerGray = Math.round(0.299 * imgData[centerIndex] + 
                                                      0.587 * imgData[centerIndex + 1] + 
                                                      0.114 * imgData[centerIndex + 2]);
                         
-                        // 周辺のグレー値を取得
+                        // 周辺のグレー値を取得（範囲を拡張）
                         const neighbors = [];
-                        for (let dy = -2; dy <= 2; dy++) {
-                            for (let dx = -2; dx <= 2; dx++) {
+                        for (let dy = -3; dy <= 3; dy++) { // -2 → -3 に拡張
+                            for (let dx = -3; dx <= 3; dx++) { // -2 → -3 に拡張
                                 if (dx === 0 && dy === 0) continue;
                                 const nIndex = ((y + dy) * width + (x + dx)) * 4;
                                 const nGray = Math.round(0.299 * imgData[nIndex] + 
@@ -1938,11 +1938,12 @@ function sendToPrintAssist(event) {
                         const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
                         const contrast = Math.abs(centerGray - avgNeighbor);
                         
-                        // 文字判定条件（細かい文字対応：より敏感な検出）
-                        return (maxDiff > 40 && contrast > 30) || 
-                               (centerGray < 80 && contrast > 25) || 
-                               (centerGray > 180 && contrast > 25) ||
-                               (maxDiff > 25 && (centerGray < 100 || centerGray > 155));
+                        // 文字判定条件（文字欠け防止：より敏感な検出）
+                        return (maxDiff > 20 && contrast > 15) || 
+                               (centerGray < 120 && contrast > 15) || 
+                               (centerGray > 160 && contrast > 15) ||
+                               (maxDiff > 15 && (centerGray < 140 || centerGray > 140)) ||
+                               (contrast > 20); // 追加：コントラストがある箇所はすべて文字として扱う
                     }
                     
                     // 調整されたピクセルデータを再描画
