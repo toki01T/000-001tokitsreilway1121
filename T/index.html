@@ -1780,12 +1780,23 @@ function sendToPrintAssist(event) {
                         // 標準的な輝度計算
                         gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // 濃淡コントラストの強化
-                        if (gray > 200) {
-                            gray = Math.min(255, gray + 20); // 明るい部分をより明るく
-                        } else if (gray < 50) {
-                            gray = Math.max(0, gray - 20);   // 暗い部分をより暗く
+                        // サーマルプリンター用濃淡強化
+                        if (gray > 220) {
+                            gray = 255; // 非常に明るい → 完全白
+                        } else if (gray > 180) {
+                            gray = 200; // 明るい → 薄グレー
+                        } else if (gray > 120) {
+                            gray = 150; // 中間明 → 中薄グレー
+                        } else if (gray > 80) {
+                            gray = 100; // 中間 → 中間グレー
+                        } else if (gray > 40) {
+                            gray = 60;  // 暗い → 中濃グレー
+                        } else if (gray > 15) {
+                            gray = 30;  // 非常に暗い → 濃グレー
+                        } else {
+                            gray = 0;   // 極暗 → 完全黒
                         }
+                        
                         grayData[i / 4] = gray;
                     }
                     
@@ -1864,42 +1875,26 @@ function sendToPrintAssist(event) {
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：サーマルプリンター用ディザリング濃淡表現
+                            // 非文字部分：確実な濃淡変換
                             const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // ディザリングパターンによる濃淡表現
-                            const pixelX = x % 4;
-                            const pixelY = y % 4;
-                            
-                            // 4x4ディザリングマトリックス
-                            const ditherMatrix = [
-                                [0,  8,  2, 10],
-                                [12, 4, 14,  6],
-                                [3, 11,  1,  9],
-                                [15, 7, 13,  5]
-                            ];
-                            
-                            const threshold = ditherMatrix[pixelY][pixelX] * 16; // 0-240の範囲
-                            
-                            // 濃淡レベルによる表現（より細かく）
+                            // サーマルプリンター用確実な濃度変換
                             let finalValue;
                             
-                            if (originalGray >= 240) {
+                            if (originalGray >= 230) {
                                 finalValue = 255; // 完全白
-                            } else if (originalGray >= 220) {
-                                finalValue = originalGray > threshold + 220 ? 255 : 200;
-                            } else if (originalGray >= 180) {
-                                finalValue = originalGray > threshold + 180 ? 200 : 150;
+                            } else if (originalGray >= 190) {
+                                finalValue = 200; // 薄グレー（確実に印刷される濃度）
                             } else if (originalGray >= 140) {
-                                finalValue = originalGray > threshold + 140 ? 150 : 100;
-                            } else if (originalGray >= 100) {
-                                finalValue = originalGray > threshold + 100 ? 100 : 70;
-                            } else if (originalGray >= 60) {
-                                finalValue = originalGray > threshold + 60 ? 70 : 40;
-                            } else if (originalGray >= 30) {
-                                finalValue = originalGray > threshold + 30 ? 40 : 10;
+                                finalValue = 150; // 中薄グレー
+                            } else if (originalGray >= 90) {
+                                finalValue = 100; // 中間グレー
+                            } else if (originalGray >= 50) {
+                                finalValue = 70;  // 中濃グレー
+                            } else if (originalGray >= 20) {
+                                finalValue = 40;  // 濃グレー
                             } else {
-                                finalValue = originalGray > threshold ? 10 : 0;
+                                finalValue = 0;   // 完全黒
                             }
                             
                             data[i] = finalValue;
