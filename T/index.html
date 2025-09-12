@@ -1877,33 +1877,41 @@ function sendToPrintAssist(event) {
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：サーマルプリンター用二値化ディザリング濃淡表現
+                            // 非文字部分：ノイズレス・サーマルプリンター用濃淡表現
                             const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // 8x8ディザリングマトリックス（Bayer Matrix）
-                            const pixelX = x % 8;
-                            const pixelY = y % 8;
+                            // 4x4ディザリングマトリックス（ノイズ軽減版）
+                            const pixelX = x % 4;
+                            const pixelY = y % 4;
                             
-                            // 8x8 Bayerディザリングマトリックス
-                            const bayerMatrix = [
-                                [ 0, 32,  8, 40,  2, 34, 10, 42],
-                                [48, 16, 56, 24, 50, 18, 58, 26],
-                                [12, 44,  4, 36, 14, 46,  6, 38],
-                                [60, 28, 52, 20, 62, 30, 54, 22],
-                                [ 3, 35, 11, 43,  1, 33,  9, 41],
-                                [51, 19, 59, 27, 49, 17, 57, 25],
-                                [15, 47,  7, 39, 13, 45,  5, 37],
-                                [63, 31, 55, 23, 61, 29, 53, 21]
+                            // より滑らかな4x4ディザリングマトリックス
+                            const smoothDitherMatrix = [
+                                [ 0,  8,  2, 10],
+                                [12,  4, 14,  6],
+                                [ 3, 11,  1,  9],
+                                [15,  7, 13,  5]
                             ];
                             
-                            // 閾値を4倍にして0-252の範囲に
-                            const threshold = bayerMatrix[pixelY][pixelX] * 4;
+                            // 閾値を16倍にして0-240の範囲に（ノイズ軽減）
+                            const threshold = smoothDitherMatrix[pixelY][pixelX] * 16;
                             
-                            // サーマルプリンター用二値化（白か黒のみ）
+                            // ノイズ軽減のための濃度調整
+                            let adjustedGray = originalGray;
+                            
+                            // 極薄い色のノイズ除去
+                            if (originalGray > 240) {
+                                adjustedGray = 255; // 純白として処理
+                            } else if (originalGray > 220) {
+                                // 薄い色は少し濃く調整してノイズ軽減
+                                adjustedGray = originalGray - 20;
+                            } else if (originalGray < 20) {
+                                adjustedGray = 0; // 純黒として処理
+                            }
+                            
+                            // サーマルプリンター用二値化（ノイズレス）
                             let finalValue;
                             
-                            // 濃淡を密度パターンで表現
-                            if (originalGray > threshold) {
+                            if (adjustedGray > threshold) {
                                 finalValue = 255; // 白
                             } else {
                                 finalValue = 0;   // 黒
