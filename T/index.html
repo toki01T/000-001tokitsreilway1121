@@ -1890,26 +1890,29 @@ function sendToPrintAssist(event) {
                                 [3, 1]
                             ];
                             
-                            // 閾値を60倍にして0-240の範囲に（超微細調整）
-                            const threshold = microDitherMatrix[pixelY][pixelX] * 60;
+                            // 閾値を40倍にして0-160の範囲に（印字濃度アップ）
+                            const threshold = microDitherMatrix[pixelY][pixelX] * 40;
                             
-                            // 強力ノイズ軽減処理
+                            // 印字濃度強化処理
                             let adjustedGray = originalGray;
                             
-                            // より強力な範囲別ノイズ除去
-                            if (originalGray > 230) {
+                            // 印字を濃くするための範囲別調整
+                            if (originalGray > 220) {
                                 adjustedGray = 255; // 純白として処理
-                            } else if (originalGray > 200) {
+                            } else if (originalGray > 180) {
                                 // 薄い色は大幅に濃く調整
-                                adjustedGray = originalGray - 40;
-                            } else if (originalGray > 170) {
-                                // 中薄色も調整
-                                adjustedGray = originalGray - 20;
-                            } else if (originalGray < 30) {
+                                adjustedGray = originalGray - 50;
+                            } else if (originalGray > 140) {
+                                // 中薄色も濃く調整
+                                adjustedGray = originalGray - 30;
+                            } else if (originalGray > 100) {
+                                // 中間色も少し濃く
+                                adjustedGray = originalGray - 15;
+                            } else if (originalGray < 40) {
                                 adjustedGray = 0; // 純黒として処理
-                            } else if (originalGray < 60) {
+                            } else if (originalGray < 70) {
                                 // 濃い色は少し薄く調整してノイズ軽減
-                                adjustedGray = originalGray + 20;
+                                adjustedGray = originalGray + 15;
                             }
                             
                             // サーマルプリンター用超滑らか二値化
