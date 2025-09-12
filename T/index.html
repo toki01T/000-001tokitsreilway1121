@@ -1773,20 +1773,16 @@ function sendToPrintAssist(event) {
                         const r = data[i];
                         const g = data[i + 1];
                         const b = data[i + 2];
-                        // 超高精度カラー→グレー変換（濃淡完全保持）
+                        // 高精度カラー→グレー変換（色の濃淡を正確に保持）
                         let gray;
                         // カラー画像の色調を考慮した変換
-                        if (Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && Math.abs(r - b) < 15) {
-                            // グレー系の色：最も明るい値を基準に濃淡保持
-                            gray = Math.max(r, g, b);
+                        if (Math.abs(r - g) < 10 && Math.abs(g - b) < 10 && Math.abs(r - b) < 10) {
+                            // グレー系の色はそのまま保持
+                            gray = Math.round((r + g + b) / 3);
                         } else {
-                            // カラー画像：知覚的明度 + ガンマ補正
-                            let linearGray = 0.2126 * (r/255) + 0.7152 * (g/255) + 0.0722 * (b/255);
-                            // ガンマ補正（濃淡のコントラストを強化）
-                            gray = Math.round(255 * Math.pow(linearGray, 0.8));
+                            // カラー画像は知覚的明度を重視
+                            gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         }
-                        // 濃淡の微細な差も保持
-                        gray = Math.max(0, Math.min(255, gray));
                         grayData[i / 4] = gray;
                     }
                     
@@ -1835,22 +1831,24 @@ function sendToPrintAssist(event) {
                             ditheredData[index] = newPixel;
                             const quantError = oldPixel - newPixel;
                             
-                            // 強化Floyd-Steinbergディザリングで微細な誤差も拡散
-                            const errorMultiplier = 1.2; // 誤差拡散を強化
+                            // 薄い色に最適化された誤差拡散
+                            const errorWeight = oldPixel > 150 ? 1.2 : 1.0; // 薄い色は誤差拡散を強化
+                            
+                            // Floyd-Steinbergディザリングで誤差拡散（薄い色強化）
                             if (x + 1 < width) {
                                 grayData[index + 1] = Math.max(0, Math.min(255, 
-                                    grayData[index + 1] + quantError * 7 / 16 * errorMultiplier));
+                                    grayData[index + 1] + quantError * 7 / 16 * errorWeight));
                             }
                             if (y + 1 < height) {
                                 if (x - 1 >= 0) {
                                     grayData[(y + 1) * width + (x - 1)] = Math.max(0, Math.min(255,
-                                        grayData[(y + 1) * width + (x - 1)] + quantError * 3 / 16 * errorMultiplier));
+                                        grayData[(y + 1) * width + (x - 1)] + quantError * 3 / 16 * errorWeight));
                                 }
                                 grayData[(y + 1) * width + x] = Math.max(0, Math.min(255,
-                                    grayData[(y + 1) * width + x] + quantError * 5 / 16 * errorMultiplier));
+                                    grayData[(y + 1) * width + x] + quantError * 5 / 16 * errorWeight));
                                 if (x + 1 < width) {
                                     grayData[(y + 1) * width + (x + 1)] = Math.max(0, Math.min(255,
-                                        grayData[(y + 1) * width + (x + 1)] + quantError * 1 / 16 * errorMultiplier));
+                                        grayData[(y + 1) * width + (x + 1)] + quantError * 1 / 16 * errorWeight));
                                 }
                             }
                         }
@@ -1885,11 +1883,32 @@ function sendToPrintAssist(event) {
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分はディザリング結果を適用
+                            // 非文字部分：薄い色の濃淡を正確に表現
                             const ditheredValue = ditheredData[pixelIndex];
+                            const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // サーマルプリンター用最終調整
-                            let finalValue = ditheredValue;
+                            // 薄い色の細かな濃淡を保持する処理
+                            let finalValue;
+                            
+                            // 超薄い色の強化（200-255範囲）
+                            if (originalGray >= 200) {
+                                // 薄い色でも微細な差を表現
+                                finalValue = Math.max(180, ditheredValue - Math.floor((255 - originalGray) * 0.8));
+                            }
+                            // 薄めの色の強化（150-199範囲）
+                            else if (originalGray >= 150) {
+                                // 中間薄色の濃淡保持
+                                finalValue = Math.max(120, ditheredValue - Math.floor((200 - originalGray) * 0.6));
+                            }
+                            // 中間色の強化（100-149範囲）
+                            else if (originalGray >= 100) {
+                                // 中間色の階調保持
+                                finalValue = Math.max(80, ditheredValue - Math.floor((150 - originalGray) * 0.4));
+                            }
+                            // その他はディザリング結果をそのまま使用
+                            else {
+                                finalValue = ditheredValue;
+                            }
                             
                             // 薄いグレーの強化処理
                             if (finalValue >= 120) {
