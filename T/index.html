@@ -1753,36 +1753,18 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // 画像描画後、濃淡を確実に印字させるシンプル処理
+                    // 画像描画後、濃淡を確実に印字させる最強処理
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 【サーマルプリンター特化】シンプル濃淡システム
-                    for (let i = 0; i < data.length; i += 4) {
-                        const r = data[i];
-                        const g = data[i + 1];
-                        const b = data[i + 2];
-                        
-                        // 基本的なグレー変換
-                        const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                        
-                        // サーマルプリンター用5段階濃淡
-                        let finalGray;
-                        if (gray >= 200) {
-                            finalGray = 255; // 白
-                        } else if (gray >= 150) {
-                            finalGray = 180; // 薄グレー
-                        } else if (gray >= 100) {
-                            finalGray = 120; // 中グレー
-                        } else if (gray >= 50) {
-                            finalGray = 60;  // 濃グレー
-                        } else {
-                            finalGray = 0;   // 黒
-                        }
-                        
-                        data[i] = finalGray;
-                        data[i + 1] = finalGray;
-                        data[i + 2] = finalGray;
+                    // 【サーマルプリンター特化】濃淡確実印字システム
+                    const width = finalImgWidth;
+                    const height = finalImgHeight;
+                    
+                    // オリジナル画像データを保持
+                    const originalData = new Uint8Array(data.length);
+                    for (let i = 0; i < data.length; i++) {
+                        originalData[i] = data[i];
                     }
                     
                     // 1. 全色対応高精度グレースケール変換
@@ -1820,7 +1802,7 @@ function sendToPrintAssist(event) {
                         grayData[i / 4] = gray;
                     }
                     
-                    // 2. サーマルプリンター用ディザリング処理（Floyd-Steinbergディザリング）
+                    // 2. シンプルで効果的な濃淡処理（ディザリング無効化）
                     const ditheredData = new Uint8Array(width * height);
                     for (let y = 0; y < height; y++) {
                         for (let x = 0; x < width; x++) {
@@ -1895,85 +1877,79 @@ function sendToPrintAssist(event) {
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：薄い色対応サーマルプリンター用濃淡表現
-                            const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                            // 非文字部分：超シンプル濃淡処理
                             
-                            // 2x2ディザリングパターン（より密な濃淡表現）
-                            const pixelX = x % 2;
-                            const pixelY = y % 2;
+                            // ハーフトーン（網点）方式による濃淡表現
+                            const blockX = Math.floor(x / 2);
+                            const blockY = Math.floor(y / 2);
+                            const inBlockX = x % 2;
+                            const inBlockY = y % 2;
                             
-                            // 2x2ディザリングマトリックス
-                            const ditherPattern = [
-                                [0, 2],
-                                [3, 1]
+                            // 2x2ブロック内での濃度パターン
+                            const patterns = [
+                                [[255, 255], [255, 255]], // 0% (完全白)
+                                [[0,   255], [255, 255]], // 25%
+                                [[0,   255], [255, 0  ]], // 50%
+                                [[0,   0  ], [255, 0  ]], // 75%
+                                [[0,   0  ], [0,   0  ]]  // 100% (完全黒)
                             ];
                             
-                            const ditherValue = ditherPattern[pixelY][pixelX];
+                            // グレー値から濃度パターンを決定
+                            let patternIndex;
+                            if (originalGray >= 230) patternIndex = 0;      // 白
+                            else if (originalGray >= 180) patternIndex = 1; // 薄
+                            else if (originalGray >= 120) patternIndex = 2; // 中間
+                            else if (originalGray >= 60) patternIndex = 3;  // 濃
+                            else patternIndex = 4;                          // 黒
                             
-                            // 薄い色を重視した16段階濃淡表現
-                            let finalValue;
-                            
-                            // 超薄い色の段階的表現
-                            if (originalGray >= 245) {
-                                finalValue = 255; // 最白
-                            } else if (originalGray >= 235) {
-                                finalValue = ditherValue < 2 ? 255 : 220; // 極薄グレー1
-                            } else if (originalGray >= 225) {
-                                finalValue = ditherValue < 2 ? 220 : 190; // 極薄グレー2
-                            } else if (originalGray >= 215) {
-                                finalValue = ditherValue < 2 ? 190 : 160; // 極薄グレー3
-                            } else if (originalGray >= 205) {
-                                finalValue = ditherValue < 2 ? 160 : 140; // 薄グレー1
-                            } else if (originalGray >= 195) {
-                                finalValue = ditherValue < 2 ? 140 : 120; // 薄グレー2
-                            } else if (originalGray >= 185) {
-                                finalValue = ditherValue < 2 ? 120 : 100; // 薄グレー3
-                            } else if (originalGray >= 175) {
-                                finalValue = ditherValue < 2 ? 100 : 80;  // 薄グレー4
-                            } else if (originalGray >= 165) {
-                                finalValue = ditherValue < 2 ? 80 : 70;   // 中薄グレー1
-                            } else if (originalGray >= 155) {
-                                finalValue = ditherValue < 2 ? 70 : 60;   // 中薄グレー2
-                            } else if (originalGray >= 145) {
-                                finalValue = ditherValue < 2 ? 60 : 50;   // 中薄グレー3
-                            } else if (originalGray >= 135) {
-                                finalValue = ditherValue < 2 ? 50 : 40;   // 中間グレー1
-                            } else if (originalGray >= 125) {
-                                finalValue = ditherValue < 2 ? 40 : 35;   // 中間グレー2
-                            } else if (originalGray >= 115) {
-                                finalValue = ditherValue < 2 ? 35 : 30;   // 中間グレー3
-                            } else if (originalGray >= 105) {
-                                finalValue = ditherValue < 2 ? 30 : 25;   // 中濃グレー1
-                            } else if (originalGray >= 95) {
-                                finalValue = ditherValue < 2 ? 25 : 20;   // 中濃グレー2
-                            } else if (originalGray >= 85) {
-                                finalValue = ditherValue < 2 ? 20 : 15;   // 中濃グレー3
-                            } else if (originalGray >= 75) {
-                                finalValue = ditherValue < 2 ? 15 : 10;   // 濃グレー1
-                            } else if (originalGray >= 65) {
-                                finalValue = ditherValue < 2 ? 10 : 8;    // 濃グレー2
-                            } else if (originalGray >= 55) {
-                                finalValue = ditherValue < 2 ? 8 : 6;     // 濃グレー3
-                            } else if (originalGray >= 45) {
-                                finalValue = ditherValue < 2 ? 6 : 4;     // 極濃グレー1
-                            } else if (originalGray >= 35) {
-                                finalValue = ditherValue < 2 ? 4 : 2;     // 極濃グレー2
-                            } else if (originalGray >= 25) {
-                                finalValue = ditherValue < 2 ? 2 : 1;     // 極濃グレー3
-                            } else if (originalGray >= 15) {
-                                finalValue = ditherValue < 2 ? 1 : 0;     // 超濃グレー
-                            } else {
-                                finalValue = 0; // 最黒
-                            }
+                            const finalValue = patterns[patternIndex][inBlockY][inBlockX];
                             
                             data[i] = finalValue;
-                        data[i] = finalGray;
-                        data[i + 1] = finalGray;
-                        data[i + 2] = finalGray;
+                            data[i + 1] = finalValue;
+                            data[i + 2] = finalValue;
+                        }
+                    }
+                    
+                    // 文字判定関数
+                    function isTextRegion(x, y, width, height, imgData) {
+                        if (x < 2 || x >= width - 2 || y < 2 || y >= height - 2) return false;
+                        
+                        const centerIndex = (y * width + x) * 4;
+                        const centerGray = Math.round(0.299 * imgData[centerIndex] + 
+                                                     0.587 * imgData[centerIndex + 1] + 
+                                                     0.114 * imgData[centerIndex + 2]);
+                        
+                        // 周辺のグレー値を取得
+                        const neighbors = [];
+                        for (let dy = -2; dy <= 2; dy++) {
+                            for (let dx = -2; dx <= 2; dx++) {
+                                if (dx === 0 && dy === 0) continue;
+                                const nIndex = ((y + dy) * width + (x + dx)) * 4;
+                                const nGray = Math.round(0.299 * imgData[nIndex] + 
+                                                        0.587 * imgData[nIndex + 1] + 
+                                                        0.114 * imgData[nIndex + 2]);
+                                neighbors.push(nGray);
+                            }
+                        }
+                        
+                        // エッジ強度計算
+                        const maxDiff = Math.max(...neighbors.map(n => Math.abs(centerGray - n)));
+                        const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
+                        const contrast = Math.abs(centerGray - avgNeighbor);
+                        
+                        // 文字判定条件（細かい文字対応：より敏感な検出）
+                        return (maxDiff > 40 && contrast > 30) || 
+                               (centerGray < 80 && contrast > 25) || 
+                               (centerGray > 180 && contrast > 25) ||
+                               (maxDiff > 25 && (centerGray < 100 || centerGray > 155));
                     }
                     
                     // 調整されたピクセルデータを再描画
                     compositeCtx.putImageData(imageData, imgX, imgY);
+                    
+                    // 【追加】最終シャープネス後処理で更に細かな濃淡を強化
+                    const finalData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const finalPixels = finalData.data;
                     
                     // UnsharpMask効果で細部を強調
                     for (let i = 0; i < finalPixels.length; i += 4) {
@@ -2007,8 +1983,8 @@ function sendToPrintAssist(event) {
                         }
                     }
                     
-                    // 調整されたピクセルデータを再描画
-                    compositeCtx.putImageData(imageData, imgX, imgY);
+                    // 最終処理済みデータを描画
+                    compositeCtx.putImageData(finalData, imgX, imgY);
                     
                     // 日付・時刻を描画
                     if (isDateTimeEnabled) {
