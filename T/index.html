@@ -1862,16 +1862,17 @@ function sendToPrintAssist(event) {
                         const isTextLike = isTextRegion(x, y, width, height, originalData);
                         
                         if (isTextLike) {
-                            // 文字部分は強力コントラスト強化（文字欠け防止）
+                            // 文字部分は超強力保護・コントラスト強化（欠け防止）
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            // 文字欠け防止：より積極的な二値化
+                            
+                            // 文字欠け防止のための強力な二値化処理
                             let enhanced;
-                            if (gray < 160) {
-                                // 文字部分の閾値を上げて欠け防止
-                                enhanced = Math.max(0, gray - 100);
+                            if (gray < 160) { // 閾値を140から160に上げて文字保護強化
+                                // 文字部分は確実に黒く（欠け防止）
+                                enhanced = 0; // 完全黒
                             } else {
-                                // 背景部分は完全に白く
-                                enhanced = Math.min(255, gray + 60);
+                                // 背景部分は確実に白く
+                                enhanced = 255; // 完全白
                             }
                             data[i] = enhanced;
                             data[i + 1] = enhanced;
@@ -1880,41 +1881,33 @@ function sendToPrintAssist(event) {
                             // 非文字部分：超滑らか・ノイズ最小・サーマルプリンター用濃淡表現
                             const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // エリアベース濃淡表現（ディザリング最小化）
-                            const areaX = Math.floor(x / 3) % 3;
-                            const areaY = Math.floor(y / 3) % 3;
-                            const pixelInArea = (x % 3) + (y % 3) * 3;
+                            // ノイズ最小化のための領域別処理
+                            let finalValue;
                             
-                            // 3x3エリア内での濃度パターン（9段階）
-                            const densityPatterns = {
-                                0: [0, 0, 0, 0, 0, 0, 0, 0, 0], // 0% 全黒
-                                1: [1, 0, 0, 0, 0, 0, 0, 0, 0], // 11% 1点白
-                                2: [1, 0, 1, 0, 0, 0, 0, 0, 0], // 22% 2点白
-                                3: [1, 0, 1, 0, 1, 0, 0, 0, 0], // 33% 3点白
-                                4: [1, 0, 1, 0, 1, 0, 1, 0, 0], // 44% 4点白
-                                5: [1, 0, 1, 0, 1, 0, 1, 0, 1], // 55% 5点白
-                                6: [1, 1, 1, 0, 1, 0, 1, 0, 1], // 66% 6点白
-                                7: [1, 1, 1, 0, 1, 1, 1, 0, 1], // 77% 7点白
-                                8: [1, 1, 1, 1, 1, 1, 1, 0, 1], // 88% 8点白
-                                9: [1, 1, 1, 1, 1, 1, 1, 1, 1]  // 100% 全白
-                            };
-                            
-                            // 濃度レベル決定（ノイズ最小化）
-                            let densityLevel;
-                            if (originalGray >= 245) densityLevel = 9;      // 純白
-                            else if (originalGray >= 220) densityLevel = 8; // 極薄
-                            else if (originalGray >= 195) densityLevel = 7; // 薄1
-                            else if (originalGray >= 170) densityLevel = 6; // 薄2
-                            else if (originalGray >= 145) densityLevel = 5; // 中薄1
-                            else if (originalGray >= 120) densityLevel = 4; // 中薄2
-                            else if (originalGray >= 95) densityLevel = 3;  // 中間1
-                            else if (originalGray >= 70) densityLevel = 2;  // 中間2
-                            else if (originalGray >= 45) densityLevel = 1;  // 濃
-                            else densityLevel = 0;                          // 純黒
-                            
-                            // パターンから最終値決定
-                            const pattern = densityPatterns[densityLevel];
-                            const finalValue = pattern[pixelInArea] === 1 ? 255 : 0;
+                            // 極端にノイズを減らすための段階的二値化
+                            if (originalGray > 220) {
+                                // 薄い色領域：ほぼ白で統一（ノイズ除去優先）
+                                finalValue = 255;
+                            } else if (originalGray > 180) {
+                                // 中薄色領域：非常に少ないディザリング
+                                const simplePattern = (x + y) % 8;
+                                finalValue = simplePattern < 6 ? 255 : 200;
+                            } else if (originalGray > 140) {
+                                // 中間色領域：軽微なディザリング
+                                const simplePattern = (x + y) % 4;
+                                finalValue = simplePattern < 2 ? 200 : 100;
+                            } else if (originalGray > 100) {
+                                // 中濃色領域：軽微なディザリング
+                                const simplePattern = (x + y) % 4;
+                                finalValue = simplePattern < 2 ? 100 : 50;
+                            } else if (originalGray > 60) {
+                                // 濃色領域：軽微なディザリング
+                                const simplePattern = (x + y) % 4;
+                                finalValue = simplePattern < 1 ? 50 : 0;
+                            } else {
+                                // 極濃色領域：ほぼ黒で統一
+                                finalValue = 0;
+                            }
                             
                             data[i] = finalValue;
                             data[i + 1] = finalValue;
@@ -1949,11 +1942,12 @@ function sendToPrintAssist(event) {
                         const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
                         const contrast = Math.abs(centerGray - avgNeighbor);
                         
-                        // 文字判定条件（細かい文字対応：より敏感な検出）
-                        return (maxDiff > 40 && contrast > 30) || 
-                               (centerGray < 80 && contrast > 25) || 
-                               (centerGray > 180 && contrast > 25) ||
-                               (maxDiff > 25 && (centerGray < 100 || centerGray > 155));
+                        // 文字判定条件（文字欠け防止：超敏感検出）
+                        return (maxDiff > 25 && contrast > 20) ||  // より敏感な検出
+                               (centerGray < 100 && contrast > 15) || // 暗い文字を確実に検出
+                               (centerGray > 160 && contrast > 15) ||  // 明るい背景も検出
+                               (maxDiff > 15 && (centerGray < 120 || centerGray > 135)) || // 範囲拡大
+                               (contrast > 30); // 高コントラスト部分は確実に文字として判定
                     }
                     
                     // 調整されたピクセルデータを再描画
