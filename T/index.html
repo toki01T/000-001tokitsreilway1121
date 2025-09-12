@@ -1890,27 +1890,27 @@ function sendToPrintAssist(event) {
                                 [3, 1]
                             ];
                             
-                            // 閾値を40倍にして0-160の範囲に（印字濃度アップ）
-                            const threshold = microDitherMatrix[pixelY][pixelX] * 40;
+                            // 閾値を50倍にして0-200の範囲に（濃度UP調整）
+                            const threshold = microDitherMatrix[pixelY][pixelX] * 50;
                             
-                            // 印字濃度強化処理
+                            // 強力ノイズ軽減処理（濃度強化版）
                             let adjustedGray = originalGray;
                             
-                            // 印字を濃くするための範囲別調整
-                            if (originalGray > 220) {
+                            // より強力な範囲別ノイズ除去（濃度UP）
+                            if (originalGray > 230) {
                                 adjustedGray = 255; // 純白として処理
-                            } else if (originalGray > 180) {
-                                // 薄い色は大幅に濃く調整
+                            } else if (originalGray > 200) {
+                                // 薄い色は大幅に濃く調整（濃度UP）
                                 adjustedGray = originalGray - 50;
-                            } else if (originalGray > 140) {
-                                // 中薄色も濃く調整
+                            } else if (originalGray > 170) {
+                                // 中薄色も調整（濃度UP）
                                 adjustedGray = originalGray - 30;
-                            } else if (originalGray > 100) {
+                            } else if (originalGray > 140) {
                                 // 中間色も少し濃く
                                 adjustedGray = originalGray - 15;
-                            } else if (originalGray < 40) {
+                            } else if (originalGray < 30) {
                                 adjustedGray = 0; // 純黒として処理
-                            } else if (originalGray < 70) {
+                            } else if (originalGray < 60) {
                                 // 濃い色は少し薄く調整してノイズ軽減
                                 adjustedGray = originalGray + 15;
                             }
