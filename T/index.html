@@ -1774,50 +1774,17 @@ function sendToPrintAssist(event) {
                         const g = data[i + 1];
                         const b = data[i + 2];
                         
-                        // 全色対応：色相・彩度・明度を考慮した濃淡変換
+                        // シンプルで正確なカラー→グレー変換
                         let gray;
                         
-                        // HSV変換で色相を考慮
-                        const max = Math.max(r, g, b);
-                        const min = Math.min(r, g, b);
-                        const delta = max - min;
-                        const saturation = max === 0 ? 0 : delta / max;
-                        const brightness = max / 255;
+                        // 標準的な輝度計算
+                        gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // 色相別の濃度調整
-                        let hue = 0;
-                        if (delta !== 0) {
-                            if (max === r) hue = ((g - b) / delta) % 6;
-                            else if (max === g) hue = (b - r) / delta + 2;
-                            else hue = (r - g) / delta + 4;
-                            hue *= 60;
-                            if (hue < 0) hue += 360;
-                        }
-                        
-                        // 全色を適切なグレー濃度に変換
-                        if (saturation < 0.1) {
-                            // 無彩色（グレー系）：元の明度をそのまま保持
-                            gray = Math.round((r + g + b) / 3);
-                        } else {
-                            // 有彩色：基本的な明度計算をベースに色相で微調整
-                            const baseBrightness = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            
-                            // 色相による微調整（±10%以内）
-                            let hueAdjust = 1.0;
-                            
-                            // 黄色系は少し明るく、青系は少し暗く
-                            if (hue > 30 && hue <= 90) {
-                                hueAdjust = 1.1; // 黄色系：10%明るく
-                            } else if (hue > 210 && hue <= 270) {
-                                hueAdjust = 0.9; // 青系：10%暗く
-                            }
-                            
-                            // 薄い色の保護：彩度が高い場合のみ微調整
-                            const saturationAdjust = saturation > 0.5 ? (1.0 - saturation * 0.1) : 1.0;
-                            
-                            // 最終グレー値計算（薄い色を保護）
-                            gray = Math.round(baseBrightness * hueAdjust * saturationAdjust);
-                            gray = Math.max(0, Math.min(255, gray)); // 範囲制限
+                        // 濃淡コントラストの強化
+                        if (gray > 200) {
+                            gray = Math.min(255, gray + 20); // 明るい部分をより明るく
+                        } else if (gray < 50) {
+                            gray = Math.max(0, gray - 20);   // 暗い部分をより暗く
                         }
                         grayData[i / 4] = gray;
                     }
@@ -1829,22 +1796,18 @@ function sendToPrintAssist(event) {
                             const index = y * width + x;
                             const oldPixel = grayData[index];
                             
-                            // 濃淡を重視した階調マッピング（強化版）
+                            // サーマルプリンター用濃淡階調マッピング（9段階）
                             let newPixel;
                             
-                            if (oldPixel >= 240) newPixel = 255;      // 白
-                            else if (oldPixel >= 220) newPixel = 240; // 極薄
-                            else if (oldPixel >= 200) newPixel = 220; // 薄1
-                            else if (oldPixel >= 180) newPixel = 200; // 薄2
-                            else if (oldPixel >= 160) newPixel = 180; // 薄3
-                            else if (oldPixel >= 140) newPixel = 160; // 中薄1
-                            else if (oldPixel >= 120) newPixel = 140; // 中薄2
-                            else if (oldPixel >= 100) newPixel = 120; // 中間1
-                            else if (oldPixel >= 80) newPixel = 100;  // 中間2
-                            else if (oldPixel >= 60) newPixel = 80;   // 中濃1
-                            else if (oldPixel >= 40) newPixel = 60;   // 中濃2
-                            else if (oldPixel >= 20) newPixel = 40;   // 濃
-                            else newPixel = 20;                       // 極濃（完全黒は避ける）
+                            if (oldPixel >= 220) newPixel = 255;      // 純白
+                            else if (oldPixel >= 190) newPixel = 200; // 極薄
+                            else if (oldPixel >= 160) newPixel = 170; // 薄
+                            else if (oldPixel >= 130) newPixel = 140; // 中薄
+                            else if (oldPixel >= 100) newPixel = 110; // 中間
+                            else if (oldPixel >= 70) newPixel = 80;   // 中濃
+                            else if (oldPixel >= 40) newPixel = 50;   // 濃
+                            else if (oldPixel >= 15) newPixel = 25;   // 極濃
+                            else newPixel = 0;                        // 純黒
                             
                             ditheredData[index] = newPixel;
                             const quantError = oldPixel - newPixel;
@@ -1901,13 +1864,35 @@ function sendToPrintAssist(event) {
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：ディザリング結果をそのまま使用（濃淡表現優先）
-                            const ditheredValue = ditheredData[pixelIndex];
+                            // 非文字部分：シンプルで効果的な濃淡表現
+                            const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // ディザリング結果を直接適用（濃淡保持）
-                            data[i] = ditheredValue;
-                            data[i + 1] = ditheredValue;
-                            data[i + 2] = ditheredValue;
+                            // 濃淡を段階的に表現（サーマルプリンター最適化）
+                            let finalValue;
+                            
+                            if (originalGray >= 230) {
+                                finalValue = 255; // 純白
+                            } else if (originalGray >= 200) {
+                                finalValue = 230; // 極薄
+                            } else if (originalGray >= 170) {
+                                finalValue = 200; // 薄
+                            } else if (originalGray >= 140) {
+                                finalValue = 170; // 中薄
+                            } else if (originalGray >= 110) {
+                                finalValue = 140; // 中間
+                            } else if (originalGray >= 80) {
+                                finalValue = 110; // 中濃
+                            } else if (originalGray >= 50) {
+                                finalValue = 80;  // 濃
+                            } else if (originalGray >= 25) {
+                                finalValue = 50;  // 極濃
+                            } else {
+                                finalValue = 0;   // 純黒
+                            }
+                            
+                            data[i] = finalValue;
+                            data[i + 1] = finalValue;
+                            data[i + 2] = finalValue;
                         }
                     }
                     
@@ -1938,10 +1923,11 @@ function sendToPrintAssist(event) {
                         const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
                         const contrast = Math.abs(centerGray - avgNeighbor);
                         
-                        // 文字判定条件（厳格化：明確な文字のみ検出、濃淡表現を優先）
-                        return (maxDiff > 80 && contrast > 60 && (centerGray < 50 || centerGray > 200)) || 
-                               (centerGray < 30 && contrast > 50) || 
-                               (centerGray > 220 && contrast > 50);
+                        // 文字判定条件（細かい文字対応：より敏感な検出）
+                        return (maxDiff > 40 && contrast > 30) || 
+                               (centerGray < 80 && contrast > 25) || 
+                               (centerGray > 180 && contrast > 25) ||
+                               (maxDiff > 25 && (centerGray < 100 || centerGray > 155));
                     }
                     
                     // 調整されたピクセルデータを再描画
