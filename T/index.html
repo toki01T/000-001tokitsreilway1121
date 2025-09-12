@@ -1862,53 +1862,60 @@ function sendToPrintAssist(event) {
                         const isTextLike = isTextRegion(x, y, width, height, originalData);
                         
                         if (isTextLike) {
-                            // 文字部分は二値化強化処理（欠け防止）
+                            // 文字部分は超強力コントラスト強化処理（細かい文字対応）
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            // 文字欠け防止：より確実な二値化
+                            // 細かい文字鮮明化：二値化に近い強力処理
                             let enhanced;
-                            if (gray < 160) { // 閾値を140から160に上げて文字を保護
-                                // 文字部分は確実に黒く（欠け防止）
-                                enhanced = 0; // 完全黒
+                            if (gray < 140) {
+                                // 文字部分は完全に黒く
+                                enhanced = Math.max(0, gray - 80);
                             } else {
-                                // 背景部分は確実に白く
-                                enhanced = 255; // 完全白
+                                // 背景部分は完全に白く
+                                enhanced = Math.min(255, gray + 50);
                             }
                             data[i] = enhanced;
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：超微細ノイズ完全除去・濃淡表現
+                            // 非文字部分：超微細ノイズ・綺麗な濃淡表現
                             const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // ノイズ完全除去のための大幅濃度調整
+                            // 2x2ディザリングマトリックス（最小ノイズ）
+                            const pixelX = x % 2;
+                            const pixelY = y % 2;
+                            
+                            // 超滑らか2x2ディザリングマトリックス
+                            const microDitherMatrix = [
+                                [0, 2],
+                                [3, 1]
+                            ];
+                            
+                            // 閾値を60倍にして0-240の範囲に（超微細調整）
+                            const threshold = microDitherMatrix[pixelY][pixelX] * 60;
+                            
+                            // 強力ノイズ軽減処理
                             let adjustedGray = originalGray;
                             
-                            // 極薄い色のノイズ完全排除
+                            // より強力な範囲別ノイズ除去
                             if (originalGray > 230) {
-                                adjustedGray = 255; // 純白
-                            } else if (originalGray > 190) {
-                                // 薄い色は大幅濃度調整（ノイズ除去優先）
-                                adjustedGray = originalGray - 60;
-                            } else if (originalGray > 150) {
-                                // 中薄色も大幅調整
+                                adjustedGray = 255; // 純白として処理
+                            } else if (originalGray > 200) {
+                                // 薄い色は大幅に濃く調整
                                 adjustedGray = originalGray - 40;
-                            } else if (originalGray > 100) {
-                                // 中間色は中程度調整
-                                adjustedGray = originalGray - 25;
-                            } else if (originalGray > 60) {
-                                // 中濃色は軽微調整
-                                adjustedGray = originalGray - 15;
-                            } else if (originalGray < 40) {
-                                adjustedGray = 0; // 純黒
+                            } else if (originalGray > 170) {
+                                // 中薄色も調整
+                                adjustedGray = originalGray - 20;
+                            } else if (originalGray < 30) {
+                                adjustedGray = 0; // 純黒として処理
+                            } else if (originalGray < 60) {
+                                // 濃い色は少し薄く調整してノイズ軽減
+                                adjustedGray = originalGray + 20;
                             }
                             
-                            // 最小パターン：単純閾値処理（ノイズ最小化）
-                            const simpleThreshold = 128; // 固定閾値でノイズ除去
-                            
-                            // サーマルプリンター用二値化（ノイズ完全除去版）
+                            // サーマルプリンター用超滑らか二値化
                             let finalValue;
                             
-                            if (adjustedGray > simpleThreshold) {
+                            if (adjustedGray > threshold) {
                                 finalValue = 255; // 白
                             } else {
                                 finalValue = 0;   // 黒
