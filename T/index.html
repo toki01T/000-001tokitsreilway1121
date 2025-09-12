@@ -1877,48 +1877,33 @@ function sendToPrintAssist(event) {
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：超微細ノイズ・綺麗な濃淡表現
+                            // 非文字部分：サーマルプリンター用二値化ディザリング濃淡表現
                             const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // 2x2ディザリングマトリックス（最小ノイズ）
-                            const pixelX = x % 2;
-                            const pixelY = y % 2;
+                            // 8x8ディザリングマトリックス（Bayer Matrix）
+                            const pixelX = x % 8;
+                            const pixelY = y % 8;
                             
-                            // 超滑らか2x2ディザリングマトリックス
-                            const microDitherMatrix = [
-                                [0, 2],
-                                [3, 1]
+                            // 8x8 Bayerディザリングマトリックス
+                            const bayerMatrix = [
+                                [ 0, 32,  8, 40,  2, 34, 10, 42],
+                                [48, 16, 56, 24, 50, 18, 58, 26],
+                                [12, 44,  4, 36, 14, 46,  6, 38],
+                                [60, 28, 52, 20, 62, 30, 54, 22],
+                                [ 3, 35, 11, 43,  1, 33,  9, 41],
+                                [51, 19, 59, 27, 49, 17, 57, 25],
+                                [15, 47,  7, 39, 13, 45,  5, 37],
+                                [63, 31, 55, 23, 61, 29, 53, 21]
                             ];
                             
-                            // 閾値を40倍にして0-160の範囲に（印刷濃度アップ）
-                            const threshold = microDitherMatrix[pixelY][pixelX] * 40;
+                            // 閾値を4倍にして0-252の範囲に
+                            const threshold = bayerMatrix[pixelY][pixelX] * 4;
                             
-                            // 印刷濃度向上のための濃度調整
-                            let adjustedGray = originalGray;
-                            
-                            // 濃度を高めるための範囲別調整
-                            if (originalGray > 220) {
-                                adjustedGray = 255; // 純白として処理
-                            } else if (originalGray > 180) {
-                                // 薄い色は大幅に濃く調整（濃度アップ）
-                                adjustedGray = originalGray - 60;
-                            } else if (originalGray > 140) {
-                                // 中薄色も大幅調整（濃度アップ）
-                                adjustedGray = originalGray - 40;
-                            } else if (originalGray > 100) {
-                                // 中間色も濃く調整
-                                adjustedGray = originalGray - 20;
-                            } else if (originalGray < 40) {
-                                adjustedGray = 0; // 純黒として処理
-                            } else if (originalGray < 80) {
-                                // 濃い色は少し薄く調整してバランス保持
-                                adjustedGray = originalGray + 10;
-                            }
-                            
-                            // サーマルプリンター用超滑らか二値化
+                            // サーマルプリンター用二値化（白か黒のみ）
                             let finalValue;
                             
-                            if (adjustedGray > threshold) {
+                            // 濃淡を密度パターンで表現
+                            if (originalGray > threshold) {
                                 finalValue = 255; // 白
                             } else {
                                 finalValue = 0;   // 黒
