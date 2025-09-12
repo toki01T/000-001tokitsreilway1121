@@ -1862,67 +1862,59 @@ function sendToPrintAssist(event) {
                         const isTextLike = isTextRegion(x, y, width, height, originalData);
                         
                         if (isTextLike) {
-                            // 文字部分は超強力コントラスト強化処理（細かい文字対応）
+                            // 文字部分は強力コントラスト強化（文字欠け防止）
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            // 細かい文字鮮明化：二値化に近い強力処理
+                            // 文字欠け防止：より積極的な二値化
                             let enhanced;
-                            if (gray < 140) {
-                                // 文字部分は完全に黒く
-                                enhanced = Math.max(0, gray - 80);
+                            if (gray < 160) {
+                                // 文字部分の閾値を上げて欠け防止
+                                enhanced = Math.max(0, gray - 100);
                             } else {
                                 // 背景部分は完全に白く
-                                enhanced = Math.min(255, gray + 50);
+                                enhanced = Math.min(255, gray + 60);
                             }
                             data[i] = enhanced;
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：微細ノイズレス・サーマルプリンター用濃淡表現
+                            // 非文字部分：超滑らか・ノイズ最小・サーマルプリンター用濃淡表現
                             const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // 2x2ディザリングマトリックス（最小ノイズ）
-                            const pixelX = x % 2;
-                            const pixelY = y % 2;
+                            // エリアベース濃淡表現（ディザリング最小化）
+                            const areaX = Math.floor(x / 3) % 3;
+                            const areaY = Math.floor(y / 3) % 3;
+                            const pixelInArea = (x % 3) + (y % 3) * 3;
                             
-                            // 最もスムーズな2x2ディザリングマトリックス
-                            const microDitherMatrix = [
-                                [0, 2],
-                                [3, 1]
-                            ];
+                            // 3x3エリア内での濃度パターン（9段階）
+                            const densityPatterns = {
+                                0: [0, 0, 0, 0, 0, 0, 0, 0, 0], // 0% 全黒
+                                1: [1, 0, 0, 0, 0, 0, 0, 0, 0], // 11% 1点白
+                                2: [1, 0, 1, 0, 0, 0, 0, 0, 0], // 22% 2点白
+                                3: [1, 0, 1, 0, 1, 0, 0, 0, 0], // 33% 3点白
+                                4: [1, 0, 1, 0, 1, 0, 1, 0, 0], // 44% 4点白
+                                5: [1, 0, 1, 0, 1, 0, 1, 0, 1], // 55% 5点白
+                                6: [1, 1, 1, 0, 1, 0, 1, 0, 1], // 66% 6点白
+                                7: [1, 1, 1, 0, 1, 1, 1, 0, 1], // 77% 7点白
+                                8: [1, 1, 1, 1, 1, 1, 1, 0, 1], // 88% 8点白
+                                9: [1, 1, 1, 1, 1, 1, 1, 1, 1]  // 100% 全白
+                            };
                             
-                            // 閾値を64倍にして0-192の範囲に（微細調整）
-                            const threshold = microDitherMatrix[pixelY][pixelX] * 64;
+                            // 濃度レベル決定（ノイズ最小化）
+                            let densityLevel;
+                            if (originalGray >= 245) densityLevel = 9;      // 純白
+                            else if (originalGray >= 220) densityLevel = 8; // 極薄
+                            else if (originalGray >= 195) densityLevel = 7; // 薄1
+                            else if (originalGray >= 170) densityLevel = 6; // 薄2
+                            else if (originalGray >= 145) densityLevel = 5; // 中薄1
+                            else if (originalGray >= 120) densityLevel = 4; // 中薄2
+                            else if (originalGray >= 95) densityLevel = 3;  // 中間1
+                            else if (originalGray >= 70) densityLevel = 2;  // 中間2
+                            else if (originalGray >= 45) densityLevel = 1;  // 濃
+                            else densityLevel = 0;                          // 純黒
                             
-                            // ノイズ除去のための段階的濃度調整
-                            let adjustedGray = originalGray;
-                            
-                            // 極薄い色のノイズ完全除去
-                            if (originalGray > 235) {
-                                adjustedGray = 255; // 純白
-                            } else if (originalGray > 200) {
-                                // 薄い色は大幅に濃度調整
-                                adjustedGray = originalGray - 40;
-                            } else if (originalGray > 160) {
-                                // 中薄色は中程度調整
-                                adjustedGray = originalGray - 20;
-                            } else if (originalGray > 120) {
-                                // 中間色は軽微調整
-                                adjustedGray = originalGray - 10;
-                            } else if (originalGray < 30) {
-                                adjustedGray = 0; // 純黒
-                            }
-                            
-                            // さらなるノイズ軽減：周辺ピクセルとの平滑化
-                            const smoothingThreshold = threshold + (originalGray > 180 ? 30 : 0);
-                            
-                            // サーマルプリンター用二値化（超微細ノイズレス）
-                            let finalValue;
-                            
-                            if (adjustedGray > smoothingThreshold) {
-                                finalValue = 255; // 白
-                            } else {
-                                finalValue = 0;   // 黒
-                            }
+                            // パターンから最終値決定
+                            const pattern = densityPatterns[densityLevel];
+                            const finalValue = pattern[pixelInArea] === 1 ? 255 : 0;
                             
                             data[i] = finalValue;
                             data[i + 1] = finalValue;
