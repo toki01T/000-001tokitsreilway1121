@@ -1862,72 +1862,62 @@ function sendToPrintAssist(event) {
                         const isTextLike = isTextRegion(x, y, width, height, originalData);
                         
                         if (isTextLike) {
-                            // 文字部分：適度な濃度・欠け防止処理
+                            // 文字部分：文字欠け防止強化処理
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            
-                            // 文字の適度な処理（真っ黒防止）
+                            // 文字欠け防止：より保護的な処理
                             let enhanced;
-                            if (gray < 150) { // 閾値を適度に設定
-                                // 文字部分を適度に黒く（真っ黒防止）
-                                enhanced = Math.max(20, gray - 60); // 適度な黒化
+                            if (gray < 160) {  // 閾値を140→160に上げて文字保護強化
+                                // 文字部分は確実に黒く（欠け防止）
+                                enhanced = Math.max(0, gray - 100); // -80→-100に強化
                             } else {
-                                // 背景部分を適度に白く
-                                enhanced = Math.min(255, gray + 40); // 適度な白化
+                                // 背景部分は完全に白く
+                                enhanced = Math.min(255, gray + 60); // +50→+60に強化
                             }
                             data[i] = enhanced;
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：超滑らか・ノイズ最小化・サーマルプリンター用濃淡表現
+                            // 非文字部分：完全ノイズレス・段階的濃淡表現
                             const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // エリアベース濃淡表現（ノイズ最小化）
-                            const blockX = Math.floor(x / 3) % 2;
-                            const blockY = Math.floor(y / 3) % 2;
-                            const pixelX = x % 3;
-                            const pixelY = y % 3;
-                            
-                            // 3x3ブロック内での位置による微調整
-                            const blockPattern = [
-                                [0, 1],
-                                [1, 0]
-                            ];
-                            
-                            const basePattern = blockPattern[blockY][blockX];
-                            const pixelOffset = (pixelX + pixelY) % 3;
-                            
-                            // ノイズ除去のための適度濃度調整
-                            let adjustedGray = originalGray;
-                            
-                            // 適度な処理：真っ黒にならない調整
-                            if (originalGray > 240) {
-                                adjustedGray = 255; // 純白
-                            } else if (originalGray > 200) {
-                                // 薄い色は軽微調整（真っ黒防止）
-                                adjustedGray = Math.max(150, originalGray - 20);
-                            } else if (originalGray > 150) {
-                                // 中薄色は軽微調整
-                                adjustedGray = Math.max(120, originalGray - 15);
-                            } else if (originalGray > 100) {
-                                // 中間色は微調整
-                                adjustedGray = Math.max(80, originalGray - 10);
-                            } else if (originalGray > 50) {
-                                // 中濃色はそのまま保持
-                                adjustedGray = originalGray;
-                            } else if (originalGray < 20) {
-                                adjustedGray = 0; // 純黒（極限定）
-                            }
-                            
-                            // 適度な閾値処理（真っ黒防止）
-                            const moderateThreshold = 100 + (basePattern * 40) + (pixelOffset * 8);
-                            
-                            // サーマルプリンター用二値化（適度濃度）
+                            // ディザリングを廃止し、シンプルな段階的濃淡に変更
                             let finalValue;
                             
-                            if (adjustedGray > moderateThreshold) {
-                                finalValue = 255; // 白
+                            // 完全ノイズレス16段階濃淡
+                            if (originalGray >= 240) {
+                                finalValue = 255; // 純白
+                            } else if (originalGray >= 225) {
+                                finalValue = 240; // 極薄1
+                            } else if (originalGray >= 210) {
+                                finalValue = 220; // 極薄2
+                            } else if (originalGray >= 195) {
+                                finalValue = 200; // 薄1
+                            } else if (originalGray >= 180) {
+                                finalValue = 180; // 薄2
+                            } else if (originalGray >= 165) {
+                                finalValue = 160; // 薄3
+                            } else if (originalGray >= 150) {
+                                finalValue = 140; // 中薄1
+                            } else if (originalGray >= 135) {
+                                finalValue = 120; // 中薄2
+                            } else if (originalGray >= 120) {
+                                finalValue = 100; // 中間1
+                            } else if (originalGray >= 105) {
+                                finalValue = 80;  // 中間2
+                            } else if (originalGray >= 90) {
+                                finalValue = 70;  // 中濃1
+                            } else if (originalGray >= 75) {
+                                finalValue = 60;  // 中濃2
+                            } else if (originalGray >= 60) {
+                                finalValue = 50;  // 濃1
+                            } else if (originalGray >= 45) {
+                                finalValue = 40;  // 濃2
+                            } else if (originalGray >= 30) {
+                                finalValue = 30;  // 極濃1
+                            } else if (originalGray >= 15) {
+                                finalValue = 20;  // 極濃2
                             } else {
-                                finalValue = 0;   // 黒
+                                finalValue = 0;   // 純黒
                             }
                             
                             data[i] = finalValue;
