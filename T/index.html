@@ -1864,30 +1864,42 @@ function sendToPrintAssist(event) {
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：シンプルで効果的な濃淡表現
+                            // 非文字部分：サーマルプリンター用ディザリング濃淡表現
                             const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // 濃淡を段階的に表現（サーマルプリンター最適化）
+                            // ディザリングパターンによる濃淡表現
+                            const pixelX = x % 4;
+                            const pixelY = y % 4;
+                            
+                            // 4x4ディザリングマトリックス
+                            const ditherMatrix = [
+                                [0,  8,  2, 10],
+                                [12, 4, 14,  6],
+                                [3, 11,  1,  9],
+                                [15, 7, 13,  5]
+                            ];
+                            
+                            const threshold = ditherMatrix[pixelY][pixelX] * 16; // 0-240の範囲
+                            
+                            // 濃淡レベルによる表現（より細かく）
                             let finalValue;
                             
-                            if (originalGray >= 230) {
-                                finalValue = 255; // 純白
-                            } else if (originalGray >= 200) {
-                                finalValue = 230; // 極薄
-                            } else if (originalGray >= 170) {
-                                finalValue = 200; // 薄
+                            if (originalGray >= 240) {
+                                finalValue = 255; // 完全白
+                            } else if (originalGray >= 220) {
+                                finalValue = originalGray > threshold + 220 ? 255 : 200;
+                            } else if (originalGray >= 180) {
+                                finalValue = originalGray > threshold + 180 ? 200 : 150;
                             } else if (originalGray >= 140) {
-                                finalValue = 170; // 中薄
-                            } else if (originalGray >= 110) {
-                                finalValue = 140; // 中間
-                            } else if (originalGray >= 80) {
-                                finalValue = 110; // 中濃
-                            } else if (originalGray >= 50) {
-                                finalValue = 80;  // 濃
-                            } else if (originalGray >= 25) {
-                                finalValue = 50;  // 極濃
+                                finalValue = originalGray > threshold + 140 ? 150 : 100;
+                            } else if (originalGray >= 100) {
+                                finalValue = originalGray > threshold + 100 ? 100 : 70;
+                            } else if (originalGray >= 60) {
+                                finalValue = originalGray > threshold + 60 ? 70 : 40;
+                            } else if (originalGray >= 30) {
+                                finalValue = originalGray > threshold + 30 ? 40 : 10;
                             } else {
-                                finalValue = 0;   // 純黒
+                                finalValue = originalGray > threshold ? 10 : 0;
                             }
                             
                             data[i] = finalValue;
