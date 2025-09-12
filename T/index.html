@@ -1802,7 +1802,7 @@ function sendToPrintAssist(event) {
                         grayData[i / 4] = gray;
                     }
                     
-                    // 2. シンプルで効果的な濃淡処理（ディザリング無効化）
+                    // 2. サーマルプリンター用ディザリング処理（Floyd-Steinbergディザリング）
                     const ditheredData = new Uint8Array(width * height);
                     for (let y = 0; y < height; y++) {
                         for (let x = 0; x < width; x++) {
@@ -1877,32 +1877,37 @@ function sendToPrintAssist(event) {
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：超シンプル濃淡処理
+                            // 非文字部分：サーマルプリンター用二値化ディザリング濃淡表現
+                            const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // ハーフトーン（網点）方式による濃淡表現
-                            const blockX = Math.floor(x / 2);
-                            const blockY = Math.floor(y / 2);
-                            const inBlockX = x % 2;
-                            const inBlockY = y % 2;
+                            // 8x8ディザリングマトリックス（Bayer Matrix）
+                            const pixelX = x % 8;
+                            const pixelY = y % 8;
                             
-                            // 2x2ブロック内での濃度パターン
-                            const patterns = [
-                                [[255, 255], [255, 255]], // 0% (完全白)
-                                [[0,   255], [255, 255]], // 25%
-                                [[0,   255], [255, 0  ]], // 50%
-                                [[0,   0  ], [255, 0  ]], // 75%
-                                [[0,   0  ], [0,   0  ]]  // 100% (完全黒)
+                            // 8x8 Bayerディザリングマトリックス
+                            const bayerMatrix = [
+                                [ 0, 32,  8, 40,  2, 34, 10, 42],
+                                [48, 16, 56, 24, 50, 18, 58, 26],
+                                [12, 44,  4, 36, 14, 46,  6, 38],
+                                [60, 28, 52, 20, 62, 30, 54, 22],
+                                [ 3, 35, 11, 43,  1, 33,  9, 41],
+                                [51, 19, 59, 27, 49, 17, 57, 25],
+                                [15, 47,  7, 39, 13, 45,  5, 37],
+                                [63, 31, 55, 23, 61, 29, 53, 21]
                             ];
                             
-                            // グレー値から濃度パターンを決定
-                            let patternIndex;
-                            if (originalGray >= 230) patternIndex = 0;      // 白
-                            else if (originalGray >= 180) patternIndex = 1; // 薄
-                            else if (originalGray >= 120) patternIndex = 2; // 中間
-                            else if (originalGray >= 60) patternIndex = 3;  // 濃
-                            else patternIndex = 4;                          // 黒
+                            // 閾値を4倍にして0-252の範囲に
+                            const threshold = bayerMatrix[pixelY][pixelX] * 4;
                             
-                            const finalValue = patterns[patternIndex][inBlockY][inBlockX];
+                            // サーマルプリンター用二値化（白か黒のみ）
+                            let finalValue;
+                            
+                            // 濃淡を密度パターンで表現
+                            if (originalGray > threshold) {
+                                finalValue = 255; // 白
+                            } else {
+                                finalValue = 0;   // 黒
+                            }
                             
                             data[i] = finalValue;
                             data[i + 1] = finalValue;
