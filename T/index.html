@@ -1774,35 +1774,65 @@ function sendToPrintAssist(event) {
                         const g = data[i + 1];
                         const b = data[i + 2];
                         
-                        // 全色対応：色の種類に応じた最適変換
+                        // 全色対応：色相・彩度・明度を考慮した濃淡変換
                         let gray;
                         
-                        // 色相の判定と最適変換
+                        // HSV変換で色相を考慮
                         const max = Math.max(r, g, b);
                         const min = Math.min(r, g, b);
-                        const diff = max - min;
+                        const delta = max - min;
+                        const saturation = max === 0 ? 0 : delta / max;
+                        const brightness = max / 255;
                         
-                        if (diff < 15) {
-                            // グレー系：平均値で濃淡保持
+                        // 色相別の濃度調整
+                        let hue = 0;
+                        if (delta !== 0) {
+                            if (max === r) hue = ((g - b) / delta) % 6;
+                            else if (max === g) hue = (b - r) / delta + 2;
+                            else hue = (r - g) / delta + 4;
+                            hue *= 60;
+                            if (hue < 0) hue += 360;
+                        }
+                        
+                        // 全色を適切なグレー濃度に変換
+                        if (saturation < 0.1) {
+                            // 無彩色（グレー系）：元の明度をそのまま保持
                             gray = Math.round((r + g + b) / 3);
-                        } else if (r >= g && r >= b) {
-                            // 赤系（ピンク、オレンジ含む）：赤を重視
-                            gray = Math.round(0.4 * r + 0.35 * g + 0.25 * b);
-                        } else if (g >= r && g >= b) {
-                            // 緑系（キミドリ、黄緑含む）：緑を重視
-                            gray = Math.round(0.25 * r + 0.5 * g + 0.25 * b);
                         } else {
-                            // 青系（水色、紫含む）：青を重視
-                            gray = Math.round(0.2 * r + 0.3 * g + 0.5 * b);
+                            // 有彩色：色相と彩度を考慮した濃度変換
+                            let colorWeight = 1.0;
+                            
+                            // 赤系（0-30, 330-360度）
+                            if ((hue >= 0 && hue <= 30) || hue >= 330) {
+                                colorWeight = 0.299; // 赤は暗めに
+                            }
+                            // 黄色系（30-90度）
+                            else if (hue > 30 && hue <= 90) {
+                                colorWeight = 0.8; // 黄色は明るめに
+                            }
+                            // 緑系（90-150度）
+                            else if (hue > 90 && hue <= 150) {
+                                colorWeight = 0.587; // 緑は中間に
+                            }
+                            // シアン系（150-210度）
+                            else if (hue > 150 && hue <= 210) {
+                                colorWeight = 0.7; // シアンは明るめに
+                            }
+                            // 青系（210-270度）
+                            else if (hue > 210 && hue <= 270) {
+                                colorWeight = 0.114; // 青は暗めに
+                            }
+                            // マゼンタ系（270-330度）
+                            else {
+                                colorWeight = 0.4; // マゼンタは中暗に
+                            }
+                            
+                            // 彩度による濃度調整
+                            const saturationEffect = 1.0 - (saturation * 0.3);
+                            
+                            // 最終グレー値計算
+                            gray = Math.round(brightness * 255 * colorWeight * saturationEffect);
                         }
-                        
-                        // 色の彩度を考慮した濃度調整
-                        const saturation = diff / max;
-                        if (saturation > 0.3) {
-                            // 彩度が高い色は少し濃く表現
-                            gray = Math.max(0, Math.min(255, gray - Math.round(saturation * 20)));
-                        }
-                        
                         grayData[i / 4] = gray;
                     }
                     
@@ -1813,104 +1843,73 @@ function sendToPrintAssist(event) {
                             const index = y * width + x;
                             const oldPixel = grayData[index];
                             
-                            // 全色対応超高精度階調マッピング（64段階）
+                            // 全色対応64段階超高精度階調マッピング
                             let newPixel;
-                            // 白系（248-255）
+                            const step = Math.floor(oldPixel / 4); // 4単位で段階分け
+                            
                             if (oldPixel >= 252) newPixel = 255;
                             else if (oldPixel >= 248) newPixel = 250;
-                            // 超薄系（240-247）
                             else if (oldPixel >= 244) newPixel = 245;
                             else if (oldPixel >= 240) newPixel = 240;
-                            // 極薄系（232-239）
                             else if (oldPixel >= 236) newPixel = 235;
                             else if (oldPixel >= 232) newPixel = 230;
-                            // 薄系1（224-231）
                             else if (oldPixel >= 228) newPixel = 225;
                             else if (oldPixel >= 224) newPixel = 220;
-                            // 薄系2（216-223）
                             else if (oldPixel >= 220) newPixel = 215;
                             else if (oldPixel >= 216) newPixel = 210;
-                            // 薄系3（208-215）
                             else if (oldPixel >= 212) newPixel = 205;
                             else if (oldPixel >= 208) newPixel = 200;
-                            // 薄系4（200-207）
                             else if (oldPixel >= 204) newPixel = 195;
                             else if (oldPixel >= 200) newPixel = 190;
-                            // 中薄系1（192-199）
                             else if (oldPixel >= 196) newPixel = 185;
                             else if (oldPixel >= 192) newPixel = 180;
-                            // 中薄系2（184-191）
                             else if (oldPixel >= 188) newPixel = 175;
                             else if (oldPixel >= 184) newPixel = 170;
-                            // 中薄系3（176-183）
                             else if (oldPixel >= 180) newPixel = 165;
                             else if (oldPixel >= 176) newPixel = 160;
-                            // 中薄系4（168-175）
                             else if (oldPixel >= 172) newPixel = 155;
                             else if (oldPixel >= 168) newPixel = 150;
-                            // 中間系1（160-167）
                             else if (oldPixel >= 164) newPixel = 145;
                             else if (oldPixel >= 160) newPixel = 140;
-                            // 中間系2（152-159）
                             else if (oldPixel >= 156) newPixel = 135;
                             else if (oldPixel >= 152) newPixel = 130;
-                            // 中間系3（144-151）
                             else if (oldPixel >= 148) newPixel = 125;
                             else if (oldPixel >= 144) newPixel = 120;
-                            // 中間系4（136-143）
                             else if (oldPixel >= 140) newPixel = 115;
                             else if (oldPixel >= 136) newPixel = 110;
-                            // 中濃系1（128-135）
                             else if (oldPixel >= 132) newPixel = 105;
                             else if (oldPixel >= 128) newPixel = 100;
-                            // 中濃系2（120-127）
                             else if (oldPixel >= 124) newPixel = 95;
                             else if (oldPixel >= 120) newPixel = 90;
-                            // 中濃系3（112-119）
                             else if (oldPixel >= 116) newPixel = 85;
                             else if (oldPixel >= 112) newPixel = 80;
-                            // 中濃系4（104-111）
                             else if (oldPixel >= 108) newPixel = 75;
                             else if (oldPixel >= 104) newPixel = 70;
-                            // 濃系1（96-103）
                             else if (oldPixel >= 100) newPixel = 65;
                             else if (oldPixel >= 96) newPixel = 60;
-                            // 濃系2（88-95）
                             else if (oldPixel >= 92) newPixel = 55;
                             else if (oldPixel >= 88) newPixel = 50;
-                            // 濃系3（80-87）
-                            else if (oldPixel >= 84) newPixel = 48;
-                            else if (oldPixel >= 80) newPixel = 46;
-                            // 濃系4（72-79）
-                            else if (oldPixel >= 76) newPixel = 44;
-                            else if (oldPixel >= 72) newPixel = 42;
-                            // 超濃系1（64-71）
-                            else if (oldPixel >= 68) newPixel = 40;
-                            else if (oldPixel >= 64) newPixel = 38;
-                            // 超濃系2（56-63）
-                            else if (oldPixel >= 60) newPixel = 36;
-                            else if (oldPixel >= 56) newPixel = 34;
-                            // 超濃系3（48-55）
-                            else if (oldPixel >= 52) newPixel = 32;
-                            else if (oldPixel >= 48) newPixel = 30;
-                            // 超濃系4（40-47）
-                            else if (oldPixel >= 44) newPixel = 28;
-                            else if (oldPixel >= 40) newPixel = 26;
-                            // 極濃系1（32-39）
-                            else if (oldPixel >= 36) newPixel = 24;
-                            else if (oldPixel >= 32) newPixel = 22;
-                            // 極濃系2（24-31）
-                            else if (oldPixel >= 28) newPixel = 20;
-                            else if (oldPixel >= 24) newPixel = 18;
-                            // 極濃系3（16-23）
-                            else if (oldPixel >= 20) newPixel = 16;
-                            else if (oldPixel >= 16) newPixel = 14;
-                            // 極濃系4（8-15）
-                            else if (oldPixel >= 12) newPixel = 12;
-                            else if (oldPixel >= 8) newPixel = 10;
-                            // 超黒系（4-7）
-                            else if (oldPixel >= 4) newPixel = 6;
-                            // 純黒（0-3）
+                            else if (oldPixel >= 84) newPixel = 45;
+                            else if (oldPixel >= 80) newPixel = 40;
+                            else if (oldPixel >= 76) newPixel = 37;
+                            else if (oldPixel >= 72) newPixel = 34;
+                            else if (oldPixel >= 68) newPixel = 31;
+                            else if (oldPixel >= 64) newPixel = 28;
+                            else if (oldPixel >= 60) newPixel = 25;
+                            else if (oldPixel >= 56) newPixel = 22;
+                            else if (oldPixel >= 52) newPixel = 19;
+                            else if (oldPixel >= 48) newPixel = 16;
+                            else if (oldPixel >= 44) newPixel = 13;
+                            else if (oldPixel >= 40) newPixel = 11;
+                            else if (oldPixel >= 36) newPixel = 9;
+                            else if (oldPixel >= 32) newPixel = 7;
+                            else if (oldPixel >= 28) newPixel = 5;
+                            else if (oldPixel >= 24) newPixel = 4;
+                            else if (oldPixel >= 20) newPixel = 3;
+                            else if (oldPixel >= 16) newPixel = 2;
+                            else if (oldPixel >= 12) newPixel = 1;
+                            else if (oldPixel >= 8) newPixel = 1;
+                            else if (oldPixel >= 4) newPixel = 0;
                             else newPixel = 0;
                             
                             ditheredData[index] = newPixel;
