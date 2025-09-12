@@ -1877,42 +1877,57 @@ function sendToPrintAssist(event) {
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：超細かいノイズレス濃淡表現
+                            // 非文字部分：超ノイズレス・サーマルプリンター用濃淡表現
                             const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
                             // 2x2ディザリングマトリックス（最小ノイズ）
                             const pixelX = x % 2;
                             const pixelY = y % 2;
                             
-                            // 最小ノイズ2x2ディザリングマトリックス
-                            const miniDitherMatrix = [
+                            // 超細かい2x2ディザリングマトリックス
+                            const microDitherMatrix = [
                                 [0, 2],
                                 [3, 1]
                             ];
                             
-                            // 閾値を64倍にして0-192の範囲に（超細かい調整）
-                            const threshold = miniDitherMatrix[pixelY][pixelX] * 64;
+                            // 閾値を64倍にして0-192の範囲に（超滑らか）
+                            const threshold = microDitherMatrix[pixelY][pixelX] * 64;
                             
-                            // より強力なノイズ軽減処理
+                            // 超滑らかな濃度調整
                             let adjustedGray = originalGray;
                             
-                            // 極薄い色の範囲拡大
-                            if (originalGray > 235) {
-                                adjustedGray = 255; // 純白として処理
-                            } else if (originalGray > 210) {
-                                // 薄い色はさらに濃く調整
-                                adjustedGray = originalGray - 30;
-                            } else if (originalGray > 190) {
-                                // 中薄色も調整
-                                adjustedGray = originalGray - 20;
-                            } else if (originalGray < 25) {
-                                adjustedGray = 0; // 純黒として処理
-                            } else if (originalGray < 45) {
-                                // 濃い色も調整
-                                adjustedGray = originalGray + 20;
+                            // ノイズ軽減のための段階的調整
+                            if (originalGray > 250) {
+                                adjustedGray = 255; // 純白
+                            } else if (originalGray > 240) {
+                                adjustedGray = 240; // 極薄調整
+                            } else if (originalGray > 200) {
+                                adjustedGray = originalGray - 10; // 薄色調整
+                            } else if (originalGray > 180) {
+                                adjustedGray = originalGray; // そのまま
+                            } else if (originalGray > 160) {
+                                adjustedGray = originalGray + 10; // 中間調整
+                            } else if (originalGray > 140) {
+                                adjustedGray = originalGray + 15; // 中濃調整
+                            } else if (originalGray > 120) {
+                                adjustedGray = originalGray + 20; // 濃色調整
+                            } else if (originalGray > 100) {
+                                adjustedGray = originalGray + 25; // 深色調整
+                            } else if (originalGray > 80) {
+                                adjustedGray = originalGray + 30; // 重色調整
+                            } else if (originalGray > 60) {
+                                adjustedGray = originalGray + 20; // 暗色調整
+                            } else if (originalGray > 40) {
+                                adjustedGray = originalGray + 10; // 深暗調整
+                            } else if (originalGray > 20) {
+                                adjustedGray = originalGray; // 極暗そのまま
+                            } else if (originalGray > 10) {
+                                adjustedGray = 10; // 超暗調整
+                            } else {
+                                adjustedGray = 0; // 純黒
                             }
                             
-                            // サーマルプリンター用二値化（ノイズレス）
+                            // サーマルプリンター用二値化（超滑らか）
                             let finalValue;
                             
                             if (adjustedGray > threshold) {
