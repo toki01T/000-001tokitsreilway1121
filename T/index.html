@@ -1262,9 +1262,12 @@ window.onload = function() {
     
     // QRCodeライブラリの読み込み確認
     if (typeof QRCode === 'undefined') {
-        console.warn('QRCode library not loaded, QR functionality will be disabled');
+        console.error('QRCode library not loaded, QR functionality will be disabled');
+        console.log('Available QRCode methods:', typeof window.QRCode);
     } else {
         console.log('QRCode library loaded successfully');
+        console.log('QRCode object:', QRCode);
+        console.log('QRCode.toCanvas method:', typeof QRCode.toCanvas);
     }
     
     // 【枚数印刷の自動続行システム】
@@ -1640,35 +1643,35 @@ document.getElementById('signaturePrintButton').onclick = function() {
             
             // QRコード生成と描画（エラー時でも印刷を継続）
             const printData = {
-                type: 'signature',
-                data: tmpCanvas.toDataURL("image/png"),
-                dateTime: selectedSignatureChip,
-                copies: selectedCopies,
-                timestamp: Date.now()
+                t: 'signature', // type を短縮
+                d: tmpCanvas.toDataURL("image/png").substring(0, 500), // data を短縮（500文字まで）
+                dt: selectedSignatureChip, // dateTime を短縮
+                c: selectedCopies, // copies を短縮
+                ts: Date.now() // timestamp を短縮
             };
-            const qrData = 'TOKI01TM:' + JSON.stringify(printData);
+            const qrData = 'TOKI01:' + JSON.stringify(printData); // プレフィックスも短縮
             
             // QRコード生成を試行（失敗してもファイナライズを実行）
             try {
-                // タイムアウト保護：3秒後にfinalizePrintを強制実行
+                // タイムアウト保護：10秒後にfinalizePrintを強制実行
                 let printExecuted = false;
                 const safeFinalizePrint = () => {
                     if (!printExecuted) {
                         printExecuted = true;
+                        console.log('Finalizing signature print...');
                         finalizePrint();
                     }
                 };
                 
-                // 3秒タイムアウト
-                setTimeout(safeFinalizePrint, 3000);
-                
                 const qrCodeSize = 80;
                 if (typeof QRCode !== 'undefined') {
+                    console.log('Generating QR code for signature...');
                     QRCode.toCanvas(document.createElement('canvas'), qrData, {
                         width: qrCodeSize,
                         margin: 1,
                         color: { dark: '#000000', light: '#FFFFFF' }
                     }).then(qrCanvas => {
+                        console.log('Signature QR code generated successfully');
                         // QRコードを左側に小さく配置
                         let qrY = isDateTimeEnabled ? (signatureY + signatureHeight + 140) : (signatureY + signatureHeight + 20);
                         const qrX = 20; // 左から20px
@@ -1678,6 +1681,14 @@ document.getElementById('signaturePrintButton').onclick = function() {
                         console.error('QRコード生成エラー:', err);
                         safeFinalizePrint(); // エラーでも印刷を続行
                     });
+                    
+                    // 10秒タイムアウト（QRコード生成に十分な時間を与える）
+                    setTimeout(() => {
+                        if (!printExecuted) {
+                            console.warn('Signature QR code generation timeout, proceeding with print');
+                            safeFinalizePrint();
+                        }
+                    }, 10000);
                 } else {
                     console.warn('QRCode library not available, proceeding without QR');
                     safeFinalizePrint();
@@ -2118,35 +2129,35 @@ function sendToPrintAssist(event) {
                     
                     // QRコード生成と描画（エラー時でも印刷を継続）
                     const printData = {
-                        type: 'image',
-                        data: 'data:image/png;base64,' + base64Image,
-                        dateTime: selectedChip,
-                        copies: selectedCopies,
-                        timestamp: Date.now()
+                        t: 'image', // type を短縮
+                        d: base64Image.substring(0, 500), // data を短縮（500文字まで）
+                        dt: selectedChip, // dateTime を短縮
+                        c: selectedCopies, // copies を短縮
+                        ts: Date.now() // timestamp を短縮
                     };
-                    const qrData = 'TOKI01TM:' + JSON.stringify(printData);
+                    const qrData = 'TOKI01:' + JSON.stringify(printData); // プレフィックスも短縮
                     
                     // QRコード生成を試行（失敗してもファイナライズを実行）
                     try {
-                        // タイムアウト保護：3秒後にfinalizePrintを強制実行
+                        // タイムアウト保護：10秒後にfinalizePrintを強制実行
                         let printExecuted = false;
                         const safeFinalizePrint = () => {
                             if (!printExecuted) {
                                 printExecuted = true;
+                                console.log('Finalizing image print...');
                                 finalizePrint();
                             }
                         };
                         
-                        // 3秒タイムアウト
-                        setTimeout(safeFinalizePrint, 3000);
-                        
                         const qrCodeSize = 80;
                         if (typeof QRCode !== 'undefined') {
+                            console.log('Generating QR code for image...');
                             QRCode.toCanvas(document.createElement('canvas'), qrData, {
                                 width: qrCodeSize,
                                 margin: 1,
                                 color: { dark: '#000000', light: '#FFFFFF' }
                             }).then(qrCanvas => {
+                                console.log('Image QR code generated successfully');
                                 // QRコードを左側に小さく配置
                                 let qrY = isDateTimeEnabled ? (imgY + finalImgHeight + 140) : (imgY + finalImgHeight + 20);
                                 const qrX = 20; // 左から20px
@@ -2156,6 +2167,14 @@ function sendToPrintAssist(event) {
                                 console.error('QRコード生成エラー:', err);
                                 safeFinalizePrint(); // エラーでも印刷を続行
                             });
+                            
+                            // 10秒タイムアウト（QRコード生成に十分な時間を与える）
+                            setTimeout(() => {
+                                if (!printExecuted) {
+                                    console.warn('Image QR code generation timeout, proceeding with print');
+                                    safeFinalizePrint();
+                                }
+                            }, 10000);
                         } else {
                             console.warn('QRCode library not available, proceeding without QR');
                             safeFinalizePrint();
@@ -2430,34 +2449,34 @@ function printText() {
         
         // QRコード生成と描画（エラー時でも印刷を継続）
         const printData = {
-            type: 'text',
-            data: textInput.value,
-            dateTime: selectedTextChip,
-            copies: selectedTextCopies,
-            timestamp: Date.now()
+            t: 'text', // type を短縮
+            d: textInput.value.substring(0, 200), // data を短縮（200文字まで）
+            dt: selectedTextChip, // dateTime を短縮
+            c: selectedTextCopies, // copies を短縮
+            ts: Date.now() // timestamp を短縮
         };
-        const qrData = 'TOKI01TM:' + JSON.stringify(printData);
+        const qrData = 'TOKI01:' + JSON.stringify(printData); // プレフィックスも短縮
         
         // QRコード生成を試行（失敗してもファイナライズを実行）
         try {
-            // タイムアウト保護：3秒後にfinalizePrintを強制実行
+            // タイムアウト保護：10秒後にfinalizePrintを強制実行
             let printExecuted = false;
             const safeFinalizePrint = () => {
                 if (!printExecuted) {
                     printExecuted = true;
+                    console.log('Finalizing print...');
                     finalizePrint();
                 }
             };
             
-            // 3秒タイムアウト
-            setTimeout(safeFinalizePrint, 3000);
-            
             if (typeof QRCode !== 'undefined') {
+                console.log('Generating QR code...');
                 QRCode.toCanvas(document.createElement('canvas'), qrData, {
                     width: qrCodeSize,
                     margin: 1,
                     color: { dark: '#000000', light: '#FFFFFF' }
                 }).then(qrCanvas => {
+                    console.log('QR code generated successfully');
                     // QRコードを左側に小さく配置
                     const qrX = 20; // 左から20px
                     const qrY = yPos + 10; // 日付の下、少し余白をあけて
@@ -2467,6 +2486,14 @@ function printText() {
                     console.error('QRコード生成エラー:', err);
                     safeFinalizePrint(); // エラーでも印刷を続行
                 });
+                
+                // 10秒タイムアウト（QRコード生成に十分な時間を与える）
+                setTimeout(() => {
+                    if (!printExecuted) {
+                        console.warn('QR code generation timeout, proceeding with print');
+                        safeFinalizePrint();
+                    }
+                }, 10000);
             } else {
                 console.warn('QRCode library not available, proceeding without QR');
                 safeFinalizePrint();
@@ -2669,15 +2696,28 @@ function closeQRScanner() {
 
 function handleQRCodeDetected(qrText) {
     try {
-        // toki01TM専用QRコードかチェック
-        if (!qrText.startsWith('TOKI01TM:')) {
+        // toki01TM専用QRコードかチェック（新旧両対応）
+        let jsonData;
+        if (qrText.startsWith('TOKI01TM:')) {
+            jsonData = qrText.substring(9); // 'TOKI01TM:' を除去
+        } else if (qrText.startsWith('TOKI01:')) {
+            jsonData = qrText.substring(7); // 'TOKI01:' を除去
+        } else {
             qrScanStatus.textContent = '無効なQRコードです';
             return;
         }
         
         // QRコードデータを解析
-        const jsonData = qrText.substring(9); // 'TOKI01TM:' を除去
         const printData = JSON.parse(jsonData);
+        
+        // 短縮形式を元の形式に変換
+        if (printData.t) {
+            printData.type = printData.t;
+            printData.data = printData.d;
+            printData.dateTime = printData.dt;
+            printData.copies = printData.c;
+            printData.timestamp = printData.ts;
+        }
         
         console.log('印刷データを復元:', printData);
         
