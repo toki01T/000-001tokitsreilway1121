@@ -115,14 +115,14 @@ header {
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
-    border: none;
+    border: 1px solid #fff;
     color: #fff;
-    font-size: 1.5rem;
+    font-size: 0.8rem;
     cursor: pointer;
     z-index: 12;
-    padding: 0;
-    width: auto;
-    height: auto;
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-weight: bold;
 }
 #qrScanBtn:hover, #historyMenuBtn:hover {
     opacity: 0.8;
@@ -791,7 +791,7 @@ footer p {
 <header>
     <div class="navbar">
         <a class="navbar-brand" href="#">toki01Ⓣ</a>
-        <button id="qrScanBtn" title="QRコード読み込み">📷</button>
+        <button id="qrScanBtn" title="QR読み込み">QR</button>
         <button id="historyMenuBtn" title="履歴"><span>&#9776;</span></button>
     </div>
 </header>
@@ -1621,7 +1621,8 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 compositeCtx.fillText(timeText, exactCenterX, yPos);
             }
             
-            // QRコード生成と描画
+            // QRコード生成と描画（一時的に無効化）
+            /*
             const printData = {
                 type: 'signature',
                 data: tmpCanvas.toDataURL("image/png"),
@@ -1645,6 +1646,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     generateSignaturePDF();
                 }, 100);
             });
+            */
+            
+            // 直接PDF生成を実行
+            generateSignaturePDF();
         }
         
         function generateSignaturePDF() {
@@ -2076,7 +2081,8 @@ function sendToPrintAssist(event) {
                         yPos += 50; // 日付有り印刷の下部余白を50px追加
                     }
                     
-                    // QRコード生成と描画
+                    // QRコード生成と描画（一時的に無効化）
+                    /*
                     const printData = {
                         type: 'image',
                         data: base64Image,
@@ -2100,6 +2106,10 @@ function sendToPrintAssist(event) {
                             generateImagePDF();
                         }, 100);
                     });
+                    */
+                    
+                    // 直接PDF生成を実行
+                    generateImagePDF();
                 }
                 
                 function generateImagePDF() {
@@ -2365,7 +2375,8 @@ function printText() {
             yPos += dateLineHeight * 0.5; // 時刻の下に少し余白
         }
         
-        // QRコード生成と描画
+        // QRコード生成と描画（一時的に無効化）
+        /*
         const printData = {
             type: 'text',
             data: text,
@@ -2386,6 +2397,10 @@ function printText() {
         setTimeout(() => {
             generateAndPrintPDF();
         }, 100);
+        */
+        
+        // 直接PDF生成を実行
+        generateAndPrintPDF();
     } // printTextCopy関数の閉じ括弧
     
     function generateAndPrintPDF() {
@@ -2483,12 +2498,15 @@ function autoWrap(textarea) {
     textarea.value = wrappedLines.join('\n');
 }
 
-// QRコードスキャナー機能
+// QRコードスキャナー機能（軽量化）
 let qrCodeReader = null;
 let qrVideoStream = null;
 
 function initQRCodeScanner() {
-    qrCodeReader = new ZXing.BrowserMultiFormatReader();
+    // ZXingライブラリの初期化を遅延させる
+    if (typeof ZXing !== 'undefined') {
+        qrCodeReader = new ZXing.BrowserMultiFormatReader();
+    }
 }
 
 function openQRScanner() {
@@ -2499,12 +2517,12 @@ function openQRScanner() {
     qrModal.style.display = 'flex';
     qrStatus.textContent = 'カメラを起動中...';
     
-    // カメラアクセス
+    // 簡単なカメラアクセス
     navigator.mediaDevices.getUserMedia({ 
         video: { 
             facingMode: 'environment',
-            width: { ideal: 300 },
-            height: { ideal: 300 }
+            width: { ideal: 240 }, // サイズを小さくして軽量化
+            height: { ideal: 240 }
         } 
     }).then(stream => {
         qrVideoStream = stream;
@@ -2512,7 +2530,7 @@ function openQRScanner() {
         qrVideo.play();
         qrStatus.textContent = 'QRコードをカメラに向けてください';
         
-        // QRコード読み取り開始
+        // 軽量化：スキャン間隔を長くする
         startQRScanning(qrVideo);
     }).catch(err => {
         console.error('カメラアクセスエラー:', err);
@@ -2521,33 +2539,41 @@ function openQRScanner() {
 }
 
 function startQRScanning(videoElement) {
-    if (!qrCodeReader) return;
+    if (!qrCodeReader) {
+        document.getElementById('qrScanStatus').textContent = 'QRリーダーの初期化に失敗しました';
+        return;
+    }
     
+    // 軽量化：スキャン間隔を2秒に延長
     const scanInterval = setInterval(() => {
         if (videoElement.videoWidth > 0 && videoElement.videoHeight > 0) {
-            qrCodeReader.decodeFromVideoDevice(undefined, videoElement, (result, err) => {
-                if (result) {
-                    const qrData = result.text;
-                    console.log('QRコード読み取り成功:', qrData);
-                    
-                    // toki01TM専用QRコードかチェック
-                    if (qrData.startsWith('TOKI01TM:')) {
-                        try {
-                            const printData = JSON.parse(qrData.substring(9));
-                            restorePrintData(printData);
-                            closeQRScanner();
-                            clearInterval(scanInterval);
-                        } catch (e) {
-                            console.error('QRデータ解析エラー:', e);
-                            document.getElementById('qrScanStatus').textContent = '無効なQRコードです';
+            try {
+                qrCodeReader.decodeFromVideoDevice(undefined, videoElement, (result, err) => {
+                    if (result) {
+                        const qrData = result.text;
+                        console.log('QRコード読み取り成功:', qrData);
+                        
+                        // toki01TM専用QRコードかチェック
+                        if (qrData.startsWith('TOKI01TM:')) {
+                            try {
+                                const printData = JSON.parse(qrData.substring(9));
+                                restorePrintData(printData);
+                                closeQRScanner();
+                                clearInterval(scanInterval);
+                            } catch (e) {
+                                console.error('QRデータ解析エラー:', e);
+                                document.getElementById('qrScanStatus').textContent = '無効なQRコードです';
+                            }
+                        } else {
+                            document.getElementById('qrScanStatus').textContent = 'toki01TM専用QRコードではありません';
                         }
-                    } else {
-                        document.getElementById('qrScanStatus').textContent = 'toki01TM専用QRコードではありません';
                     }
-                }
-            });
+                });
+            } catch (e) {
+                console.error('QRスキャンエラー:', e);
+            }
         }
-    }, 1000);
+    }, 2000); // 1秒から2秒に変更して軽量化
     
     // モーダルが閉じられたら停止
     const qrModal = document.getElementById('qrScanModal');
@@ -2669,22 +2695,32 @@ function restorePrintData(printData) {
     }
 }
 
-// イベントリスナー設定
+// イベントリスナー設定（軽量化）
 document.addEventListener('DOMContentLoaded', function() {
-    initQRCodeScanner();
+    // QRスキャナーの初期化を遅延
+    setTimeout(initQRCodeScanner, 1000);
     
     // QRスキャンボタンのクリックイベント
-    document.getElementById('qrScanBtn').addEventListener('click', openQRScanner);
+    const qrBtn = document.getElementById('qrScanBtn');
+    if (qrBtn) {
+        qrBtn.addEventListener('click', openQRScanner);
+    }
     
     // QRスキャンモーダルの閉じるボタン
-    document.getElementById('qrScanClose').addEventListener('click', closeQRScanner);
+    const qrClose = document.getElementById('qrScanClose');
+    if (qrClose) {
+        qrClose.addEventListener('click', closeQRScanner);
+    }
     
     // モーダル背景クリックで閉じる
-    document.getElementById('qrScanModal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeQRScanner();
-        }
-    });
+    const qrModal = document.getElementById('qrScanModal');
+    if (qrModal) {
+        qrModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeQRScanner();
+            }
+        });
+    }
 });
 
 if ('serviceWorker' in navigator) {
