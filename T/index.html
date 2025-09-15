@@ -493,6 +493,23 @@ main {
     background-color: #aaa;
     cursor: not-allowed;
 }
+.qr-checkbox-label {
+    display: flex;
+    align-items: center;
+    margin-left: 10px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+}
+.qr-checkbox {
+    margin-right: 5px;
+    transform: scale(1.1);
+    cursor: pointer;
+}
+.qr-checkbox-text {
+    color: var(--text-color);
+    font-weight: 500;
+}
 .choice-chips {
     display: flex;
     justify-content: center;
@@ -768,6 +785,10 @@ footer p {
                         <option value="5">5枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
+                    <label class="qr-checkbox-label">
+                        <input type="checkbox" id="imageQRCheckbox" class="qr-checkbox">
+                        <span class="qr-checkbox-text">QRコード付き</span>
+                    </label>
                 </div>
             </form>
         </section>
@@ -789,6 +810,10 @@ footer p {
                     <option value="5">5枚</option>
                 </select>
                 <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
+                <label class="qr-checkbox-label">
+                    <input type="checkbox" id="textQRCheckbox" class="qr-checkbox">
+                    <span class="qr-checkbox-text">QRコード付き</span>
+                </label>
             </div>
         </section>
         <section id="signatureSection" style="display:none;">
@@ -814,6 +839,10 @@ footer p {
                     <option value="5">5枚</option>
                 </select>
                 <button id="signaturePrintButton" class="disabled" type="button">発行</button>
+                <label class="qr-checkbox-label">
+                    <input type="checkbox" id="signatureQRCheckbox" class="qr-checkbox">
+                    <span class="qr-checkbox-text">QRコード付き</span>
+                </label>
             </div>
         </section>
         <div id="dateDisplay"></div>
@@ -1543,7 +1572,8 @@ document.getElementById('signaturePrintButton').onclick = function() {
             }
             
             // QRコード生成と描画
-            if (qrCodeManager) {
+            const isQREnabled = document.getElementById('signatureQRCheckbox').checked;
+            if (qrCodeManager && isQREnabled) {
                 // 印刷データを収集
                 const printData = {
                     imageData: null,
@@ -1560,7 +1590,12 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     const qrX = canvasWidth - qrSize - 8; // 右端から8px余白
                     const qrY = totalHeight - qrSize - 8; // 下端から8px余白
                     
-                    compositeCtx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+                    try {
+                        compositeCtx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+                        console.log('署名印刷: QRコード追加完了');
+                    } catch (error) {
+                        console.error('QRコード描画エラー:', error);
+                    }
                     
                     // QRコード追加後に印刷処理を続行
                     continueSignaturePrintProcess();
@@ -2004,7 +2039,8 @@ function sendToPrintAssist(event) {
                     }
                     
                     // QRコード生成と描画
-                    if (qrCodeManager) {
+                    const isQREnabled = document.getElementById('imageQRCheckbox').checked;
+                    if (qrCodeManager && isQREnabled) {
                         // 印刷データを収集
                         const printData = {
                             imageData: compositeCanvas.toDataURL('image/png', 1.0),
@@ -2021,8 +2057,15 @@ function sendToPrintAssist(event) {
                     const qrX = canvasWidth - qrSize - 8; // 右端から8px余白
                     const qrY = totalHeight - qrSize - 8; // 下端から8px余白
                     
-                    compositeCtx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);                            // QRコード追加後に印刷処理を続行
-                            continuePrintProcess();
+                    try {
+                        compositeCtx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+                        console.log('画像印刷: QRコード追加完了');
+                    } catch (error) {
+                        console.error('QRコード描画エラー:', error);
+                    }
+                    
+                    // QRコード追加後に印刷処理を続行
+                    continuePrintProcess();
                         }).catch(error => {
                             console.error('QRコード生成エラー:', error);
                             // QRコード生成失敗時も印刷を継続
@@ -2292,7 +2335,8 @@ function printText() {
         }
         
         // QRコード生成と描画
-        if (qrCodeManager) {
+        const isQREnabled = document.getElementById('textQRCheckbox').checked;
+        if (qrCodeManager && isQREnabled) {
             // 印刷データを収集
             const printData = {
                 imageData: null,
@@ -2309,7 +2353,12 @@ function printText() {
                 const qrX = canvasWidth - qrSize - 8; // 右端から8px余白
                 const qrY = canvasHeight - qrSize - 8; // 下端から8px余白
                 
-                ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+                try {
+                    ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+                    console.log('テキスト印刷: QRコード追加完了');
+                } catch (error) {
+                    console.error('QRコード描画エラー:', error);
+                }
                 
                 // QRコード追加後に印刷処理を続行
                 continueTextPrintProcess();
@@ -2626,7 +2675,12 @@ class QRCodeManager {
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
                 const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                // jsQRライブラリを安全に使用
+                let code = null;
+                if (typeof window.jsQR !== 'undefined') {
+                    code = window.jsQR(imageData.data, imageData.width, imageData.height);
+                }
 
                 if (code) {
                     this.handleQRCodeDetected(code.data);
@@ -2733,29 +2787,58 @@ class QRCodeManager {
                 signatureSize: printData.signatureSize || 100
             };
 
-            // QRコードを生成
-            QRCode.toCanvas(document.createElement('canvas'), JSON.stringify(qrData), {
-                width: 50,
-                margin: 0,
-                color: {
-                    dark: '#000000',
-                    light: '#FFFFFF'
-                }
-            }, (error, canvas) => {
-                if (error) {
-                    reject(error);
+            try {
+                // QRコードを生成（window.QRCodeでグローバルアクセス）
+                if (typeof window.QRCode !== 'undefined') {
+                    window.QRCode.toCanvas(document.createElement('canvas'), JSON.stringify(qrData), {
+                        width: 50,
+                        margin: 0,
+                        color: {
+                            dark: '#000000',
+                            light: '#FFFFFF'
+                        }
+                    }, (error, canvas) => {
+                        if (error) {
+                            console.error('QRコード生成エラー:', error);
+                            reject(error);
+                        } else {
+                            resolve(canvas);
+                        }
+                    });
                 } else {
-                    resolve(canvas);
+                    console.error('QRコードライブラリが読み込まれていません');
+                    reject(new Error('QRコードライブラリが読み込まれていません'));
                 }
-            });
+            } catch (error) {
+                console.error('QRコード生成処理エラー:', error);
+                reject(error);
+            }
         });
     }
 }
 
 // QRCodeManagerを初期化
 let qrCodeManager;
-document.addEventListener('DOMContentLoaded', () => {
+
+// ライブラリ読み込み完了を待つ
+function waitForLibraries() {
+    return new Promise((resolve) => {
+        function checkLibraries() {
+            if (typeof window.QRCode !== 'undefined' && typeof window.jsQR !== 'undefined') {
+                resolve();
+            } else {
+                setTimeout(checkLibraries, 100);
+            }
+        }
+        checkLibraries();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // ライブラリの読み込みを待つ
+    await waitForLibraries();
     qrCodeManager = new QRCodeManager();
+    console.log('QRCodeManager初期化完了');
 });
 </script>
 </body>
