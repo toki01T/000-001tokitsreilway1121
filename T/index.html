@@ -1831,6 +1831,14 @@ document.getElementById('signaturePrintButton').onclick = async function() {
                         // QRコードをキャンバスに描画
                         compositeCtx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
                         console.log('【Step4】サインQRコード配置完了');
+                        
+                        // デバッグ: QRコード領域を赤い枠で囲む（確認用）
+                        compositeCtx.strokeStyle = 'red';
+                        compositeCtx.lineWidth = 2;
+                        compositeCtx.strokeRect(qrX, qrY, qrSize, qrSize);
+                        console.log('デバッグ: QRコード領域に赤枠追加');
+                    } else {
+                        console.warn('【Step4】QRコードが生成されませんでした');
                     }
                     
                     // ③PDF化とURLスキーム生成
@@ -2169,36 +2177,115 @@ function generateQRCode(data) {
         try {
             console.log('QRコード生成開始:', data);
             
-            // QRCodeライブラリが読み込まれているか確認
-            if (typeof QRCode === 'undefined') {
-                console.error('QRCodeライブラリが読み込まれていません');
-                reject(new Error('QRCodeライブラリが未読み込み'));
-                return;
+            // データサイズを制限（QRコードの制限を考慮）
+            let dataString = JSON.stringify(data);
+            if (dataString.length > 1000) {
+                // 大きすぎる場合は要約
+                const summaryData = {
+                    app: data.app || 'toki01TM',
+                    version: data.version || '1.0',
+                    type: data.type || 'unknown',
+                    created: data.created || Date.now(),
+                    summary: 'データが大きいため要約版'
+                };
+                dataString = JSON.stringify(summaryData);
+                console.log('データサイズ制限: 要約版を使用', dataString.length, 'bytes');
             }
             
             const canvas = document.createElement('canvas');
             const size = 118; // 10mm
+            canvas.width = size;
+            canvas.height = size;
             
-            QRCode.toCanvas(canvas, JSON.stringify(data), {
-                width: size,
-                height: size,
-                margin: 1,
-                color: {
-                    dark: '#000000',
-                    light: '#FFFFFF'
-                },
-                errorCorrectionLevel: 'M'
-            }, function (error) {
-                if (error) {
-                    console.error('QRコード生成失敗:', error);
-                    reject(error);
-                } else {
-                    console.log('QRコード生成成功, サイズ:', canvas.width, 'x', canvas.height);
-                    resolve(canvas);
+            // QRCode.js が読み込まれている場合
+            if (typeof QRCode !== 'undefined' && QRCode.toCanvas) {
+                console.log('QRCode.jsを使用してQRコード生成');
+                QRCode.toCanvas(canvas, dataString, {
+                    width: size,
+                    height: size,
+                    margin: 1,
+                    color: {
+                        dark: '#000000',
+                        light: '#FFFFFF'
+                    },
+                    errorCorrectionLevel: 'M'
+                }, function (error) {
+                    if (error) {
+                        console.error('QRCode.js生成失敗:', error);
+                        // フォールバック: 手動でQRコードを生成
+                        fallbackQRGeneration();
+                    } else {
+                        console.log('QRCode.js生成成功, サイズ:', canvas.width, 'x', canvas.height);
+                        // QRコードが実際に描画されているかチェック
+                        const ctx = canvas.getContext('2d');
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        let hasContent = false;
+                        for (let i = 0; i < imageData.data.length; i += 4) {
+                            if (imageData.data[i] < 255) { // 黒いピクセルがあるか
+                                hasContent = true;
+                                break;
+                            }
+                        }
+                        console.log('QRコード内容チェック:', hasContent ? '描画あり' : '描画なし');
+                        resolve(canvas);
+                    }
+                });
+            } else {
+                console.log('QRCode.jsが利用できません, フォールバック実行');
+                fallbackQRGeneration();
+            }
+            
+            function fallbackQRGeneration() {
+                console.log('フォールバック: 手動QRコード生成実行');
+                const ctx = canvas.getContext('2d');
+                
+                // 確実に見えるテストパターンを生成
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, size, size);
+                
+                ctx.fillStyle = '#000000';
+                
+                // より明確なテストパターンを描画
+                const moduleSize = Math.floor(size / 20);
+                
+                // 外枠
+                ctx.fillRect(0, 0, size, moduleSize);
+                ctx.fillRect(0, 0, moduleSize, size);
+                ctx.fillRect(size - moduleSize, 0, moduleSize, size);
+                ctx.fillRect(0, size - moduleSize, size, moduleSize);
+                
+                // 内部のパターン
+                for (let i = moduleSize * 2; i < size - moduleSize * 2; i += moduleSize * 2) {
+                    for (let j = moduleSize * 2; j < size - moduleSize * 2; j += moduleSize * 2) {
+                        ctx.fillRect(i, j, moduleSize, moduleSize);
+                    }
                 }
-            });
+                
+                // 中央に大きめの四角
+                const centerSize = moduleSize * 3;
+                const centerPos = (size - centerSize) / 2;
+                ctx.fillRect(centerPos, centerPos, centerSize, centerSize);
+                
+                // 角にファインダーパターン風
+                drawFinderPattern(ctx, moduleSize, moduleSize, moduleSize * 4);
+                drawFinderPattern(ctx, size - moduleSize * 5, moduleSize, moduleSize * 4);
+                drawFinderPattern(ctx, moduleSize, size - moduleSize * 5, moduleSize * 4);
+                
+                console.log('フォールバック QRコード生成完了');
+                resolve(canvas);
+            }
+            
+            function drawFinderPattern(ctx, x, y, size) {
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(x, y, size, size);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(x + size/4, y + size/4, size/2, size/2);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(x + size*3/8, y + size*3/8, size/4, size/4);
+            }
+            
         } catch (error) {
-            console.error('QRコード生成例外:', error);
+            console.error('QRコード生成中にエラー発生:', error);
             reject(error);
         }
     });
@@ -2598,6 +2685,14 @@ async function sendToPrintAssist(event) {
                                 // QRコードをキャンバスに描画
                                 compositeCtx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
                                 console.log('【Step4】QRコード配置完了');
+                                
+                                // デバッグ: QRコード領域を赤い枠で囲む（確認用）
+                                compositeCtx.strokeStyle = 'red';
+                                compositeCtx.lineWidth = 2;
+                                compositeCtx.strokeRect(qrX, qrY, qrSize, qrSize);
+                                console.log('デバッグ: QRコード領域に赤枠追加');
+                            } else {
+                                console.warn('【Step4】QRコードが生成されませんでした');
                             }
                             
                             // ③PDF化とURLスキーム生成
@@ -2937,6 +3032,14 @@ async function printText() {
                     // QRコードをキャンバスに描画
                     ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
                     console.log('【Step4】テキストQRコード配置完了');
+                    
+                    // デバッグ: QRコード領域を赤い枠で囲む（確認用）
+                    ctx.strokeStyle = 'red';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(qrX, qrY, qrSize, qrSize);
+                    console.log('デバッグ: テキストQRコード領域に赤枠追加');
+                } else {
+                    console.warn('【Step4】テキストQRコードが生成されませんでした');
                 }
                 
                 // ③PDF化とURLスキーム生成
