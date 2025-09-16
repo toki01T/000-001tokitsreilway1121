@@ -1815,7 +1815,7 @@ document.getElementById('signaturePrintButton').onclick = async function() {
                         // ②QRコードの配置
                         console.log('【Step3】サインQRコード配置開始');
                         const qrSize = 60; // 5mm（適正サイズ）
-                        let qrX = canvasWidth - qrSize -;30 // 右側から10pxの余白
+                        let qrX = canvasWidth - qrSize - 30; // 右側から30pxの余白
                         let qrY;
                         
                         if (isDateTimeEnabled) {
