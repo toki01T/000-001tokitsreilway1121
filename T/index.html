@@ -1814,7 +1814,7 @@ document.getElementById('signaturePrintButton').onclick = async function() {
                     if (qrCanvas) {
                         // ②QRコードの配置
                         console.log('【Step3】サインQRコード配置開始');
-                        const qrSize = 118; // 10mm
+                        const qrSize = 60; // 5mm（適正サイズ）
                         let qrX = canvasWidth - qrSize - 10; // 右側から10pxの余白
                         let qrY;
                         
@@ -2179,21 +2179,19 @@ function generateQRCode(data) {
             
             // データサイズを制限（QRコードの制限を考慮）
             let dataString = JSON.stringify(data);
-            if (dataString.length > 1000) {
+            if (dataString.length > 500) { // より小さく制限
                 // 大きすぎる場合は要約
                 const summaryData = {
                     app: data.app || 'toki01TM',
-                    version: data.version || '1.0',
                     type: data.type || 'unknown',
-                    created: data.created || Date.now(),
-                    summary: 'データが大きいため要約版'
+                    created: data.created || Date.now()
                 };
                 dataString = JSON.stringify(summaryData);
                 console.log('データサイズ制限: 要約版を使用', dataString.length, 'bytes');
             }
             
             const canvas = document.createElement('canvas');
-            const size = 118; // 10mm
+            const size = 60; // 5mm（適正サイズ）
             canvas.width = size;
             canvas.height = size;
             
@@ -2203,12 +2201,12 @@ function generateQRCode(data) {
                 QRCode.toCanvas(canvas, dataString, {
                     width: size,
                     height: size,
-                    margin: 1,
+                    margin: 0, // マージンを0に（小サイズのため）
                     color: {
                         dark: '#000000',
                         light: '#FFFFFF'
                     },
-                    errorCorrectionLevel: 'M'
+                    errorCorrectionLevel: 'L' // レベルLに下げて内容量を増やす
                 }, function (error) {
                     if (error) {
                         console.error('QRCode.js生成失敗:', error);
@@ -2245,8 +2243,8 @@ function generateQRCode(data) {
                 
                 ctx.fillStyle = '#000000';
                 
-                // より明確なテストパターンを描画
-                const moduleSize = Math.floor(size / 20);
+                // より明確なテストパターンを描画（小サイズ用）
+                const moduleSize = Math.floor(size / 15); // 小さいサイズに調整
                 
                 // 外枠
                 ctx.fillRect(0, 0, size, moduleSize);
@@ -2668,7 +2666,7 @@ async function sendToPrintAssist(event) {
                             if (qrCanvas) {
                                 // ②QRコードの配置
                                 console.log('【Step3】QRコード配置開始');
-                                const qrSize = 118; // 10mm
+                                const qrSize = 60; // 5mm（適正サイズ）
                                 let qrX = canvasWidth - qrSize - 10; // 右側から10pxの余白
                                 let qrY;
                                 
@@ -3015,7 +3013,7 @@ async function printText() {
                 if (qrCanvas) {
                     // ②QRコードの配置
                     console.log('【Step3】テキストQRコード配置開始');
-                    const qrSize = 118; // 10mm
+                    const qrSize = 60; // 5mm（適正サイズ）
                     let qrX = canvasWidth - qrSize - 10; // 右側から10pxの余白
                     let qrY;
                     
