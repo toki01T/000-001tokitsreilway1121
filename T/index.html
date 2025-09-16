@@ -1794,8 +1794,8 @@ document.getElementById('signaturePrintButton').onclick = async function() {
                 compositeCtx.fillText(timeText, exactCenterX, yPos);
             }
             
-            // QRコード生成と描画
-            console.log('サイン印刷: QRコード生成開始');
+            // ①QRコード生成
+            console.log('【Step1】サイン印刷: QRコード生成開始');
             const qrData = {
                 app: 'toki01TM',
                 version: '1.0',
@@ -1805,96 +1805,135 @@ document.getElementById('signaturePrintButton').onclick = async function() {
                 created: Date.now()
             };
             
-            console.log('サインQRコードデータ:', qrData);
+            console.log('サインQRコードデータ準備完了:', qrData);
             
-            generateQRCode(qrData).then(qrCanvas => {
-                console.log('サインQRコード生成完了:', !!qrCanvas);
-                
-                if (qrCanvas) {
-                    // QRコードを右側に配置（10mm = 118px）
-                    const qrSize = 118;
-                    let qrX = canvasWidth - qrSize - 10; // 右側から10pxの余白
-                    let qrY;
+            generateQRCode(qrData)
+                .then(function(qrCanvas) {
+                    console.log('【Step2】サインQRコード生成完了:', !!qrCanvas);
                     
-                    if (isDateTimeEnabled) {
-                        // 日付ありの場合、時刻の下に配置
-                        qrY = signatureY + signatureHeight + 5 + (50 * 1.2) + 50 + 10;
-                    } else {
-                        // 日付なしの場合、サインの下に配置
-                        qrY = signatureY + signatureHeight + 10;
+                    if (qrCanvas) {
+                        // ②QRコードの配置
+                        console.log('【Step3】サインQRコード配置開始');
+                        const qrSize = 118; // 10mm
+                        let qrX = canvasWidth - qrSize - 10; // 右側から10pxの余白
+                        let qrY;
+                        
+                        if (isDateTimeEnabled) {
+                            // 日付ありの場合、時刻の下に配置
+                            qrY = signatureY + signatureHeight + 5 + (50 * 1.2) + 50 + 10;
+                        } else {
+                            // 日付なしの場合、サインの下に配置
+                            qrY = signatureY + signatureHeight + 10;
+                        }
+                        
+                        console.log('サインQRコード配置位置:', { x: qrX, y: qrY, size: qrSize });
+                        
+                        // QRコードをキャンバスに描画
+                        compositeCtx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+                        console.log('【Step4】サインQRコード配置完了');
                     }
                     
-                    console.log('サインQRコード描画:', { x: qrX, y: qrY, size: qrSize });
-                    compositeCtx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
-                    console.log('サインQRコード描画完了');
-                }
-                
-                // PDF生成に進む
-                continueSignaturePrint();
-            }).catch(qrError => {
-                console.error('サインQRコード生成エラー:', qrError);
-                // エラーでもPDF生成は続行
-                continueSignaturePrint();
-            });
-            
-            function continueSignaturePrint() {
-                console.log('サインPDF生成開始');
-                // 合成キャンバスをPNGデータURLに変換
-                const compositeDataUrl = compositeCanvas.toDataURL('image/png');
-                
-                // jsPDFを使用してPDFを生成
-                const { jsPDF } = window.jspdf;
-                const pdfHeight = Math.round(totalHeight / mmToPx);
-                
-                const pdf = new jsPDF({
-                    orientation: 'portrait',
-                    unit: 'mm',
-                    format: [58, pdfHeight]
+                    // ③PDF化とURLスキーム生成
+                    console.log('【Step5】サインPDF化開始');
+                    const compositeDataUrl = compositeCanvas.toDataURL('image/png');
+                    console.log('サインキャンバス→PNG変換完了');
+                    
+                    const { jsPDF } = window.jspdf;
+                    const pdfHeight = Math.round(totalHeight / mmToPx);
+                    
+                    const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: [58, pdfHeight]
+                    });
+                    
+                    pdf.internal.pageSize.width = 58;
+                    pdf.internal.pageSize.height = pdfHeight;
+                    pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+                    
+                    const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                    console.log('【Step6】サインPDF生成完了, サイズ:', pdfBase64.length, 'bytes');
+                    
+                    // URLスキーム生成
+                    let thisPage = window.location.href;
+                    let printUrl = 'siiprintagent://1.0/print?' +
+                                  'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                  'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                                  'Format='           + 'pdf' + '&' +
+                                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                  'SelectOnError='    + 'yes' + '&' +
+                                  'CutType='          + 'full' + '&' +
+                                  'CutFeed='          + 'yes' + '&' +
+                                  'FitToWidth='       + 'no' + '&' +
+                                  'PaperWidth='       + '58';
+                    
+                    console.log('【Step7】サインURLスキーム生成完了');
+                    
+                    // 枚数印刷処理
+                    console.log(`署名印刷開始: 総枚数=${selectedCopies}枚`);
+                    if (selectedCopies > 1) {
+                        const printJob = {
+                            type: 'signature',
+                            totalCopies: selectedCopies,
+                            currentCopy: 1,
+                            pdfData: pdfBase64,
+                            thisPage: thisPage,
+                            timestamp: Date.now()
+                        };
+                        sessionStorage.setItem('printJob', JSON.stringify(printJob));
+                        console.log(`署名印刷ジョブ保存完了: ${selectedCopies}枚中1枚目実行`);
+                    }
+                    
+                    // ④送信(印刷実行)
+                    console.log('【Step8】サイン印刷実行開始');
+                    window.location.href = printUrl;
+                })
+                .catch(function(error) {
+                    console.error('サインQRコード生成エラー, QRなしで印刷続行:', error);
+                    
+                    // QRコードなしでPDF生成・印刷続行
+                    const compositeDataUrl = compositeCanvas.toDataURL('image/png');
+                    const { jsPDF } = window.jspdf;
+                    const pdfHeight = Math.round(totalHeight / mmToPx);
+                    
+                    const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: [58, pdfHeight]
+                    });
+                    
+                    pdf.internal.pageSize.width = 58;
+                    pdf.internal.pageSize.height = pdfHeight;
+                    pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+                    
+                    const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                    
+                    let thisPage = window.location.href;
+                    let printUrl = 'siiprintagent://1.0/print?' +
+                                  'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                  'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                                  'Format='           + 'pdf' + '&' +
+                                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                  'SelectOnError='    + 'yes' + '&' +
+                                  'CutType='          + 'full' + '&' +
+                                  'CutFeed='          + 'yes' + '&' +
+                                  'FitToWidth='       + 'no' + '&' +
+                                  'PaperWidth='       + '58';
+                    
+                    if (selectedCopies > 1) {
+                        const printJob = {
+                            type: 'signature',
+                            totalCopies: selectedCopies,
+                            currentCopy: 1,
+                            pdfData: pdfBase64,
+                            thisPage: thisPage,
+                            timestamp: Date.now()
+                        };
+                        sessionStorage.setItem('printJob', JSON.stringify(printJob));
+                    }
+                    
+                    window.location.href = printUrl;
                 });
-                
-                // PDFの設定を直接操作
-                pdf.internal.pageSize.width = 58;
-                pdf.internal.pageSize.height = pdfHeight;
-                
-                // 合成画像をPDFに追加
-                pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
-                
-                // PDFをBase64形式で取得
-                const pdfBase64 = pdf.output('datauristring').split(',')[1];
-                
-                let thisPage = window.location.href;
-                let printUrl = 'siiprintagent://1.0/print?' +
-                              'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                              'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                              'Format='           + 'pdf' + '&' +
-                              'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                              'SelectOnError='    + 'yes' + '&' +
-                              'CutType='          + 'full' + '&' +
-                              'CutFeed='          + 'yes' + '&' +
-                              'FitToWidth='       + 'no' + '&' +
-                              'PaperWidth='       + '58';
-                
-                // 【革新的枚数印刷システム】sessionStorageによる永続化方式
-                
-                console.log(`署名印刷開始: 総枚数=${selectedCopies}枚`);
-                
-                // 枚数印刷情報をsessionStorageに保存
-                if (selectedCopies > 1) {
-                    const printJob = {
-                        type: 'signature',
-                        totalCopies: selectedCopies,
-                        currentCopy: 1,
-                        pdfData: pdfBase64,
-                        thisPage: thisPage,
-                        timestamp: Date.now()
-                    };
-                    sessionStorage.setItem('printJob', JSON.stringify(printJob));
-                    console.log(`署名印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
-                }
-                
-                // 1枚目を印刷
-                window.location.href = printUrl;
-            }
         };
         
         signatureImg.src = tmpCanvas.toDataURL("image/png");
@@ -2213,7 +2252,7 @@ async function sendToPrintAssist(event) {
                 // アップロードされた画像を読み込み
                 const uploadedImg = new Image();
                 uploadedImg.crossOrigin = 'anonymous'; // 画像品質向上
-                uploadedImg.onload = async function() {
+                uploadedImg.onload = function() {
                     // 日付・時刻の高さを計算
                     let dateTimeHeight = 0;
                     if (isDateTimeEnabled) {
@@ -2522,8 +2561,8 @@ async function sendToPrintAssist(event) {
                         yPos += 50; // 日付有り印刷の下部余白を50px追加
                     }
                     
-                    // QRコード生成と描画
-                    console.log('画像印刷: QRコード生成開始');
+                    // ①QRコード生成
+                    console.log('【Step1】画像印刷: QRコード生成開始');
                     const qrData = {
                         app: 'toki01TM',
                         version: '1.0',
@@ -2533,102 +2572,136 @@ async function sendToPrintAssist(event) {
                         created: Date.now()
                     };
                     
-                    console.log('画像QRコードデータ:', qrData);
+                    console.log('QRコードデータ準備完了:', qrData);
                     
-                    generateQRCode(qrData).then(qrCanvas => {
-                        console.log('画像QRコード生成完了:', !!qrCanvas);
-                        
-                        if (qrCanvas) {
-                            // QRコードを右側に配置（10mm = 118px）
-                            const qrSize = 118;
-                            let qrX = canvasWidth - qrSize - 10; // 右側から10pxの余白
-                            let qrY;
+                    generateQRCode(qrData)
+                        .then(function(qrCanvas) {
+                            console.log('【Step2】QRコード生成完了:', !!qrCanvas);
                             
-                            if (isDateTimeEnabled) {
-                                // 日付ありの場合、時刻の下に配置
-                                qrY = imgY + finalImgHeight + 10 + (50 * 1.2) + 50 + 10; // 日付・時刻の下
-                            } else {
-                                // 日付なしの場合、画像の下に配置
-                                qrY = imgY + finalImgHeight + 10;
+                            if (qrCanvas) {
+                                // ②QRコードの配置
+                                console.log('【Step3】QRコード配置開始');
+                                const qrSize = 118; // 10mm
+                                let qrX = canvasWidth - qrSize - 10; // 右側から10pxの余白
+                                let qrY;
+                                
+                                if (isDateTimeEnabled) {
+                                    // 日付ありの場合、時刻の下に配置
+                                    qrY = imgY + finalImgHeight + 10 + (50 * 1.2) + 50 + 10;
+                                } else {
+                                    // 日付なしの場合、画像の下に配置
+                                    qrY = imgY + finalImgHeight + 10;
+                                }
+                                
+                                console.log('QRコード配置位置:', { x: qrX, y: qrY, size: qrSize });
+                                
+                                // QRコードをキャンバスに描画
+                                compositeCtx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+                                console.log('【Step4】QRコード配置完了');
                             }
                             
-                            console.log('画像QRコード描画:', { x: qrX, y: qrY, size: qrSize });
-                            console.log('キャンバスサイズ:', { width: canvasWidth, height: totalHeight });
+                            // ③PDF化とURLスキーム生成
+                            console.log('【Step5】PDF化開始');
+                            const compositeDataUrl = compositeCanvas.toDataURL('image/png', 1.0);
+                            console.log('キャンバス→PNG変換完了');
                             
-                            // QRコードを描画
-                            compositeCtx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
-                            console.log('画像QRコード描画完了');
-                        }
-                        
-                        // PDF生成に進む
-                        continueImagePrint();
-                    }).catch(error => {
-                        console.error('画像QRコード生成エラー:', error);
-                        // エラーでもPDF生成は続行
-                        continueImagePrint();
-                    });
-                    
-                    function continueImagePrint() {
-                        console.log('PDF生成開始');
-                        // 合成キャンバスを高品質PNGデータURLに変換
-                        const compositeDataUrl = compositeCanvas.toDataURL('image/png', 1.0);
-                        
-                        // さらに画質を向上させるため、中間的にJPEGでも作成
-                        const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.95);
-                        
-                        // jsPDFを使用してPDFを生成
-                        const { jsPDF } = window.jspdf;
-                        const pdfHeight = Math.round(totalHeight / mmToPx);
-                        
-                        const pdf = new jsPDF({
-                            orientation: 'portrait',
-                            unit: 'mm',
-                            format: [58, pdfHeight]
+                            // jsPDFを使用してPDFを生成
+                            const { jsPDF } = window.jspdf;
+                            const pdfHeight = Math.round(totalHeight / mmToPx);
+                            
+                            const pdf = new jsPDF({
+                                orientation: 'portrait',
+                                unit: 'mm',
+                                format: [58, pdfHeight]
+                            });
+                            
+                            pdf.internal.pageSize.width = 58;
+                            pdf.internal.pageSize.height = pdfHeight;
+                            pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+                            
+                            const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                            console.log('【Step6】PDF生成完了, サイズ:', pdfBase64.length, 'bytes');
+                            
+                            // URLスキーム生成
+                            let thisPage = window.location.href;
+                            let printUrlImage = 'siiprintagent://1.0/print?' +
+                                              'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                              'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                                              'Format='           + 'pdf' + '&' +
+                                              'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                              'SelectOnError='    + 'yes' + '&' +
+                                              'CutType='          + 'full' + '&' +
+                                              'CutFeed='          + 'yes' + '&' +
+                                              'FitToWidth='       + 'no' + '&' +
+                                              'PaperWidth='       + '58';
+                            
+                            console.log('【Step7】URLスキーム生成完了');
+                            
+                            // 枚数印刷処理
+                            console.log(`画像印刷開始: 総枚数=${selectedCopies}枚`);
+                            if (selectedCopies > 1) {
+                                const printJob = {
+                                    type: 'image',
+                                    totalCopies: selectedCopies,
+                                    currentCopy: 1,
+                                    pdfData: pdfBase64,
+                                    thisPage: thisPage,
+                                    timestamp: Date.now()
+                                };
+                                sessionStorage.setItem('printJob', JSON.stringify(printJob));
+                                console.log(`印刷ジョブ保存完了: ${selectedCopies}枚中1枚目実行`);
+                            }
+                            
+                            // ④送信(印刷実行)
+                            console.log('【Step8】印刷実行開始');
+                            window.location.href = printUrlImage;
+                        })
+                        .catch(function(error) {
+                            console.error('QRコード生成エラー, QRなしで印刷続行:', error);
+                            
+                            // QRコードなしでPDF生成・印刷続行
+                            const compositeDataUrl = compositeCanvas.toDataURL('image/png', 1.0);
+                            const { jsPDF } = window.jspdf;
+                            const pdfHeight = Math.round(totalHeight / mmToPx);
+                            
+                            const pdf = new jsPDF({
+                                orientation: 'portrait',
+                                unit: 'mm',
+                                format: [58, pdfHeight]
+                            });
+                            
+                            pdf.internal.pageSize.width = 58;
+                            pdf.internal.pageSize.height = pdfHeight;
+                            pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+                            
+                            const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                            
+                            let thisPage = window.location.href;
+                            let printUrlImage = 'siiprintagent://1.0/print?' +
+                                              'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                              'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                                              'Format='           + 'pdf' + '&' +
+                                              'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                              'SelectOnError='    + 'yes' + '&' +
+                                              'CutType='          + 'full' + '&' +
+                                              'CutFeed='          + 'yes' + '&' +
+                                              'FitToWidth='       + 'no' + '&' +
+                                              'PaperWidth='       + '58';
+                            
+                            if (selectedCopies > 1) {
+                                const printJob = {
+                                    type: 'image',
+                                    totalCopies: selectedCopies,
+                                    currentCopy: 1,
+                                    pdfData: pdfBase64,
+                                    thisPage: thisPage,
+                                    timestamp: Date.now()
+                                };
+                                sessionStorage.setItem('printJob', JSON.stringify(printJob));
+                            }
+                            
+                            window.location.href = printUrlImage;
                         });
-                        
-                        // PDFの設定を直接操作
-                        pdf.internal.pageSize.width = 58;
-                        pdf.internal.pageSize.height = pdfHeight;
-                        
-                        // 合成画像をPDFに追加
-                        pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
-                        
-                        // PDFをBase64形式で取得
-                        const pdfBase64 = pdf.output('datauristring').split(',')[1];
-                        
-                        let thisPage = window.location.href;
-                        let printUrlImage = 'siiprintagent://1.0/print?' +
-                                          'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                                          'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                                          'Format='           + 'pdf' + '&' +
-                                          'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                                          'SelectOnError='    + 'yes' + '&' +
-                                          'CutType='          + 'full' + '&' +
-                                          'CutFeed='          + 'yes' + '&' +
-                                          'FitToWidth='       + 'no' + '&' +
-                                          'PaperWidth='       + '58';
-                        
-                        // 【革新的枚数印刷システム】sessionStorageによる永続化方式
-                        
-                        console.log(`画像印刷開始: 総枚数=${selectedCopies}枚`);
-                        
-                        // 枚数印刷情報をsessionStorageに保存
-                        if (selectedCopies > 1) {
-                            const printJob = {
-                                type: 'image',
-                                totalCopies: selectedCopies,
-                                currentCopy: 1,
-                                pdfData: pdfBase64,
-                                thisPage: thisPage,
-                                timestamp: Date.now()
-                            };
-                            sessionStorage.setItem('printJob', JSON.stringify(printJob));
-                            console.log(`印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
-                        }
-                        
-                        // 1枚目を印刷
-                        window.location.href = printUrlImage;
-                    }
                 };
                 
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
@@ -2827,8 +2900,8 @@ async function printText() {
             ctx.fillText(timeText, finalDateX, yPos);
         }
         
-        // QRコード生成と描画
-        console.log('テキスト印刷: QRコード生成開始');
+        // ①QRコード生成
+        console.log('【Step1】テキスト印刷: QRコード生成開始');
         const qrData = {
             app: 'toki01TM',
             version: '1.0',
@@ -2838,96 +2911,135 @@ async function printText() {
             created: Date.now()
         };
         
-        console.log('テキストQRコードデータ:', qrData);
+        console.log('テキストQRコードデータ準備完了:', qrData);
         
-        generateQRCode(qrData).then(qrCanvas => {
-            console.log('テキストQRコード生成完了:', !!qrCanvas);
-            
-            if (qrCanvas) {
-                // QRコードを右側に配置（10mm = 118px）
-                const qrSize = 118;
-                let qrX = canvasWidth - qrSize - 10; // 右側から10pxの余白
-                let qrY;
+        generateQRCode(qrData)
+            .then(function(qrCanvas) {
+                console.log('【Step2】テキストQRコード生成完了:', !!qrCanvas);
                 
-                if (isDateTimeEnabled) {
-                    // 日付ありの場合、時刻の下に配置
-                    qrY = yPos + dateLineHeight + 10;
-                } else {
-                    // 日付なしの場合、テキストの下に配置
-                    qrY = yPos + 10;
+                if (qrCanvas) {
+                    // ②QRコードの配置
+                    console.log('【Step3】テキストQRコード配置開始');
+                    const qrSize = 118; // 10mm
+                    let qrX = canvasWidth - qrSize - 10; // 右側から10pxの余白
+                    let qrY;
+                    
+                    if (isDateTimeEnabled) {
+                        // 日付ありの場合、時刻の下に配置
+                        qrY = yPos + dateLineHeight + 10;
+                    } else {
+                        // 日付なしの場合、テキストの下に配置
+                        qrY = yPos + 10;
+                    }
+                    
+                    console.log('テキストQRコード配置位置:', { x: qrX, y: qrY, size: qrSize });
+                    
+                    // QRコードをキャンバスに描画
+                    ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
+                    console.log('【Step4】テキストQRコード配置完了');
                 }
                 
-                console.log('テキストQRコード描画:', { x: qrX, y: qrY, size: qrSize });
-                ctx.drawImage(qrCanvas, qrX, qrY, qrSize, qrSize);
-                console.log('テキストQRコード描画完了');
-            }
-            
-            // PDF生成に進む
-            continueTextPrint();
-        }).catch(qrError => {
-            console.error('テキストQRコード生成エラー:', qrError);
-            // エラーでもPDF生成は続行
-            continueTextPrint();
-        });
-        
-        function continueTextPrint() {
-            console.log('テキストPDF生成開始');
-            // キャンバスをPNGデータURLに変換
-            const pngDataUrl = canvas.toDataURL('image/png');
-            
-            // jsPDFを使用してPDFを生成
-            const { jsPDF } = window.jspdf;
-            const pdfHeight = Math.round(canvasHeight / mmToPx);
-            
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'mm',
-                format: [58, pdfHeight]
+                // ③PDF化とURLスキーム生成
+                console.log('【Step5】テキストPDF化開始');
+                const pngDataUrl = canvas.toDataURL('image/png');
+                console.log('テキストキャンバス→PNG変換完了');
+                
+                const { jsPDF } = window.jspdf;
+                const pdfHeight = Math.round(canvasHeight / mmToPx);
+                
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: [58, pdfHeight]
+                });
+                
+                pdf.internal.pageSize.width = 58;
+                pdf.internal.pageSize.height = pdfHeight;
+                pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+                
+                const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                console.log('【Step6】テキストPDF生成完了, サイズ:', pdfBase64.length, 'bytes');
+                
+                // URLスキーム生成
+                let thisPage = window.location.href;
+                let printUrl = 'siiprintagent://1.0/print?' +
+                              'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                              'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                              'Format='           + 'pdf' + '&' +
+                              'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                              'SelectOnError='    + 'yes' + '&' +
+                              'CutType='          + 'full' + '&' +
+                              'CutFeed='          + 'yes' + '&' +
+                              'FitToWidth='       + 'no' + '&' +
+                              'PaperWidth='       + '58';
+                
+                console.log('【Step7】テキストURLスキーム生成完了');
+                
+                // 枚数印刷処理
+                console.log(`テキスト印刷開始: 総枚数=${selectedTextCopies}枚`);
+                if (selectedTextCopies > 1) {
+                    const printJob = {
+                        type: 'text',
+                        totalCopies: selectedTextCopies,
+                        currentCopy: 1,
+                        pdfData: pdfBase64,
+                        thisPage: thisPage,
+                        timestamp: Date.now()
+                    };
+                    sessionStorage.setItem('printJob', JSON.stringify(printJob));
+                    console.log(`テキスト印刷ジョブ保存完了: ${selectedTextCopies}枚中1枚目実行`);
+                }
+                
+                // ④送信(印刷実行)
+                console.log('【Step8】テキスト印刷実行開始');
+                window.location.href = printUrl;
+            })
+            .catch(function(error) {
+                console.error('テキストQRコード生成エラー, QRなしで印刷続行:', error);
+                
+                // QRコードなしでPDF生成・印刷続行
+                const pngDataUrl = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdfHeight = Math.round(canvasHeight / mmToPx);
+                
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: [58, pdfHeight]
+                });
+                
+                pdf.internal.pageSize.width = 58;
+                pdf.internal.pageSize.height = pdfHeight;
+                pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+                
+                const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                
+                let thisPage = window.location.href;
+                let printUrl = 'siiprintagent://1.0/print?' +
+                              'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                              'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                              'Format='           + 'pdf' + '&' +
+                              'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                              'SelectOnError='    + 'yes' + '&' +
+                              'CutType='          + 'full' + '&' +
+                              'CutFeed='          + 'yes' + '&' +
+                              'FitToWidth='       + 'no' + '&' +
+                              'PaperWidth='       + '58';
+                
+                if (selectedTextCopies > 1) {
+                    const printJob = {
+                        type: 'text',
+                        totalCopies: selectedTextCopies,
+                        currentCopy: 1,
+                        pdfData: pdfBase64,
+                        thisPage: thisPage,
+                        timestamp: Date.now()
+                    };
+                    sessionStorage.setItem('printJob', JSON.stringify(printJob));
+                }
+                
+                window.location.href = printUrl;
             });
-            
-            // PDFの設定を直接操作
-            pdf.internal.pageSize.width = 58;
-            pdf.internal.pageSize.height = pdfHeight;
-            
-            // PNG画像をPDFに追加（位置調整なし、フルサイズ）
-            pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
-            
-            // PDFをBase64形式で取得
-            const pdfBase64 = pdf.output('datauristring').split(',')[1];
-            
-            let thisPage = window.location.href;
-            let printUrl = 'siiprintagent://1.0/print?' +
-                          'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                          'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                          'Format='           + 'pdf' + '&' +
-                          'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                          'SelectOnError='    + 'yes' + '&' +
-                          'CutType='          + 'full' + '&' +
-                          'CutFeed='          + 'yes' + '&' +
-                          'FitToWidth='       + 'no' + '&' +
-                          'PaperWidth='       + '58';
-            
-            // 【革新的枚数印刷システム】sessionStorageによる永続化方式
-            
-            console.log(`テキスト印刷開始: 総枚数=${selectedTextCopies}枚`);
-            
-            // 枚数印刷情報をsessionStorageに保存
-            if (selectedTextCopies > 1) {
-                const printJob = {
-                    type: 'text',
-                    totalCopies: selectedTextCopies,
-                    currentCopy: 1,
-                    pdfData: pdfBase64,
-                    thisPage: thisPage,
-                    timestamp: Date.now()
-                };
-                sessionStorage.setItem('printJob', JSON.stringify(printJob));
-                console.log(`テキスト印刷ジョブ保存: ${selectedTextCopies}枚中1枚目実行`);
-            }
-            
-            // 1枚目を印刷
-            window.location.href = printUrl;
-        }
     }
     
     // 現在の1枚を印刷（シンプル実行）
