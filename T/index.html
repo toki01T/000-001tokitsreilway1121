@@ -7,11 +7,6 @@
 <link rel="icon" href="favicon.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-<script type="module">
-import QrScanner from 'https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.min.js';
-window.QrScanner = QrScanner;
-</script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -110,22 +105,7 @@ header {
     width: auto;
     height: auto;
 }
-#qrScanBtn {
-    position: absolute;
-    left: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: transparent;
-    border: none;
-    color: #fff;
-    font-size: 1.4rem;
-    cursor: pointer;
-    z-index: 12;
-    padding: 0;
-    width: auto;
-    height: auto;
-}
-#historyMenuBtn:focus, #qrScanBtn:focus { outline: none; }
+#historyMenuBtn:focus { outline: none; }
 #historyDrawer {
     position: fixed;
     top: 0;
@@ -787,7 +767,6 @@ footer p {
 <body>
 <header>
     <div class="navbar">
-        <button id="qrScanBtn" title="QRコード読み込み"><span>📷</span></button>
         <a class="navbar-brand" href="#">toki01Ⓣ</a>
         <button id="historyMenuBtn" title="履歴"><span>&#9776;</span></button>
     </div>
@@ -806,19 +785,6 @@ footer p {
     <div id="historyList"></div>
 </div>
 <div id="historyDrawerBg"></div>
-
-<!-- QRコードスキャナーモーダル -->
-<div id="qrModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; align-items:center; justify-content:center;">
-    <div style="background:var(--background-color); padding:2rem; border-radius:10px; max-width:90%; max-height:90%; position:relative;">
-        <button id="qrModalClose" style="position:absolute; top:10px; right:15px; background:none; border:none; font-size:2rem; color:var(--text-color); cursor:pointer;">&times;</button>
-        <h3 style="margin:0 0 1rem 0; color:var(--text-color);">QRコード読み込み</h3>
-        <video id="qrVideo" style="width:100%; max-width:400px; height:300px; object-fit:cover; border:2px solid var(--border-color); border-radius:5px;"></video>
-        <div style="margin-top:1rem; text-align:center;">
-            <button id="qrStartScan" style="background:var(--primary-color); color:white; border:none; padding:0.7rem 2rem; border-radius:5px; cursor:pointer; font-size:1rem;">スキャン開始</button>
-        </div>
-    </div>
-</div>
-
 <main>
     <div class="section-content">
         <section id="imageSection" class="image-selection">
@@ -1625,76 +1591,12 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 compositeCtx.fillText(timeText, exactCenterX, yPos);
             }
             
-            // QRコード生成と描画（日付の下部、またはサインの下部）
-            const qrData = {
-                type: 'signature',
-                data: tmpCanvas.toDataURL("image/png"),
-                dateTime: isDateTimeEnabled,
-                timestamp: Date.now(),
-                appId: 'toki01TM'
-            };
-            
-            QRCode.toDataURL(JSON.stringify(qrData), {
-                errorCorrectionLevel: 'L',
-                width: 120,
-                margin: 1,
-                color: {
-                    dark: '#000000',
-                    light: '#FFFFFF'
-                }
-            }, function (err, qrDataUrl) {
-                if (!err) {
-                    const qrImg = new Image();
-                    qrImg.onload = function() {
-                        const qrSize = 120;
-                        const qrX = canvasWidth - qrSize - 20; // 右側に配置
-                        let qrY;
-                        
-                        if (isDateTimeEnabled) {
-                            qrY = signatureY + signatureHeight + 140; // 日付の下
-                        } else {
-                            qrY = signatureY + signatureHeight + 40; // サインの下
-                        }
-                        
-                        // キャンバスの高さを調整
-                        const newTotalHeight = qrY + qrSize + 20;
-                        if (newTotalHeight > compositeCanvas.height) {
-                            const newCompositeCanvas = document.createElement('canvas');
-                            newCompositeCanvas.width = compositeCanvas.width;
-                            newCompositeCanvas.height = newTotalHeight;
-                            const newCompositeCtx = newCompositeCanvas.getContext('2d');
-                            
-                            // 背景を白にする
-                            newCompositeCtx.fillStyle = '#FFFFFF';
-                            newCompositeCtx.fillRect(0, 0, newCompositeCanvas.width, newCompositeCanvas.height);
-                            
-                            // 既存の内容をコピー
-                            newCompositeCtx.drawImage(compositeCanvas, 0, 0);
-                            
-                            // QRコードを描画
-                            newCompositeCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-                            
-                            // 新しいキャンバスで続行
-                            generateSignaturePDF(newCompositeCanvas);
-                        } else {
-                            compositeCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-                            generateSignaturePDF(compositeCanvas);
-                        }
-                    };
-                    qrImg.src = qrDataUrl;
-                } else {
-                    // QRコード生成失敗時は既存のキャンバスでPDF生成
-                    generateSignaturePDF(compositeCanvas);
-                }
-            });
-            
-            function generateSignaturePDF(finalCanvas) {
             // 合成キャンバスをPNGデータURLに変換
-            const compositeDataUrl = finalCanvas.toDataURL('image/png');
+            const compositeDataUrl = compositeCanvas.toDataURL('image/png');
             
             // jsPDFを使用してPDFを生成
             const { jsPDF } = window.jspdf;
-            const pdfHeight = Math.round(finalCanvas.height / mmToPx);
+            const pdfHeight = Math.round(totalHeight / mmToPx);
             
             const pdf = new jsPDF({
                 orientation: 'portrait',
@@ -1724,7 +1626,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                           'FitToWidth='       + 'no' + '&' +
                           'PaperWidth='       + '58';
             
-            // 【革新的枚数印刷システム】sessionStorageによる永persistent化方式
+            // 【革新的枚数印刷システム】sessionStorageによる永続化方式
             
             console.log(`署名印刷開始: 総枚数=${selectedCopies}枚`);
             
@@ -1744,12 +1646,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
             
             // 1枚目を印刷
             window.location.href = printUrl;
-            }
-            
-        }; // generateSignaturePDF関数の閉じ括弧
+        };
         
         signatureImg.src = tmpCanvas.toDataURL("image/png");
-    }; // signatureImg.onload の閉じ括弧
+    }
     
     // 現在の1枚を印刷（シンプル実行）
     printSignatureCopy();
@@ -2120,50 +2020,6 @@ function sendToPrintAssist(event) {
                         yPos += 50; // 日付有り印刷の下部余白を50px追加
                     }
                     
-                    // QRコード生成と描画（日付の下部、または画像の下部）
-                    const qrData = {
-                        type: 'image',
-                        data: base64Image,
-                        dateTime: isDateTimeEnabled,
-                        timestamp: Date.now(),
-                        appId: 'toki01TM'
-                    };
-                    
-                    QRCode.toDataURL(JSON.stringify(qrData), {
-                        errorCorrectionLevel: 'L',
-                        width: 120,
-                        margin: 1,
-                        color: {
-                            dark: '#000000',
-                            light: '#FFFFFF'
-                        }
-                    }, function (err, qrDataUrl) {
-                        if (!err) {
-                            const qrImg = new Image();
-                            qrImg.onload = function() {
-                                const qrSize = 120;
-                                const qrX = canvasWidth - qrSize - 20; // 右側に配置
-                                let qrY;
-                                
-                                if (isDateTimeEnabled) {
-                                    qrY = imgY + finalImgHeight + 140; // 日付の下
-                                } else {
-                                    qrY = imgY + finalImgHeight + 20; // 画像の下
-                                }
-                                
-                                compositeCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-                                
-                                // QRコード描画完了後、PDFを生成
-                                generatePDF();
-                            };
-                            qrImg.src = qrDataUrl;
-                        } else {
-                            // QRコード生成失敗時はPDFのみ生成
-                            generatePDF();
-                        }
-                    });
-                    
-                    function generatePDF() {
                     // 合成キャンバスを高品質PNGデータURLに変換
                     const compositeDataUrl = compositeCanvas.toDataURL('image/png', 1.0);
                     
@@ -2222,12 +2078,10 @@ function sendToPrintAssist(event) {
                     
                     // 1枚目を印刷
                     window.location.href = printUrlImage;
-                    }
-                    
-                }; // generatePDF関数の閉じ括弧
+                };
                 
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
-            }; // QRコード処理の閉じ括弧
+            }
             
             // 現在の1枚を印刷（シンプル実行）
             printImageCopy();
@@ -2243,7 +2097,7 @@ function sendToPrintAssist(event) {
             });
         };
         img.src = 'data:image/png;base64,' + base64Image;
-    } // doPrint関数の閉じ括弧
+    }
     if (usePreview) {
         doPrint(base64Image);
     } else {
@@ -2422,76 +2276,12 @@ function printText() {
             ctx.fillText(timeText, finalDateX, yPos);
         }
         
-        // QRコード生成と描画（日付の下部、またはテキストの下部）
-        const qrData = {
-            type: 'text',
-            data: text,
-            dateTime: isDateTimeEnabled,
-            timestamp: Date.now(),
-            appId: 'toki01TM'
-        };
-        
-        QRCode.toDataURL(JSON.stringify(qrData), {
-            errorCorrectionLevel: 'L',
-            width: 120,
-            margin: 1,
-            color: {
-                dark: '#000000',
-                light: '#FFFFFF'
-            }
-        }, function (err, qrDataUrl) {
-            if (!err) {
-                const qrImg = new Image();
-                qrImg.onload = function() {
-                    const qrSize = 120;
-                    const qrX = canvasWidth - qrSize - 20; // 右側に配置
-                    let qrY;
-                    
-                    if (isDateTimeEnabled) {
-                        qrY = yPos + dateFontSize; // 日付の下
-                    } else {
-                        qrY = yPos + 40; // テキストの下
-                    }
-                    
-                    // キャンバスの高さを調整
-                    const newCanvasHeight = qrY + qrSize + 20;
-                    if (newCanvasHeight > canvas.height) {
-                        const newCanvas = document.createElement('canvas');
-                        newCanvas.width = canvas.width;
-                        newCanvas.height = newCanvasHeight;
-                        const newCtx = newCanvas.getContext('2d');
-                        
-                        // 背景を白にする
-                        newCtx.fillStyle = '#FFFFFF';
-                        newCtx.fillRect(0, 0, newCanvas.width, newCanvas.height);
-                        
-                        // 既存の内容をコピー
-                        newCtx.drawImage(canvas, 0, 0);
-                        
-                        // QRコードを描画
-                        newCtx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-                        
-                        // 新しいキャンバスで続行
-                        generateTextPDF(newCanvas);
-                    } else {
-                        ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-                        generateTextPDF(canvas);
-                    }
-                };
-                qrImg.src = qrDataUrl;
-            } else {
-                // QRコード生成失敗時は既存のキャンバスでPDF生成
-                generateTextPDF(canvas);
-            }
-        });
-        
-        function generateTextPDF(finalCanvas) {
         // キャンバスをPNGデータURLに変換
-        const pngDataUrl = finalCanvas.toDataURL('image/png');
+        const pngDataUrl = canvas.toDataURL('image/png');
         
         // jsPDFを使用してPDFを生成
         const { jsPDF } = window.jspdf;
-        const pdfHeight = Math.round(finalCanvas.height / mmToPx);
+        const pdfHeight = Math.round(canvasHeight / mmToPx);
         
         const pdf = new jsPDF({
             orientation: 'portrait',
@@ -2541,9 +2331,7 @@ function printText() {
         
         // 1枚目を印刷
         window.location.href = printUrl;
-        }
-        
-    }; // printTextCopy関数の閉じ括弧
+    }
     
     // 現在の1枚を印刷（シンプル実行）
     printTextCopy();
@@ -2588,252 +2376,6 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
-
-// QRコードスキャナー機能
-document.addEventListener('DOMContentLoaded', function() {
-    const qrScanBtn = document.getElementById('qrScanBtn');
-    const qrModal = document.getElementById('qrModal');
-    const qrModalClose = document.getElementById('qrModalClose');
-    const qrVideo = document.getElementById('qrVideo');
-    const qrStartScan = document.getElementById('qrStartScan');
-    let qrScanner = null;
-    
-    // QRコード読み込みボタンクリック
-    qrScanBtn.addEventListener('click', function() {
-        qrModal.style.display = 'flex';
-    });
-    
-    // モーダル閉じる
-    qrModalClose.addEventListener('click', function() {
-        stopQRScanner();
-        qrModal.style.display = 'none';
-    });
-    
-    // モーダル外クリックで閉じる
-    qrModal.addEventListener('click', function(e) {
-        if (e.target === qrModal) {
-            stopQRScanner();
-            qrModal.style.display = 'none';
-        }
-    });
-    
-    // スキャン開始ボタン
-    qrStartScan.addEventListener('click', function() {
-        startQRScanner();
-    });
-    
-    function startQRScanner() {
-        if (qrScanner) {
-            qrScanner.destroy();
-        }
-        
-        // QR-Scanner を使用（カメラアクセスが利用できない場合の代替手段）
-        navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-            qrVideo.srcObject = stream;
-            qrVideo.play();
-            
-            // 簡易的なQR検知機能（実装例）
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            const checkQR = () => {
-                if (qrVideo.videoWidth && qrVideo.videoHeight) {
-                    canvas.width = qrVideo.videoWidth;
-                    canvas.height = qrVideo.videoHeight;
-                    ctx.drawImage(qrVideo, 0, 0);
-                    
-                    // ここに実際のQR解析ライブラリを使用
-                    // 現在は手動入力で代替
-                    setTimeout(checkQR, 500);
-                }
-            };
-            
-            qrStartScan.textContent = 'QRコードを画面に映してください';
-            qrStartScan.disabled = false;
-            
-            // 手動でQRコードデータを入力できるボタンを追加
-            const manualInputBtn = document.createElement('button');
-            manualInputBtn.textContent = '手動でデータを入力';
-            manualInputBtn.style.marginLeft = '10px';
-            manualInputBtn.onclick = function() {
-                const qrDataStr = prompt('QRコードデータを入力してください:');
-                if (qrDataStr) {
-                    try {
-                        const qrData = JSON.parse(qrDataStr);
-                        if (qrData.appId === 'toki01TM') {
-                            processQRData(qrData);
-                            stopQRScanner();
-                            qrModal.style.display = 'none';
-                        } else {
-                            alert('このQRコードは対応していません。');
-                        }
-                    } catch (e) {
-                        alert('無効なQRコードです。');
-                    }
-                }
-            };
-            qrStartScan.parentNode.appendChild(manualInputBtn);
-            
-            checkQR();
-        })
-        .catch(err => {
-            console.error('カメラエラー:', err);
-            alert('カメラにアクセスできません。QRコード読み込み機能は手動入力のみ利用可能です。');
-            
-            // カメラなしでも手動入力は可能
-            const manualInputBtn = document.createElement('button');
-            manualInputBtn.textContent = '手動でデータを入力';
-            manualInputBtn.onclick = function() {
-                const qrDataStr = prompt('QRコードデータを入力してください:');
-                if (qrDataStr) {
-                    try {
-                        const qrData = JSON.parse(qrDataStr);
-                        if (qrData.appId === 'toki01TM') {
-                            processQRData(qrData);
-                            stopQRScanner();
-                            qrModal.style.display = 'none';
-                        } else {
-                            alert('このQRコードは対応していません。');
-                        }
-                    } catch (e) {
-                        alert('無効なQRコードです。');
-                    }
-                }
-            };
-            qrStartScan.parentNode.appendChild(manualInputBtn);
-        });
-    }
-    
-    function stopQRScanner() {
-        // ビデオストリームを停止
-        if (qrVideo.srcObject) {
-            const stream = qrVideo.srcObject;
-            const tracks = stream.getTracks();
-            tracks.forEach(track => track.stop());
-            qrVideo.srcObject = null;
-        }
-        
-        qrStartScan.textContent = 'スキャン開始';
-        qrStartScan.disabled = false;
-        
-        // 手動入力ボタンを削除
-        const manualBtn = qrStartScan.parentNode.querySelector('button:not(#qrStartScan)');
-        if (manualBtn) {
-            manualBtn.remove();
-        }
-    }
-    
-    function processQRData(qrData) {
-        // 読み込んだデータを表示・復元する
-        if (qrData.type === 'image') {
-            // 画像データの復元
-            const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-            const img = document.createElement('img');
-            img.src = 'data:image/png;base64,' + qrData.data;
-            img.alt = '読み込み画像';
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
-            
-            // 既存のプレビューをクリア
-            imagePreviewContainer.innerHTML = '';
-            imagePreviewContainer.appendChild(img);
-            
-            // 日付設定を復元
-            if (qrData.dateTime) {
-                selectChip('with');
-            } else {
-                selectChip('without');
-            }
-            
-            // 画像セクションに切り替え
-            showImageSection();
-            
-            alert('画像が復元されました！印刷設定を確認して再印刷できます。');
-            
-        } else if (qrData.type === 'text') {
-            // テキストデータの復元
-            const textInput = document.getElementById('textInput');
-            textInput.value = qrData.data;
-            
-            // 日付設定を復元
-            if (qrData.dateTime) {
-                selectTextChip('with');
-            } else {
-                selectTextChip('without');
-            }
-            
-            // テキストセクションに切り替え
-            showTextSection();
-            updateTextPrintButtonState();
-            toggleClearButton();
-            
-            alert('テキストが復元されました！印刷設定を確認して再印刷できます。');
-            
-        } else if (qrData.type === 'signature') {
-            // 電子サインデータの復元
-            const signaturePreview = document.getElementById('signaturePreview');
-            const img = document.createElement('img');
-            img.src = qrData.data;
-            img.alt = '読み込みサイン';
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
-            img.style.border = '1px solid var(--border-color)';
-            img.style.borderRadius = '5px';
-            
-            // 既存のプレビューをクリア
-            signaturePreview.innerHTML = '';
-            signaturePreview.appendChild(img);
-            
-            // 日付設定を復元
-            if (qrData.dateTime) {
-                selectSignatureChip('with');
-            } else {
-                selectSignatureChip('without');
-            }
-            
-            // 電子サインセクションに切り替え
-            showSignatureSection();
-            updateSignaturePrintButtonState();
-            
-            alert('電子サインが復元されました！印刷設定を確認して再印刷できます。');
-        }
-    }
-    
-    // セクション切り替えヘルパー関数
-    function showImageSection() {
-        // 画像セクションを表示する処理
-        document.getElementById('imageSection').style.display = 'block';
-        if (document.getElementById('textSection')) {
-            document.getElementById('textSection').style.display = 'none';
-        }
-        if (document.getElementById('signatureSection')) {
-            document.getElementById('signatureSection').style.display = 'none';
-        }
-    }
-    
-    function showTextSection() {
-        // テキストセクションを表示する処理
-        if (document.getElementById('textSection')) {
-            document.getElementById('textSection').style.display = 'block';
-        }
-        document.getElementById('imageSection').style.display = 'none';
-        if (document.getElementById('signatureSection')) {
-            document.getElementById('signatureSection').style.display = 'none';
-        }
-    }
-    
-    function showSignatureSection() {
-        // 電子サインセクションを表示する処理
-        if (document.getElementById('signatureSection')) {
-            document.getElementById('signatureSection').style.display = 'block';
-        }
-        document.getElementById('imageSection').style.display = 'none';
-        if (document.getElementById('textSection')) {
-            document.getElementById('textSection').style.display = 'none';
-        }
-    }
-});
 </script>
 </body>
 </html>
