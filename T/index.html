@@ -1628,7 +1628,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     
-    async function printSignatureCopy() {
+    function printSignatureCopy() {
         // 新しいキャンバスで全体を合成
         const compositeCanvas = document.createElement('canvas');
         const compositeCtx = compositeCanvas.getContext('2d');
@@ -1638,7 +1638,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
         
         // サイン画像のサイズを取得
         const signatureImg = new Image();
-        signatureImg.onload = async function() {
+        signatureImg.onload = function() {
             // 日付・時刻の高さを計算
             let dateTimeHeight = 0;
             if (isDateTimeEnabled) {
@@ -1706,20 +1706,20 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 // QRコードを日付・時刻の下に配置
                 const qrData = generateQRData('signature', tmpCanvas.toDataURL("image/png"), 'with', selectedCopies);
                 console.log('電子サイン印刷（日付有り）QRデータ:', qrData);
-                const qrSize = 50; // QRコードサイズ（少し小さく）
-                const qrX = 10; // 左側に配置
-                const qrY = yPos - 30; // 日付の横に配置
+                const qrSize = 80; // QRコードサイズを大きく
+                const qrX = 20; // 左側に配置
+                const qrY = yPos + 20; // 日付の下に配置
                 console.log('QRコード位置（電子サイン・日付有り）:', { qrX, qrY, qrSize, canvasWidth, totalHeight });
-                await drawQRCode(compositeCtx, qrX, qrY, qrSize, qrData);
+                drawQRCodeSync(compositeCtx, qrX, qrY, qrSize, qrData);
             } else {
                 // 日付なしの場合は署名の下にQRコードを配置
                 const qrData = generateQRData('signature', tmpCanvas.toDataURL("image/png"), 'without', selectedCopies);
                 console.log('電子サイン印刷（日付無し）QRデータ:', qrData);
-                const qrSize = 50; // QRコードサイズ（少し小さく）
-                const qrX = 10; // 左側に配置
-                const qrY = signatureY + signatureHeight + 10; // 署名の下に配置
+                const qrSize = 80; // QRコードサイズを大きく
+                const qrX = 20; // 左側に配置
+                const qrY = signatureY + signatureHeight + 30; // 署名の下に配置
                 console.log('QRコード位置（電子サイン・日付無し）:', { qrX, qrY, qrSize, canvasWidth, totalHeight });
-                await drawQRCode(compositeCtx, qrX, qrY, qrSize, qrData);
+                drawQRCodeSync(compositeCtx, qrX, qrY, qrSize, qrData);
             }
             
             // 合成キャンバスをPNGデータURLに変換
@@ -1830,7 +1830,7 @@ function sendToPrintAssist(event) {
             const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + qrSize + qrMargin + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             
-            async function printImageCopy() {
+            function printImageCopy() {
                 // 新しいキャンバスで全体を合成
                 const compositeCanvas = document.createElement('canvas');
                 const compositeCtx = compositeCanvas.getContext('2d', { 
@@ -1846,7 +1846,7 @@ function sendToPrintAssist(event) {
                 // アップロードされた画像を読み込み
                 const uploadedImg = new Image();
                 uploadedImg.crossOrigin = 'anonymous'; // 画像品質向上
-                uploadedImg.onload = async function() {
+                uploadedImg.onload = function() {
                     // 日付・時刻の高さを計算
                     let dateTimeHeight = 0;
                     if (isDateTimeEnabled) {
@@ -2158,20 +2158,20 @@ function sendToPrintAssist(event) {
                         // QRコードを日付・時刻の下に配置
                         const qrData = generateQRData('image', 'data:image/png;base64,' + base64Image, 'with', selectedCopies);
                         console.log('画像印刷（日付有り）QRデータ:', qrData);
-                        const qrSize = 60; // QRコードサイズ（少し小さく）
-                        const qrX = 10; // 左側に配置
-                        const qrY = yPos - 30; // 日付の横に配置
+                        const qrSize = 80; // QRコードサイズを大きく
+                        const qrX = 20; // 左側に配置
+                        const qrY = yPos + 20; // 日付の下に配置
                         console.log('QRコード位置（画像・日付有り）:', { qrX, qrY, qrSize, canvasWidth, totalHeight });
-                        await drawQRCode(compositeCtx, qrX, qrY, qrSize, qrData);
+                        drawQRCodeSync(compositeCtx, qrX, qrY, qrSize, qrData);
                     } else {
                         // 日付なしの場合は画像の下にQRコードを配置
                         const qrData = generateQRData('image', 'data:image/png;base64,' + base64Image, 'without', selectedCopies);
                         console.log('画像印刷（日付無し）QRデータ:', qrData);
-                        const qrSize = 60; // QRコードサイズ（少し小さく）
-                        const qrX = 10; // 左側に配置
-                        const qrY = imgY + finalImgHeight + 10; // 画像の下に配置
+                        const qrSize = 80; // QRコードサイズを大きく
+                        const qrX = 20; // 左側に配置
+                        const qrY = imgY + finalImgHeight + 30; // 画像の下に配置
                         console.log('QRコード位置（画像・日付無し）:', { qrX, qrY, qrSize, canvasWidth, totalHeight });
-                        await drawQRCode(compositeCtx, qrX, qrY, qrSize, qrData);
+                        drawQRCodeSync(compositeCtx, qrX, qrY, qrSize, qrData);
                     }
                     
                     // 合成キャンバスを高品質PNGデータURLに変換
@@ -2344,7 +2344,7 @@ function printText() {
     totalHeight += bottomMargin;
     const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
     
-    async function printTextCopy() {
+    function printTextCopy() {
         let printText = wrappedLines.join("\n");
         
         // キャンバスでテキストを画像として生成
@@ -2436,20 +2436,20 @@ function printText() {
             // QRコードを日付・時刻の下に配置
             const qrData = generateQRData('text', textInput.value, 'with', selectedTextCopies);
             console.log('テキスト印刷（日付有り）QRデータ:', qrData);
-            const qrSize = 50; // QRコードサイズ（少し小さく）
-            const qrX = 10; // 左側に配置
-            const qrY = yPos + 10; // 日付の下に配置（間隔を少なく）
+            const qrSize = 80; // QRコードサイズを大きく
+            const qrX = 20; // 左側に配置
+            const qrY = yPos + 20; // 日付の下に配置
             console.log('QRコード位置（日付有り）:', { qrX, qrY, qrSize, canvasWidth, canvasHeight });
-            await drawQRCode(ctx, qrX, qrY, qrSize, qrData);
+            drawQRCodeSync(ctx, qrX, qrY, qrSize, qrData);
         } else {
             // 日付なしの場合はテキストの下にQRコードを配置
             const qrData = generateQRData('text', textInput.value, 'without', selectedTextCopies);
             console.log('テキスト印刷（日付無し）QRデータ:', qrData);
-            const qrSize = 50; // QRコードサイズ（少し小さく）
-            const qrX = 10; // 左側に配置
-            const qrY = yPos + 10; // テキストの下に配置（間隔を少なく）
+            const qrSize = 80; // QRコードサイズを大きく
+            const qrX = 20; // 左側に配置
+            const qrY = yPos + 20; // テキストの下に配置
             console.log('QRコード位置（日付無し）:', { qrX, qrY, qrSize, canvasWidth, canvasHeight });
-            await drawQRCode(ctx, qrX, qrY, qrSize, qrData);
+            drawQRCodeSync(ctx, qrX, qrY, qrSize, qrData);
         }
         
         // キャンバスをPNGデータURLに変換
@@ -2571,9 +2571,9 @@ function generateQRData(type, data, dateTime, copies) {
 }
 
 // QRコード描画関数（印刷用）
-async function drawQRCode(ctx, x, y, size, qrData) {
+function drawQRCodeSync(ctx, x, y, size, qrData) {
     try {
-        console.log('QRコード生成開始:', { x, y, size, qrData: qrData.substring(0, 100) + '...' });
+        console.log('QRコード生成開始:', { x, y, size, qrDataLength: qrData.length });
         
         // QRライブラリの存在確認
         if (typeof QRCode === 'undefined') {
@@ -2584,7 +2584,8 @@ async function drawQRCode(ctx, x, y, size, qrData) {
         const qrCanvas = document.createElement('canvas');
         console.log('QRキャンバス作成完了');
         
-        await QRCode.toCanvas(qrCanvas, qrData, {
+        // 同期的にQRコードを生成
+        QRCode.toCanvas(qrCanvas, qrData, {
             width: size,
             height: size,
             margin: 1,
@@ -2592,21 +2593,27 @@ async function drawQRCode(ctx, x, y, size, qrData) {
                 dark: '#000000',
                 light: '#FFFFFF'
             }
+        }, function(error) {
+            if (error) {
+                console.error('QRコード生成エラー:', error);
+                return;
+            }
+            
+            console.log('QRコード生成成功, キャンバスサイズ:', qrCanvas.width, 'x', qrCanvas.height);
+            
+            // QRコードをメインキャンバスに描画
+            ctx.drawImage(qrCanvas, x, y, size, size);
+            
+            // デバッグ用：QRコードの境界を描画
+            ctx.save();
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x, y, size, size);
+            ctx.restore();
+            
+            console.log('QRコード描画完了: 位置(' + x + ', ' + y + '), サイズ:' + size);
         });
         
-        console.log('QRコード生成成功, キャンバスサイズ:', qrCanvas.width, 'x', qrCanvas.height);
-        
-        // QRコードをメインキャンバスに描画
-        ctx.drawImage(qrCanvas, x, y, size, size);
-        
-        // デバッグ用：QRコードの境界を描画
-        ctx.save();
-        ctx.strokeStyle = 'blue';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x, y, size, size);
-        ctx.restore();
-        
-        console.log('QRコード描画完了: 位置(' + x + ', ' + y + '), サイズ:' + size);
         return true;
     } catch (error) {
         console.error('QRコード生成エラー:', error);
