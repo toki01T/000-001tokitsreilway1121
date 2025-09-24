@@ -6,8 +6,7 @@
 <title>toki01Ⓣ 発券</title>
 <link rel="icon" href="favicon.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -63,7 +62,7 @@ header {
     top: 0;
     left: 0;
     z-index: 100;
-    height: 40px;
+    height: 48px;
     display: flex;
     align-items: center;
 }
@@ -73,7 +72,7 @@ header {
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    height: 40px;
+    height: 48px;
     padding: 0 1rem;
     box-sizing: border-box;
     position: relative;
@@ -91,20 +90,6 @@ header {
     padding: 0;
     white-space: nowrap;
 }
-#qrScanBtn {
-    position: absolute;
-    right: 3.5rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: transparent;
-    border: none;
-    color: #fff;
-    font-size: 1.4rem;
-    cursor: pointer;
-    z-index: 12;
-    padding: 0;
-}
-#qrScanBtn:focus { outline: none; }
 #historyMenuBtn {
     position: absolute;
     right: 1rem;
@@ -117,6 +102,8 @@ header {
     cursor: pointer;
     z-index: 12;
     padding: 0;
+    width: auto;
+    height: auto;
 }
 #historyMenuBtn:focus { outline: none; }
 #historyDrawer {
@@ -401,7 +388,7 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-top: 62px;
+    padding-top: 70px;
     padding-bottom: 80px;
     background: var(--background-color);
     color: var(--text-color);
@@ -409,7 +396,7 @@ main {
 }
 @media (max-width: 600px) {
     main {
-        padding-top: 52px;
+        padding-top: 60px;
         padding-bottom: 80px;
     }
     #historyDrawer { width: 95vw; }
@@ -761,126 +748,6 @@ main {
 .clear-button:hover {
     background-color: var(--primary-hover);
 }
-
-/* QRコード読み取りモーダル */
-.qr-modal {
-    display: none;
-    position: fixed;
-    z-index: 10000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.95);
-}
-.qr-modal-content {
-    background-color: #000;
-    margin: 0;
-    padding: 0;
-    border: none;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-}
-.qr-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background: var(--primary-color);
-    color: white;
-    position: relative;
-    z-index: 3;
-}
-.qr-modal-header h2 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: bold;
-}
-.qr-modal-close {
-    background: transparent;
-    border: none;
-    color: white;
-    font-size: 1.8rem;
-    cursor: pointer;
-    padding: 0.2rem;
-    line-height: 1;
-    border-radius: 4px;
-}
-.qr-modal-close:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-.qr-scan-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    background: #000;
-    position: relative;
-    overflow: hidden;
-}
-#qrScanMessage {
-    color: white;
-    text-align: center;
-    font-size: 1rem;
-    position: absolute;
-    top: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 2;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
-#qrVideo {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border: none;
-    border-radius: 0;
-}
-.qr-modal-footer {
-    padding: 1.5rem;
-    background: var(--primary-color);
-    text-align: center;
-    position: relative;
-    z-index: 3;
-}
-#qrCancelBtn {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 2px solid white;
-    padding: 0.8rem 2rem;
-    border-radius: 25px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: bold;
-    transition: all 0.3s;
-}
-#qrCancelBtn:hover {
-    background: white;
-    color: var(--primary-color);
-}
-.qr-modal-footer {
-    padding: 1rem;
-    background: var(--background-color);
-    text-align: center;
-}
-#qrCancelBtn {
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 0.5rem 1.5rem;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1rem;
-}
-
 footer {
     position: fixed;
     bottom: 0;
@@ -901,29 +768,9 @@ footer p {
 <header>
     <div class="navbar">
         <a class="navbar-brand" href="#">toki01Ⓣ</a>
-        <button id="qrScanBtn" title="QR読取"><span>&#128243;</span></button>
         <button id="historyMenuBtn" title="履歴"><span>&#9776;</span></button>
     </div>
 </header>
-
-<!-- QRコード読み取りモーダル -->
-<div id="qrScanModal" class="qr-modal">
-    <div class="qr-modal-content">
-        <div class="qr-modal-header">
-            <h2>QRコード読み取り</h2>
-            <button id="qrModalClose" class="qr-modal-close">&times;</button>
-        </div>
-        <div class="qr-scan-container">
-            <div id="qrScanMessage">背面カメラでQRコードをスキャンしてください</div>
-            <video id="qrVideo" autoplay></video>
-            <canvas id="qrCanvas" style="display: none;"></canvas>
-        </div>
-        <div class="qr-modal-footer">
-            <button id="qrCancelBtn">キャンセル</button>
-        </div>
-    </div>
-</div>
-
 <div id="historyDrawer">
     <div id="historyDrawerHeader">
         <h2>履歴</h2>
@@ -1022,223 +869,6 @@ footer p {
     <p>&copy; 2025 とき T's 鉄道部 toki</p>
 </footer>
 <script>
-// QRコード関連のグローバル変数
-let qrScanner = null;
-let currentPrintData = {};
-
-// QRコードデータを保存/取得する関数
-function saveQRData(qrId, printData) {
-    try {
-        const qrDataStore = JSON.parse(localStorage.getItem('qrCodeData') || '{}');
-        qrDataStore[qrId] = {
-            ...printData,
-            timestamp: Date.now()
-        };
-        localStorage.setItem('qrCodeData', JSON.stringify(qrDataStore));
-        return true;
-    } catch(e) {
-        console.error('QRデータ保存エラー:', e);
-        return false;
-    }
-}
-
-function getQRData(qrId) {
-    try {
-        const qrDataStore = JSON.parse(localStorage.getItem('qrCodeData') || '{}');
-        return qrDataStore[qrId] || null;
-    } catch(e) {
-        console.error('QRデータ取得エラー:', e);
-        return null;
-    }
-}
-
-// QRコード生成関数
-function generateQRCode(data, callback) {
-    try {
-        if (typeof QRCode === 'undefined') {
-            console.error('QRCodeライブラリが見つかりません');
-            callback(new Error('QRCodeライブラリが見つかりません'), null);
-            return;
-        }
-        
-        QRCode.toDataURL(data, {
-            width: 80,
-            height: 80,
-            margin: 1,
-            color: {
-                dark: '#000000',
-                light: '#FFFFFF'
-            }
-        }, function(err, url) {
-            if (err) {
-                console.error('QRCode生成エラー:', err);
-                callback(err, null);
-            } else {
-                callback(null, url);
-            }
-        });
-    } catch (error) {
-        console.error('QRCode生成例外:', error);
-        callback(error, null);
-    }
-}
-
-// QRコード読み取りモーダル関連
-function openQRScanModal() {
-    const modal = document.getElementById('qrScanModal');
-    const video = document.getElementById('qrVideo');
-    const message = document.getElementById('qrScanMessage');
-    
-    modal.style.display = 'block';
-    message.textContent = 'カメラを準備中...';
-    
-    // QRスキャナーの初期化
-    if (!qrScanner) {
-        try {
-            if (typeof QrScanner === 'undefined') {
-                message.textContent = 'QRスキャナーライブラリが読み込まれていません';
-                return;
-            }
-            
-            qrScanner = new QrScanner(video, result => {
-                handleQRScanResult(result.data || result);
-            }, {
-                preferredCamera: 'environment', // 背面カメラを優先
-                highlightScanRegion: true,
-                highlightCodeOutline: true,
-                returnDetailedScanResult: false
-            });
-        } catch (error) {
-            console.error('QRスキャナー初期化エラー:', error);
-            message.textContent = 'QRスキャナーの初期化に失敗しました';
-            return;
-        }
-    }
-    
-    qrScanner.start().then(() => {
-        message.textContent = 'QRコードをスキャンしてください';
-    }).catch(err => {
-        console.error('カメラ起動エラー:', err);
-        message.textContent = 'カメラの起動に失敗しました。カメラの使用許可を確認してください。';
-    });
-}
-
-function closeQRScanModal() {
-    const modal = document.getElementById('qrScanModal');
-    modal.style.display = 'none';
-    
-    if (qrScanner) {
-        try {
-            qrScanner.stop();
-        } catch (error) {
-            console.error('QRスキャナー停止エラー:', error);
-        }
-    }
-}
-
-// QRコード読み取り結果処理
-function handleQRScanResult(qrData) {
-    closeQRScanModal();
-    
-    // QRコードデータからIDを抽出
-    let qrId;
-    try {
-        if (qrData.startsWith('TOKI01-')) {
-            qrId = qrData;
-        } else {
-            throw new Error('無効なQRコード');
-        }
-    } catch (e) {
-        alert('このQRコードはtoki01Tアプリ専用ではありません');
-        return;
-    }
-    
-    // データを取得して復元
-    const printData = getQRData(qrId);
-    if (printData) {
-        restorePrintData(printData);
-        alert('印刷データを復元しました！');
-    } else {
-        alert('印刷データが見つかりません');
-    }
-}
-
-// 印刷データ復元機能
-function restorePrintData(printData) {
-    switch (printData.type) {
-        case 'image':
-            showSection('image');
-            // 画像データを復元
-            const imgContainer = document.getElementById('imagePreviewContainer');
-            imgContainer.innerHTML = `<img src="${printData.data}" alt="復元画像">`;
-            
-            // 設定を復元
-            const chipWith = document.getElementById('chipWith');
-            const chipWithout = document.getElementById('chipWithout');
-            chipWith.classList.remove('selected');
-            chipWithout.classList.remove('selected');
-            
-            if (printData.dateTime === 'with') {
-                chipWith.classList.add('selected');
-                selectedChip = 'with';
-            } else {
-                chipWithout.classList.add('selected');
-                selectedChip = 'without';
-            }
-            
-            document.getElementById('copiesSelect').value = printData.copies;
-            document.getElementById('shrinkCheckbox').checked = !!printData.shrink;
-            document.getElementById('imagePrintOptions').style.display = 'flex';
-            updatePrintButtonState();
-            break;
-            
-        case 'text':
-            showSection('text');
-            document.getElementById('textInput').value = printData.data;
-            
-            const textChipWith = document.getElementById('textChipWith');
-            const textChipWithout = document.getElementById('textChipWithout');
-            textChipWith.classList.remove('selected');
-            textChipWithout.classList.remove('selected');
-            
-            if (printData.dateTime === 'with') {
-                textChipWith.classList.add('selected');
-                selectedTextChip = 'with';
-            } else {
-                textChipWithout.classList.add('selected');
-                selectedTextChip = 'without';
-            }
-            
-            document.getElementById('textCopiesSelect').value = printData.copies;
-            document.getElementById('textPrintOptions').style.display = 'flex';
-            updateTextPrintButtonState();
-            break;
-            
-        case 'signature':
-            showSection('signature');
-            setTimeout(() => {
-                initSignaturePad(printData.data, true);
-                
-                const sigChipWith = document.getElementById('signatureChipWith');
-                const sigChipWithout = document.getElementById('signatureChipWithout');
-                sigChipWith.classList.remove('selected');
-                sigChipWithout.classList.remove('selected');
-                
-                if (printData.dateTime === 'with') {
-                    sigChipWith.classList.add('selected');
-                    selectedSignatureChip = 'with';
-                } else {
-                    sigChipWithout.classList.add('selected');
-                    selectedSignatureChip = 'without';
-                }
-                
-                document.getElementById('signatureCopiesSelect').value = printData.copies;
-                updateSignaturePrintButtonState();
-            }, 100);
-            break;
-    }
-}
-
 const toZenkakuMap = {
     '@': '＠', '#': '＃', '&': '＆', '-': '－', '/': '／', '$': '＄', '%': '％',
     '(': '（', ')': '）', '!': '！', '?': '？', "'": '＇', '"': '＂', ':': '：',
@@ -1587,7 +1217,63 @@ window.onload = function() {
     setTextChipsEnabled(false);
     loadHistoryList();
     initSignaturePad();
+    
+    // 【枚数印刷の自動続行システム】
+    checkAndContinuePrinting();
 };
+
+// 枚数印刷の続行をチェックする関数
+function checkAndContinuePrinting() {
+    const printJob = sessionStorage.getItem('printJob');
+    if (!printJob) {
+        return; // 印刷ジョブなし
+    }
+    
+    const job = JSON.parse(printJob);
+    const timeSinceLastPrint = Date.now() - job.timestamp;
+    
+    // 10秒経過後に次の印刷を実行
+    if (timeSinceLastPrint >= 10000) {
+        if (job.currentCopy < job.totalCopies) {
+            job.currentCopy++;
+            job.timestamp = Date.now();
+            
+            console.log(`${job.type}印刷続行: ${job.currentCopy}/${job.totalCopies}枚目実行`);
+            
+            // 次の印刷を実行
+            const nextPrintUrl = 'siiprintagent://1.0/print?' +
+                                'CallbackSuccess='  + encodeURIComponent(job.thisPage) + '&' +
+                                'CallbackFail='     + encodeURIComponent(job.thisPage) + '&' +
+                                'Format='           + 'pdf' + '&' +
+                                'Data='             + encodeURIComponent(job.pdfData) + '&' +
+                                'SelectOnError='    + 'yes' + '&' +
+                                'CutType='          + 'full' + '&' +
+                                'CutFeed='          + 'yes' + '&' +
+                                'FitToWidth='       + 'no' + '&' +
+                                'PaperWidth='       + '58';
+            
+            if (job.currentCopy < job.totalCopies) {
+                // まだ残りがある場合は情報を更新して保存
+                sessionStorage.setItem('printJob', JSON.stringify(job));
+            } else {
+                // 全て完了した場合は削除
+                sessionStorage.removeItem('printJob');
+                console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
+            }
+            
+            window.location.href = nextPrintUrl;
+        } else {
+            // 全印刷完了
+            sessionStorage.removeItem('printJob');
+            console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
+        }
+    } else {
+        // まだ10秒経過していない場合は待機
+        const remainingTime = 10000 - timeSinceLastPrint;
+        console.log(`印刷待機中: あと${Math.ceil(remainingTime/1000)}秒`);
+        setTimeout(checkAndContinuePrinting, remainingTime);
+    }
+}
 function showSection(mode) {
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
@@ -1806,10 +1492,6 @@ function updateSignaturePrintButtonState() {
 }
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
-    
-    // QRコードID生成
-    const qrId = `TOKI01-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
     const canvas = document.getElementById('signaturePad');
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
     const srcW = canvas.width / ratio;
@@ -1826,57 +1508,160 @@ document.getElementById('signaturePrintButton').onclick = function() {
     tmpCtx.fillStyle = "#fff";
     tmpCtx.fillRect(0, 0, outW, outH);
     tmpCtx.drawImage(canvas, 0, 0, srcW * ratio, srcH * ratio, 0, 0, outW, outH);
+    const paperWidth = 58;
+    const imgW = 50, imgH = Math.round(outH / pxPerMm);
+    const marginX = Math.floor((paperWidth - imgW) / 2);
+    const marginY = 4;
+    const isDateTimeEnabled = selectedSignatureChip === 'with';
+    const dateTimeHeight = 16;
+    const bottomMargin = isDateTimeEnabled ? 16 : 18;
+    const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
+    const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     
-    // 一時的にQRコード機能をオフにして元の機能をテスト
-    executeSignaturePrint(null);
-    
-    function executeSignaturePrint(qrBase64) {
-        const paperWidth = 58;
-        const imgW = 50, imgH = Math.round(outH / pxPerMm);
-        const marginX = Math.floor((paperWidth - imgW) / 2);
-        const marginY = 4;
-        const isDateTimeEnabled = selectedSignatureChip === 'with';
-        const dateTimeHeight = 16;
-        const bottomMargin = isDateTimeEnabled ? 16 : 18;
-        const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
+    function printSignatureCopy() {
+        // 新しいキャンバスで全体を合成
+        const compositeCanvas = document.createElement('canvas');
+        const compositeCtx = compositeCanvas.getContext('2d');
         
-        const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
-        let currentCopy = 1;
+        const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
+        const canvasWidth = Math.round(58 * mmToPx); // 58mm
         
-        function printSignatureCopy(copyIndex) {
-            let dataUrl = tmpCanvas.toDataURL("image/png");
-            let printUrl = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=4&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${marginX},${marginY},${imgW},${imgH},${dataUrl.split(',')[1]}`;
-            
+        // サイン画像のサイズを取得
+        const signatureImg = new Image();
+        signatureImg.onload = function() {
+            // 日付・時刻の高さを計算
+            let dateTimeHeight = 0;
             if (isDateTimeEnabled) {
-                const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-                printUrl += `&2=${safeEncodeURIComponent(dateTimeString)},0,${marginY + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                const fontSize = 40; // 40px
+                dateTimeHeight = fontSize * 2.5; // 2行 + 余白
             }
             
-            if (copyIndex === selectedCopies) {
-                printUrl += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+            // 全体の高さを計算（手書き用の余白設定、サイズ縮小）
+            const signatureTopMargin = 8; // 手書き用上余白
+            const signatureBottomMargin = 25; // 手書き用下余白
+            
+            // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
+            const signatureScale = 0.92; // 92%にスケール（85%から修正）
+            const signatureWidth = Math.round((outW / pxPerMm * mmToPx) * signatureScale);
+            const signatureHeight = Math.round((outH / pxPerMm * mmToPx) * signatureScale);
+            const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin;
+            
+            compositeCanvas.width = canvasWidth;
+            compositeCanvas.height = totalHeight;
+            
+            // 背景を白にする
+            compositeCtx.fillStyle = '#FFFFFF';
+            compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
+            
+            // サインを描画（中央配置、縮小サイズ）
+            const signatureXOffset = -45; // 左右調整値（プラスで右に、マイナスで左に移動）
+            const signatureX = Math.round((canvasWidth - signatureWidth) / 2) + signatureXOffset;
+            const signatureY = signatureTopMargin; // 手書き用上余白
+            
+            compositeCtx.drawImage(tmpCanvas, signatureX, signatureY, signatureWidth, signatureHeight);
+            
+            // 日付・時刻を描画
+            if (isDateTimeEnabled) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth() + 1;
+                const day = now.getDate();
+                const hour = now.getHours();
+                const minute = now.getMinutes();
+                const second = now.getSeconds();
+                
+                const fontSize = 50; // 50px
+                compositeCtx.fillStyle = '#000000';
+                compositeCtx.font = `${fontSize}px Arial, sans-serif`;
+                compositeCtx.textAlign = 'center';
+                compositeCtx.textBaseline = 'top';
+                
+                // 真ん中の位置を正確に計算
+                const exactCenterX = Math.round(canvasWidth / 2)-40;// -40
+                
+                let yPos = signatureY + signatureHeight + 5; // 縮小されたサインの下
+                
+                // 日付行
+                const dateText = `${year}年 ${month}月${day}日`;
+                compositeCtx.fillText(dateText, exactCenterX, yPos);
+                yPos += fontSize * 1.2;
+                
+                // 時刻行
+                const timeText = `${hour}時${minute}分${second}秒`;
+                compositeCtx.fillText(timeText, exactCenterX, yPos);
             }
-            let siiUrl = `sii://print?url=${encodeURIComponent(printUrl)}`;
-            window.location.href = siiUrl;
-        }
-        
-        function printNext() {
-            if (currentCopy < selectedCopies) {
-                setTimeout(printNext, 10000);
+            
+            // 合成キャンバスをPNGデータURLに変換
+            const compositeDataUrl = compositeCanvas.toDataURL('image/png');
+            
+            // jsPDFを使用してPDFを生成
+            const { jsPDF } = window.jspdf;
+            const pdfHeight = Math.round(totalHeight / mmToPx);
+            
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: [58, pdfHeight]
+            });
+            
+            // PDFの設定を直接操作
+            pdf.internal.pageSize.width = 58;
+            pdf.internal.pageSize.height = pdfHeight;
+            
+            // 合成画像をPDFに追加
+            pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+            
+            // PDFをBase64形式で取得
+            const pdfBase64 = pdf.output('datauristring').split(',')[1];
+            
+            let thisPage = window.location.href;
+            let printUrl = 'siiprintagent://1.0/print?' +
+                          'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                          'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                          'Format='           + 'pdf' + '&' +
+                          'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                          'SelectOnError='    + 'yes' + '&' +
+                          'CutType='          + 'full' + '&' +
+                          'CutFeed='          + 'yes' + '&' +
+                          'FitToWidth='       + 'no' + '&' +
+                          'PaperWidth='       + '58';
+            
+            // 【革新的枚数印刷システム】sessionStorageによる永続化方式
+            
+            console.log(`署名印刷開始: 総枚数=${selectedCopies}枚`);
+            
+            // 枚数印刷情報をsessionStorageに保存
+            if (selectedCopies > 1) {
+                const printJob = {
+                    type: 'signature',
+                    totalCopies: selectedCopies,
+                    currentCopy: 1,
+                    pdfData: pdfBase64,
+                    thisPage: thisPage,
+                    timestamp: Date.now()
+                };
+                sessionStorage.setItem('printJob', JSON.stringify(printJob));
+                console.log(`署名印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
             }
-            printSignatureCopy(currentCopy);
-            currentCopy++;
-        }
-        printNext();
+            
+            // 1枚目を印刷
+            window.location.href = printUrl;
+        };
         
-        addHistory({
-            type: 'signature',
-            mode: 'signature',
-            data: tmpCanvas.toDataURL("image/png"),
-            dateTime: selectedSignatureChip,
-            copies: selectedCopies,
-            created: Date.now()
-        });
+        signatureImg.src = tmpCanvas.toDataURL("image/png");
     }
+    
+    // 現在の1枚を印刷（シンプル実行）
+    printSignatureCopy();
+    
+    addHistory({
+        type: 'signature',
+        mode: 'signature',
+        data: tmpCanvas.toDataURL("image/png"),
+        dateTime: selectedSignatureChip,
+        copies: selectedCopies,
+        created: Date.now()
+    });
 };
 // --- 画像印刷 ---
 function sendToPrintAssist(event) {
@@ -1893,65 +1678,425 @@ function sendToPrintAssist(event) {
     if ((!file && !usePreview) || selectedChip === '') return;
     const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
     function doPrint(base64Image) {
-        // 一時的にQRコード機能をオフにして元の機能をテスト
-        executePrint(base64Image, null);
-        
-        function executePrint(imageBase64, qrBase64) {
-            const paperWidth = 58;
-            let img = new window.Image();
-            img.onload = function() {
-                let origW = img.naturalWidth;
-                let origH = img.naturalHeight;
-                let ratio = Math.min(paperWidth / origW, 1);
-                if (shrinkChecked) ratio *= 0.6;
-                let imgW = Math.round(origW * ratio);
-                let imgH = Math.round(origH * ratio);
-                let x = Math.round((paperWidth - imgW) / 2);
-                let y = 2;
-                const isDateTimeEnabled = selectedChip === 'with';
-                const topMargin = 2;
-                const bottomMargin = isDateTimeEnabled ? 16 : 18;
-                const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
-                
-                const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
-                let currentCopy = 1;
-                
-                function printImageCopy(copyIndex) {
-                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=4&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${imageBase64}`;
-                    
-                    if (isDateTimeEnabled) {
-                        const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-                        printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-                    }
-                    
-                    if (copyIndex === selectedCopies) {
-                        printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-                    }
-                    let siiUrl = `sii://print?url=${encodeURIComponent(printUrlImage)}`;
-                    window.location.href = siiUrl;
-                }
-                
-                function printNext() {
-                    if (currentCopy < selectedCopies) {
-                        setTimeout(printNext, 10000);
-                    }
-                    printImageCopy(currentCopy);
-                    currentCopy++;
-                }
-                printNext();
-                
-                addHistory({
-                    type: 'image',
-                    mode: 'image',
-                    data: 'data:image/png;base64,' + imageBase64,
-                    dateTime: selectedChip,
-                    copies: selectedCopies,
-                    shrink: shrinkChecked,
-                    created: Date.now()
+        const paperWidth = 58;
+        let img = new window.Image();
+        img.onload = function() {
+            let origW = img.naturalWidth;
+            let origH = img.naturalHeight;
+            let ratio = Math.min(paperWidth / origW, 1);
+            if (shrinkChecked) ratio *= 0.6;
+            let imgW = Math.round(origW * ratio);
+            let imgH = Math.round(origH * ratio);
+            let x = Math.round((paperWidth - imgW) / 2);
+            let y = 2;
+            const isDateTimeEnabled = selectedChip === 'with';
+            const topMargin = 2;
+            const bottomMargin = isDateTimeEnabled ? 16 : 18;
+            const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
+            const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
+            
+            function printImageCopy() {
+                // 新しいキャンバスで全体を合成
+                const compositeCanvas = document.createElement('canvas');
+                const compositeCtx = compositeCanvas.getContext('2d', { 
+                    alpha: false,
+                    willReadFrequently: false,
+                    colorSpace: 'srgb',
+                    desynchronized: false
                 });
-            };
-            img.src = 'data:image/png;base64,' + imageBase64;
-        }
+                
+                const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
+                const canvasWidth = Math.round(58 * mmToPx); // 58mm
+                
+                // アップロードされた画像を読み込み
+                const uploadedImg = new Image();
+                uploadedImg.crossOrigin = 'anonymous'; // 画像品質向上
+                uploadedImg.onload = function() {
+                    // 日付・時刻の高さを計算
+                    let dateTimeHeight = 0;
+                    if (isDateTimeEnabled) {
+                        const fontSize = 50; // 50px
+                        dateTimeHeight = fontSize * 2.5; // 2行 + 余白
+                    }
+                    
+                    // 画像のサイズを58mm幅に合わせて計算
+                    const maxImgWidth = canvasWidth - -35; // 左右余白を除く
+                    const imgRatio = uploadedImg.naturalHeight / uploadedImg.naturalWidth;
+                    const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth);
+                    const finalImgHeight = finalImgWidth * imgRatio;
+                    
+                    // 全体の高さを計算（画像用の余白設定）
+                    const imageTopMargin = -50; // 画像用上余白
+                    const imageBottomMargin = 13; // 画像用下余白
+                    const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
+                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin;
+                    
+                    compositeCanvas.width = canvasWidth;
+                    compositeCanvas.height = totalHeight;
+                    
+                    // 背景を白にする
+                    compositeCtx.fillStyle = '#FFFFFF';
+                    compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
+                    
+                    // 画像の色濃淡を改善するための詳細設定（文字鮮明化）
+                    compositeCtx.imageSmoothingEnabled = false; // 文字の鮮明度を優先
+                    compositeCtx.imageSmoothingQuality = 'high';
+                    compositeCtx.globalCompositeOperation = 'source-over';
+                    compositeCtx.globalAlpha = 1.0;
+                    
+                    // 画像の色域とコントラストを保持するための設定
+                    compositeCtx.filter = 'none'; // フィルターを一旦無効化
+                    
+                    // 画像を描画（中央配置）
+                    const imgX = -59; // 左余白
+                    const imgY = imageTopMargin; // 画像用上余白
+                    
+                    compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
+                    
+                    // 画像描画後、濃淡を確実に印字させる最強処理
+                    const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const data = imageData.data;
+                    
+                    // 【サーマルプリンター特化】濃淡確実印字システム
+                    const width = finalImgWidth;
+                    const height = finalImgHeight;
+                    
+                    // オリジナル画像データを保持
+                    const originalData = new Uint8Array(data.length);
+                    for (let i = 0; i < data.length; i++) {
+                        originalData[i] = data[i];
+                    }
+                    
+                    // 1. 全色対応高精度グレースケール変換
+                    const grayData = new Uint8Array(width * height);
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+                        
+                        // 薄い色対応カラー→グレー変換
+                        let gray;
+                        
+                        // 薄い色の検出と保護
+                        const maxColor = Math.max(r, g, b);
+                        const minColor = Math.min(r, g, b);
+                        const colorRange = maxColor - minColor;
+                        
+                        // 薄い色（高明度・低彩度）の特別処理
+                        if (maxColor >= 200 && colorRange <= 50) {
+                            // 薄い色は明度を保持しつつグレー化
+                            gray = Math.round((r + g + b) / 3);
+                        } else {
+                            // 通常の色は標準的な輝度計算
+                            gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                        }
+                        
+                        // 薄い色の濃淡保護（コントラスト強化を控えめに）
+                        if (gray > 220) {
+                            gray = Math.min(255, gray + 10); // 薄い色は控えめに強化
+                        } else if (gray > 180) {
+                            // 中間薄色はそのまま保持
+                        } else if (gray < 50) {
+                            gray = Math.max(0, gray - 20);   // 暗い部分のみ強化
+                        }
+                        grayData[i / 4] = gray;
+                    }
+                    
+                    // 2. サーマルプリンター用ディザリング処理（Floyd-Steinbergディザリング）
+                    const ditheredData = new Uint8Array(width * height);
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const index = y * width + x;
+                            const oldPixel = grayData[index];
+                            
+                            // サーマルプリンター用濃淡階調マッピング（9段階）
+                            let newPixel;
+                            
+                            if (oldPixel >= 220) newPixel = 255;      // 純白
+                            else if (oldPixel >= 190) newPixel = 200; // 極薄
+                            else if (oldPixel >= 160) newPixel = 170; // 薄
+                            else if (oldPixel >= 130) newPixel = 140; // 中薄
+                            else if (oldPixel >= 100) newPixel = 110; // 中間
+                            else if (oldPixel >= 70) newPixel = 80;   // 中濃
+                            else if (oldPixel >= 40) newPixel = 50;   // 濃
+                            else if (oldPixel >= 15) newPixel = 25;   // 極濃
+                            else newPixel = 0;                        // 純黒
+                            
+                            ditheredData[index] = newPixel;
+                            const quantError = oldPixel - newPixel;
+                            
+                            // 薄い色に最適化された誤差拡散
+                            const errorWeight = oldPixel > 150 ? 1.2 : 1.0; // 薄い色は誤差拡散を強化
+                            
+                            // Floyd-Steinbergディザリングで誤差拡散（薄い色強化）
+                            if (x + 1 < width) {
+                                grayData[index + 1] = Math.max(0, Math.min(255, 
+                                    grayData[index + 1] + quantError * 7 / 16 * errorWeight));
+                            }
+                            if (y + 1 < height) {
+                                if (x - 1 >= 0) {
+                                    grayData[(y + 1) * width + (x - 1)] = Math.max(0, Math.min(255,
+                                        grayData[(y + 1) * width + (x - 1)] + quantError * 3 / 16 * errorWeight));
+                                }
+                                grayData[(y + 1) * width + x] = Math.max(0, Math.min(255,
+                                    grayData[(y + 1) * width + x] + quantError * 5 / 16 * errorWeight));
+                                if (x + 1 < width) {
+                                    grayData[(y + 1) * width + (x + 1)] = Math.max(0, Math.min(255,
+                                        grayData[(y + 1) * width + (x + 1)] + quantError * 1 / 16 * errorWeight));
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 3. 文字部分の検出と保護（文字は除く）
+                    for (let i = 0; i < data.length; i += 4) {
+                        const pixelIndex = i / 4;
+                        const x = pixelIndex % width;
+                        const y = Math.floor(pixelIndex / width);
+                        
+                        const r = originalData[i];
+                        const g = originalData[i + 1];
+                        const b = originalData[i + 2];
+                        
+                        // 文字判定（高コントラスト + エッジ検出）
+                        const isTextLike = isTextRegion(x, y, width, height, originalData);
+                        
+                        if (isTextLike) {
+                            // 文字部分は文字欠け防止強化処理
+                            const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                            // 文字欠け防止：より広い範囲を文字として認識
+                            let enhanced;
+                            if (gray < 160) { // 140 → 160 に変更してより多くを文字として認識
+                                // 文字部分は確実に黒く
+                                enhanced = Math.max(0, gray - 100); // 80 → 100 に変更してより黒く
+                            } else {
+                                // 背景部分は確実に白く
+                                enhanced = Math.min(255, gray + 60); // 50 → 60 に変更してより白く
+                            }
+                            data[i] = enhanced;
+                            data[i + 1] = enhanced;
+                            data[i + 2] = enhanced;
+                        } else {
+                            // 非文字部分：ノイズレスサーマルプリンター用濃淡表現
+                            const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                            
+                            // 4x4ディザリングマトリックス（ノイズ軽減）
+                            const pixelX = x % 4;
+                            const pixelY = y % 4;
+                            
+                            // 4x4 Bayerディザリングマトリックス（スムーズ版）
+                            const bayerMatrix = [
+                                [ 0,  8,  2, 10],
+                                [12,  4, 14,  6],
+                                [ 3, 11,  1,  9],
+                                [15,  7, 13,  5]
+                            ];
+                            
+                            // 閾値を15倍にして0-225の範囲に（よりスムーズに）
+                            const threshold = bayerMatrix[pixelY][pixelX] * 15;
+                            
+                            // サーマルプリンター用二値化（ノイズ軽減）
+                            let finalValue;
+                            
+                            // 濃淡を密度パターンで表現（スムーズ化）
+                            if (originalGray > threshold) {
+                                finalValue = 255; // 白
+                            } else {
+                                finalValue = 0;   // 黒
+                            }
+                            
+                            data[i] = finalValue;
+                            data[i + 1] = finalValue;
+                            data[i + 2] = finalValue;
+                        }
+                    }
+                    
+                    // 文字判定関数
+                    function isTextRegion(x, y, width, height, imgData) {
+                        if (x < 3 || x >= width - 3 || y < 3 || y >= height - 3) return false; // 2 → 3 に拡張
+                        
+                        const centerIndex = (y * width + x) * 4;
+                        const centerGray = Math.round(0.299 * imgData[centerIndex] + 
+                                                     0.587 * imgData[centerIndex + 1] + 
+                                                     0.114 * imgData[centerIndex + 2]);
+                        
+                        // 周辺のグレー値を取得（範囲を拡張）
+                        const neighbors = [];
+                        for (let dy = -3; dy <= 3; dy++) { // -2 → -3 に拡張
+                            for (let dx = -3; dx <= 3; dx++) { // -2 → -3 に拡張
+                                if (dx === 0 && dy === 0) continue;
+                                const nIndex = ((y + dy) * width + (x + dx)) * 4;
+                                const nGray = Math.round(0.299 * imgData[nIndex] + 
+                                                        0.587 * imgData[nIndex + 1] + 
+                                                        0.114 * imgData[nIndex + 2]);
+                                neighbors.push(nGray);
+                            }
+                        }
+                        
+                        // エッジ強度計算
+                        const maxDiff = Math.max(...neighbors.map(n => Math.abs(centerGray - n)));
+                        const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
+                        const contrast = Math.abs(centerGray - avgNeighbor);
+                        
+                        // 文字判定条件（文字欠け防止：より敏感な検出）
+                        return (maxDiff > 20 && contrast > 15) || 
+                               (centerGray < 120 && contrast > 15) || 
+                               (centerGray > 160 && contrast > 15) ||
+                               (maxDiff > 15 && (centerGray < 140 || centerGray > 140)) ||
+                               (contrast > 20); // 追加：コントラストがある箇所はすべて文字として扱う
+                    }
+                    
+                    // 調整されたピクセルデータを再描画
+                    compositeCtx.putImageData(imageData, imgX, imgY);
+                    
+                    // 【追加】最終シャープネス後処理で更に細かな濃淡を強化
+                    const finalData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const finalPixels = finalData.data;
+                    
+                    // UnsharpMask効果で細部を強調
+                    for (let i = 0; i < finalPixels.length; i += 4) {
+                        const pixelIndex = i / 4;
+                        const x = pixelIndex % finalImgWidth;
+                        const y = Math.floor(pixelIndex / finalImgWidth);
+                        
+                        if (x > 1 && x < finalImgWidth - 2 && y > 1 && y < finalImgHeight - 2) {
+                            // 現在のピクセル値
+                            const current = finalPixels[i];
+                            
+                            // 3x3カーネルで周辺平均を計算
+                            let sum = 0;
+                            let count = 0;
+                            for (let dy = -1; dy <= 1; dy++) {
+                                for (let dx = -1; dx <= 1; dx++) {
+                                    const idx = ((y + dy) * finalImgWidth + (x + dx)) * 4;
+                                    sum += finalPixels[idx];
+                                    count++;
+                                }
+                            }
+                            const blur = sum / count;
+                            
+                            // アンシャープマスク適用（細部強調）
+                            const sharpened = current + 0.6 * (current - blur);
+                            const final = Math.max(0, Math.min(255, Math.round(sharpened)));
+                            
+                            finalPixels[i] = final;
+                            finalPixels[i + 1] = final;
+                            finalPixels[i + 2] = final;
+                        }
+                    }
+                    
+                    // 最終処理済みデータを描画
+                    compositeCtx.putImageData(finalData, imgX, imgY);
+                    
+                    // 日付・時刻を描画
+                    if (isDateTimeEnabled) {
+                        const now = new Date();
+                        const year = now.getFullYear();
+                        const month = now.getMonth() + 1;
+                        const day = now.getDate();
+                        const hour = now.getHours();
+                        const minute = now.getMinutes();
+                        const second = now.getSeconds();
+                        
+                        const fontSize = 50;// 50px
+                        compositeCtx.fillStyle = '#000000';
+                        compositeCtx.font = `${fontSize}px Arial, sans-serif`;
+                        compositeCtx.textAlign = 'center';
+                        compositeCtx.textBaseline = 'top';
+                        
+                        // 真ん中の位置を正確に計算
+                        const exactCenterX = Math.round(canvasWidth / 2)-40;// -40
+                        
+                        let yPos = imgY + finalImgHeight + 10; // 画像の下
+                        
+                        // 日付行
+                        const dateText = `${year}年 ${month}月${day}日`;
+                        compositeCtx.fillText(dateText, exactCenterX, yPos);
+                        yPos += fontSize * 1.2;
+                        
+                        // 時刻行
+                        const timeText = `${hour}時${minute}分${second}秒`;
+                        compositeCtx.fillText(timeText, exactCenterX, yPos);
+                        yPos += 50; // 日付有り印刷の下部余白を50px追加
+                    }
+                    
+                    // 合成キャンバスを高品質PNGデータURLに変換
+                    const compositeDataUrl = compositeCanvas.toDataURL('image/png', 1.0);
+                    
+                    // さらに画質を向上させるため、中間的にJPEGでも作成
+                    const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.95);
+                    
+                    // jsPDFを使用してPDFを生成
+                    const { jsPDF } = window.jspdf;
+                    const pdfHeight = Math.round(totalHeight / mmToPx);
+                    
+                    const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: [58, pdfHeight]
+                    });
+                    
+                    // PDFの設定を直接操作
+                    pdf.internal.pageSize.width = 58;
+                    pdf.internal.pageSize.height = pdfHeight;
+                    
+                    // 合成画像をPDFに追加
+                    pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+                    
+                    // PDFをBase64形式で取得
+                    const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                    
+                    let thisPage = window.location.href;
+                    let printUrlImage = 'siiprintagent://1.0/print?' +
+                                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                      'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                                      'Format='           + 'pdf' + '&' +
+                                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                      'SelectOnError='    + 'yes' + '&' +
+                                      'CutType='          + 'full' + '&' +
+                                      'CutFeed='          + 'yes' + '&' +
+                                      'FitToWidth='       + 'no' + '&' +
+                                      'PaperWidth='       + '58';
+                    
+                    // 【革新的枚数印刷システム】sessionStorageによる永続化方式
+                    
+                    console.log(`画像印刷開始: 総枚数=${selectedCopies}枚`);
+                    
+                    // 枚数印刷情報をsessionStorageに保存
+                    if (selectedCopies > 1) {
+                        const printJob = {
+                            type: 'image',
+                            totalCopies: selectedCopies,
+                            currentCopy: 1,
+                            pdfData: pdfBase64,
+                            thisPage: thisPage,
+                            timestamp: Date.now()
+                        };
+                        sessionStorage.setItem('printJob', JSON.stringify(printJob));
+                        console.log(`印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
+                    }
+                    
+                    // 1枚目を印刷
+                    window.location.href = printUrlImage;
+                };
+                
+                uploadedImg.src = 'data:image/png;base64,' + base64Image;
+            }
+            
+            // 現在の1枚を印刷（シンプル実行）
+            printImageCopy();
+            
+            addHistory({
+                type: 'image',
+                mode: 'image',
+                data: 'data:image/png;base64,' + base64Image,
+                dateTime: selectedChip,
+                copies: selectedCopies,
+                shrink: shrinkChecked,
+                created: Date.now()
+            });
+        };
+        img.src = 'data:image/png;base64,' + base64Image;
     }
     if (usePreview) {
         doPrint(base64Image);
@@ -1990,7 +2135,7 @@ function wrapText(text) {
                 if (hasFullWidth && hasHalfWidth) {
                     maxLen = 14;
                 } else if (hasFullWidth) {
-                    maxLen = 16;
+                    maxLen = 15;
                 } else {
                     maxLen = 23;
                 }
@@ -2029,69 +2174,175 @@ function printText() {
     let text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
     text = toZenkaku(text);
-    
-    // 一時的にQRコード機能をオフにして元の機能をテスト
-    executeTextPrint(null);
-    
-    function executeTextPrint(qrBase64) {
-        const paperWidth = 58;
-        const isDateTimeEnabled = selectedTextChip === 'with';
-        const wrappedLines = wrapText(text);
-        const lineHeight = 4;
-        const topMargin = 6;
-        const dateTimeHeight = 16;
-        const spaceBetweenTextAndDate = 4;
-        const leftMargin = 2;
-        const bottomMargin = isDateTimeEnabled ? 15 : 19;
-        
-        let totalHeight = topMargin + (wrappedLines.length * lineHeight);
-        if (isDateTimeEnabled) {
-            totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
-        }
-        totalHeight += bottomMargin;
-        
-        const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-        let currentCopy = 1;
-        
-        function printTextCopy(copyIndex) {
-            let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=4&monochrome=0&pages=1`;
-            
-            wrappedLines.forEach((line, index) => {
-                const encodedLine = safeEncodeURIComponent(line);
-                printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-            });
-            
-            if (isDateTimeEnabled) {
-                const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-                const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-                printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
-            }
-            
-            if (copyIndex === selectedTextCopies) {
-                printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-            }
-            let siiUrl = `sii://print?url=${encodeURIComponent(printUrlText)}`;
-            window.location.href = siiUrl;
-        }
-        
-        function printNext() {
-            if (currentCopy < selectedTextCopies) {
-                setTimeout(printNext, 10000);
-            }
-            printTextCopy(currentCopy);
-            currentCopy++;
-        }
-        printNext();
-        
-        addHistory({
-            type: 'text',
-            mode: 'text',
-            data: textInput.value,
-            dateTime: selectedTextChip,
-            copies: selectedTextCopies,
-            created: Date.now()
-        });
+    const paperWidth = 58;
+    const isDateTimeEnabled = selectedTextChip === 'with';
+    const wrappedLines = wrapText(text);
+    const lineHeight = 4;
+    const topMargin = 6;
+    const dateTimeHeight = 16;
+    const spaceBetweenTextAndDate = 4;
+    const bottomMargin = isDateTimeEnabled ? 15 : 19;
+    const leftMargin = 2;
+    let totalHeight = topMargin + (wrappedLines.length * lineHeight);
+    if (isDateTimeEnabled) {
+        totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
     }
+    totalHeight += bottomMargin;
+    const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
+    
+    function printTextCopy() {
+        let printText = wrappedLines.join("\n");
+        
+        // キャンバスでテキストを画像として生成
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // キャンバスサイズ設定（58mm × 適切な高さ）
+        const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
+        const canvasWidth = Math.round(58 * mmToPx); // 58mm
+        
+        // フォントサイズ設定
+        const textFontSize = 38;  // テキスト用のフォントサイズ 38px
+        const dateFontSize = 50;  // 日付・時刻用のフォントサイズ 50px
+        
+        ctx.font = `${textFontSize}px Arial, sans-serif`;
+        ctx.fillStyle = '#000000';
+        
+        // テキストの行数から高さを計算
+        const lines = printText.split('\n');
+        const lineHeight = textFontSize * 1.2;
+        let textHeight = lines.length * lineHeight;
+        
+        // 日付・時刻のスペースを追加
+        if (isDateTimeEnabled) {
+            const dateLineHeight = dateFontSize * 1.2;
+            textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
+        }
+        
+        const canvasHeight = Math.round(textHeight + 60); // 上下余白調整
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        
+        // 背景を白にする
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        
+        // テキスト描画設定
+        ctx.fillStyle = '#000000';
+        ctx.font = `${textFontSize}px Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        
+        // 真ん中の位置を正確に計算
+        const exactCenterX = Math.round(canvasWidth / 2)-50;// -50 テキストの左右調整
+        
+        // テキストを描画（上部余白を小さく）
+        let yPos = 30; // 上余白を30pxに調整
+        for (let i = 0; i < lines.length; i++) {
+            ctx.fillText(lines[i], exactCenterX, yPos); // 真ん中に配置
+            yPos += lineHeight;
+        }
+        
+        // 日付・時刻を描画
+        if (isDateTimeEnabled) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const day = now.getDate();
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            const second = now.getSeconds();
+            
+            yPos += lineHeight * 0.3; // 余白を小さく
+            
+            // 日付・時刻用のフォント設定
+            ctx.font = `${dateFontSize}px Arial, sans-serif`;
+            const dateLineHeight = dateFontSize * 1.2;
+            
+            // 真ん中の位置を正確に計算
+            const exactCenterX = Math.round(canvasWidth / 2);
+            
+            // 日付の横位置調整（中央揃え微調整）
+            const dateOffsetX = -50; //-50 日付の横位置調整（マイナス値で左に、プラス値で右に移動）
+            const finalDateX = exactCenterX + dateOffsetX;
+            
+            // 日付行
+            const dateText = `${year}年 ${month}月${day}日`;
+            ctx.fillText(dateText, finalDateX, yPos);
+            yPos += dateLineHeight;
+            
+            // 時刻行
+            const timeText = `${hour}時${minute}分${second}秒`;
+            ctx.fillText(timeText, finalDateX, yPos);
+        }
+        
+        // キャンバスをPNGデータURLに変換
+        const pngDataUrl = canvas.toDataURL('image/png');
+        
+        // jsPDFを使用してPDFを生成
+        const { jsPDF } = window.jspdf;
+        const pdfHeight = Math.round(canvasHeight / mmToPx);
+        
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: [58, pdfHeight]
+        });
+        
+        // PDFの設定を直接操作
+        pdf.internal.pageSize.width = 58;
+        pdf.internal.pageSize.height = pdfHeight;
+        
+        // PNG画像をPDFに追加（位置調整なし、フルサイズ）
+        pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+        
+        // PDFをBase64形式で取得
+        const pdfBase64 = pdf.output('datauristring').split(',')[1];
+        
+        let thisPage = window.location.href;
+        let printUrl = 'siiprintagent://1.0/print?' +
+                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                      'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                      'Format='           + 'pdf' + '&' +
+                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                      'SelectOnError='    + 'yes' + '&' +
+                      'CutType='          + 'full' + '&' +
+                      'CutFeed='          + 'yes' + '&' +
+                      'FitToWidth='       + 'no' + '&' +
+                      'PaperWidth='       + '58';
+        
+        // 【革新的枚数印刷システム】sessionStorageによる永続化方式
+        
+        console.log(`テキスト印刷開始: 総枚数=${selectedTextCopies}枚`);
+        
+        // 枚数印刷情報をsessionStorageに保存
+        if (selectedTextCopies > 1) {
+            const printJob = {
+                type: 'text',
+                totalCopies: selectedTextCopies,
+                currentCopy: 1,
+                pdfData: pdfBase64,
+                thisPage: thisPage,
+                timestamp: Date.now()
+            };
+            sessionStorage.setItem('printJob', JSON.stringify(printJob));
+            console.log(`テキスト印刷ジョブ保存: ${selectedTextCopies}枚中1枚目実行`);
+        }
+        
+        // 1枚目を印刷
+        window.location.href = printUrl;
+    }
+    
+    // 現在の1枚を印刷（シンプル実行）
+    printTextCopy();
+    addHistory({
+        type: 'text',
+        mode: 'text',
+        data: textInput.value,
+        dateTime: selectedTextChip,
+        copies: selectedTextCopies,
+        created: Date.now()
+    });
 }
 function toggleClearButton() {
     const textInput = document.getElementById('textInput');
@@ -2125,18 +2376,6 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
-
-// QRコード読み取りボタンのイベントリスナー
-document.getElementById('qrScanBtn').addEventListener('click', openQRScanModal);
-document.getElementById('qrModalClose').addEventListener('click', closeQRScanModal);
-document.getElementById('qrCancelBtn').addEventListener('click', closeQRScanModal);
-
-// モーダル背景クリックで閉じる
-document.getElementById('qrScanModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        closeQRScanModal();
-    }
-});
 </script>
 </body>
 </html>
