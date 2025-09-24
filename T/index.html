@@ -1827,33 +1827,8 @@ document.getElementById('signaturePrintButton').onclick = function() {
     tmpCtx.fillRect(0, 0, outW, outH);
     tmpCtx.drawImage(canvas, 0, 0, srcW * ratio, srcH * ratio, 0, 0, outW, outH);
     
-    // 印刷データを保存
-    const printData = {
-        type: 'signature',
-        data: tmpCanvas.toDataURL("image/png"),
-        dateTime: selectedSignatureChip,
-        copies: parseInt(document.getElementById('signatureCopiesSelect').value)
-    };
-    saveQRData(qrId, printData);
-    
-    // QRコードを生成（失敗しても印刷は続行）
-    if (typeof QRCode !== 'undefined') {
-        generateQRCode(qrId, function(err, qrDataUrl) {
-            if (err) {
-                console.error('QRコード生成エラー:', err);
-                // QRコードなしで印刷続行
-                executeSignaturePrint(null);
-                return;
-            }
-            
-            // QRコードのbase64データを取得
-            const qrBase64 = qrDataUrl.split(',')[1];
-            executeSignaturePrint(qrBase64);
-        });
-    } else {
-        console.warn('QRCodeライブラリが利用できません。QRコードなしで印刷します。');
-        executeSignaturePrint(null);
-    }
+    // 一時的にQRコード機能をオフにして元の機能をテスト
+    executeSignaturePrint(null);
     
     function executeSignaturePrint(qrBase64) {
         const paperWidth = 58;
@@ -1862,21 +1837,8 @@ document.getElementById('signaturePrintButton').onclick = function() {
         const marginY = 4;
         const isDateTimeEnabled = selectedSignatureChip === 'with';
         const dateTimeHeight = 16;
-        
-        // QRコードのサイズと位置
-        const qrSize = 15;
-        const qrX = 2; // 左側に配置
-        
-        let totalHeight = marginY + imgH;
-        if (isDateTimeEnabled) {
-            totalHeight += dateTimeHeight;
-        }
-        if (qrBase64) {
-            totalHeight += qrSize + 4; // QRコード + 余白
-        }
-        
         const bottomMargin = isDateTimeEnabled ? 16 : 18;
-        totalHeight += bottomMargin;
+        const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
         
         const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
         let currentCopy = 1;
@@ -1885,18 +1847,9 @@ document.getElementById('signaturePrintButton').onclick = function() {
             let dataUrl = tmpCanvas.toDataURL("image/png");
             let printUrl = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=4&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${marginX},${marginY},${imgW},${imgH},${dataUrl.split(',')[1]}`;
             
-            let elementIndex = 2;
-            
             if (isDateTimeEnabled) {
                 const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-                printUrl += `&${elementIndex}=${safeEncodeURIComponent(dateTimeString)},0,${marginY + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-                elementIndex++;
-            }
-            
-            // QRコードを追加（日付・時刻の下、または手書きサインの下）
-            if (qrBase64) {
-                const qrY = isDateTimeEnabled ? (marginY + imgH + dateTimeHeight + 2) : (marginY + imgH + 2);
-                printUrl += `&${elementIndex}=%3C%3C%3CObject%3E%3E%3E,${qrX},${qrY},${qrSize},${qrSize},${qrBase64}`;
+                printUrl += `&2=${safeEncodeURIComponent(dateTimeString)},0,${marginY + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
             }
             
             if (copyIndex === selectedCopies) {
@@ -1940,37 +1893,8 @@ function sendToPrintAssist(event) {
     if ((!file && !usePreview) || selectedChip === '') return;
     const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
     function doPrint(base64Image) {
-        // QRコードID生成
-        const qrId = `TOKI01-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        // 印刷データを保存
-        const printData = {
-            type: 'image',
-            data: 'data:image/png;base64,' + base64Image,
-            dateTime: selectedChip,
-            copies: parseInt(document.getElementById('copiesSelect').value),
-            shrink: shrinkChecked
-        };
-        saveQRData(qrId, printData);
-        
-        // QRコードを生成（失敗しても印刷は続行）
-        if (typeof QRCode !== 'undefined') {
-            generateQRCode(qrId, function(err, qrDataUrl) {
-                if (err) {
-                    console.error('QRコード生成エラー:', err);
-                    // QRコードなしで印刷続行
-                    executePrint(base64Image, null);
-                    return;
-                }
-                
-                // QRコードのbase64データを取得
-                const qrBase64 = qrDataUrl.split(',')[1];
-                executePrint(base64Image, qrBase64);
-            });
-        } else {
-            console.warn('QRCodeライブラリが利用できません。QRコードなしで印刷します。');
-            executePrint(base64Image, null);
-        }
+        // 一時的にQRコード機能をオフにして元の機能をテスト
+        executePrint(base64Image, null);
         
         function executePrint(imageBase64, qrBase64) {
             const paperWidth = 58;
@@ -1986,23 +1910,8 @@ function sendToPrintAssist(event) {
                 let y = 2;
                 const isDateTimeEnabled = selectedChip === 'with';
                 const topMargin = 2;
-                
-                // QRコードのサイズと位置を計算
-                const qrSize = 15; // 小さいサイズ
-                const qrX = 2; // 左側に配置
-                
-                let currentElementCount = 1;
-                let totalHeight = topMargin + imgH;
-                
-                if (isDateTimeEnabled) {
-                    totalHeight += 16; // 日付・時刻エリア
-                }
-                
-                if (qrBase64) {
-                    totalHeight += qrSize + 4; // QRコード + 余白
-                }
-                
-                totalHeight += (isDateTimeEnabled ? 16 : 18); // 底部余白
+                const bottomMargin = isDateTimeEnabled ? 16 : 18;
+                const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
                 
                 const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
                 let currentCopy = 1;
@@ -2010,18 +1919,9 @@ function sendToPrintAssist(event) {
                 function printImageCopy(copyIndex) {
                     let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=4&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${imageBase64}`;
                     
-                    let elementIndex = 2;
-                    
                     if (isDateTimeEnabled) {
                         const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-                        printUrlImage += `&${elementIndex}=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-                        elementIndex++;
-                    }
-                    
-                    // QRコードを追加（日付・時刻の下、または画像の下）
-                    if (qrBase64) {
-                        const qrY = isDateTimeEnabled ? (topMargin + imgH + 16 + 2) : (topMargin + imgH + 2);
-                        printUrlImage += `&${elementIndex}=%3C%3C%3CObject%3E%3E%3E,${qrX},${qrY},${qrSize},${qrSize},${qrBase64}`;
+                        printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
                     }
                     
                     if (copyIndex === selectedCopies) {
@@ -2130,36 +2030,8 @@ function printText() {
     if (text.trim() === '' || selectedTextChip === '') return;
     text = toZenkaku(text);
     
-    // QRコードID生成
-    const qrId = `TOKI01-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    // 印刷データを保存
-    const printData = {
-        type: 'text',
-        data: textInput.value,
-        dateTime: selectedTextChip,
-        copies: parseInt(document.getElementById('textCopiesSelect').value)
-    };
-    saveQRData(qrId, printData);
-    
-    // QRコードを生成（失敗しても印刷は続行）
-    if (typeof QRCode !== 'undefined') {
-        generateQRCode(qrId, function(err, qrDataUrl) {
-            if (err) {
-                console.error('QRコード生成エラー:', err);
-                // QRコードなしで印刷続行
-                executeTextPrint(null);
-                return;
-            }
-            
-            // QRコードのbase64データを取得
-            const qrBase64 = qrDataUrl.split(',')[1];
-            executeTextPrint(qrBase64);
-        });
-    } else {
-        console.warn('QRCodeライブラリが利用できません。QRコードなしで印刷します。');
-        executeTextPrint(null);
-    }
+    // 一時的にQRコード機能をオフにして元の機能をテスト
+    executeTextPrint(null);
     
     function executeTextPrint(qrBase64) {
         const paperWidth = 58;
@@ -2170,22 +2042,12 @@ function printText() {
         const dateTimeHeight = 16;
         const spaceBetweenTextAndDate = 4;
         const leftMargin = 2;
-        
-        // QRコードのサイズと位置
-        const qrSize = 15;
-        const qrX = 2; // 左側に配置
+        const bottomMargin = isDateTimeEnabled ? 15 : 19;
         
         let totalHeight = topMargin + (wrappedLines.length * lineHeight);
-        
         if (isDateTimeEnabled) {
             totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
         }
-        
-        if (qrBase64) {
-            totalHeight += qrSize + 4; // QRコード + 余白
-        }
-        
-        const bottomMargin = isDateTimeEnabled ? 15 : 19;
         totalHeight += bottomMargin;
         
         const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
@@ -2199,21 +2061,10 @@ function printText() {
                 printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
             });
             
-            let elementIndex = wrappedLines.length + 1;
-            
             if (isDateTimeEnabled) {
                 const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
                 const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-                printUrlText += `&${elementIndex}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
-                elementIndex++;
-            }
-            
-            // QRコードを追加（日付・時刻の下、またはテキストの下）
-            if (qrBase64) {
-                const qrY = isDateTimeEnabled 
-                    ? (topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate + dateTimeHeight + 2)
-                    : (topMargin + (wrappedLines.length * lineHeight) + 2);
-                printUrlText += `&${elementIndex}=%3C%3C%3CObject%3E%3E%3E,${qrX},${qrY},${qrSize},${qrSize},${qrBase64}`;
+                printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
             }
             
             if (copyIndex === selectedTextCopies) {
