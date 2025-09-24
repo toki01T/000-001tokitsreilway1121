@@ -771,10 +771,10 @@ main {
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(0, 0, 0, 0.95);
 }
 .qr-modal-content {
-    background-color: var(--background-color);
+    background-color: #000;
     margin: 0;
     padding: 0;
     border: none;
@@ -791,19 +791,26 @@ main {
     padding: 1rem;
     background: var(--primary-color);
     color: white;
+    position: relative;
+    z-index: 3;
 }
 .qr-modal-header h2 {
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
+    font-weight: bold;
 }
 .qr-modal-close {
     background: transparent;
     border: none;
     color: white;
-    font-size: 2rem;
+    font-size: 1.8rem;
     cursor: pointer;
-    padding: 0;
+    padding: 0.2rem;
     line-height: 1;
+    border-radius: 4px;
+}
+.qr-modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 .qr-scan-container {
     flex: 1;
@@ -811,26 +818,53 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
-    background: black;
+    padding: 0;
+    background: #000;
     position: relative;
+    overflow: hidden;
 }
 #qrScanMessage {
     color: white;
     text-align: center;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
+    font-size: 1rem;
     position: absolute;
-    top: 1rem;
+    top: 2rem;
     left: 50%;
     transform: translateX(-50%);
     z-index: 2;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 #qrVideo {
     width: 100%;
-    max-width: 400px;
-    height: auto;
-    border-radius: 8px;
+    height: 100%;
+    object-fit: cover;
+    border: none;
+    border-radius: 0;
+}
+.qr-modal-footer {
+    padding: 1.5rem;
+    background: var(--primary-color);
+    text-align: center;
+    position: relative;
+    z-index: 3;
+}
+#qrCancelBtn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 2px solid white;
+    padding: 0.8rem 2rem;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+#qrCancelBtn:hover {
+    background: white;
+    color: var(--primary-color);
 }
 .qr-modal-footer {
     padding: 1rem;
@@ -1020,15 +1054,33 @@ function getQRData(qrId) {
 
 // QRコード生成関数
 function generateQRCode(data, callback) {
-    QRCode.toDataURL(data, {
-        width: 80,
-        height: 80,
-        margin: 1,
-        color: {
-            dark: '#000000',
-            light: '#FFFFFF'
+    try {
+        if (typeof QRCode === 'undefined') {
+            console.error('QRCodeライブラリが見つかりません');
+            callback(new Error('QRCodeライブラリが見つかりません'), null);
+            return;
         }
-    }, callback);
+        
+        QRCode.toDataURL(data, {
+            width: 80,
+            height: 80,
+            margin: 1,
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
+        }, function(err, url) {
+            if (err) {
+                console.error('QRCode生成エラー:', err);
+                callback(err, null);
+            } else {
+                callback(null, url);
+            }
+        });
+    } catch (error) {
+        console.error('QRCode生成例外:', error);
+        callback(error, null);
+    }
 }
 
 // QRコード読み取りモーダル関連
@@ -1038,23 +1090,36 @@ function openQRScanModal() {
     const message = document.getElementById('qrScanMessage');
     
     modal.style.display = 'block';
+    message.textContent = 'カメラを準備中...';
     
     // QRスキャナーの初期化
     if (!qrScanner) {
-        qrScanner = new QrScanner(video, result => {
-            handleQRScanResult(result.data);
-        }, {
-            preferredCamera: 'environment', // 背面カメラを優先
-            highlightScanRegion: true,
-            highlightCodeOutline: true
-        });
+        try {
+            if (typeof QrScanner === 'undefined') {
+                message.textContent = 'QRスキャナーライブラリが読み込まれていません';
+                return;
+            }
+            
+            qrScanner = new QrScanner(video, result => {
+                handleQRScanResult(result.data || result);
+            }, {
+                preferredCamera: 'environment', // 背面カメラを優先
+                highlightScanRegion: true,
+                highlightCodeOutline: true,
+                returnDetailedScanResult: false
+            });
+        } catch (error) {
+            console.error('QRスキャナー初期化エラー:', error);
+            message.textContent = 'QRスキャナーの初期化に失敗しました';
+            return;
+        }
     }
     
     qrScanner.start().then(() => {
         message.textContent = 'QRコードをスキャンしてください';
     }).catch(err => {
         console.error('カメラ起動エラー:', err);
-        message.textContent = 'カメラの起動に失敗しました';
+        message.textContent = 'カメラの起動に失敗しました。カメラの使用許可を確認してください。';
     });
 }
 
@@ -1063,7 +1128,11 @@ function closeQRScanModal() {
     modal.style.display = 'none';
     
     if (qrScanner) {
-        qrScanner.stop();
+        try {
+            qrScanner.stop();
+        } catch (error) {
+            console.error('QRスキャナー停止エラー:', error);
+        }
     }
 }
 
@@ -1767,19 +1836,24 @@ document.getElementById('signaturePrintButton').onclick = function() {
     };
     saveQRData(qrId, printData);
     
-    // QRコードを生成
-    generateQRCode(qrId, function(err, qrDataUrl) {
-        if (err) {
-            console.error('QRコード生成エラー:', err);
-            // QRコードなしで印刷続行
-            executeSignaturePrint(null);
-            return;
-        }
-        
-        // QRコードのbase64データを取得
-        const qrBase64 = qrDataUrl.split(',')[1];
-        executeSignaturePrint(qrBase64);
-    });
+    // QRコードを生成（失敗しても印刷は続行）
+    if (typeof QRCode !== 'undefined') {
+        generateQRCode(qrId, function(err, qrDataUrl) {
+            if (err) {
+                console.error('QRコード生成エラー:', err);
+                // QRコードなしで印刷続行
+                executeSignaturePrint(null);
+                return;
+            }
+            
+            // QRコードのbase64データを取得
+            const qrBase64 = qrDataUrl.split(',')[1];
+            executeSignaturePrint(qrBase64);
+        });
+    } else {
+        console.warn('QRCodeライブラリが利用できません。QRコードなしで印刷します。');
+        executeSignaturePrint(null);
+    }
     
     function executeSignaturePrint(qrBase64) {
         const paperWidth = 58;
@@ -1879,19 +1953,24 @@ function sendToPrintAssist(event) {
         };
         saveQRData(qrId, printData);
         
-        // QRコードを生成
-        generateQRCode(qrId, function(err, qrDataUrl) {
-            if (err) {
-                console.error('QRコード生成エラー:', err);
-                // QRコードなしで印刷続行
-                executePrint(base64Image, null);
-                return;
-            }
-            
-            // QRコードのbase64データを取得
-            const qrBase64 = qrDataUrl.split(',')[1];
-            executePrint(base64Image, qrBase64);
-        });
+        // QRコードを生成（失敗しても印刷は続行）
+        if (typeof QRCode !== 'undefined') {
+            generateQRCode(qrId, function(err, qrDataUrl) {
+                if (err) {
+                    console.error('QRコード生成エラー:', err);
+                    // QRコードなしで印刷続行
+                    executePrint(base64Image, null);
+                    return;
+                }
+                
+                // QRコードのbase64データを取得
+                const qrBase64 = qrDataUrl.split(',')[1];
+                executePrint(base64Image, qrBase64);
+            });
+        } else {
+            console.warn('QRCodeライブラリが利用できません。QRコードなしで印刷します。');
+            executePrint(base64Image, null);
+        }
         
         function executePrint(imageBase64, qrBase64) {
             const paperWidth = 58;
@@ -2063,19 +2142,24 @@ function printText() {
     };
     saveQRData(qrId, printData);
     
-    // QRコードを生成
-    generateQRCode(qrId, function(err, qrDataUrl) {
-        if (err) {
-            console.error('QRコード生成エラー:', err);
-            // QRコードなしで印刷続行
-            executeTextPrint(null);
-            return;
-        }
-        
-        // QRコードのbase64データを取得
-        const qrBase64 = qrDataUrl.split(',')[1];
-        executeTextPrint(qrBase64);
-    });
+    // QRコードを生成（失敗しても印刷は続行）
+    if (typeof QRCode !== 'undefined') {
+        generateQRCode(qrId, function(err, qrDataUrl) {
+            if (err) {
+                console.error('QRコード生成エラー:', err);
+                // QRコードなしで印刷続行
+                executeTextPrint(null);
+                return;
+            }
+            
+            // QRコードのbase64データを取得
+            const qrBase64 = qrDataUrl.split(',')[1];
+            executeTextPrint(qrBase64);
+        });
+    } else {
+        console.warn('QRCodeライブラリが利用できません。QRコードなしで印刷します。');
+        executeTextPrint(null);
+    }
     
     function executeTextPrint(qrBase64) {
         const paperWidth = 58;
