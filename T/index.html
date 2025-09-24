@@ -1123,22 +1123,41 @@ function loadHistoryList() {
 // QRコード関連の関数
 function generateQRCode(data) {
     return new Promise((resolve) => {
-        const canvas = document.createElement('canvas');
-        QRCode.toCanvas(canvas, data, {
-            width: 60,
-            margin: 0,
-            color: {
-                dark: '#000000',
-                light: '#FFFFFF'
-            }
-        }, (error) => {
-            if (error) {
-                console.error('QR Code generation error:', error);
+        try {
+            // データ長制限チェック
+            if (data.length > 2000) {
+                console.warn('QRコードデータが長すぎます:', data.length);
                 resolve(null);
-            } else {
-                resolve(canvas.toDataURL());
+                return;
             }
-        });
+            
+            const canvas = document.createElement('canvas');
+            QRCode.toCanvas(canvas, data, {
+                width: 60,
+                margin: 0,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                },
+                errorCorrectionLevel: 'M' // エラー訂正レベル
+            }, (error) => {
+                if (error) {
+                    console.error('QR Code generation error:', error);
+                    resolve(null);
+                } else {
+                    try {
+                        const dataUrl = canvas.toDataURL('image/png');
+                        resolve(dataUrl);
+                    } catch (canvasError) {
+                        console.error('Canvas toDataURL error:', canvasError);
+                        resolve(null);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('QRコード生成処理エラー:', error);
+            resolve(null);
+        }
     });
 }
 
@@ -1169,8 +1188,11 @@ async function startQrScanner() {
     const resultDiv = document.getElementById('qrScanResult');
     
     try {
-        // 背面カメラを優先的に取得
-        const constraints = {
+        // デバイス判定とカメラ制約の設定
+        const isAndroid = navigator.userAgent.toLowerCase().includes('android');
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        
+        let constraints = {
             video: {
                 facingMode: { ideal: 'environment' },
                 width: { ideal: 640 },
@@ -1178,18 +1200,50 @@ async function startQrScanner() {
             }
         };
         
+        // Android特有の設定
+        if (isAndroid) {
+            constraints.video.frameRate = { ideal: 15, max: 30 };
+        }
+        
+        // iOS特有の設定
+        if (isIOS) {
+            constraints.video.facingMode = 'environment'; // idealではなく必須に
+        }
+        
         qrStream = await navigator.mediaDevices.getUserMedia(constraints);
         video.srcObject = qrStream;
-        modal.classList.add('show');
-        qrScanning = true;
-        resultDiv.style.display = 'none';
         
-        // QRコードスキャン開始
-        scanQRCode();
+        // 動画再生の確実な開始
+        video.play().then(() => {
+            modal.classList.add('show');
+            qrScanning = true;
+            resultDiv.style.display = 'none';
+            
+            // QRコードスキャン開始
+            scanQRCode();
+        }).catch(error => {
+            console.error('動画再生エラー:', error);
+            video.play(); // 再試行
+            modal.classList.add('show');
+            qrScanning = true;
+            resultDiv.style.display = 'none';
+            scanQRCode();
+        });
         
     } catch (error) {
         console.error('カメラアクセスエラー:', error);
-        alert('カメラにアクセスできませんでした。\n背面カメラが利用可能か確認してください。');
+        
+        // エラー詳細に基づくメッセージ
+        let errorMessage = 'カメラにアクセスできませんでした。';
+        if (error.name === 'NotAllowedError') {
+            errorMessage += '\nカメラの使用を許可してください。';
+        } else if (error.name === 'NotFoundError') {
+            errorMessage += '\nカメラが見つかりませんでした。';
+        } else if (error.name === 'OverconstrainedError') {
+            errorMessage += '\n背面カメラが利用できません。';
+        }
+        
+        alert(errorMessage);
     }
 }
 
@@ -1200,35 +1254,51 @@ function scanQRCode() {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
-        
-        if (code) {
-            try {
-                const qrData = JSON.parse(code.data);
-                // toki01Tアプリ専用のQRコードかチェック
-                if (qrData.app === 'toki01T') {
-                    qrScanResult = qrData;
-                    document.getElementById('qrResultText').textContent = 'QRコードを読み取りました！';
-                    document.getElementById('qrScanResult').style.display = 'block';
-                    qrScanning = false;
-                    return;
-                } else {
-                    // 他のQRコードは無視
+        try {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: "dontInvert" // パフォーマンス向上
+            });
+            
+            if (code) {
+                try {
+                    const qrData = JSON.parse(code.data);
+                    // toki01Tアプリ専用のQRコードかチェック
+                    if (qrData.app === 'toki01T' && qrData.version) {
+                        qrScanResult = qrData;
+                        document.getElementById('qrResultText').textContent = 'QRコードを読み取りました！';
+                        document.getElementById('qrScanResult').style.display = 'block';
+                        qrScanning = false;
+                        
+                        // 成功音（可能であれば）
+                        try {
+                            if (navigator.vibrate) {
+                                navigator.vibrate(200); // Android振動
+                            }
+                        } catch(e) {}
+                        
+                        return;
+                    } else {
+                        // 他のQRコードは無視
+                    }
+                } catch (e) {
+                    // JSONパースエラーの場合は無視（他のQRコード）
                 }
-            } catch (e) {
-                // JSONパースエラーの場合は無視（他のQRコード）
             }
+        } catch (drawError) {
+            console.error('Canvas描画エラー:', drawError);
         }
     }
     
     if (qrScanning) {
-        requestAnimationFrame(scanQRCode);
+        // フレームレートを調整（パフォーマンス向上）
+        setTimeout(() => requestAnimationFrame(scanQRCode), 100);
     }
 }
 
@@ -1852,8 +1922,38 @@ document.getElementById('signaturePrintButton').onclick = function() {
             if (copyIndex === selectedCopies) {
                 printUrl += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
             }
+            
+            // iOS/Android対応
             let siiUrl = `sii://print?url=${encodeURIComponent(printUrl)}`;
-            window.location.href = siiUrl;
+            
+            if (navigator.userAgent.toLowerCase().includes('android')) {
+                const androidUrl = `intent://print?url=${encodeURIComponent(printUrl)}#Intent;scheme=sii;package=jp.co.sii.siiprintagent;end`;
+                window.location.href = androidUrl;
+            } else {
+                window.location.href = siiUrl;
+            }
+        }).catch(error => {
+            console.error('QRコード生成エラー:', error);
+            // QRコードなしで印刷続行
+            let dataUrl = tmpCanvas.toDataURL("image/png");
+            let printUrl = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=4&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${marginX},${marginY},${imgW},${imgH},${dataUrl.split(',')[1]}`;
+            
+            if (isDateTimeEnabled) {
+                const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
+                printUrl += `&2=${safeEncodeURIComponent(dateTimeString)},0,${marginY + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+            }
+            
+            if (copyIndex === selectedCopies) {
+                printUrl += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+            }
+            
+            let siiUrl = `sii://print?url=${encodeURIComponent(printUrl)}`;
+            if (navigator.userAgent.toLowerCase().includes('android')) {
+                const androidUrl = `intent://print?url=${encodeURIComponent(printUrl)}#Intent;scheme=sii;package=jp.co.sii.siiprintagent;end`;
+                window.location.href = androidUrl;
+            } else {
+                window.location.href = siiUrl;
+            }
         });
     }
     function printNext() {
@@ -1911,7 +2011,9 @@ function sendToPrintAssist(event) {
             };
             
             function printImageCopy(copyIndex) {
+                // QRコード生成（非同期だがエラーハンドリング付き）
                 generateQRCode(createQRData(historyData)).then(qrDataUrl => {
+                    // プリントURL作成
                     let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=4&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${base64Image}`;
                     
                     let paramIndex = 2;
@@ -1933,8 +2035,40 @@ function sendToPrintAssist(event) {
                     if (copyIndex === selectedCopies) {
                         printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
                     }
+                    
+                    // iOS/Android対応
                     let siiUrl = `sii://print?url=${encodeURIComponent(printUrlImage)}`;
-                    window.location.href = siiUrl;
+                    
+                    // Android対応（Androidの場合はIntentを使用）
+                    if (navigator.userAgent.toLowerCase().includes('android')) {
+                        // Android用のIntent URLスキーム
+                        const androidUrl = `intent://print?url=${encodeURIComponent(printUrlImage)}#Intent;scheme=sii;package=jp.co.sii.siiprintagent;end`;
+                        window.location.href = androidUrl;
+                    } else {
+                        // iOS用
+                        window.location.href = siiUrl;
+                    }
+                }).catch(error => {
+                    console.error('QRコード生成エラー:', error);
+                    // QRコードなしで印刷続行
+                    let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=4&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${base64Image}`;
+                    
+                    if (isDateTimeEnabled) {
+                        const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
+                        printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
+                    }
+                    
+                    if (copyIndex === selectedCopies) {
+                        printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+                    }
+                    
+                    let siiUrl = `sii://print?url=${encodeURIComponent(printUrlImage)}`;
+                    if (navigator.userAgent.toLowerCase().includes('android')) {
+                        const androidUrl = `intent://print?url=${encodeURIComponent(printUrlImage)}#Intent;scheme=sii;package=jp.co.sii.siiprintagent;end`;
+                        window.location.href = androidUrl;
+                    } else {
+                        window.location.href = siiUrl;
+                    }
                 });
             }
             function printNext() {
@@ -2083,8 +2217,44 @@ function printText() {
             if (copyIndex === selectedTextCopies) {
                 printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
             }
+            
+            // iOS/Android対応
             let siiUrl = `sii://print?url=${encodeURIComponent(printUrlText)}`;
-            window.location.href = siiUrl;
+            
+            if (navigator.userAgent.toLowerCase().includes('android')) {
+                const androidUrl = `intent://print?url=${encodeURIComponent(printUrlText)}#Intent;scheme=sii;package=jp.co.sii.siiprintagent;end`;
+                window.location.href = androidUrl;
+            } else {
+                window.location.href = siiUrl;
+            }
+        }).catch(error => {
+            console.error('QRコード生成エラー:', error);
+            // QRコードなしで印刷続行
+            let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=4&monochrome=0&pages=1`;
+            
+            wrappedLines.forEach((line, index) => {
+                const encodedLine = safeEncodeURIComponent(line);
+                printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
+            });
+            
+            if (isDateTimeEnabled) {
+                let paramIndex = wrappedLines.length + 1;
+                const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
+                const encodedDateTime = safeEncodeURIComponent(dateTimeString);
+                printUrlText += `&${paramIndex}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+            }
+            
+            if (copyIndex === selectedTextCopies) {
+                printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+            }
+            
+            let siiUrl = `sii://print?url=${encodeURIComponent(printUrlText)}`;
+            if (navigator.userAgent.toLowerCase().includes('android')) {
+                const androidUrl = `intent://print?url=${encodeURIComponent(printUrlText)}#Intent;scheme=sii;package=jp.co.sii.siiprintagent;end`;
+                window.location.href = androidUrl;
+            } else {
+                window.location.href = siiUrl;
+            }
         });
     }
     function printNext() {
