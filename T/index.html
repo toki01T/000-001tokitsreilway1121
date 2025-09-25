@@ -1641,11 +1641,15 @@ document.getElementById('signaturePrintButton').onclick = function() {
             // 日付・時刻の高さを計算
             let dateTimeHeight = 0;
             if (isDateTimeEnabled) {
-                const fontSize = 40; // 40px
+                const fontSize = 50; // 50px
                 dateTimeHeight = fontSize * 2.5; // 2行 + 余白
             }
             
-            // 全体の高さを計算（手書き用の余白設定、サイズ縮小）
+            // QRコードの高さも考慮
+            const qrCodeSize = 150; // QRコードサイズを更に大きく
+            const qrCodeHeight = isDateTimeEnabled ? 0 : qrCodeSize + 30; // 日付なしの場合のQRコード領域
+            
+            // 全体の高さを計算（手書き用の余白設定、サイズ縮小 + QRコード領域）
             const signatureTopMargin = 8; // 手書き用上余白
             const signatureBottomMargin = 25; // 手書き用下余白
             
@@ -1653,7 +1657,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             const signatureScale = 0.92; // 92%にスケール（85%から修正）
             const signatureWidth = Math.round((outW / pxPerMm * mmToPx) * signatureScale);
             const signatureHeight = Math.round((outH / pxPerMm * mmToPx) * signatureScale);
-            const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin;
+            const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin + qrCodeHeight;
             
             compositeCanvas.width = canvasWidth;
             compositeCanvas.height = totalHeight;
@@ -1683,17 +1687,17 @@ document.getElementById('signaturePrintButton').onclick = function() {
             if (qrData) {
                 qrCodeCanvas = generateQRCode(qrData);
                 if (qrCodeCanvas) {
-                    const qrSize = 130; // QRコードのサイズを大きくする
+                    const qrSize = 150; // QRコードのサイズを更に大きく
                     let qrX, qrY;
                     
                     if (isDateTimeEnabled) {
                         // 日付・時刻ありの場合：日付・時刻の左側に配置
                         qrX = 20; // 左端から20pxの位置
-                        qrY = signatureY + signatureHeight + 20; // サインの下、日付時刻エリア
+                        qrY = signatureY + signatureHeight + 30; // サインの下、日付時刻エリア
                     } else {
                         // 日付・時刻なしの場合：手書きの下部左側に配置
                         qrX = 20; // 左端から20pxの位置
-                        qrY = signatureY + signatureHeight + 10; // サインの直下
+                        qrY = signatureY + signatureHeight + 20; // サインの直下、十分な余白
                     }
                     
                     compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
@@ -1719,7 +1723,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 // QRコードがある場合は右側に配置、ない場合は中央
                 let dateX;
                 if (qrCodeCanvas) {
-                    dateX = 180; // QRコードの右側に配置
+                    dateX = 200; // QRコードの右側に配置（QRコードが大きくなったので調整）
                 } else {
                     dateX = Math.round(canvasWidth / 2) - 40; // 中央配置
                 }
@@ -1864,17 +1868,21 @@ function sendToPrintAssist(event) {
                         dateTimeHeight = fontSize * 2.5; // 2行 + 余白
                     }
                     
+                    // QRコードの高さも考慮
+                    const qrCodeSize = 150; // QRコードサイズを更に大きく
+                    const qrCodeHeight = isDateTimeEnabled ? 0 : qrCodeSize + 30; // 日付なしの場合のQRコード領域
+                    
                     // 画像のサイズを58mm幅に合わせて計算
                     const maxImgWidth = canvasWidth - -35; // 左右余白を除く
                     const imgRatio = uploadedImg.naturalHeight / uploadedImg.naturalWidth;
                     const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth);
                     const finalImgHeight = finalImgWidth * imgRatio;
                     
-                    // 全体の高さを計算（画像用の余白設定）
+                    // 全体の高さを計算（画像用の余白設定 + QRコード領域）
                     const imageTopMargin = -50; // 画像用上余白
                     const imageBottomMargin = 13; // 画像用下余白
                     const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
-                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin;
+                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrCodeHeight;
                     
                     compositeCanvas.width = canvasWidth;
                     compositeCanvas.height = totalHeight;
@@ -1912,17 +1920,17 @@ function sendToPrintAssist(event) {
                     if (qrData) {
                         qrCodeCanvas = generateQRCode(qrData);
                         if (qrCodeCanvas) {
-                            const qrSize = 130; // QRコードのサイズを大きくする
+                            const qrSize = 150; // QRコードのサイズを更に大きく
                             let qrX, qrY;
                             
                             if (isDateTimeEnabled) {
                                 // 日付・時刻ありの場合：日付・時刻の左側に配置
                                 qrX = 20; // 左端から20pxの位置
-                                qrY = imgY + finalImgHeight + 20; // 画像の下、日付時刻エリア
+                                qrY = imgY + finalImgHeight + 30; // 画像の下、日付時刻エリア
                             } else {
                                 // 日付・時刻なしの場合：画像の下部左側に配置
                                 qrX = 20; // 左端から20pxの位置  
-                                qrY = imgY + finalImgHeight + 10; // 画像の直下
+                                qrY = imgY + finalImgHeight + 20; // 画像の直下、十分な余白
                             }
                             
                             compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
@@ -2185,7 +2193,7 @@ function sendToPrintAssist(event) {
                         // QRコードがある場合は右側に配置、ない場合は中央
                         let dateX;
                         if (qrCodeCanvas) {
-                            dateX = 180; // QRコードの右側に配置
+                            dateX = 200; // QRコードの右側に配置（QRコードが大きくなったので調整）
                         } else {
                             dateX = Math.round(canvasWidth / 2) - 40; // 中央配置
                         }
@@ -2396,13 +2404,17 @@ function printText() {
         const lineHeight = textFontSize * 1.2;
         let textHeight = lines.length * lineHeight;
         
+        // QRコードの高さも考慮
+        const qrCodeSize = 150; // QRコードサイズを更に大きく
+        const qrCodeHeight = isDateTimeEnabled ? 0 : qrCodeSize + 30; // 日付なしの場合のQRコード領域
+        
         // 日付・時刻のスペースを追加
         if (isDateTimeEnabled) {
             const dateLineHeight = dateFontSize * 1.2;
             textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
         }
         
-        const canvasHeight = Math.round(textHeight + 60); // 上下余白調整
+        const canvasHeight = Math.round(textHeight + 60 + qrCodeHeight); // 上下余白調整 + QRコード領域
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
         
@@ -2440,17 +2452,17 @@ function printText() {
         if (qrData) {
             qrCodeCanvas = generateQRCode(qrData);
             if (qrCodeCanvas) {
-                const qrSize = 130; // QRコードのサイズを大きくする
+                const qrSize = 150; // QRコードのサイズを更に大きく
                 let qrX, qrY;
                 
                 if (isDateTimeEnabled) {
                     // 日付・時刻ありの場合：日付・時刻の左側に配置
                     qrX = 20; // 左端から20pxの位置
-                    qrY = textEndY + 20; // テキストの下、日付時刻エリア
+                    qrY = textEndY + 30; // テキストの下、日付時刻エリア
                 } else {
                     // 日付・時刻なしの場合：テキスト印字後の下部左側に配置
                     qrX = 20; // 左端から20pxの位置
-                    qrY = textEndY + 10; // テキストの直下
+                    qrY = textEndY + 20; // テキストの直下、十分な余白
                 }
                 
                 ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
@@ -2477,7 +2489,7 @@ function printText() {
             // QRコードがある場合は右側に配置、ない場合は中央
             let dateX;
             if (qrCodeCanvas) {
-                dateX = 180; // QRコードの右側に配置
+                dateX = 200; // QRコードの右側に配置（QRコードが大きくなったので調整）
             } else {
                 dateX = Math.round(canvasWidth / 2) - 50; // 中央配置
             }
@@ -2633,7 +2645,7 @@ function generateQRCode(data) {
         
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        const size = 100; // QRコードのセルサイズ
+        const size = 150; // QRコードのセルサイズを大きくする
         const moduleCount = qr.getModuleCount();
         const cellSize = size / moduleCount;
         
