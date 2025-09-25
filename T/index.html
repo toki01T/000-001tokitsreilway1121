@@ -905,11 +905,7 @@ footer p {
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
                     <label class="custom-checkbox" id="shrinkCheckboxLabel" style="margin-left:0.5em;margin-right:0.5em;">
-                        <input type="checkbox" id="shrinkCheckbox" title="縮小印刷" />
-                        <span class="checkmark"></span>
-                    </label>
-                    <label class="custom-checkbox" id="qrCheckboxLabel" style="margin-left:0.3em;margin-right:0.3em;">
-                        <input type="checkbox" id="qrCheckbox" title="QRコード印刷" checked />
+                        <input type="checkbox" id="shrinkCheckbox" title="QRコード印刷" />
                         <span class="checkmark"></span>
                     </label>
                 </div>
@@ -933,8 +929,8 @@ footer p {
                     <option value="5">5枚</option>
                 </select>
                 <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
-                <label class="custom-checkbox" id="textQrCheckboxLabel" style="margin-left:0.3em;margin-right:0.3em;">
-                    <input type="checkbox" id="textQrCheckbox" title="QRコード印刷" checked />
+                <label class="custom-checkbox" id="textQrCheckboxLabel" style="margin-left:0.5em;margin-right:0.5em;">
+                    <input type="checkbox" id="textQrCheckbox" title="QRコード印刷" />
                     <span class="checkmark"></span>
                 </label>
             </div>
@@ -962,8 +958,8 @@ footer p {
                     <option value="5">5枚</option>
                 </select>
                 <button id="signaturePrintButton" class="disabled" type="button">発行</button>
-                <label class="custom-checkbox" id="signatureQrCheckboxLabel" style="margin-left:0.3em;margin-right:0.3em;">
-                    <input type="checkbox" id="signatureQrCheckbox" title="QRコード印刷" checked />
+                <label class="custom-checkbox" id="signatureQrCheckboxLabel" style="margin-left:0.5em;margin-right:0.5em;">
+                    <input type="checkbox" id="signatureQrCheckbox" title="QRコード印刷" />
                     <span class="checkmark"></span>
                 </label>
             </div>
@@ -1647,6 +1643,9 @@ document.getElementById('signaturePrintButton').onclick = function() {
         const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
         const canvasWidth = Math.round(58 * mmToPx); // 58mm
         
+        // QRコード有効チェック
+        const isQrEnabledForSignature = document.getElementById('signatureQrCheckbox').checked;
+        
         // サイン画像のサイズを取得
         const signatureImg = new Image();
         signatureImg.onload = function() {
@@ -1660,7 +1659,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             // 全体の高さを計算（手書き用の余白設定、サイズ縮小）
             const signatureTopMargin = 8; // 手書き用上余白
             const signatureBottomMargin = 25; // 手書き用下余白
-            const qrCodeMargin = qrEnabled && !isDateTimeEnabled ? 180 : 0; // QRコードON且つ日付なしの場合のみ追加余白
+            const qrCodeMargin = isQrEnabledForSignature ? 200 : 0; // QRコード用の追加余白（有効時のみ）
             
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
             const signatureScale = 0.92; // 92%にスケール（85%から修正）
@@ -1682,10 +1681,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
             
             compositeCtx.drawImage(tmpCanvas, signatureX, signatureY, signatureWidth, signatureHeight);
             
-            // QRコードを生成して配置（チェックボックスがONの場合のみ）
+            // QRコードを生成して配置（チェックボックスがオンの場合のみ）
             let qrCodeCanvas = null;
-            const qrEnabled = document.getElementById('signatureQrCheckbox').checked;
-            if (qrEnabled) {
+            
+            if (isQrEnabledForSignature) {
                 const historyItem = {
                     type: 'signature',
                     mode: 'signature',
@@ -1698,17 +1697,17 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 if (qrData) {
                     qrCodeCanvas = generateQRCode(qrData);
                     if (qrCodeCanvas) {
-                        const qrSize = 160; // QRコードのサイズ
+                        const qrSize = 140; // サイズを少し小さく調整
                         let qrX, qrY;
                         
                         if (isDateTimeEnabled) {
                             // 日付・時刻ありの場合：日付・時刻の左側に配置
                             qrX = 15; // 左端から15pxの位置
-                            qrY = signatureY + signatureHeight + 30; // サインの下、日付時刻エリア
+                            qrY = signatureY + signatureHeight + 40; // サインの下、より下に配置
                         } else {
                             // 日付・時刻なしの場合：手書きの下部左側に配置
                             qrX = 15; // 左端から15pxの位置
-                            qrY = signatureY + signatureHeight + 20; // サインの直下
+                            qrY = signatureY + signatureHeight + 30; // サインの直下、より下に配置
                         }
                         
                         // QRコードを鮮明に描画
@@ -1735,16 +1734,17 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 compositeCtx.textAlign = 'left'; // 左揃えに変更
                 compositeCtx.textBaseline = 'top';
                 
-                // QRコードがONで存在する場合は右側に配置、OFFまたは存在しない場合は中央
+                // QRコードがある場合は右側に配置、ない場合は中央
                 let dateX;
-                if (qrEnabled && qrCodeCanvas) {
-                    dateX = 200; // QRコードの右側に配置（QRコードサイズに合わせて調整）
+                if (qrCodeCanvas) {
+                    dateX = 180; // QRコードの右側に配置
                 } else {
-                    compositeCtx.textAlign = 'center'; // 中央揃えに変更
-                    dateX = Math.round(canvasWidth / 2); // 中央位置
+                    // QRコードがない場合は中央に配置
+                    compositeCtx.textAlign = 'center';
+                    dateX = Math.round(canvasWidth / 2); // 完全中央配置
                 }
                 
-                let yPos = signatureY + signatureHeight + 5; // 縮小されたサインの下
+                let yPos = signatureY + signatureHeight + 15; // 縮小されたサインの下、適切な間隔
                 
                 // 日付行
                 const dateText = `${year}年 ${month}月${day}日`;
@@ -1860,6 +1860,9 @@ function sendToPrintAssist(event) {
             const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
             
+            // QRコード有効チェック
+            const isQrEnabledForImage = document.getElementById('shrinkCheckbox').checked;
+            
             function printImageCopy() {
                 // 新しいキャンバスで全体を合成
                 const compositeCanvas = document.createElement('canvas');
@@ -1894,7 +1897,7 @@ function sendToPrintAssist(event) {
                     const imageTopMargin = -50; // 画像用上余白
                     const imageBottomMargin = 13; // 画像用下余白
                     const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
-                    const qrCodeMargin = qrEnabled && !isDateTimeEnabled ? 180 : 0; // QRコードON且つ日付なしの場合のみ追加余白
+                    const qrCodeMargin = isQrEnabledForImage ? 200 : 0; // QRコード用の追加余白（有効時のみ）
                     const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrCodeMargin;
                     
                     compositeCanvas.width = canvasWidth;
@@ -1918,10 +1921,10 @@ function sendToPrintAssist(event) {
                     const imgX = -59; // 左余白
                     const imgY = imageTopMargin; // 画像用上余白
                     
-                    // QRコードを生成して配置（チェックボックスがONの場合のみ）
+                    // QRコードを生成して配置（チェックボックスがオンの場合のみ）
                     let qrCodeCanvas = null;
-                    const qrEnabled = document.getElementById('qrCheckbox').checked;
-                    if (qrEnabled) {
+                    
+                    if (isQrEnabledForImage) {
                         const historyItem = {
                             type: 'image',
                             mode: 'image',
@@ -1935,17 +1938,17 @@ function sendToPrintAssist(event) {
                         if (qrData) {
                             qrCodeCanvas = generateQRCode(qrData);
                             if (qrCodeCanvas) {
-                                const qrSize = 160; // QRコードのサイズ
+                                const qrSize = 140; // サイズを少し小さく調整
                                 let qrX, qrY;
                                 
                                 if (isDateTimeEnabled) {
                                     // 日付・時刻ありの場合：日付・時刻の左側に配置
                                     qrX = 15; // 左端から15pxの位置
-                                    qrY = imgY + finalImgHeight + 30; // 画像の下、日付時刻エリア
+                                    qrY = imgY + finalImgHeight + 40; // 画像の下、より下に配置
                                 } else {
                                     // 日付・時刻なしの場合：画像の下部左側に配置
                                     qrX = 15; // 左端から15pxの位置  
-                                    qrY = imgY + finalImgHeight + 20; // 画像の直下
+                                    qrY = imgY + finalImgHeight + 30; // 画像の直下、より下に配置
                                 }
                                 
                                 // QRコードを鮮明に描画
@@ -2209,17 +2212,17 @@ function sendToPrintAssist(event) {
                         compositeCtx.textAlign = 'left'; // 左揃えに変更
                         compositeCtx.textBaseline = 'top';
                         
-                        // QRコードがONで存在する場合は右側に配置、OFFまたは存在しない場合は中央
+                        // QRコードがある場合は右側に配置、ない場合は中央
                         let dateX;
-                        if (qrEnabled && qrCodeCanvas) {
-                            dateX = 200; // QRコードの右側に配置（QRコードサイズに合わせて調整）
+                        if (qrCodeCanvas) {
+                            dateX = 180; // QRコードの右側に配置
                         } else {
-                            dateX = Math.round(canvasWidth / 2) - 100; // 中央配置
-                            compositeCtx.textAlign = 'center'; // 中央揃えに変更
-                            dateX = Math.round(canvasWidth / 2); // 中央位置
+                            // QRコードがない場合は中央に配置
+                            compositeCtx.textAlign = 'center';
+                            dateX = Math.round(canvasWidth / 2); // 完全中央配置
                         }
                         
-                        let yPos = imgY + finalImgHeight + 10; // 画像の下
+                        let yPos = imgY + finalImgHeight + 25; // 画像の下、適切な間隔
                         
                         // 日付行
                         const dateText = `${year}年 ${month}月${day}日`;
@@ -2402,6 +2405,9 @@ function printText() {
     totalHeight += bottomMargin;
     const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
     
+    // QRコード有効チェック
+    const isQrEnabledForText = document.getElementById('textQrCheckbox').checked;
+    
     function printTextCopy() {
         let printText = wrappedLines.join("\n");
         
@@ -2432,8 +2438,7 @@ function printText() {
         }
         
         // QRコード用の追加スペースを確保
-        const qrEnabledForHeight = document.getElementById('textQrCheckbox').checked;
-        const qrCodeMargin = qrEnabledForHeight && !isDateTimeEnabled ? 180 : 0; // QRコードON且つ日付なしの場合のみ追加余白
+        const qrCodeMargin = isQrEnabledForText ? 200 : 0; // QRコード分のスペース（有効時のみ）
         const canvasHeight = Math.round(textHeight + 60 + qrCodeMargin); // 上下余白調整 + QRコード用余白
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
@@ -2460,10 +2465,10 @@ function printText() {
         
         const textEndY = yPos; // テキスト終了位置を保存
         
-        // QRコードを生成して配置（チェックボックスがONの場合のみ）
+        // QRコードを生成して配置（チェックボックスがオンの場合のみ）
         let qrCodeCanvas = null;
-        const qrEnabled = document.getElementById('textQrCheckbox').checked;
-        if (qrEnabled) {
+        
+        if (isQrEnabledForText) {
             const historyItem = {
                 type: 'text',
                 mode: 'text',
@@ -2476,17 +2481,17 @@ function printText() {
             if (qrData) {
                 qrCodeCanvas = generateQRCode(qrData);
                 if (qrCodeCanvas) {
-                    const qrSize = 160; // QRコードのサイズ
+                    const qrSize = 140; // サイズを少し小さく調整
                     let qrX, qrY;
                     
                     if (isDateTimeEnabled) {
                         // 日付・時刻ありの場合：日付・時刻の左側に配置
                         qrX = 15; // 左端から15pxの位置
-                        qrY = textEndY + 30; // テキストの下、日付時刻エリア
+                        qrY = textEndY + 40; // テキストの下、より下に配置
                     } else {
                         // 日付・時刻なしの場合：テキスト印字後の下部左側に配置
                         qrX = 15; // 左端から15pxの位置
-                        qrY = textEndY + 20; // テキストの直下
+                        qrY = textEndY + 30; // テキストの直下、より下に配置
                     }
                     
                     // QRコードを鮮明に描画
@@ -2514,13 +2519,14 @@ function printText() {
             ctx.textAlign = 'left'; // 左揃えに変更
             const dateLineHeight = dateFontSize * 1.2;
             
-            // QRコードがONで存在する場合は右側に配置、OFFまたは存在しない場合は中央
+            // QRコードがある場合は右側に配置、ない場合は中央
             let dateX;
-            if (qrEnabled && qrCodeCanvas) {
-                dateX = 200; // QRコードの右側に配置（QRコードサイズに合わせて調整）
+            if (qrCodeCanvas) {
+                dateX = 180; // QRコードの右側に配置
             } else {
-                ctx.textAlign = 'center'; // 中央揃えに変更
-                dateX = Math.round(canvasWidth / 2); // 中央位置
+                // QRコードがない場合は中央に配置
+                ctx.textAlign = 'center';
+                dateX = Math.round(canvasWidth / 2); // 完全中央配置
             }
             
             // 日付行
@@ -2691,8 +2697,8 @@ function generateQRCode(data) {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, size, size);
         
-        // QRコードを描画（薄めの色で読み取りやすく）
-        ctx.fillStyle = '#333333'; // 濃い黒から薄めのグレーに変更
+        // QRコードを描画（薄めの色で）
+        ctx.fillStyle = '#333333'; // 黒より少し薄い色に変更
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
