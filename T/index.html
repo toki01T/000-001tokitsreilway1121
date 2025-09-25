@@ -62,7 +62,7 @@ header {
     top: 0;
     left: 0;
     z-index: 100;
-    height: 40px;
+    height: 36px;
     display: flex;
     align-items: center;
 }
@@ -72,7 +72,7 @@ header {
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    height: 40px;
+    height: 36px;
     padding: 0 1rem;
     box-sizing: border-box;
     position: relative;
@@ -92,16 +92,16 @@ header {
 }
 #historyMenuBtn {
     position: absolute;
-    right: 1rem;
+    right: 0.8rem;
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
     border: none;
     color: #fff;
-    font-size: 1.7rem;
+    font-size: 1.4rem;
     cursor: pointer;
     z-index: 12;
-    padding: 0;
+    padding: 0.2rem;
     width: auto;
     height: auto;
 }
@@ -388,7 +388,7 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-top: 62px;
+    padding-top: 58px;
     padding-bottom: 80px;
     background: var(--background-color);
     color: var(--text-color);
@@ -396,7 +396,7 @@ main {
 }
 @media (max-width: 600px) {
     main {
-        padding-top: 52px;
+        padding-top: 48px;
         padding-bottom: 80px;
     }
     #historyDrawer { width: 95vw; }
@@ -884,6 +884,27 @@ let selectedTextChip = '';
 let selectedSignatureChip = '';
 let lastPreviewImageNaturalWidth = 0;
 let lastPreviewImageNaturalHeight = 0;
+
+// デバイス判定関数
+function isAndroid() {
+    return /Android/i.test(navigator.userAgent);
+}
+
+function isiOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+// 印刷URL生成関数（プラットフォーム対応）
+function generatePrintUrl(printAssistUrl) {
+    if (isAndroid()) {
+        // Android用: intent URLスキーム
+        return `intent://print?url=${encodeURIComponent(printAssistUrl)}#Intent;scheme=sii;package=com.sii.android.printassist;end`;
+    } else {
+        // iOS用: 従来のsii://スキーム
+        return `sii://print?url=${encodeURIComponent(printAssistUrl)}`;
+    }
+}
+
 const DB_NAME = 'toki01_history';
 const DB_VERSION = 1;
 const STORE_NAME = 'history';
@@ -1261,7 +1282,8 @@ function checkAndContinuePrinting() {
                 console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
             }
             
-            window.location.href = nextPrintUrl;
+            const siiUrl = generatePrintUrl(nextPrintUrl);
+            window.location.href = siiUrl;
         } else {
             // 全印刷完了
             sessionStorage.removeItem('printJob');
@@ -1644,8 +1666,9 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 console.log(`署名印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
             }
             
-            // 1枚目を印刷
-            window.location.href = printUrl;
+            // 1枚目を印刷（プラットフォーム対応）
+            const siiUrl = generatePrintUrl(printUrl);
+            window.location.href = siiUrl;
         };
         
         signatureImg.src = tmpCanvas.toDataURL("image/png");
@@ -2076,8 +2099,9 @@ function sendToPrintAssist(event) {
                         console.log(`印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
                     }
                     
-                    // 1枚目を印刷
-                    window.location.href = printUrlImage;
+                    // 1枚目を印刷（プラットフォーム対応）
+                    const siiUrl = generatePrintUrl(printUrlImage);
+                    window.location.href = siiUrl;
                 };
                 
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
@@ -2329,8 +2353,9 @@ function printText() {
             console.log(`テキスト印刷ジョブ保存: ${selectedTextCopies}枚中1枚目実行`);
         }
         
-        // 1枚目を印刷
-        window.location.href = printUrl;
+        // 1枚目を印刷（プラットフォーム対応）
+        const siiUrl = generatePrintUrl(printUrl);
+        window.location.href = siiUrl;
     }
     
     // 現在の1枚を印刷（シンプル実行）
@@ -2367,6 +2392,14 @@ function autoWrap(textarea) {
     const wrappedLines = wrapText(text);
     textarea.value = wrappedLines.join('\n');
 }
+
+// デバイス情報をコンソールに出力（デバッグ用）
+console.log('=== デバイス情報 ===');
+console.log('User Agent:', navigator.userAgent);
+console.log('Android判定:', isAndroid());
+console.log('iOS判定:', isiOS());
+console.log('==================');
+
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
         navigator.serviceWorker.register('service-worker.js').then(function(registration) {
