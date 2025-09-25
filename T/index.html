@@ -1697,7 +1697,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 if (qrData) {
                     qrCodeCanvas = generateQRCode(qrData);
                     if (qrCodeCanvas) {
-                        const qrSize = 140; // サイズを少し小さく調整
+                        const qrSize = 160; // 読み取り精度を優先してサイズ拡大
                         let qrX, qrY;
                         
                         if (isDateTimeEnabled) {
@@ -1710,8 +1710,11 @@ document.getElementById('signaturePrintButton').onclick = function() {
                             qrY = signatureY + signatureHeight + 30; // サインの直下、より下に配置
                         }
                         
-                        // QRコードを鮮明に描画
+                        // QRコードを最高品質で描画（サーマルプリンター最適化）
                         compositeCtx.imageSmoothingEnabled = false;
+                        compositeCtx.webkitImageSmoothingEnabled = false;
+                        compositeCtx.mozImageSmoothingEnabled = false;
+                        compositeCtx.msImageSmoothingEnabled = false;
                         compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
                         compositeCtx.imageSmoothingEnabled = true;
                     }
@@ -1938,7 +1941,7 @@ function sendToPrintAssist(event) {
                         if (qrData) {
                             qrCodeCanvas = generateQRCode(qrData);
                             if (qrCodeCanvas) {
-                                const qrSize = 140; // サイズを少し小さく調整
+                                const qrSize = 160; // 読み取り精度を優先してサイズ拡大
                                 let qrX, qrY;
                                 
                                 if (isDateTimeEnabled) {
@@ -1951,8 +1954,11 @@ function sendToPrintAssist(event) {
                                     qrY = imgY + finalImgHeight + 30; // 画像の直下、より下に配置
                                 }
                                 
-                                // QRコードを鮮明に描画
+                                // QRコードを最高品質で描画（サーマルプリンター最適化）
                                 compositeCtx.imageSmoothingEnabled = false;
+                                compositeCtx.webkitImageSmoothingEnabled = false;
+                                compositeCtx.mozImageSmoothingEnabled = false;
+                                compositeCtx.msImageSmoothingEnabled = false;
                                 compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
                                 compositeCtx.imageSmoothingEnabled = true;
                             }
@@ -2481,7 +2487,7 @@ function printText() {
             if (qrData) {
                 qrCodeCanvas = generateQRCode(qrData);
                 if (qrCodeCanvas) {
-                    const qrSize = 140; // サイズを少し小さく調整
+                    const qrSize = 160; // 読み取り精度を優先してサイズ拡大
                     let qrX, qrY;
                     
                     if (isDateTimeEnabled) {
@@ -2494,9 +2500,13 @@ function printText() {
                         qrY = textEndY + 30; // テキストの直下、より下に配置
                     }
                     
-                    // QRコードを鮮明に描画
+                    // QRコードを最高品質で描画（サーマルプリンター最適化）
                     ctx.imageSmoothingEnabled = false;
+                    ctx.webkitImageSmoothingEnabled = false;
+                    ctx.mozImageSmoothingEnabled = false;
+                    ctx.msImageSmoothingEnabled = false;
                     ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
+                    ctx.imageSmoothingEnabled = true;
                     ctx.imageSmoothingEnabled = true;
                 }
             }
@@ -2645,34 +2655,20 @@ if ('serviceWorker' in navigator) {
 // QRコード用データの生成
 function generateQRData(item) {
     const timestamp = Date.now();
-    const data = {
-        id: timestamp,
-        type: item.type,
-        mode: item.mode,
-        dateTime: item.dateTime,
-        copies: item.copies,
-        created: item.created || timestamp,
-        appVersion: QR_VERSION,
-        shrink: item.shrink || false
-    };
     
-    // データを最小限に圧縮（QRコード読み取り精度向上）
+    // 超コンパクトなデータ構造（最高読み取り精度優先）
     const compactData = {
-        i: data.id,
-        t: data.type,
-        d: data.dateTime,
-        c: data.copies,
-        cr: data.created,
-        v: data.appVersion
+        i: timestamp.toString(36), // 36進数で大幅圧縮
+        t: item.type.charAt(0), // 'image'→'i', 'text'→'t', 'signature'→'s'
+        d: new Date().getFullYear().toString().slice(2) + 
+           String(new Date().getMonth() + 1).padStart(2, '0') + 
+           String(new Date().getDate()).padStart(2, '0'), // YYMMDD形式
+        c: item.copies || 1
     };
     
-    // データ部分は最小限に（容量削減）
-    if (item.type === 'text') {
-        compactData.txt = item.data.substring(0, 50); // テキストは先頭50文字のみ
-    }
-    
-    const jsonStr = JSON.stringify(compactData);
-    return QR_PREFIX + jsonStr;
+    // データサイズを極限まで削減（特殊文字も除去）
+    const jsonStr = JSON.stringify(compactData).replace(/[{}":]/g, '');
+    return QR_PREFIX + btoa(jsonStr).replace(/[=+/]/g, ''); // Base64エンコード後、特殊文字除去
 }
 
 // QRコード画像の生成
@@ -2683,45 +2679,68 @@ function generateQRCode(data) {
             return null;
         }
         
-        const qr = qrcode(0, 'M'); // エラー訂正レベルをMに戻す（読み取り精度向上）
+        const qr = qrcode(0, 'H'); // エラー訂正レベルをHに変更（最高品質）
         qr.addData(data);
         qr.make();
         
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        const size = 300; // QRコードのベースサイズをさらに大きく（読み取り精度向上）
+        const size = 400; // QRコードのベースサイズを大幅に拡大（超高解像度）
         const moduleCount = qr.getModuleCount();
-        const cellSize = size / moduleCount;
+        const cellSize = Math.floor(size / moduleCount); // 整数にして境界を明確に
+        const actualSize = cellSize * moduleCount; // 実際のサイズを再計算
         
-        canvas.width = size;
-        canvas.height = size;
+        canvas.width = actualSize;
+        canvas.height = actualSize;
         
-        // アンチエイリアシングを無効にして鮮明に
+        // 最高品質の描画設定
         ctx.imageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
         ctx.msImageSmoothingEnabled = false;
+        ctx.textRenderingOptimization = 'optimizeSpeed';
+        ctx.textRendering = 'geometricPrecision';
         
-        // 背景を白で塗りつぶし
+        // 背景を完全な白で塗りつぶし
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, actualSize, actualSize);
         
-        // QRコードを描画（読み取りやすい濃さに調整）
-        ctx.fillStyle = '#1a1a1a'; // 薄すぎず濃すぎない色に調整
+        // QRコードを超高品質で描画（サーマルプリンター最適化）
+        ctx.fillStyle = '#000000'; // 完全な黒で鮮明に
+        
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
-                    // セルの境界を整数にして鮮明に描画
-                    const x = Math.floor(col * cellSize);
-                    const y = Math.floor(row * cellSize);
-                    const w = Math.ceil(cellSize);
-                    const h = Math.ceil(cellSize);
-                    ctx.fillRect(x, y, w, h);
+                    const x = col * cellSize;
+                    const y = row * cellSize;
+                    
+                    // ピクセルパーフェクトな描画
+                    ctx.fillRect(x, y, cellSize, cellSize);
                 }
             }
         }
         
-        return canvas;
+        // 境界線を追加して鮮明度を向上（白い枠）
+        const border = cellSize; // 1セル分の枠
+        const finalCanvas = document.createElement('canvas');
+        const finalCtx = finalCanvas.getContext('2d');
+        const finalSize = actualSize + (border * 2);
+        
+        finalCanvas.width = finalSize;
+        finalCanvas.height = finalSize;
+        
+        // 描画設定を継承
+        finalCtx.imageSmoothingEnabled = false;
+        finalCtx.webkitImageSmoothingEnabled = false;
+        finalCtx.mozImageSmoothingEnabled = false;
+        finalCtx.msImageSmoothingEnabled = false;
+        
+        // 白い枠付きで描画
+        finalCtx.fillStyle = '#FFFFFF';
+        finalCtx.fillRect(0, 0, finalSize, finalSize);
+        finalCtx.drawImage(canvas, border, border);
+        
+        return finalCanvas;
     } catch (error) {
         console.error('QRコード生成エラー:', error);
         return null;
