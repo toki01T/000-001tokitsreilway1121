@@ -80,7 +80,7 @@ header {
 .navbar-brand {
     color: #fff;
     text-decoration: none;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     flex: 1 1 auto;
     text-align: center;
     font-weight: normal;
@@ -104,12 +104,8 @@ header {
     padding: 0.2rem;
     width: auto;
     height: auto;
-    border-radius: 3px;
 }
 #historyMenuBtn:focus { outline: none; }
-#historyMenuBtn:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
 #historyDrawer {
     position: fixed;
     top: 0;
@@ -392,16 +388,16 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-top: 54px;
-    padding-bottom: 80px;
+    padding-top: 50px;
+    padding-bottom: 60px;
     background: var(--background-color);
     color: var(--text-color);
     box-sizing: border-box;
 }
 @media (max-width: 600px) {
     main {
-        padding-top: 44px;
-        padding-bottom: 80px;
+        padding-top: 42px;
+        padding-bottom: 60px;
     }
     #historyDrawer { width: 95vw; }
     .historyImgThumb { max-width: 98vw; }
@@ -757,14 +753,14 @@ footer {
     bottom: 0;
     left: 0;
     width: 100%;
-    padding: 10px 0;
+    padding: 6px 0;
     background-color: var(--footer-bg);
     text-align: center;
 }
 footer p {
     margin: 0;
     color: var(--primary-color);
-    font-size: 14px;
+    font-size: 12px;
 }
 </style>
 </head>
@@ -873,98 +869,6 @@ footer p {
     <p>&copy; 2025 とき T's 鉄道部 toki</p>
 </footer>
 <script>
-// プラットフォーム検出とプリンタ対応の自動認識
-const PlatformDetector = {
-    isIOS: function() {
-        return /iPad|iPhone|iPod/.test(navigator.userAgent);
-    },
-    isAndroid: function() {
-        return /Android/.test(navigator.userAgent);
-    },
-    isMobile: function() {
-        return this.isIOS() || this.isAndroid() || /Mobile|Phone|Tablet/.test(navigator.userAgent);
-    },
-    getSupportedPrintMethod: function() {
-        if (this.isIOS()) {
-            return 'sii'; // SII PrintAssist for iOS
-        } else if (this.isAndroid()) {
-            return 'android'; // Android印刷API
-        } else {
-            return 'web'; // Web印刷API
-        }
-    }
-};
-
-// Android用印刷関数
-function printWithAndroid(printData) {
-    try {
-        // Android WebView のJavaScriptインターface呼び出し
-        if (typeof Android !== 'undefined' && Android.print) {
-            Android.print(JSON.stringify(printData));
-            return true;
-        }
-        
-        // Chrome Custom Tabsでの印刷
-        if ('share' in navigator) {
-            navigator.share({
-                title: 'toki01T印刷データ',
-                text: 'toki01Tで作成した印刷データです',
-                url: window.location.href
-            }).catch(console.log);
-            return true;
-        }
-        
-        // ダウンロード機能
-        const dataStr = JSON.stringify(printData, null, 2);
-        const dataBlob = new Blob([dataStr], {type: 'application/json'});
-        const url = URL.createObjectURL(dataBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `toki01t_print_${Date.now()}.json`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        alert('印刷データをダウンロードしました。対応するプリンタアプリで開いてください。');
-        return true;
-    } catch (error) {
-        console.error('Android印刷エラー:', error);
-        return false;
-    }
-}
-
-// 統一印刷関数
-function executePrint(printUrl, printData) {
-    const platform = PlatformDetector.getSupportedPrintMethod();
-    
-    switch (platform) {
-        case 'sii':
-            // iOS SII PrintAssist
-            const siiUrl = `sii://print?url=${encodeURIComponent(printUrl)}`;
-            window.location.href = siiUrl;
-            break;
-            
-        case 'android':
-            // Android対応
-            if (!printWithAndroid(printData)) {
-                // フォールバック: Web印刷
-                window.print();
-            }
-            break;
-            
-        case 'web':
-        default:
-            // Web印刷API
-            if (window.print) {
-                window.print();
-            } else {
-                alert('このブラウザでは印刷がサポートされていません');
-            }
-            break;
-    }
-}
-
 const toZenkakuMap = {
     '@': '＠', '#': '＃', '&': '＆', '-': '－', '/': '／', '$': '＄', '%': '％',
     '(': '（', ')': '）', '!': '！', '?': '？', "'": '＇', '"': '＂', ':': '：',
@@ -1741,17 +1645,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             }
             
             // 1枚目を印刷
-            const printData = {
-                type: 'signature',
-                signatureData: tmpCanvas.toDataURL("image/png"),
-                settings: {
-                    copies: selectedCopies,
-                    dateTime: selectedSignatureChip,
-                    paperWidth: 58
-                },
-                pdfData: pdfBase64
-            };
-            executePrint(printUrl, printData);
+            window.location.href = printUrl;
         };
         
         signatureImg.src = tmpCanvas.toDataURL("image/png");
@@ -2183,17 +2077,7 @@ function sendToPrintAssist(event) {
                     }
                     
                     // 1枚目を印刷
-                    const printData = {
-                        type: 'image',
-                        imageData: base64Image,
-                        settings: {
-                            copies: selectedCopies,
-                            dateTime: selectedChip,
-                            shrink: shrinkChecked,
-                            paperWidth: 58
-                        }
-                    };
-                    executePrint(printUrlImage, printData);
+                    window.location.href = printUrlImage;
                 };
                 
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
@@ -2446,18 +2330,7 @@ function printText() {
         }
         
         // 1枚目を印刷
-        const printData = {
-            type: 'text',
-            content: text,
-            settings: {
-                copies: selectedTextCopies,
-                dateTime: selectedTextChip,
-                paperWidth: 58,
-                totalHeight: totalHeight
-            },
-            pdfData: pdfBase64
-        };
-        executePrint(printUrl, printData);
+        window.location.href = printUrl;
     }
     
     // 現在の1枚を印刷（シンプル実行）
@@ -2503,30 +2376,6 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
-
-// 初期化処理
-document.addEventListener('DOMContentLoaded', function() {
-    // プラットフォーム検出結果をコンソールに表示
-    console.log('=== toki01T プラットフォーム検出 ===');
-    console.log('iOS:', PlatformDetector.isIOS());
-    console.log('Android:', PlatformDetector.isAndroid());
-    console.log('モバイル:', PlatformDetector.isMobile());
-    console.log('推奨印刷方式:', PlatformDetector.getSupportedPrintMethod());
-    console.log('User Agent:', navigator.userAgent);
-    console.log('=====================================');
-    
-    // Android特有の設定
-    if (PlatformDetector.isAndroid()) {
-        console.log('Android環境を検出しました。印刷方式を最適化します。');
-        
-        // Android WebView でのJavaScriptインターフェースをチェック
-        if (typeof Android !== 'undefined') {
-            console.log('AndroidアプリのWebViewインターフェースが利用可能です');
-        } else {
-            console.log('ブラウザ環境です。Web API を使用します。');
-        }
-    }
-});
 </script>
 </body>
 </html>
