@@ -7,8 +7,6 @@
 <link rel="icon" href="favicon.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -64,7 +62,7 @@ header {
     top: 0;
     left: 0;
     z-index: 100;
-    height: 40px;
+    height: 32px;
     display: flex;
     align-items: center;
 }
@@ -74,7 +72,7 @@ header {
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    height: 40px;
+    height: 32px;
     padding: 0 1rem;
     box-sizing: border-box;
     position: relative;
@@ -82,7 +80,7 @@ header {
 .navbar-brand {
     color: #fff;
     text-decoration: none;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     flex: 1 1 auto;
     text-align: center;
     font-weight: normal;
@@ -94,35 +92,20 @@ header {
 }
 #historyMenuBtn {
     position: absolute;
-    right: 1rem;
+    right: 0.8rem;
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
     border: none;
     color: #fff;
-    font-size: 1.7rem;
+    font-size: 1.4rem;
     cursor: pointer;
     z-index: 12;
-    padding: 0;
+    padding: 0.2rem;
     width: auto;
     height: auto;
 }
-#qrCodeBtn {
-    position: absolute;
-    right: 4rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: transparent;
-    border: none;
-    color: #fff;
-    font-size: 1.5rem;
-    cursor: pointer;
-    z-index: 12;
-    padding: 0;
-    width: auto;
-    height: auto;
-}
-#qrCodeBtn:focus, #historyMenuBtn:focus { outline: none; }
+#historyMenuBtn:focus { outline: none; }
 #historyDrawer {
     position: fixed;
     top: 0;
@@ -405,16 +388,16 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-top: 60px;
-    padding-bottom: 80px;
+    padding-top: 50px;
+    padding-bottom: 60px;
     background: var(--background-color);
     color: var(--text-color);
     box-sizing: border-box;
 }
 @media (max-width: 600px) {
     main {
-        padding-top: 50px;
-        padding-bottom: 80px;
+        padding-top: 42px;
+        padding-bottom: 60px;
     }
     #historyDrawer { width: 95vw; }
     .historyImgThumb { max-width: 98vw; }
@@ -770,81 +753,14 @@ footer {
     bottom: 0;
     left: 0;
     width: 100%;
-    padding: 10px 0;
+    padding: 6px 0;
     background-color: var(--footer-bg);
     text-align: center;
 }
 footer p {
     margin: 0;
     color: var(--primary-color);
-    font-size: 14px;
-}
-
-/* QRコード関連のスタイル */
-#qrReaderModal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.8);
-    z-index: 10000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-}
-
-#qrReaderContainer {
-    position: relative;
-    background: #fff;
-    border-radius: 10px;
-    padding: 20px;
-    max-width: 400px;
-    max-height: 500px;
-    width: 90vw;
-}
-
-#qrReader {
-    width: 100%;
-    max-width: 300px;
-    height: 300px;
-    border: 2px solid var(--primary-color);
-    border-radius: 8px;
-}
-
-#closeQrReader {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-#qrReaderStatus {
-    text-align: center;
-    margin-top: 10px;
-    font-size: 14px;
-    color: var(--text-color);
-}
-
-.qr-code-container {
-    text-align: left;
-    margin: 10px 0;
-}
-
-.qr-code {
-    display: inline-block;
-    margin: 0;
-    vertical-align: top;
+    font-size: 12px;
 }
 </style>
 </head>
@@ -852,7 +768,6 @@ footer p {
 <header>
     <div class="navbar">
         <a class="navbar-brand" href="#">toki01Ⓣ</a>
-        <button id="qrCodeBtn" title="QRコード読み取り">📱</button>
         <button id="historyMenuBtn" title="履歴"><span>&#9776;</span></button>
     </div>
 </header>
@@ -870,22 +785,6 @@ footer p {
     <div id="historyList"></div>
 </div>
 <div id="historyDrawerBg"></div>
-
-<!-- QRコードリーダーモーダル -->
-<div id="qrReaderModal">
-    <div id="qrReaderContainer">
-        <button id="closeQrReader">×</button>
-        <h3 style="text-align: center; margin-top: 0; color: #333;">QRコード読み取り</h3>
-        <div style="text-align: center; margin-bottom: 10px; font-size: 14px; color: #666;">
-            カメラでQRコードを読み取ってください
-        </div>
-        <video id="qrReader"></video>
-        <div id="qrReaderStatus" style="text-align: center; padding: 10px; background: #f5f5f5; border-radius: 4px; margin-top: 10px;">カメラを起動中...</div>
-        <div style="text-align: center; margin-top: 15px; font-size: 12px; color: #999;">
-            ※ TOKI01アプリで生成されたQRコードのみ読み取れます
-        </div>
-    </div>
-</div>
 <main>
     <div class="section-content">
         <section id="imageSection" class="image-selection">
@@ -911,7 +810,7 @@ footer p {
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
                     <label class="custom-checkbox" id="shrinkCheckboxLabel" style="margin-left:0.5em;margin-right:0.5em;">
-                        <input type="checkbox" id="shrinkCheckbox" title="QRコード印刷" />
+                        <input type="checkbox" id="shrinkCheckbox" title="縮小印刷" />
                         <span class="checkmark"></span>
                     </label>
                 </div>
@@ -935,10 +834,6 @@ footer p {
                     <option value="5">5枚</option>
                 </select>
                 <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
-                <label class="custom-checkbox" id="textQrCheckboxLabel" style="margin-left:0.5em;margin-right:0.5em;">
-                    <input type="checkbox" id="textQrCheckbox" title="QRコード印刷" />
-                    <span class="checkmark"></span>
-                </label>
             </div>
         </section>
         <section id="signatureSection" style="display:none;">
@@ -964,10 +859,6 @@ footer p {
                     <option value="5">5枚</option>
                 </select>
                 <button id="signaturePrintButton" class="disabled" type="button">発行</button>
-                <label class="custom-checkbox" id="signatureQrCheckboxLabel" style="margin-left:0.5em;margin-right:0.5em;">
-                    <input type="checkbox" id="signatureQrCheckbox" title="QRコード印刷" />
-                    <span class="checkmark"></span>
-                </label>
             </div>
         </section>
         <div id="dateDisplay"></div>
@@ -993,13 +884,6 @@ let selectedTextChip = '';
 let selectedSignatureChip = '';
 let lastPreviewImageNaturalWidth = 0;
 let lastPreviewImageNaturalHeight = 0;
-
-// QRコード関連の変数
-let qrScanner = null;
-
-// 独自QRコード生成用の変数
-const QR_PREFIX = 'TOKI01_';
-const QR_VERSION = 'v1.0';
 const DB_NAME = 'toki01_history';
 const DB_VERSION = 1;
 const STORE_NAME = 'history';
@@ -1017,10 +901,6 @@ function openDB() {
     });
 }
 function addHistory(item) {
-    // QRコード用データを追加
-    const qrData = generateQRData(item);
-    item.qrData = qrData;
-    
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -1067,7 +947,6 @@ function formatDateTime(dt) {
     );
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
-const qrCodeBtn = document.getElementById('qrCodeBtn');
 const historyDrawer = document.getElementById('historyDrawer');
 const historyDrawerClose = document.getElementById('historyDrawerClose');
 const historyList = document.getElementById('historyList');
@@ -1093,7 +972,6 @@ modeToggleUnified.onclick = () => {
     toggleMode(currentHistoryType);
 };
 historyMenuBtn.onclick = () => { historyDrawer.classList.add('open'); historyDrawerBg.style.display = 'block'; loadHistoryList(); };
-qrCodeBtn.onclick = () => { startQRReader(); };
 historyDrawerClose.onclick = () => { historyDrawer.classList.remove('open'); historyDrawerBg.style.display = 'none'; };
 historyDrawerBg.onclick = (e) => {
     if (historyDrawer.classList.contains('open')) {
@@ -1339,7 +1217,6 @@ window.onload = function() {
     setTextChipsEnabled(false);
     loadHistoryList();
     initSignaturePad();
-    initQRReader();
     
     // 【枚数印刷の自動続行システム】
     checkAndContinuePrinting();
@@ -1637,7 +1514,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const marginY = 4;
     const isDateTimeEnabled = selectedSignatureChip === 'with';
     const dateTimeHeight = 16;
-    const bottomMargin = isDateTimeEnabled ? 8 : 18; // 日付時刻有りの時は余白を削減
+    const bottomMargin = isDateTimeEnabled ? 16 : 18;
     const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     
@@ -1648,9 +1525,6 @@ document.getElementById('signaturePrintButton').onclick = function() {
         
         const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
         const canvasWidth = Math.round(58 * mmToPx); // 58mm
-        
-        // QRコード有効チェック
-        const isQrEnabledForSignature = document.getElementById('signatureQrCheckbox').checked;
         
         // サイン画像のサイズを取得
         const signatureImg = new Image();
@@ -1665,13 +1539,12 @@ document.getElementById('signaturePrintButton').onclick = function() {
             // 全体の高さを計算（手書き用の余白設定、サイズ縮小）
             const signatureTopMargin = 8; // 手書き用上余白
             const signatureBottomMargin = 25; // 手書き用下余白
-            const qrCodeMargin = isQrEnabledForSignature ? 200 : 0; // QRコード用の追加余白（有効時のみ）
             
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
             const signatureScale = 0.92; // 92%にスケール（85%から修正）
             const signatureWidth = Math.round((outW / pxPerMm * mmToPx) * signatureScale);
             const signatureHeight = Math.round((outH / pxPerMm * mmToPx) * signatureScale);
-            const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin + qrCodeMargin;
+            const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin;
             
             compositeCanvas.width = canvasWidth;
             compositeCanvas.height = totalHeight;
@@ -1687,46 +1560,6 @@ document.getElementById('signaturePrintButton').onclick = function() {
             
             compositeCtx.drawImage(tmpCanvas, signatureX, signatureY, signatureWidth, signatureHeight);
             
-            // QRコードを生成して配置（チェックボックスがオンの場合のみ）
-            let qrCodeCanvas = null;
-            
-            if (isQrEnabledForSignature) {
-                const historyItem = {
-                    type: 'signature',
-                    mode: 'signature',
-                    data: tmpCanvas.toDataURL("image/png"),
-                    dateTime: selectedSignatureChip,
-                    copies: selectedCopies,
-                    created: Date.now()
-                };
-                const qrData = generateQRData(historyItem);
-                if (qrData) {
-                    qrCodeCanvas = generateQRCode(qrData);
-                    if (qrCodeCanvas) {
-                        const qrSize = 160; // 読み取り精度を優先してサイズ拡大
-                        let qrX, qrY;
-                        
-                        if (isDateTimeEnabled) {
-                            // 日付・時刻ありの場合：日付・時刻の左側に配置
-                            qrX = 15; // 左端から15pxの位置
-                            qrY = signatureY + signatureHeight + 40; // サインの下、より下に配置
-                        } else {
-                            // 日付・時刻なしの場合：手書きの下部左側に配置
-                            qrX = 15; // 左端から15pxの位置
-                            qrY = signatureY + signatureHeight + 30; // サインの直下、より下に配置
-                        }
-                        
-                        // QRコードを最高品質で描画（サーマルプリンター最適化）
-                        compositeCtx.imageSmoothingEnabled = false;
-                        compositeCtx.webkitImageSmoothingEnabled = false;
-                        compositeCtx.mozImageSmoothingEnabled = false;
-                        compositeCtx.msImageSmoothingEnabled = false;
-                        compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
-                        compositeCtx.imageSmoothingEnabled = true;
-                    }
-                }
-            }
-            
             // 日付・時刻を描画
             if (isDateTimeEnabled) {
                 const now = new Date();
@@ -1740,29 +1573,22 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 const fontSize = 50; // 50px
                 compositeCtx.fillStyle = '#000000';
                 compositeCtx.font = `${fontSize}px Arial, sans-serif`;
-                compositeCtx.textAlign = 'left'; // 左揃えに変更
+                compositeCtx.textAlign = 'center';
                 compositeCtx.textBaseline = 'top';
                 
-                // QRコードがある場合は右側に配置、ない場合は中央
-                let dateX;
-                if (qrCodeCanvas) {
-                    dateX = 180; // QRコードの右側に配置
-                } else {
-                    // QRコードがない場合は中央に配置
-                    compositeCtx.textAlign = 'center';
-                    dateX = Math.round(canvasWidth / 2) - 30; // 完全中央配置 ← この-30の数値で左右調整可能
-                }
+                // 真ん中の位置を正確に計算
+                const exactCenterX = Math.round(canvasWidth / 2)-40;// -40
                 
-                let yPos = signatureY + signatureHeight + 15; // 縮小されたサインの下、適切な間隔
+                let yPos = signatureY + signatureHeight + 5; // 縮小されたサインの下
                 
                 // 日付行
                 const dateText = `${year}年 ${month}月${day}日`;
-                compositeCtx.fillText(dateText, dateX, yPos);
+                compositeCtx.fillText(dateText, exactCenterX, yPos);
                 yPos += fontSize * 1.2;
                 
                 // 時刻行
                 const timeText = `${hour}時${minute}分${second}秒`;
-                compositeCtx.fillText(timeText, dateX, yPos);
+                compositeCtx.fillText(timeText, exactCenterX, yPos);
             }
             
             // 合成キャンバスをPNGデータURLに変換
@@ -1865,12 +1691,9 @@ function sendToPrintAssist(event) {
             let y = 2;
             const isDateTimeEnabled = selectedChip === 'with';
             const topMargin = 2;
-            const bottomMargin = isDateTimeEnabled ? 8 : 18; // 日付時刻有りの時は余白を削減
+            const bottomMargin = isDateTimeEnabled ? 16 : 18;
             const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
-            
-            // QRコード有効チェック
-            const isQrEnabledForImage = document.getElementById('shrinkCheckbox').checked;
             
             function printImageCopy() {
                 // 新しいキャンバスで全体を合成
@@ -1906,8 +1729,7 @@ function sendToPrintAssist(event) {
                     const imageTopMargin = -50; // 画像用上余白
                     const imageBottomMargin = 13; // 画像用下余白
                     const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
-                    const qrCodeMargin = isQrEnabledForImage ? 200 : 0; // QRコード用の追加余白（有効時のみ）
-                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrCodeMargin;
+                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin;
                     
                     compositeCanvas.width = canvasWidth;
                     compositeCanvas.height = totalHeight;
@@ -1925,51 +1747,9 @@ function sendToPrintAssist(event) {
                     // 画像の色域とコントラストを保持するための設定
                     compositeCtx.filter = 'none'; // フィルターを一旦無効化
                     
-                    
                     // 画像を描画（中央配置）
                     const imgX = -59; // 左余白
                     const imgY = imageTopMargin; // 画像用上余白
-                    
-                    // QRコードを生成して配置（チェックボックスがオンの場合のみ）
-                    let qrCodeCanvas = null;
-                    
-                    if (isQrEnabledForImage) {
-                        const historyItem = {
-                            type: 'image',
-                            mode: 'image',
-                            data: 'data:image/png;base64,' + base64Image,
-                            dateTime: selectedChip,
-                            copies: selectedCopies,
-                            shrink: shrinkChecked,
-                            created: Date.now()
-                        };
-                        const qrData = generateQRData(historyItem);
-                        if (qrData) {
-                            qrCodeCanvas = generateQRCode(qrData);
-                            if (qrCodeCanvas) {
-                                const qrSize = 160; // 読み取り精度を優先してサイズ拡大
-                                let qrX, qrY;
-                                
-                                if (isDateTimeEnabled) {
-                                    // 日付・時刻ありの場合：日付・時刻の左側に配置
-                                    qrX = 15; // 左端から15pxの位置
-                                    qrY = imgY + finalImgHeight + 40; // 画像の下、より下に配置
-                                } else {
-                                    // 日付・時刻なしの場合：画像の下部左側に配置
-                                    qrX = 15; // 左端から15pxの位置  
-                                    qrY = imgY + finalImgHeight + 30; // 画像の直下、より下に配置
-                                }
-                                
-                                // QRコードを最高品質で描画（サーマルプリンター最適化）
-                                compositeCtx.imageSmoothingEnabled = false;
-                                compositeCtx.webkitImageSmoothingEnabled = false;
-                                compositeCtx.mozImageSmoothingEnabled = false;
-                                compositeCtx.msImageSmoothingEnabled = false;
-                                compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
-                                compositeCtx.imageSmoothingEnabled = true;
-                            }
-                        }
-                    }
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
@@ -2221,29 +2001,22 @@ function sendToPrintAssist(event) {
                         const fontSize = 50;// 50px
                         compositeCtx.fillStyle = '#000000';
                         compositeCtx.font = `${fontSize}px Arial, sans-serif`;
-                        compositeCtx.textAlign = 'left'; // 左揃えに変更
+                        compositeCtx.textAlign = 'center';
                         compositeCtx.textBaseline = 'top';
                         
-                        // QRコードがある場合は右側に配置、ない場合は中央
-                        let dateX;
-                        if (qrCodeCanvas) {
-                            dateX = 180; // QRコードの右側に配置
-                        } else {
-                            // QRコードがない場合は中央に配置
-                            compositeCtx.textAlign = 'center';
-                            dateX = Math.round(canvasWidth / 2) - 30; // 完全中央配置 ← この-30の数値で左右調整可能
-                        }
+                        // 真ん中の位置を正確に計算
+                        const exactCenterX = Math.round(canvasWidth / 2)-40;// -40
                         
-                        let yPos = imgY + finalImgHeight + 25; // 画像の下、適切な間隔
+                        let yPos = imgY + finalImgHeight + 10; // 画像の下
                         
                         // 日付行
                         const dateText = `${year}年 ${month}月${day}日`;
-                        compositeCtx.fillText(dateText, dateX, yPos);
+                        compositeCtx.fillText(dateText, exactCenterX, yPos);
                         yPos += fontSize * 1.2;
                         
                         // 時刻行
                         const timeText = `${hour}時${minute}分${second}秒`;
-                        compositeCtx.fillText(timeText, dateX, yPos);
+                        compositeCtx.fillText(timeText, exactCenterX, yPos);
                         yPos += 50; // 日付有り印刷の下部余白を50px追加
                     }
                     
@@ -2408,7 +2181,7 @@ function printText() {
     const topMargin = 6;
     const dateTimeHeight = 16;
     const spaceBetweenTextAndDate = 4;
-    const bottomMargin = isDateTimeEnabled ? 8 : 19; // 日付時刻有りの時は余白を削減
+    const bottomMargin = isDateTimeEnabled ? 15 : 19;
     const leftMargin = 2;
     let totalHeight = topMargin + (wrappedLines.length * lineHeight);
     if (isDateTimeEnabled) {
@@ -2416,9 +2189,6 @@ function printText() {
     }
     totalHeight += bottomMargin;
     const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-    
-    // QRコード有効チェック
-    const isQrEnabledForText = document.getElementById('textQrCheckbox').checked;
     
     function printTextCopy() {
         let printText = wrappedLines.join("\n");
@@ -2449,9 +2219,7 @@ function printText() {
             textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
         }
         
-        // QRコード用の追加スペースを確保
-        const qrCodeMargin = isQrEnabledForText ? 200 : 0; // QRコード分のスペース（有効時のみ）
-        const canvasHeight = Math.round(textHeight + 60 + qrCodeMargin); // 上下余白調整 + QRコード用余白
+        const canvasHeight = Math.round(textHeight + 60); // 上下余白調整
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
         
@@ -2475,49 +2243,6 @@ function printText() {
             yPos += lineHeight;
         }
         
-        const textEndY = yPos; // テキスト終了位置を保存
-        
-        // QRコードを生成して配置（チェックボックスがオンの場合のみ）
-        let qrCodeCanvas = null;
-        
-        if (isQrEnabledForText) {
-            const historyItem = {
-                type: 'text',
-                mode: 'text',
-                data: textInput.value,
-                dateTime: selectedTextChip,
-                copies: selectedTextCopies,
-                created: Date.now()
-            };
-            const qrData = generateQRData(historyItem);
-            if (qrData) {
-                qrCodeCanvas = generateQRCode(qrData);
-                if (qrCodeCanvas) {
-                    const qrSize = 160; // 読み取り精度を優先してサイズ拡大
-                    let qrX, qrY;
-                    
-                    if (isDateTimeEnabled) {
-                        // 日付・時刻ありの場合：日付・時刻の左側に配置
-                        qrX = 15; // 左端から15pxの位置
-                        qrY = textEndY + 40; // テキストの下、より下に配置
-                    } else {
-                        // 日付・時刻なしの場合：テキスト印字後の下部左側に配置
-                        qrX = 15; // 左端から15pxの位置
-                        qrY = textEndY + 30; // テキストの直下、より下に配置
-                    }
-                    
-                    // QRコードを最高品質で描画（サーマルプリンター最適化）
-                    ctx.imageSmoothingEnabled = false;
-                    ctx.webkitImageSmoothingEnabled = false;
-                    ctx.mozImageSmoothingEnabled = false;
-                    ctx.msImageSmoothingEnabled = false;
-                    ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingEnabled = true;
-                }
-            }
-        }
-        
         // 日付・時刻を描画
         if (isDateTimeEnabled) {
             const now = new Date();
@@ -2532,27 +2257,23 @@ function printText() {
             
             // 日付・時刻用のフォント設定
             ctx.font = `${dateFontSize}px Arial, sans-serif`;
-            ctx.textAlign = 'left'; // 左揃えに変更
             const dateLineHeight = dateFontSize * 1.2;
             
-            // QRコードがある場合は右側に配置、ない場合は中央
-            let dateX;
-            if (qrCodeCanvas) {
-                dateX = 180; // QRコードの右側に配置
-            } else {
-                // QRコードがない場合は中央に配置
-                ctx.textAlign = 'center';
-                dateX = Math.round(canvasWidth / 2) - 30; // 完全中央配置 ← この-30の数値で左右調整可能
-            }
+            // 真ん中の位置を正確に計算
+            const exactCenterX = Math.round(canvasWidth / 2);
+            
+            // 日付の横位置調整（中央揃え微調整）
+            const dateOffsetX = -50; //-50 日付の横位置調整（マイナス値で左に、プラス値で右に移動）
+            const finalDateX = exactCenterX + dateOffsetX;
             
             // 日付行
             const dateText = `${year}年 ${month}月${day}日`;
-            ctx.fillText(dateText, dateX, yPos);
+            ctx.fillText(dateText, finalDateX, yPos);
             yPos += dateLineHeight;
             
             // 時刻行
             const timeText = `${hour}時${minute}分${second}秒`;
-            ctx.fillText(timeText, dateX, yPos);
+            ctx.fillText(timeText, finalDateX, yPos);
         }
         
         // キャンバスをPNGデータURLに変換
@@ -2654,395 +2375,6 @@ if ('serviceWorker' in navigator) {
             console.log('Service Worker登録失敗:', error);
         });
     });
-}
-
-// === QRコード機能 ===
-
-// QRコード用データの生成
-function generateQRData(item) {
-    const timestamp = Date.now();
-    
-    // 超コンパクトなデータ構造（最高読み取り精度優先）
-    const compactData = {
-        i: timestamp.toString(36), // 36進数で大幅圧縮
-        t: item.type.charAt(0), // 'image'→'i', 'text'→'t', 'signature'→'s'
-        d: new Date().getFullYear().toString().slice(2) + 
-           String(new Date().getMonth() + 1).padStart(2, '0') + 
-           String(new Date().getDate()).padStart(2, '0'), // YYMMDD形式
-        c: item.copies || 1
-    };
-    
-    // データサイズを極限まで削減（特殊文字も除去）
-    const jsonStr = JSON.stringify(compactData).replace(/[{}":]/g, '');
-    return QR_PREFIX + btoa(jsonStr).replace(/[=+/]/g, ''); // Base64エンコード後、特殊文字除去
-}
-
-// QRコード画像の生成
-function generateQRCode(data) {
-    try {
-        if (typeof qrcode === 'undefined') {
-            console.error('QRコード生成ライブラリが読み込まれていません');
-            return null;
-        }
-        
-        const qr = qrcode(0, 'H'); // エラー訂正レベルをHに変更（最高品質）
-        qr.addData(data);
-        qr.make();
-        
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const size = 400; // QRコードのベースサイズを大幅に拡大（超高解像度）
-        const moduleCount = qr.getModuleCount();
-        const cellSize = Math.floor(size / moduleCount); // 整数にして境界を明確に
-        const actualSize = cellSize * moduleCount; // 実際のサイズを再計算
-        
-        canvas.width = actualSize;
-        canvas.height = actualSize;
-        
-        // 最高品質の描画設定
-        ctx.imageSmoothingEnabled = false;
-        ctx.webkitImageSmoothingEnabled = false;
-        ctx.mozImageSmoothingEnabled = false;
-        ctx.msImageSmoothingEnabled = false;
-        ctx.textRenderingOptimization = 'optimizeSpeed';
-        ctx.textRendering = 'geometricPrecision';
-        
-        // 背景を完全な白で塗りつぶし
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, actualSize, actualSize);
-        
-        // QRコードを超高品質で描画（サーマルプリンター最適化）
-        ctx.fillStyle = '#000000'; // 完全な黒で鮮明に
-        
-        for (let row = 0; row < moduleCount; row++) {
-            for (let col = 0; col < moduleCount; col++) {
-                if (qr.isDark(row, col)) {
-                    const x = col * cellSize;
-                    const y = row * cellSize;
-                    
-                    // ピクセルパーフェクトな描画
-                    ctx.fillRect(x, y, cellSize, cellSize);
-                }
-            }
-        }
-        
-        // 境界線を追加して鮮明度を向上（白い枠）
-        const border = cellSize; // 1セル分の枠
-        const finalCanvas = document.createElement('canvas');
-        const finalCtx = finalCanvas.getContext('2d');
-        const finalSize = actualSize + (border * 2);
-        
-        finalCanvas.width = finalSize;
-        finalCanvas.height = finalSize;
-        
-        // 描画設定を継承
-        finalCtx.imageSmoothingEnabled = false;
-        finalCtx.webkitImageSmoothingEnabled = false;
-        finalCtx.mozImageSmoothingEnabled = false;
-        finalCtx.msImageSmoothingEnabled = false;
-        
-        // 白い枠付きで描画
-        finalCtx.fillStyle = '#FFFFFF';
-        finalCtx.fillRect(0, 0, finalSize, finalSize);
-        finalCtx.drawImage(canvas, border, border);
-        
-        return finalCanvas;
-    } catch (error) {
-        console.error('QRコード生成エラー:', error);
-        return null;
-    }
-}
-
-// QRリーダーの初期化
-function initQRReader() {
-    const qrReaderModal = document.getElementById('qrReaderModal');
-    const closeQrReader = document.getElementById('closeQrReader');
-    const qrReaderStatus = document.getElementById('qrReaderStatus');
-    
-    closeQrReader.onclick = () => {
-        stopQRReader();
-        qrReaderModal.style.display = 'none';
-    };
-    
-    // モーダル背景クリックで閉じる
-    qrReaderModal.onclick = (e) => {
-        if (e.target === qrReaderModal) {
-            stopQRReader();
-            qrReaderModal.style.display = 'none';
-        }
-    };
-}
-
-// QRリーダー開始
-function startQRReader() {
-    const qrReaderModal = document.getElementById('qrReaderModal');
-    const videoElement = document.getElementById('qrReader');
-    const statusElement = document.getElementById('qrReaderStatus');
-    
-    qrReaderModal.style.display = 'flex';
-    statusElement.textContent = 'カメラを起動中...';
-    statusElement.style.color = '#666';
-    statusElement.style.backgroundColor = '#f0f8ff';
-    
-    // 背面カメラを優先的に使用
-    if (typeof QrScanner !== 'undefined') {
-        qrScanner = new QrScanner(videoElement, 
-            result => {
-                console.log('QRコード読み取り成功:', result);
-                handleQRScanResult(result.data || result);
-                stopQRReader();
-                qrReaderModal.style.display = 'none';
-            },
-            {
-                onDecodeError: error => {
-                    // エラーは表示しない（連続スキャンのため）
-                },
-                maxScansPerSecond: 5,
-                highlightScanRegion: true,
-                highlightCodeOutline: true,
-                preferredCamera: 'environment' // 背面カメラ優先
-            }
-        );
-        
-        qrScanner.start().then(() => {
-            statusElement.textContent = 'QRコードをカメラに向けてください 📱';
-            statusElement.style.color = '#28a745';
-            statusElement.style.backgroundColor = '#d4edda';
-        }).catch(error => {
-            console.error('カメラエラー:', error);
-            statusElement.textContent = 'カメラの起動に失敗しました';
-            statusElement.style.color = '#dc3545';
-            statusElement.style.backgroundColor = '#f8d7da';
-            statusElement.textContent = 'カメラにアクセスできませんでした';
-            setTimeout(() => {
-                stopQRReader();
-                qrReaderModal.style.display = 'none';
-            }, 3000);
-        });
-    } else {
-        statusElement.textContent = 'QRスキャナーが読み込まれていません';
-        setTimeout(() => {
-            qrReaderModal.style.display = 'none';
-        }, 3000);
-    }
-}
-
-// QRリーダー停止
-function stopQRReader() {
-    if (qrScanner) {
-        qrScanner.stop();
-        qrScanner.destroy();
-        qrScanner = null;
-    }
-}
-
-// QRコード読み取り結果の処理
-function handleQRScanResult(result) {
-    try {
-        // アプリ専用QRコードかチェック
-        if (!result.startsWith(QR_PREFIX)) {
-            alert('このアプリで生成されたQRコードではありません');
-            return;
-        }
-        
-        // 新しいデータ形式に対応（Base64デコード）
-        const encodedData = result.substring(QR_PREFIX.length);
-        let jsonData;
-        
-        try {
-            // Base64デコードを試行
-            jsonData = atob(encodedData);
-        } catch (e) {
-            // Base64デコードに失敗した場合は直接JSONとして扱う（旧形式対応）
-            jsonData = encodedData;
-        }
-        
-        // JSON形式でない場合の処理（超圧縮形式）
-        if (!jsonData.startsWith('{')) {
-            // 超圧縮形式を復元（例：i1727123456t1d25092520c1 → {i:...,t:...,d:...,c:...}）
-            const pairs = jsonData.match(/[itdc][^itdc]*/g) || [];
-            const data = {};
-            
-            pairs.forEach(pair => {
-                const key = pair[0];
-                const value = pair.slice(1);
-                
-                switch(key) {
-                    case 'i': data.id = parseInt(value, 36); break; // 36進数を10進数に戻す
-                    case 't': 
-                        // 単文字を元の文字列に戻す
-                        data.type = value === 'i' ? 'image' : value === 't' ? 'text' : value === 's' ? 'signature' : value;
-                        break;
-                    case 'd': data.dateTime = value; break;
-                    case 'c': data.copies = parseInt(value); break;
-                }
-            });
-            
-            restoreFromQRData(data);
-        } else {
-            // JSON形式の場合
-            const data = JSON.parse(jsonData);
-            restoreFromQRData(data);
-        }
-        
-    } catch (error) {
-        console.error('QRコード解析エラー:', error);
-        alert('QRコードの読み取りに失敗しました: ' + error.message);
-    }
-}
-
-// QRコードデータからコンテンツを復元
-function restoreFromQRData(qrData) {
-    console.log('QRデータから復元:', qrData);
-    
-    // 新しいデータ形式に対応
-    const expandedData = {
-        id: qrData.id || qrData.i,
-        type: qrData.type || qrData.t,
-        dateTime: qrData.dateTime || qrData.d,
-        copies: qrData.copies || qrData.c,
-        created: qrData.created || qrData.cr || qrData.id || qrData.i // タイムスタンプをIDとして使用
-    };
-    
-    // 36進数のタイムスタンプを10進数に戻す処理
-    if (typeof expandedData.created === 'string') {
-        expandedData.created = parseInt(expandedData.created, 36);
-    }
-    
-    // タイプ情報の正規化
-    if (expandedData.type === 'i') expandedData.type = 'image';
-    else if (expandedData.type === 't') expandedData.type = 'text';
-    else if (expandedData.type === 's') expandedData.type = 'signature';
-    
-    console.log('展開後データ:', expandedData);
-    
-    // 履歴から対応するアイテムを検索
-    getAllHistory().then(historyList => {
-        // IDまたは作成日時で対象アイテムを検索（範囲を広げて検索精度向上）
-        const targetItem = historyList.find(item => {
-            // IDが一致するか、作成日時が近い（1分以内）かをチェック
-            const timeMatch = item.created && Math.abs(item.created - expandedData.created) < 60000;
-            const typeMatch = item.type === expandedData.type;
-            
-            return typeMatch && (item.id === expandedData.id || timeMatch);
-        });
-        
-        if (targetItem) {
-            // 履歴アイテムが見つかった場合
-            console.log('対応する履歴アイテムを発見:', targetItem);
-            restoreContentFromHistory(targetItem);
-        } else {
-            // 履歴にない場合はQRデータのみで復元
-            console.log('履歴にないため、QRデータのみで復元');
-            restoreContentFromQROnly(expandedData);
-        }
-    });
-}
-
-// 履歴から完全復元
-function restoreContentFromHistory(item) {
-    if (item.type === 'image') {
-        showSection('image');
-        
-        const previewContainer = document.getElementById('imagePreviewContainer');
-        previewContainer.innerHTML = '';
-        
-        const img = new Image();
-        img.src = item.data;
-        img.onload = function() {
-            let containerW = Math.min(window.innerWidth * 0.98, 480);
-            let containerH = 360;
-            let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-            let displayW = Math.round(img.naturalWidth * ratio);
-            let displayH = Math.round(img.naturalHeight * ratio);
-            img.style.width = displayW + "px";
-            img.style.height = displayH + "px";
-            img.style.maxWidth = "100%";
-            img.style.maxHeight = "360px";
-            img.style.display = "block";
-            img.style.margin = "0 auto";
-        };
-        previewContainer.appendChild(img);
-        
-        // 設定を復元
-        document.getElementById('dateTimeChoice').style.display = 'flex';
-        const chips = document.querySelectorAll('#dateTimeChoice .chip');
-        chips.forEach(chip => chip.classList.remove('selected'));
-        if (item.dateTime === 'with') chips[0].classList.add('selected');
-        else chips[1].classList.add('selected');
-        selectedChip = item.dateTime;
-        
-        document.getElementById('copiesSelect').value = item.copies;
-        document.getElementById('shrinkCheckbox').checked = !!item.shrink;
-        document.getElementById('imagePrintOptions').style.display = 'flex';
-        updatePrintButtonState();
-        
-        alert('画像とすべての設定を復元しました！\n再印刷が可能です。');
-        
-    } else if (item.type === 'text') {
-        showSection('text');
-        
-        document.getElementById('textInput').value = item.data;
-        autoWrap(document.getElementById('textInput'));
-        
-        // 設定を復元
-        const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-        chips.forEach(chip => chip.classList.remove('selected'));
-        if (item.dateTime === 'with') chips[0].classList.add('selected');
-        else chips[1].classList.add('selected');
-        selectedTextChip = item.dateTime;
-        
-        document.getElementById('textCopiesSelect').value = item.copies;
-        updateTextPrintButtonState();
-        
-        alert('テキストとすべての設定を復元しました！\n再印刷が可能です。');
-        
-    } else if (item.type === 'signature') {
-        showSection('signature');
-        
-        setTimeout(function() {
-            initSignaturePad(item.data, true);
-            
-            // 設定を復元
-            const chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
-            chips.forEach(chip => chip.classList.remove('selected'));
-            if (item.dateTime === 'with') chips[0].classList.add('selected');
-            else chips[1].classList.add('selected');
-            selectedSignatureChip = item.dateTime;
-            
-            document.getElementById('signatureCopiesSelect').value = item.copies;
-            updateSignaturePrintButtonState();
-            
-            alert('手書きサインとすべての設定を復元しました！\n再印刷が可能です。');
-        }, 100);
-    }
-}
-
-// QRデータのみから復元（履歴にない場合）
-function restoreContentFromQROnly(qrData) {
-    // 既に展開済みのデータを使用（新形式対応）
-    console.log('QRデータのみで復元開始:', qrData);
-    
-    // 基本情報を表示
-    const typeText = qrData.type === 'image' ? '画像' : 
-                    qrData.type === 'text' ? 'テキスト' : 
-                    qrData.type === 'signature' ? '手書き' : qrData.type;
-                    
-    const dateText = qrData.dateTime || '不明';
-    const copiesText = qrData.copies || 1;
-    
-    const message = `QRコードから読み取りました：\n\n` +
-                   `種類：${typeText}\n` +
-                   `日付：${dateText}\n` +
-                   `部数：${copiesText}部\n` +
-                   `作成日時：${new Date(qrData.created).toLocaleString()}\n\n` +
-                   `元のデータが見つからないため、詳細内容は表示できません。\n` +
-                   `このQRコードは正常に読み取れました！`;
-    
-    alert(message);
-    
-    // モーダルを閉じる
-    stopQRReader();
 }
 </script>
 </body>
