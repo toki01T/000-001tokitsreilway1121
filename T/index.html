@@ -87,8 +87,8 @@ header {
     text-align: center;
     font-weight: normal;
     letter-spacing: 0.05em;
-    line-height: 1;
-    margin: 0;
+    width: 280px;
+    height: 280px;
     padding: 0;
     white-space: nowrap;
 }
@@ -101,20 +101,51 @@ header {
     border: none;
     color: #fff;
     font-size: 1.7rem;
-    cursor: pointer;
-    z-index: 12;
-    padding: 0;
-    width: auto;
-    height: auto;
-}
-#qrCodeBtn {
+.qr-reader-guide {
     position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border: 5px solid #00A3ED;
+    border-radius: 18px;
+    pointer-events: none;
+    box-sizing: border-box;
+    z-index: 2;
+}
+.qr-reader-guide::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #00A3ED88;
+    transform: translateX(-1px);
+    z-index: 3;
+}
+.qr-reader-guide::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #00A3ED88;
+    transform: translateY(-1px);
+    z-index: 3;
+}
     right: 4rem;
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
     border: none;
     color: #fff;
+}
+.qr-reader-desc {
+    text-align: center;
+    font-size: 0.95em;
+    color: #555;
+    margin-top: 4px;
+    margin-bottom: 2px;
+}
     font-size: 1.5rem;
     cursor: pointer;
     z-index: 12;
@@ -930,13 +961,14 @@ footer p {
 <!-- QRコードリーダーモーダル -->
 <div id="qrReaderModal">
     <div id="qrReaderContainer">
-        <button id="closeQrReader">×</button>
-        <div class="qr-reader-title">QRコード読み取り</div>
-        <div class="qr-reader-video-wrap">
-            <video id="qrReader" playsinline></video>
-            <div class="qr-reader-guide"></div>
-        </div>
-        <div id="qrReaderStatus" class="qr-reader-status">カメラを起動中...</div>
+            <button id="closeQrReader">×</button>
+            <div class="qr-reader-title">QRコード読み取り</div>
+            <div class="qr-reader-video-wrap">
+                <video id="qrReader" playsinline></video>
+                <div class="qr-reader-guide"></div>
+            </div>
+            <div class="qr-reader-desc">枠内にQRコードをかざしてください</div>
+            <div id="qrReaderStatus" class="qr-reader-status">カメラを起動中...</div>
     </div>
 </div>
 <main>
@@ -1790,31 +1822,30 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 const minute = now.getMinutes();
                 const second = now.getSeconds();
                 
-                // 日付行だけ小さく・右寄せ、時刻はそのまま
-                const dateFontSize = 36; // 日付フォントサイズ
-                const timeFontSize = 50; // 時刻フォントサイズ
+                const fontSize = 50; // 50px
                 compositeCtx.fillStyle = '#000000';
+                compositeCtx.font = `${fontSize}px Arial, sans-serif`;
+                compositeCtx.textAlign = 'left'; // 左揃えに変更
                 compositeCtx.textBaseline = 'top';
-                // QRコードがある場合は右端から20pxの位置に右寄せ
+                
+                // QRコードがある場合は右側に配置、ない場合は中央
                 let dateX;
                 if (qrCodeCanvas) {
-                    dateX = canvasWidth - 20; // 右端から20px（右寄せ）
+                    dateX = 260; // 右寄せ（A4横幅297px想定）
+                    compositeCtx.textAlign = 'right';
                 } else {
                     compositeCtx.textAlign = 'center';
-                    dateX = Math.round(canvasWidth / 2); // 完全中央
+                    dateX = Math.round(canvasWidth / 2);
                 }
                 let yPos = signatureY + signatureHeight + 15;
-                // 日付行
-                compositeCtx.font = `${dateFontSize}px Arial, sans-serif`;
-                compositeCtx.textAlign = 'right';
-                const dateTextStr = `${year}年 ${month}月${day}日`;
-                compositeCtx.fillText(dateTextStr, dateX, yPos);
-                yPos += dateFontSize * 1.2;
-                // 時刻行
-                compositeCtx.font = `${timeFontSize}px Arial, sans-serif`;
-                compositeCtx.textAlign = qrCodeCanvas ? 'right' : 'center';
-                const timeText = `${hour}時${minute}分${second}秒`;
-                compositeCtx.fillText(timeText, dateX, yPos);
+                // 日付行（小さめフォント）
+                compositeCtx.save();
+                compositeCtx.font = 'bold 14px Arial';
+                compositeCtx.fillText(`${year}年 ${month}月${day}日`, dateX, yPos);
+                compositeCtx.restore();
+                yPos += fontSize * 1.2;
+                // 時刻行（現状サイズ）
+                compositeCtx.fillText(`${hour}時${minute}分${second}秒`, dateX, yPos);
             }
             
             // 合成キャンバスをPNGデータURLに変換
@@ -2279,24 +2310,22 @@ function sendToPrintAssist(event) {
                         // QRコードがある場合は右側に配置、ない場合は中央
                         let dateX;
                         if (qrCodeCanvas) {
-                            dateX = 180; // QRコードの右側に配置
+                            dateX = 260;
+                            compositeCtx.textAlign = 'right';
                         } else {
-                            // QRコードがない場合は中央に配置
                             compositeCtx.textAlign = 'center';
-                            dateX = Math.round(canvasWidth / 2) - 30; // 完全中央配置 ← この-30の数値で左右調整可能
+                            dateX = Math.round(canvasWidth / 2);
                         }
-                        
-                        let yPos = imgY + finalImgHeight + 25; // 画像の下、適切な間隔
-                        
-                        // 日付行
-                        const dateText = `${year}年 ${month}月${day}日`;
-                        compositeCtx.fillText(dateText, dateX, yPos);
+                        let yPos = imgY + finalImgHeight + 25;
+                        // 日付行（小さめフォント）
+                        compositeCtx.save();
+                        compositeCtx.font = 'bold 14px Arial';
+                        compositeCtx.fillText(`${year}年 ${month}月${day}日`, dateX, yPos);
+                        compositeCtx.restore();
                         yPos += fontSize * 1.2;
-                        
-                        // 時刻行
-                        const timeText = `${hour}時${minute}分${second}秒`;
-                        compositeCtx.fillText(timeText, dateX, yPos);
-                        yPos += 50; // 日付有り印刷の下部余白を50px追加
+                        // 時刻行（現状サイズ）
+                        compositeCtx.fillText(`${hour}時${minute}分${second}秒`, dateX, yPos);
+                        yPos += 50;
                     }
                     
                     // 合成キャンバスを高品質PNGデータURLに変換
@@ -2590,21 +2619,20 @@ function printText() {
             // QRコードがある場合は右側に配置、ない場合は中央
             let dateX;
             if (qrCodeCanvas) {
-                dateX = 180; // QRコードの右側に配置
+                dateX = 260;
+                ctx.textAlign = 'right';
             } else {
-                // QRコードがない場合は中央に配置
                 ctx.textAlign = 'center';
-                dateX = Math.round(canvasWidth / 2) - 30; // 完全中央配置 ← この-30の数値で左右調整可能
+                dateX = Math.round(canvasWidth / 2);
             }
-            
-            // 日付行
-            const dateText = `${year}年 ${month}月${day}日`;
-            ctx.fillText(dateText, dateX, yPos);
+            // 日付行（小さめフォント）
+            ctx.save();
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(`${year}年 ${month}月${day}日`, dateX, yPos);
+            ctx.restore();
             yPos += dateLineHeight;
-            
-            // 時刻行
-            const timeText = `${hour}時${minute}分${second}秒`;
-            ctx.fillText(timeText, dateX, yPos);
+            // 時刻行（現状サイズ）
+            ctx.fillText(`${hour}時${minute}分${second}秒`, dateX, yPos);
         }
         
         // キャンバスをPNGデータURLに変換
@@ -2739,7 +2767,7 @@ function generateQRCode(data) {
         
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-    const size = 240; // QRコードのベースサイズを240pxに拡大
+    const size = 300; // QRコードのベースサイズを300pxに拡大
         const moduleCount = qr.getModuleCount();
         const cellSize = Math.floor(size / moduleCount); // 整数にして境界を明確に
         const actualSize = cellSize * moduleCount; // 実際のサイズを再計算
@@ -2774,22 +2802,25 @@ function generateQRCode(data) {
             }
         }
         
-        // 境界線を追加して鮮明度を向上（白い枠2セル分）
-        const border = cellSize * 2; // 2セル分の枠
-        const finalCanvas = document.createElement('canvas');
-        const finalCtx = finalCanvas.getContext('2d');
-        const finalSize = actualSize + (border * 2);
-        finalCanvas.width = finalSize;
-        finalCanvas.height = finalSize;
+    // 境界線を追加して鮮明度を向上（白い枠）
+    const border = cellSize * 2; // 2セル分の枠
+    const finalCanvas = document.createElement('canvas');
+    const finalCtx = finalCanvas.getContext('2d');
+    const finalSize = actualSize + (border * 2);
+    finalCanvas.width = finalSize;
+    finalCanvas.height = finalSize;
+        
         // 描画設定を継承
         finalCtx.imageSmoothingEnabled = false;
         finalCtx.webkitImageSmoothingEnabled = false;
         finalCtx.mozImageSmoothingEnabled = false;
         finalCtx.msImageSmoothingEnabled = false;
+        
         // 白い枠付きで描画
         finalCtx.fillStyle = '#FFFFFF';
         finalCtx.fillRect(0, 0, finalSize, finalSize);
         finalCtx.drawImage(canvas, border, border);
+        
         return finalCanvas;
     } catch (error) {
         console.error('QRコード生成エラー:', error);
