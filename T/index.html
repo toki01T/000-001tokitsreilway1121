@@ -806,15 +806,34 @@ footer p {
     flex-direction: column;
     align-items: center;
 }
+    border: 2px solid var(--primary-color);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    min-height: 420px;
+.qr-reader-title {
 .qr-reader-title {
     text-align: center;
-    font-size: 1.2em;
+    font-size: 1.3em;
     font-weight: bold;
+    margin-bottom: 4px;
+    color: var(--primary-color);
+}
+.qr-reader-desc {
+    text-align: center;
+    font-size: 1em;
+    color: #555;
     margin-bottom: 8px;
 }
-.qr-reader-video-wrap {
-    position: relative;
+    text-align: center;
+    font-size: 1.2em;
     width: 260px;
+    height: 260px;
+    margin: 0 auto 12px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #222;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
     height: 260px;
     margin: 0 auto 12px auto;
     display: flex;
@@ -826,32 +845,52 @@ footer p {
     height: 100%;
     background: #222;
     border-radius: 10px;
-    object-fit: cover;
-}
-.qr-reader-guide {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    border: 3px dashed var(--primary-color);
-    border-radius: 10px;
+    border: 3px solid var(--primary-color);
+    border-radius: 12px;
     pointer-events: none;
     box-sizing: border-box;
-}
-#closeQrReader {
+    box-shadow: 0 0 0 2px #fff, 0 0 8px 2px var(--primary-color);
+    top: 0; left: 0; right: 0; bottom: 0;
+    border: 3px dashed var(--primary-color);
     position: absolute;
     top: 8px;
     right: 8px;
     background: var(--primary-color);
     color: white;
     border: none;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 1.5em;
+    cursor: pointer;
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 50%;
     font-size: 1.4em;
     cursor: pointer;
     z-index: 2;
     box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    color: var(--primary-color);
+    font-weight: bold;
+    min-height: 1.5em;
 }
-.qr-reader-status {
+#qrReaderRetryBtn {
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 1em;
+    margin-top: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    transition: background 0.2s;
+}
+#qrReaderRetryBtn:hover {
+    background: var(--primary-hover);
     text-align: center;
     margin-top: 8px;
     font-size: 1em;
@@ -932,17 +971,13 @@ footer p {
         <div id="qrReaderContainer">
             <button id="closeQrReader">×</button>
             <div class="qr-reader-title">QRコード読み取り</div>
+            <div class="qr-reader-desc">枠内にQRコードをかざしてください</div>
             <div class="qr-reader-video-wrap">
                 <video id="qrReader" playsinline></video>
-                <div class="qr-reader-corner-guide">
-                    <div class="corner top-left"></div>
-                    <div class="corner top-right"></div>
-                    <div class="corner bottom-left"></div>
-                    <div class="corner bottom-right"></div>
-                </div>
+                <div class="qr-reader-guide"></div>
             </div>
-            <div class="qr-reader-desc">枠内にQRコードをかざしてください</div>
             <div id="qrReaderStatus" class="qr-reader-status">カメラを起動中...</div>
+            <button id="qrReaderRetryBtn" style="display:none;margin-top:10px;">再読み込み</button>
         </div>
 </div>
 <main>
@@ -1803,31 +1838,22 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 compositeCtx.textBaseline = 'top';
                 
                 // QRコードがある場合は右側に配置、ない場合は中央
-                let dateX;
-                if (qrCodeCanvas) {
-                    dateX = 180; // QRコードの右側に配置
-                } else {
-                    // QRコードがない場合は中央に配置
-                    compositeCtx.textAlign = 'center';
-                    dateX = Math.round(canvasWidth / 2) - 30; // 完全中央配置 ← この-30の数値で左右調整可能
-                }
-                
-                let yPos = signatureY + signatureHeight + 15; // 縮小されたサインの下、適切な間隔
-                
-                // 日付行（小さく右寄せ）
+                // 日付行のみ小フォント・右寄せ
+                let dateX = canvasWidth - 20; // 右端から20px（右寄せ）
+                let yPos = signatureY + signatureHeight + 15;
                 compositeCtx.save();
-                compositeCtx.font = 'bold 12px Arial';
                 compositeCtx.textAlign = 'right';
-                const dateTextStr = `${year}年 ${month}月${day}日`;
-                compositeCtx.fillText(dateTextStr, canvasWidth - 20, yPos);
+                compositeCtx.font = '10px Arial'; // 日付のみ小さく
+                const dateText = `${year}年 ${month}月${day}日`;
+                compositeCtx.fillText(dateText, dateX, yPos);
                 compositeCtx.restore();
                 yPos += fontSize * 1.2;
-                // 時刻行（通常サイズ・右寄せ）
+                // 時刻行は通常サイズ・右寄せ
                 compositeCtx.save();
-                compositeCtx.font = `bold ${fontSize}px Arial`;
                 compositeCtx.textAlign = 'right';
-                const timeTextStr = `${hour}時${minute}分${second}秒`;
-                compositeCtx.fillText(timeTextStr, canvasWidth - 20, yPos);
+                // フォントはそのまま
+                const timeText = `${hour}時${minute}分${second}秒`;
+                compositeCtx.fillText(timeText, dateX, yPos);
                 compositeCtx.restore();
             }
             
@@ -2302,20 +2328,21 @@ function sendToPrintAssist(event) {
                         
                         let yPos = imgY + finalImgHeight + 25; // 画像の下、適切な間隔
                         
-                        // 日付行（小さく右寄せ）
+                        // 日付行のみ小フォント・右寄せ
+                        dateX = canvasWidth - 20;
                         compositeCtx.save();
-                        compositeCtx.font = 'bold 12px Arial';
                         compositeCtx.textAlign = 'right';
-                        const dateTextStr = `${year}年 ${month}月${day}日`;
-                        compositeCtx.fillText(dateTextStr, canvasWidth - 20, yPos);
+                        compositeCtx.font = '10px Arial';
+                        const dateText = `${year}年 ${month}月${day}日`;
+                        compositeCtx.fillText(dateText, dateX, yPos);
                         compositeCtx.restore();
                         yPos += fontSize * 1.2;
-                        // 時刻行（通常サイズ・右寄せ）
+                        // 時刻行は通常サイズ・右寄せ
                         compositeCtx.save();
-                        compositeCtx.font = `bold ${fontSize}px Arial`;
                         compositeCtx.textAlign = 'right';
-                        const timeTextStr = `${hour}時${minute}分${second}秒`;
-                        compositeCtx.fillText(timeTextStr, canvasWidth - 20, yPos);
+                        // フォントはそのまま
+                        const timeText = `${hour}時${minute}分${second}秒`;
+                        compositeCtx.fillText(timeText, dateX, yPos);
                         compositeCtx.restore();
                         yPos += 50; // 日付有り印刷の下部余白を50px追加
                     }
@@ -2618,20 +2645,21 @@ function printText() {
                 dateX = Math.round(canvasWidth / 2) - 30; // 完全中央配置 ← この-30の数値で左右調整可能
             }
             
-            // 日付行（小さく右寄せ）
+            // 日付行のみ小フォント・右寄せ
+            dateX = canvas.width - 20;
             ctx.save();
-            ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'right';
-            const dateTextStr = `${year}年 ${month}月${day}日`;
-            ctx.fillText(dateTextStr, canvasWidth - 20, yPos);
+            ctx.font = '10px Arial';
+            const dateText = `${year}年 ${month}月${day}日`;
+            ctx.fillText(dateText, dateX, yPos);
             ctx.restore();
             yPos += dateLineHeight;
-            // 時刻行（通常サイズ・右寄せ）
+            // 時刻行は通常サイズ・右寄せ
             ctx.save();
-            ctx.font = `bold ${fontSize}px Arial`;
             ctx.textAlign = 'right';
-            const timeTextStr = `${hour}時${minute}分${second}秒`;
-            ctx.fillText(timeTextStr, canvasWidth - 20, yPos);
+            // フォントはそのまま
+            const timeText = `${hour}時${minute}分${second}秒`;
+            ctx.fillText(timeText, dateX, yPos);
             ctx.restore();
         }
         
@@ -2765,34 +2793,57 @@ function generateQRCode(data) {
         qr.addData(data);
         qr.make();
         
-        const moduleCount = qr.getModuleCount();
-        const cellSize = Math.floor(200 / moduleCount);
-        const qrPixelSize = cellSize * moduleCount;
-        const borderCells = 4; // 白枠4セル分
-        const totalSize = qrPixelSize + cellSize * borderCells * 2;
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = totalSize;
-        canvas.height = totalSize;
+    const size = 320; // QRコードのベースサイズを320pxに拡大
+        const moduleCount = qr.getModuleCount();
+        const cellSize = Math.floor(size / moduleCount); // 整数にして境界を明確に
+        const actualSize = cellSize * moduleCount;
+        canvas.width = actualSize;
+        canvas.height = actualSize;
+        
+        // 最高品質の描画設定
         ctx.imageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
         ctx.msImageSmoothingEnabled = false;
-        ctx.fillStyle = '#FFF';
-        ctx.fillRect(0, 0, totalSize, totalSize);
-        ctx.fillStyle = '#000';
+        ctx.textRenderingOptimization = 'optimizeSpeed';
+        ctx.textRendering = 'geometricPrecision';
+        
+        // 背景を完全な白で塗りつぶし
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, actualSize, actualSize);
+        
+        // QRコードを超高品質で描画（サーマルプリンター最適化）
+        ctx.fillStyle = '#000000'; // 完全な黒で鮮明に
+        
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
-                    ctx.fillRect(
-                        (col + borderCells) * cellSize,
-                        (row + borderCells) * cellSize,
-                        cellSize, cellSize
-                    );
+                    const x = col * cellSize;
+                    const y = row * cellSize;
+                    
+                    // ピクセルパーフェクトな描画
+                    ctx.fillRect(x, y, cellSize, cellSize);
                 }
             }
         }
-        return canvas;
+        
+        // 境界線を2セル分追加して潰れ防止
+        const border = cellSize * 2; // 2セル分の枠
+        const finalCanvas = document.createElement('canvas');
+        const finalCtx = finalCanvas.getContext('2d');
+        const finalSize = actualSize + (border * 2);
+        finalCanvas.width = finalSize;
+        finalCanvas.height = finalSize;
+        finalCtx.imageSmoothingEnabled = false;
+        finalCtx.webkitImageSmoothingEnabled = false;
+        finalCtx.mozImageSmoothingEnabled = false;
+        finalCtx.msImageSmoothingEnabled = false;
+        finalCtx.fillStyle = '#FFFFFF';
+        finalCtx.fillRect(0, 0, finalSize, finalSize);
+        finalCtx.drawImage(canvas, border, border);
+        return finalCanvas;
     } catch (error) {
         console.error('QRコード生成エラー:', error);
         return null;
