@@ -1756,7 +1756,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 if (qrData) {
                     qrCodeCanvas = generateQRCode(qrData);
                     if (qrCodeCanvas) {
-                        const qrSize = 160; // 読み取り精度を優先してサイズ拡大
+                        const qrSize = 200; // 読み取り精度を優先してサイズ拡大
                         let qrX, qrY;
                         
                         if (isDateTimeEnabled) {
@@ -2000,7 +2000,7 @@ function sendToPrintAssist(event) {
                         if (qrData) {
                             qrCodeCanvas = generateQRCode(qrData);
                             if (qrCodeCanvas) {
-                                const qrSize = 160; // 読み取り精度を優先してサイズ拡大
+                                const qrSize = 200; // 読み取り精度を優先してサイズ拡大
                                 let qrX, qrY;
                                 
                                 if (isDateTimeEnabled) {
@@ -2546,7 +2546,7 @@ function printText() {
             if (qrData) {
                 qrCodeCanvas = generateQRCode(qrData);
                 if (qrCodeCanvas) {
-                    const qrSize = 160; // 読み取り精度を優先してサイズ拡大
+                    const qrSize = 200; // 読み取り精度を優先してサイズ拡大
                     let qrX, qrY;
                     
                     if (isDateTimeEnabled) {
@@ -2740,7 +2740,7 @@ function generateQRCode(data) {
         
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        const size = 400; // QRコードのベースサイズを大幅に拡大（超高解像度）
+    const size = 200; // QRコードのベースサイズを200pxに統一
         const moduleCount = qr.getModuleCount();
         const cellSize = Math.floor(size / moduleCount); // 整数にして境界を明確に
         const actualSize = cellSize * moduleCount; // 実際のサイズを再計算
