@@ -1808,12 +1808,12 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 
                 let yPos = signatureY + signatureHeight + 15; // 縮小されたサインの下、適切な間隔
                 
-                // 日付行
+                // 日付・時刻のフォントサイズを小さく
+                const dateFontSize = Math.round(fontSize * 0.8);
+                compositeCtx.font = `${dateFontSize}px Arial, sans-serif`;
                 const dateText = `${year}年 ${month}月${day}日`;
                 compositeCtx.fillText(dateText, dateX, yPos);
-                yPos += fontSize * 1.2;
-                
-                // 時刻行
+                yPos += dateFontSize * 1.2;
                 const timeText = `${hour}時${minute}分${second}秒`;
                 compositeCtx.fillText(timeText, dateX, yPos);
             }
@@ -2289,15 +2289,15 @@ function sendToPrintAssist(event) {
                         
                         let yPos = imgY + finalImgHeight + 25; // 画像の下、適切な間隔
                         
-                        // 日付行
+                        // 日付・時刻のフォントサイズを小さく
+                        const dateFontSize = Math.round(fontSize * 0.8);
+                        compositeCtx.font = `${dateFontSize}px Arial, sans-serif`;
                         const dateText = `${year}年 ${month}月${day}日`;
                         compositeCtx.fillText(dateText, dateX, yPos);
-                        yPos += fontSize * 1.2;
-                        
-                        // 時刻行
+                        yPos += dateFontSize * 1.2;
                         const timeText = `${hour}時${minute}分${second}秒`;
                         compositeCtx.fillText(timeText, dateX, yPos);
-                        yPos += 50; // 日付有り印刷の下部余白を50px追加
+                        yPos += 30; // 下部余白も調整
                     }
                     
                     // 合成キャンバスを高品質PNGデータURLに変換
@@ -2598,12 +2598,12 @@ function printText() {
                 dateX = Math.round(canvasWidth / 2) - 30; // 完全中央配置 ← この-30の数値で左右調整可能
             }
             
-            // 日付行
+            // 日付・時刻のフォントサイズを小さく
+            const dateFontSize = Math.round(dateLineHeight * 0.8);
+            ctx.font = `${dateFontSize}px Arial, sans-serif`;
             const dateText = `${year}年 ${month}月${day}日`;
             ctx.fillText(dateText, dateX, yPos);
-            yPos += dateLineHeight;
-            
-            // 時刻行
+            yPos += dateFontSize * 1.2;
             const timeText = `${hour}時${minute}分${second}秒`;
             ctx.fillText(timeText, dateX, yPos);
         }
