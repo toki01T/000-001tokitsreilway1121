@@ -819,18 +819,7 @@ footer p {
     position: relative;
 }
 #qrGuide {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 180px;
-    height: 180px;
-    transform: translate(-50%, -50%);
-    border: 3px dashed #00A3ED;
-    border-radius: 16px;
-    box-sizing: border-box;
-    pointer-events: none;
-    background: rgba(255,255,255,0.08);
-    z-index: 2;
+    /* ガイド枠は削除 */
 }
 
 #closeQrReader {
@@ -901,7 +890,6 @@ footer p {
         <h3 style="text-align: center; margin: 0 0 8px 0; font-size: 1.18rem;">QRコード読み取り</h3>
         <div style="position:relative; width:260px; height:260px; margin:0 auto;">
             <video id="qrReader" playsinline></video>
-            <div id="qrGuide"></div>
         </div>
         <div id="qrReaderStatus">カメラを起動中...</div>
         <div style="text-align:center; margin-top:12px; color:#555; font-size:0.98rem;">
@@ -2770,8 +2758,6 @@ function startQRReader() {
     
     // 背面カメラを優先的に使用
     if (typeof QrScanner !== 'undefined') {
-        // ガイド枠に合わせたスキャン範囲（中央180x180px）
-        const scanRegion = { x: 40, y: 40, width: 180, height: 180 };
         qrScanner = new QrScanner(videoElement, 
             result => {
                 console.log('QRコード読み取り成功:', result);
@@ -2783,17 +2769,10 @@ function startQRReader() {
                 onDecodeError: error => {
                     // エラーは表示しない（連続スキャンのため）
                 },
-                maxScansPerSecond: 8,
-                highlightScanRegion: true,
+                maxScansPerSecond: 5,
+                highlightScanRegion: false,
                 highlightCodeOutline: true,
-                preferredCamera: 'environment', // 背面カメラ優先
-                calculateScanRegion: () => scanRegion,
-                returnDetailedScanResult: true,
-                videoConstraints: {
-                    facingMode: { exact: 'environment' },
-                    width: { ideal: 1280 },
-                    height: { ideal: 1280 }
-                }
+                preferredCamera: 'environment'
             }
         );
         qrScanner.start().then(() => {
