@@ -1026,6 +1026,8 @@ function openDB() {
     });
 }
 function addHistory(item) {
+    // 管理番号を必ず付与
+    if (!item.id) item.id = Date.now();
     // QRコード用データを追加
     const qrData = generateQRData(item);
     item.qrData = qrData;
@@ -1713,7 +1715,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 if (qrData) {
                     qrCodeCanvas = generateQRCode(qrData);
                     if (qrCodeCanvas) {
-                        const qrSize = 220; // 物理サイズ18mm以上相当で読み取り精度最大化
+                        const qrSize = 160; // 読み取り精度を優先してサイズ拡大
                         let qrX, qrY;
                         
                         if (isDateTimeEnabled) {
@@ -1957,7 +1959,7 @@ function sendToPrintAssist(event) {
                         if (qrData) {
                             qrCodeCanvas = generateQRCode(qrData);
                             if (qrCodeCanvas) {
-                                const qrSize = 220; // 物理サイズ18mm以上相当で読み取り精度最大化
+                                const qrSize = 160; // 読み取り精度を優先してサイズ拡大
                                 let qrX, qrY;
                                 
                                 if (isDateTimeEnabled) {
@@ -2501,7 +2503,7 @@ function printText() {
             if (qrData) {
                 qrCodeCanvas = generateQRCode(qrData);
                 if (qrCodeCanvas) {
-                    const qrSize = 220; // 物理サイズ18mm以上相当で読み取り精度最大化
+                    const qrSize = 160; // 読み取り精度を優先してサイズ拡大
                     let qrX, qrY;
                     
                     if (isDateTimeEnabled) {
@@ -2668,26 +2670,9 @@ if ('serviceWorker' in navigator) {
 
 // QRコード用データの生成
 function generateQRData(item) {
-    // QRデータをシンプルなカンマ区切り文字列に
-    // 例: TOKI01_t,240930,1,1696040000000,base64data
-    const typeChar = item.type ? item.type.charAt(0) : 't';
-    const now = new Date();
-    const yymmdd = now.getFullYear().toString().slice(2) + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
-    const copies = item.copies || 1;
+    // 管理番号（ID）のみをQRコードに埋め込む
     const id = item.id || Date.now();
-    const created = item.created || Date.now();
-    let dataStr = '';
-    if (typeChar === 'i' && item.data) {
-        // 画像はbase64
-        dataStr = btoa(encodeURIComponent(item.data));
-    } else if (typeChar === 't' && item.data) {
-        // テキストはbase64
-        dataStr = btoa(unescape(encodeURIComponent(item.data)));
-    } else if (typeChar === 's' && item.data) {
-        // サインもbase64
-        dataStr = btoa(encodeURIComponent(item.data));
-    }
-    return QR_PREFIX + [typeChar, yymmdd, copies, id, created, dataStr].join(',');
+    return QR_PREFIX + id;
 }
 
 // QRコード画像の生成
@@ -2824,19 +2809,10 @@ function handleQRScanResult(result) {
             alert('このアプリで生成されたQRコードではありません');
             return;
         }
-        // カンマ区切り文字列を分解
-        const csv = result.substring(QR_PREFIX.length);
-        const parts = csv.split(',');
-        if (parts.length < 3) throw new Error('データ形式不正');
-        // t, yymmdd, copies, id, created
-        const data = {
-            t: parts[0],
-            d: parts[1],
-            c: parts[2],
-            id: parts[3] || '',
-            created: parts[4] || ''
-        };
-        restoreFromQRData(data);
+    // 管理番号のみを分解
+    const id = result.substring(QR_PREFIX.length);
+    if (!id) throw new Error('管理番号がありません');
+    restoreFromQRData({ id });
     } catch (error) {
         console.error('QRコード解析エラー:', error);
         alert('無効なQRコードです');
@@ -2853,20 +2829,16 @@ function restoreFromQRData(qrData) {
         copies: qrData.c,
         created: qrData.created
     };
-    // 履歴から該当データを検索（id一致 or createdが30秒以内でtype一致）
+    // 履歴から該当データを検索（id一致のみ）
     getAllHistory().then(historyArr => {
-        const targetItem = historyArr.find(item =>
-            (item.id == expandedData.id ||
-             (item.created && expandedData.created && Math.abs(item.created - expandedData.created) < 30000 && item.type === expandedData.type))
-        );
+        const targetItem = historyArr.find(item => item.id == qrData.id);
         if (targetItem) {
             // 履歴アイテムが見つかった場合
             console.log('対応する履歴アイテムを発見:', targetItem);
             restoreContentFromHistory(targetItem);
         } else {
-            // 履歴にない場合はQRデータのみで復元
-            console.log('履歴にないため、QRデータのみで復元');
-            restoreContentFromQROnly(qrData);
+            // 履歴にない場合
+            alert('該当データが履歴にありません');
         }
     });
 }
@@ -2957,67 +2929,28 @@ function restoreContentFromQROnly(qrData) {
         type: qrData.t,
         dateTime: qrData.d,
         copies: qrData.c,
-        created: qrData.cr,
-        data: qrData.data || ''
+        created: qrData.cr
     };
-    // 6番目以降を結合してデータ部とする
-    let dataStr = '';
-    if (qrData.data) {
-        dataStr = qrData.data;
-    } else if (Array.isArray(qrData) && qrData.length > 5) {
-        dataStr = qrData.slice(5).join(',');
-    }
-    try {
-        if (expandedData.type === 'i' && dataStr) {
-            // 画像
-            showSection('image');
-            const previewContainer = document.getElementById('imagePreviewContainer');
-            previewContainer.innerHTML = '';
-            const img = new Image();
-            img.src = decodeURIComponent(atob(dataStr));
-            img.style.maxWidth = '100%';
-            img.style.maxHeight = '360px';
-            img.style.display = 'block';
-            img.style.margin = '0 auto';
-            previewContainer.appendChild(img);
-            document.getElementById('dateTimeChoice').style.display = 'flex';
-            document.getElementById('copiesSelect').value = expandedData.copies;
-            document.getElementById('imagePrintOptions').style.display = 'flex';
-            updatePrintButtonState();
-            alert('QRコードから画像を復元しました！再印刷が可能です。');
-        } else if (expandedData.type === 't' && dataStr) {
-            // テキスト
-            showSection('text');
-            const text = decodeURIComponent(escape(atob(dataStr)));
-            document.getElementById('textInput').value = text;
-            autoWrap(document.getElementById('textInput'));
-            const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-            chips.forEach(chip => chip.classList.remove('selected'));
-            if (expandedData.dateTime === 'with') chips[0].classList.add('selected');
-            else chips[1].classList.add('selected');
-            selectedTextChip = expandedData.dateTime;
-            document.getElementById('textCopiesSelect').value = expandedData.copies;
-            updateTextPrintButtonState();
-            alert('QRコードからテキストを復元しました！再印刷が可能です。');
-        } else if (expandedData.type === 's' && dataStr) {
-            // サイン
-            showSection('signature');
-            setTimeout(function() {
-                initSignaturePad(decodeURIComponent(atob(dataStr)), true);
-                const chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
-                chips.forEach(chip => chip.classList.remove('selected'));
-                if (expandedData.dateTime === 'with') chips[0].classList.add('selected');
-                else chips[1].classList.add('selected');
-                selectedSignatureChip = expandedData.dateTime;
-                document.getElementById('signatureCopiesSelect').value = expandedData.copies;
-                updateSignaturePrintButtonState();
-                alert('QRコードから手書きサインを復元しました！再印刷が可能です。');
-            }, 100);
-        } else {
-            alert('このQRコードのデータは復元できません。');
-        }
-    } catch (e) {
-        alert('QRコードデータの復元に失敗しました。');
+    
+    if (expandedData.type === 'text' && qrData.txt) {
+        showSection('text');
+        
+        document.getElementById('textInput').value = qrData.txt;
+        autoWrap(document.getElementById('textInput'));
+        
+        // 設定を復元
+        const chips = document.querySelectorAll('#textDateTimeChoice .chip');
+        chips.forEach(chip => chip.classList.remove('selected'));
+        if (expandedData.dateTime === 'with') chips[0].classList.add('selected');
+        else chips[1].classList.add('selected');
+        selectedTextChip = expandedData.dateTime;
+        
+        document.getElementById('textCopiesSelect').value = expandedData.copies;
+        updateTextPrintButtonState();
+        
+        alert('QRコードからテキスト情報を復元しました！\n（※一部のテキストのみ復元されています）');
+    } else {
+        alert('このQRコードの完全なデータは履歴にありません。\n画像や手書きデータは履歴からのみ復元可能です。');
     }
 }
 </script>
