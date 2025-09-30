@@ -814,7 +814,7 @@ footer p {
     border: none;
     border-radius: 12px;
     background: #222;
-    object-fit: cover;
+    object-fit: contain;
     box-shadow: 0 2px 12px rgba(0,0,0,0.18);
     position: relative;
 }
@@ -2770,6 +2770,8 @@ function startQRReader() {
     
     // 背面カメラを優先的に使用
     if (typeof QrScanner !== 'undefined') {
+        // ガイド枠に合わせたスキャン範囲（中央180x180px）
+        const scanRegion = { x: 40, y: 40, width: 180, height: 180 };
         qrScanner = new QrScanner(videoElement, 
             result => {
                 console.log('QRコード読み取り成功:', result);
@@ -2781,13 +2783,19 @@ function startQRReader() {
                 onDecodeError: error => {
                     // エラーは表示しない（連続スキャンのため）
                 },
-                maxScansPerSecond: 5,
+                maxScansPerSecond: 8,
                 highlightScanRegion: true,
                 highlightCodeOutline: true,
-                preferredCamera: 'environment' // 背面カメラ優先
+                preferredCamera: 'environment', // 背面カメラ優先
+                calculateScanRegion: () => scanRegion,
+                returnDetailedScanResult: true,
+                videoConstraints: {
+                    facingMode: { exact: 'environment' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 1280 }
+                }
             }
         );
-        
         qrScanner.start().then(() => {
             statusElement.textContent = 'QRコードをカメラに向けてください';
         }).catch(error => {
