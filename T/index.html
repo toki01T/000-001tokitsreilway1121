@@ -2831,13 +2831,17 @@ function handleQRScanResult(result) {
             alert('このアプリで生成されたQRコードではありません');
             return;
         }
-        
-        const jsonData = result.substring(QR_PREFIX.length);
-        const data = JSON.parse(jsonData);
-        
-        // QRコードからデータを復元して表示
+        // カンマ区切り文字列を分解
+        const csv = result.substring(QR_PREFIX.length);
+        const parts = csv.split(',');
+        if (parts.length < 3) throw new Error('データ形式不正');
+        // t, yymmdd, copies
+        const data = {
+            t: parts[0],
+            d: parts[1],
+            c: parts[2]
+        };
         restoreFromQRData(data);
-        
     } catch (error) {
         console.error('QRコード解析エラー:', error);
         alert('無効なQRコードです');
