@@ -2669,14 +2669,25 @@ if ('serviceWorker' in navigator) {
 // QRコード用データの生成
 function generateQRData(item) {
     // QRデータをシンプルなカンマ区切り文字列に
-    // 例: TOKI01_t,240930,1,1696040000000
+    // 例: TOKI01_t,240930,1,1696040000000,base64data
     const typeChar = item.type ? item.type.charAt(0) : 't';
     const now = new Date();
     const yymmdd = now.getFullYear().toString().slice(2) + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
     const copies = item.copies || 1;
     const id = item.id || Date.now();
     const created = item.created || Date.now();
-    return QR_PREFIX + [typeChar, yymmdd, copies, id, created].join(',');
+    let dataStr = '';
+    if (typeChar === 'i' && item.data) {
+        // 画像はbase64
+        dataStr = btoa(encodeURIComponent(item.data));
+    } else if (typeChar === 't' && item.data) {
+        // テキストはbase64
+        dataStr = btoa(unescape(encodeURIComponent(item.data)));
+    } else if (typeChar === 's' && item.data) {
+        // サインもbase64
+        dataStr = btoa(encodeURIComponent(item.data));
+    }
+    return QR_PREFIX + [typeChar, yymmdd, copies, id, created, dataStr].join(',');
 }
 
 // QRコード画像の生成
@@ -2946,28 +2957,67 @@ function restoreContentFromQROnly(qrData) {
         type: qrData.t,
         dateTime: qrData.d,
         copies: qrData.c,
-        created: qrData.cr
+        created: qrData.cr,
+        data: qrData.data || ''
     };
-    
-    if (expandedData.type === 'text' && qrData.txt) {
-        showSection('text');
-        
-        document.getElementById('textInput').value = qrData.txt;
-        autoWrap(document.getElementById('textInput'));
-        
-        // 設定を復元
-        const chips = document.querySelectorAll('#textDateTimeChoice .chip');
-        chips.forEach(chip => chip.classList.remove('selected'));
-        if (expandedData.dateTime === 'with') chips[0].classList.add('selected');
-        else chips[1].classList.add('selected');
-        selectedTextChip = expandedData.dateTime;
-        
-        document.getElementById('textCopiesSelect').value = expandedData.copies;
-        updateTextPrintButtonState();
-        
-        alert('QRコードからテキスト情報を復元しました！\n（※一部のテキストのみ復元されています）');
-    } else {
-        alert('このQRコードの完全なデータは履歴にありません。\n画像や手書きデータは履歴からのみ復元可能です。');
+    // 6番目以降を結合してデータ部とする
+    let dataStr = '';
+    if (qrData.data) {
+        dataStr = qrData.data;
+    } else if (Array.isArray(qrData) && qrData.length > 5) {
+        dataStr = qrData.slice(5).join(',');
+    }
+    try {
+        if (expandedData.type === 'i' && dataStr) {
+            // 画像
+            showSection('image');
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            previewContainer.innerHTML = '';
+            const img = new Image();
+            img.src = decodeURIComponent(atob(dataStr));
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '360px';
+            img.style.display = 'block';
+            img.style.margin = '0 auto';
+            previewContainer.appendChild(img);
+            document.getElementById('dateTimeChoice').style.display = 'flex';
+            document.getElementById('copiesSelect').value = expandedData.copies;
+            document.getElementById('imagePrintOptions').style.display = 'flex';
+            updatePrintButtonState();
+            alert('QRコードから画像を復元しました！再印刷が可能です。');
+        } else if (expandedData.type === 't' && dataStr) {
+            // テキスト
+            showSection('text');
+            const text = decodeURIComponent(escape(atob(dataStr)));
+            document.getElementById('textInput').value = text;
+            autoWrap(document.getElementById('textInput'));
+            const chips = document.querySelectorAll('#textDateTimeChoice .chip');
+            chips.forEach(chip => chip.classList.remove('selected'));
+            if (expandedData.dateTime === 'with') chips[0].classList.add('selected');
+            else chips[1].classList.add('selected');
+            selectedTextChip = expandedData.dateTime;
+            document.getElementById('textCopiesSelect').value = expandedData.copies;
+            updateTextPrintButtonState();
+            alert('QRコードからテキストを復元しました！再印刷が可能です。');
+        } else if (expandedData.type === 's' && dataStr) {
+            // サイン
+            showSection('signature');
+            setTimeout(function() {
+                initSignaturePad(decodeURIComponent(atob(dataStr)), true);
+                const chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
+                chips.forEach(chip => chip.classList.remove('selected'));
+                if (expandedData.dateTime === 'with') chips[0].classList.add('selected');
+                else chips[1].classList.add('selected');
+                selectedSignatureChip = expandedData.dateTime;
+                document.getElementById('signatureCopiesSelect').value = expandedData.copies;
+                updateSignaturePrintButtonState();
+                alert('QRコードから手書きサインを復元しました！再印刷が可能です。');
+            }, 100);
+        } else {
+            alert('このQRコードのデータは復元できません。');
+        }
+    } catch (e) {
+        alert('QRコードデータの復元に失敗しました。');
     }
 }
 </script>
