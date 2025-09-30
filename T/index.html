@@ -1713,7 +1713,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 if (qrData) {
                     qrCodeCanvas = generateQRCode(qrData);
                     if (qrCodeCanvas) {
-                        const qrSize = 120; // 9mm相当（300dpi換算）で統一
+                        const qrSize = 220; // 物理サイズ18mm以上相当で読み取り精度最大化
                         let qrX, qrY;
                         
                         if (isDateTimeEnabled) {
@@ -1957,7 +1957,7 @@ function sendToPrintAssist(event) {
                         if (qrData) {
                             qrCodeCanvas = generateQRCode(qrData);
                             if (qrCodeCanvas) {
-                                const qrSize = 120; // 9mm相当（300dpi換算）で統一
+                                const qrSize = 220; // 物理サイズ18mm以上相当で読み取り精度最大化
                                 let qrX, qrY;
                                 
                                 if (isDateTimeEnabled) {
@@ -2501,7 +2501,7 @@ function printText() {
             if (qrData) {
                 qrCodeCanvas = generateQRCode(qrData);
                 if (qrCodeCanvas) {
-                    const qrSize = 120; // 9mm相当（300dpi換算）で統一
+                    const qrSize = 220; // 物理サイズ18mm以上相当で読み取り精度最大化
                     let qrX, qrY;
                     
                     if (isDateTimeEnabled) {
