@@ -814,12 +814,9 @@ footer p {
     border: none;
     border-radius: 12px;
     background: #222;
-    object-fit: contain;
+    object-fit: cover;
     box-shadow: 0 2px 12px rgba(0,0,0,0.18);
     position: relative;
-}
-#qrGuide {
-    /* ガイド枠は削除 */
 }
 
 #closeQrReader {
@@ -2247,8 +2244,6 @@ function sendToPrintAssist(event) {
                             dateX = Math.round(canvasWidth / 2) - 30; // 完全中央配置 ← この-30の数値で左右調整可能
                         }
                         
-                        let yPos = imgY + finalImgHeight + 25; // 画像の下、適切な間隔
-                        
                         // 日付行
                         const dateText = `${year}年 ${month}月${day}日`;
                         compositeCtx.fillText(dateText, dateX, yPos);
@@ -2381,7 +2376,7 @@ function wrapText(text) {
                 }
                 if ((hasFullWidth && hasHalfWidth && currentLine.length >= maxLen) ||
                     (!hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen) ||
-                    (hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen) ||
+                    (hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen * 2) ||
                     (!hasFullWidth && hasHalfWidth && currentLine.length >= maxLen)) {
                     break;
                 }
@@ -2674,12 +2669,14 @@ if ('serviceWorker' in navigator) {
 // QRコード用データの生成
 function generateQRData(item) {
     // QRデータをシンプルなカンマ区切り文字列に
-    // 例: TOKI01_t,240930,1
+    // 例: TOKI01_t,240930,1,1696040000000
     const typeChar = item.type ? item.type.charAt(0) : 't';
     const now = new Date();
     const yymmdd = now.getFullYear().toString().slice(2) + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
     const copies = item.copies || 1;
-    return QR_PREFIX + [typeChar, yymmdd, copies].join(',');
+    const id = item.id || Date.now();
+    const created = item.created || Date.now();
+    return QR_PREFIX + [typeChar, yymmdd, copies, id, created].join(',');
 }
 
 // QRコード画像の生成
@@ -2769,10 +2766,16 @@ function startQRReader() {
                 onDecodeError: error => {
                     // エラーは表示しない（連続スキャンのため）
                 },
-                maxScansPerSecond: 5,
+                maxScansPerSecond: 8,
                 highlightScanRegion: false,
                 highlightCodeOutline: true,
-                preferredCamera: 'environment'
+                preferredCamera: 'environment', // 背面カメラ優先
+                returnDetailedScanResult: true,
+                videoConstraints: {
+                    facingMode: { exact: 'environment' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 1280 }
+                }
             }
         );
         qrScanner.start().then(() => {
@@ -2814,11 +2817,13 @@ function handleQRScanResult(result) {
         const csv = result.substring(QR_PREFIX.length);
         const parts = csv.split(',');
         if (parts.length < 3) throw new Error('データ形式不正');
-        // t, yymmdd, copies
+        // t, yymmdd, copies, id, created
         const data = {
             t: parts[0],
             d: parts[1],
-            c: parts[2]
+            c: parts[2],
+            id: parts[3] || '',
+            created: parts[4] || ''
         };
         restoreFromQRData(data);
     } catch (error) {
@@ -2829,26 +2834,20 @@ function handleQRScanResult(result) {
 
 // QRコードデータからコンテンツを復元
 function restoreFromQRData(qrData) {
-    console.log('QRデータから復元:', qrData);
-    
-    // 圧縮されたデータを展開
+    // 展開されたデータを使用
     const expandedData = {
-        id: qrData.i,
+        id: qrData.id,
         type: qrData.t,
         dateTime: qrData.d,
         copies: qrData.c,
-        created: qrData.cr,
-        appVersion: qrData.v
+        created: qrData.created
     };
-    
-    // 履歴から対応するアイテムを検索
-    getAllHistory().then(historyList => {
-        // 作成日時とタイプで対象アイテムを検索（範囲を広げて検索精度向上）
-        const targetItem = historyList.find(item => 
-            Math.abs(item.created - expandedData.created) < 30000 && // 30秒以内の差を許容
-            item.type === expandedData.type
+    // 履歴から該当データを検索（id一致 or createdが30秒以内でtype一致）
+    getAllHistory().then(historyArr => {
+        const targetItem = historyArr.find(item =>
+            (item.id == expandedData.id ||
+             (item.created && expandedData.created && Math.abs(item.created - expandedData.created) < 30000 && item.type === expandedData.type))
         );
-        
         if (targetItem) {
             // 履歴アイテムが見つかった場合
             console.log('対応する履歴アイテムを発見:', targetItem);
