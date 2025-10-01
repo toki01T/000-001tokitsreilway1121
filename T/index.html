@@ -2666,15 +2666,37 @@ if ('serviceWorker' in navigator) {
 
 // === QRコード機能 ===
 
-// 管理番号システム用カウンター
-let managementCounter = parseInt(localStorage.getItem('toki01_mgmt_counter') || '0');
+// 管理番号システム用カウンター（タイプ別）
+let imageCounter = parseInt(localStorage.getItem('toki01_image_counter') || '0');
+let textCounter = parseInt(localStorage.getItem('toki01_text_counter') || '0');
+let signatureCounter = parseInt(localStorage.getItem('toki01_signature_counter') || '0');
 
-// 管理番号生成
+// 管理番号生成（認識率向上のため明確に分類）
 function generateManagementNumber(type) {
-    managementCounter++;
-    localStorage.setItem('toki01_mgmt_counter', managementCounter.toString());
-    const prefix = type === 'text' ? 'T' : type === 'image' ? 'I' : 'S';
-    return prefix + managementCounter.toString().padStart(3, '0');
+    let prefix, counter, storageKey;
+    
+    if (type === 'image') {
+        imageCounter++;
+        counter = imageCounter;
+        prefix = 'G'; // 画像：G001
+        storageKey = 'toki01_image_counter';
+    } else if (type === 'text') {
+        textCounter++;
+        counter = textCounter;
+        prefix = 'T'; // テキスト：T001
+        storageKey = 'toki01_text_counter';
+    } else { // signature
+        signatureCounter++;
+        counter = signatureCounter;
+        prefix = 'N'; // 手書き(電子サイン)：N001
+        storageKey = 'toki01_signature_counter';
+    }
+    
+    localStorage.setItem(storageKey, counter.toString());
+    const mgmtNumber = prefix + counter.toString().padStart(3, '0');
+    
+    console.log('管理番号生成:', type, '->', mgmtNumber);
+    return mgmtNumber;
 }
 
 // QRコード用データの生成
@@ -2849,20 +2871,48 @@ function restoreFromManagementNumber(mgmtNumber) {
     getAllHistory().then(historyArr => {
         console.log('履歴検索中... 全履歴数:', historyArr.length);
         
-        const targetItem = historyArr.find(item => {
+        // 新しい管理番号体系（G001、T001、N001）で検索
+        let targetItem = historyArr.find(item => {
             console.log('チェック中:', item.managementNumber, 'vs', mgmtNumber);
             return item.managementNumber === mgmtNumber;
         });
         
+        // 見つからない場合、旧体系（I001、T001、S001）でも検索
+        if (!targetItem) {
+            console.log('新体系で見つからないため、旧体系でも検索');
+            const oldMapping = {
+                'G': 'I', // G001 -> I001
+                'T': 'T', // T001 -> T001 (同じ)
+                'N': 'S'  // N001 -> S001
+            };
+            
+            if (mgmtNumber.length >= 4) {
+                const newPrefix = mgmtNumber.charAt(0);
+                const number = mgmtNumber.substring(1);
+                const oldPrefix = oldMapping[newPrefix];
+                
+                if (oldPrefix) {
+                    const oldMgmtNumber = oldPrefix + number;
+                    console.log('旧体系管理番号で検索:', oldMgmtNumber);
+                    targetItem = historyArr.find(item => item.managementNumber === oldMgmtNumber);
+                }
+            }
+        }
+        
         if (targetItem) {
             console.log('管理番号に対応する履歴を発見:', targetItem);
-            alert('データを復元します: ' + mgmtNumber);
+            alert('データを復元します: ' + mgmtNumber + '\n' + 
+                  (targetItem.type === 'image' ? '画像' : 
+                   targetItem.type === 'text' ? 'テキスト' : '手書きサイン'));
             restoreContentFromHistory(targetItem);
         } else {
             console.log('管理番号に対応する履歴が見つかりません:', mgmtNumber);
-            console.log('利用可能な管理番号:', historyArr.map(item => item.managementNumber).filter(Boolean));
-            alert('管理番号 ' + mgmtNumber + ' に対応するデータが見つかりませんでした\n\n利用可能な管理番号:\n' + 
-                  historyArr.map(item => item.managementNumber).filter(Boolean).join(', '));
+            const availableNumbers = historyArr.map(item => item.managementNumber).filter(Boolean);
+            console.log('利用可能な管理番号:', availableNumbers);
+            
+            alert('管理番号 ' + mgmtNumber + ' に対応するデータが見つかりませんでした\n\n' +
+                  '利用可能な管理番号:\n' + availableNumbers.join(', ') + '\n\n' +
+                  '新体系: G=画像, T=テキスト, N=手書き');
         }
     }).catch(error => {
         console.error('履歴検索エラー:', error);
