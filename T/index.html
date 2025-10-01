@@ -2427,6 +2427,13 @@ function printText() {
     const textInput = document.getElementById('textInput');
     let text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
+    
+    console.log('テキスト印刷開始:', {
+        text: text.trim(),
+        selectedTextChip: selectedTextChip,
+        isDateTimeEnabled: selectedTextChip === 'with'
+    });
+    
     text = toZenkaku(text);
     const paperWidth = 58;
     const isDateTimeEnabled = selectedTextChip === 'with';
@@ -2558,9 +2565,11 @@ function printText() {
             yPos += lineHeight * 0.3; // 余白を小さく
             
             // 日付・時刻用のフォント設定
+            console.log(`[Debug] Setting date font: ${dateFontSize}px Arial, sans-serif`);
             ctx.font = `${dateFontSize}px Arial, sans-serif`;
             ctx.textAlign = 'left'; // 左揃えに変更
             const dateLineHeight = dateFontSize * 1.2;
+            console.log(`[Debug] Date line height: ${dateLineHeight}`);
             
             // QRコードがある場合は右側に配置、ない場合は中央
             let dateX;
@@ -2574,11 +2583,13 @@ function printText() {
             
             // 日付行
             const dateText = `${year}年 ${month}月${day}日`;
+            console.log(`[Debug] Drawing date text: "${dateText}" at position (${dateX}, ${yPos})`);
             ctx.fillText(dateText, dateX, yPos);
             yPos += dateLineHeight;
             
             // 時刻行
             const timeText = `${hour}時${minute}分${second}秒`;
+            console.log(`[Debug] Drawing time text: "${timeText}" at position (${dateX}, ${yPos})`);
             ctx.fillText(timeText, dateX, yPos);
         }
         
@@ -2887,23 +2898,41 @@ function handleQRScanResult(result) {
     try {
         console.log('QRコード読み取り結果:', result);
         
+        // resultが文字列でない場合の対応
+        let resultString = '';
+        if (typeof result === 'string') {
+            resultString = result;
+        } else if (result && result.data) {
+            resultString = result.data;
+        } else if (result && typeof result.toString === 'function') {
+            resultString = result.toString();
+        } else {
+            throw new Error('読み取り結果の形式が不正です');
+        }
+        
+        console.log('処理対象文字列:', resultString);
+        
         // アプリ専用QRコードかチェック
-        if (!result.startsWith(QR_PREFIX)) {
-            alert('このアプリで生成されたQRコードではありません');
+        if (!resultString.startsWith(QR_PREFIX)) {
+            alert('このアプリで生成されたQRコードではありません\n読み取った内容: ' + resultString);
             return;
         }
         
         // QR_PREFIXを除去して管理番号を取得
-        const mgmtNumber = result.substring(QR_PREFIX.length);
+        const mgmtNumber = resultString.substring(QR_PREFIX.length);
         
         console.log('管理番号抽出:', mgmtNumber);
+        
+        if (!mgmtNumber) {
+            throw new Error('管理番号が空です');
+        }
         
         // 管理番号で履歴復元
         restoreFromManagementNumber(mgmtNumber);
         
     } catch (error) {
         console.error('QRコード解析エラー:', error);
-        alert('QRコードの読み取りに失敗しました: ' + error.message);
+        alert('QRコードの読み取りに失敗しました\nエラー: ' + error.message + '\n読み取り結果: ' + JSON.stringify(result));
     }
 }
 
