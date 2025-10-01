@@ -1025,25 +1025,16 @@ function openDB() {
         req.onerror = () => reject(req.error);
     });
 }
-async function addHistory(item) {
-    // QRコード用データを追加（管理番号も設定される）
-    const qrData = await generateQRData(item);
+function addHistory(item) {
+    // QRコード用データを追加
+    const qrData = generateQRData(item);
     item.qrData = qrData;
-    
-    console.log('履歴保存:', {
-        type: item.type,
-        managementNumber: item.managementNumber,
-        qrData: item.qrData
-    });
     
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
             tx.objectStore(STORE_NAME).add(item);
-            tx.oncomplete = () => {
-                console.log('履歴保存完了:', item.managementNumber);
-                resolve();
-            };
+            tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
         });
     });
@@ -1847,7 +1838,6 @@ document.getElementById('signaturePrintButton').onclick = function() {
     // 現在の1枚を印刷（シンプル実行）
     printSignatureCopy();
     
-    // 履歴保存（非同期）
     addHistory({
         type: 'signature',
         mode: 'signature',
@@ -1855,10 +1845,6 @@ document.getElementById('signaturePrintButton').onclick = function() {
         dateTime: selectedSignatureChip,
         copies: selectedCopies,
         created: Date.now()
-    }).then(() => {
-        console.log('手書きサイン印刷履歴保存完了');
-    }).catch(error => {
-        console.error('手書きサイン印刷履歴保存エラー:', error);
     });
 };
 // --- 画像印刷 ---
@@ -2248,9 +2234,6 @@ function sendToPrintAssist(event) {
                         compositeCtx.textAlign = 'left'; // 左揃えに変更
                         compositeCtx.textBaseline = 'top';
                         
-                        // 日付・時刻の開始Y位置を設定
-                        let yPos = imgY + finalImgHeight + 20; // 画像の下20px
-                        
                         // QRコードがある場合は右側に配置、ない場合は中央
                         let dateX;
                         if (qrCodeCanvas) {
@@ -2338,7 +2321,6 @@ function sendToPrintAssist(event) {
             // 現在の1枚を印刷（シンプル実行）
             printImageCopy();
             
-            // 履歴保存（非同期）
             addHistory({
                 type: 'image',
                 mode: 'image',
@@ -2347,10 +2329,6 @@ function sendToPrintAssist(event) {
                 copies: selectedCopies,
                 shrink: shrinkChecked,
                 created: Date.now()
-            }).then(() => {
-                console.log('画像印刷履歴保存完了');
-            }).catch(error => {
-                console.error('画像印刷履歴保存エラー:', error);
             });
         };
         img.src = 'data:image/png;base64,' + base64Image;
@@ -2429,27 +2407,10 @@ function safeEncodeURIComponent(str) {
 function printText() {
     const textInput = document.getElementById('textInput');
     let text = textInput.value;
-    
-    console.log('printText開始:', {
-        text: text.trim(),
-        selectedTextChip: selectedTextChip,
-        isEmpty: text.trim() === '',
-        chipEmpty: selectedTextChip === ''
-    });
-    
-    if (text.trim() === '' || selectedTextChip === '') {
-        console.log('印刷中止:', text.trim() === '' ? 'テキストが空' : 'チップが未選択');
-        return;
-    }
-    
+    if (text.trim() === '' || selectedTextChip === '') return;
     text = toZenkaku(text);
     const paperWidth = 58;
     const isDateTimeEnabled = selectedTextChip === 'with';
-    
-    console.log('日付・時刻設定:', {
-        selectedTextChip: selectedTextChip,
-        isDateTimeEnabled: isDateTimeEnabled
-    });
     const wrappedLines = wrapText(text);
     const lineHeight = 4;
     const topMargin = 6;
@@ -2661,8 +2622,6 @@ function printText() {
     
     // 現在の1枚を印刷（シンプル実行）
     printTextCopy();
-    
-    // 履歴保存（非同期）
     addHistory({
         type: 'text',
         mode: 'text',
@@ -2670,10 +2629,6 @@ function printText() {
         dateTime: selectedTextChip,
         copies: selectedTextCopies,
         created: Date.now()
-    }).then(() => {
-        console.log('テキスト印刷履歴保存完了');
-    }).catch(error => {
-        console.error('テキスト印刷履歴保存エラー:', error);
     });
 }
 function toggleClearButton() {
@@ -2711,69 +2666,27 @@ if ('serviceWorker' in navigator) {
 
 // === QRコード機能 ===
 
-// 管理番号システム用カウンター（タイプ別に分離）
-let textCounter = parseInt(localStorage.getItem('toki01_text_counter') || '0');
-let imageCounter = parseInt(localStorage.getItem('toki01_image_counter') || '0');
-let signatureCounter = parseInt(localStorage.getItem('toki01_signature_counter') || '0');
+// 管理番号システム用カウンター
+let managementCounter = parseInt(localStorage.getItem('toki01_mgmt_counter') || '0');
 
-// 管理番号生成（タイプ別カウンター + 重複チェック）
+// 管理番号生成
 function generateManagementNumber(type) {
-    return getAllHistory().then(historyArr => {
-        let counter, prefix, storageKey;
-        
-        if (type === 'text') {
-            prefix = 'T';
-            storageKey = 'toki01_text_counter';
-            // 既存の最大番号を取得
-            const existingNumbers = historyArr
-                .filter(item => item.managementNumber && item.managementNumber.startsWith('T'))
-                .map(item => parseInt(item.managementNumber.substring(1)))
-                .filter(num => !isNaN(num));
-            counter = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-        } else if (type === 'image') {
-            prefix = 'G';
-            storageKey = 'toki01_image_counter';
-            const existingNumbers = historyArr
-                .filter(item => item.managementNumber && item.managementNumber.startsWith('G'))
-                .map(item => parseInt(item.managementNumber.substring(1)))
-                .filter(num => !isNaN(num));
-            counter = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-        } else if (type === 'signature') {
-            prefix = 'N';
-            storageKey = 'toki01_signature_counter';
-            const existingNumbers = historyArr
-                .filter(item => item.managementNumber && item.managementNumber.startsWith('N'))
-                .map(item => parseInt(item.managementNumber.substring(1)))
-                .filter(num => !isNaN(num));
-            counter = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-        } else {
-            prefix = 'T';
-            storageKey = 'toki01_text_counter';
-            const existingNumbers = historyArr
-                .filter(item => item.managementNumber && item.managementNumber.startsWith('T'))
-                .map(item => parseInt(item.managementNumber.substring(1)))
-                .filter(num => !isNaN(num));
-            counter = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
-        }
-        
-        localStorage.setItem(storageKey, counter.toString());
-        const mgmtNumber = prefix + counter.toString().padStart(3, '0');
-        console.log('管理番号生成:', type, '->', mgmtNumber, '既存最大:', Math.max(...(existingNumbers || [0])));
-        return mgmtNumber;
-    });
+    managementCounter++;
+    localStorage.setItem('toki01_mgmt_counter', managementCounter.toString());
+    const prefix = type === 'text' ? 'T' : type === 'image' ? 'I' : 'S';
+    return prefix + managementCounter.toString().padStart(3, '0');
 }
 
-// QRコード用データの生成（非同期対応）
-async function generateQRData(item) {
-    // 管理番号がまだ生成されていない場合のみ生成
-    if (!item.managementNumber) {
-        item.managementNumber = await generateManagementNumber(item.type);
-    }
+// QRコード用データの生成
+function generateQRData(item) {
+    // すべてのデータを管理番号方式に統一
+    const mgmtNumber = generateManagementNumber(item.type);
+    item.managementNumber = mgmtNumber;
     
-    console.log('QRデータ生成:', item.managementNumber, 'タイプ:', item.type);
+    console.log('管理番号を生成:', mgmtNumber, 'for item:', item.type);
     
-    // QRコードには管理番号のみ（最短・最も読み取りやすい）
-    return QR_PREFIX + item.managementNumber;
+    // QRコードには管理番号のみ（すべて統一）
+    return QR_PREFIX + 'M:' + mgmtNumber;
 }
 
 // QRコード画像の生成
@@ -2825,21 +2738,12 @@ function generateQRCode(data) {
 function initQRReader() {
     const qrReaderModal = document.getElementById('qrReaderModal');
     const closeQrReader = document.getElementById('closeQrReader');
-    const qrReaderCancelBtn = document.getElementById('qrReaderCancelBtn');
     const qrReaderStatus = document.getElementById('qrReaderStatus');
     
     closeQrReader.onclick = () => {
         stopQRReader();
         qrReaderModal.style.display = 'none';
     };
-    
-    // キャンセルボタンの動作も追加
-    if (qrReaderCancelBtn) {
-        qrReaderCancelBtn.onclick = () => {
-            stopQRReader();
-            qrReaderModal.style.display = 'none';
-        };
-    }
     
     // モーダル背景クリックで閉じる
     qrReaderModal.onclick = (e) => {
@@ -2859,88 +2763,42 @@ function startQRReader() {
     qrReaderModal.style.display = 'flex';
     statusElement.textContent = 'カメラを起動中...';
     
-    // デバッグ用：QrScannerの存在確認
-    console.log('QrScanner存在確認:', typeof QrScanner);
-    console.log('QrScanner:', QrScanner);
-    
+    // 背面カメラを優先的に使用
     if (typeof QrScanner !== 'undefined') {
-        try {
-            // 最も確実なQrScanner初期化（最新版対応）
-            qrScanner = new QrScanner(
-                videoElement,
-                result => {
-                    console.log('QrScannerコールバック実行 - raw result:', result);
-                    console.log('result type:', typeof result);
-                    console.log('result構造:', result);
-                    
-                    // qr-scanner v1.4.2の仕様に完全対応
-                    let qrText = '';
-                    if (typeof result === 'string') {
-                        // 古い形式：直接文字列
-                        qrText = result;
-                        console.log('文字列形式:', qrText);
-                    } else if (result && typeof result === 'object') {
-                        // 新しい形式：オブジェクト
-                        if (result.data) {
-                            qrText = result.data;
-                            console.log('result.data形式:', qrText);
-                        } else if (result.result) {
-                            qrText = result.result;
-                            console.log('result.result形式:', qrText);
-                        } else if (result.text) {
-                            qrText = result.text;
-                            console.log('result.text形式:', qrText);
-                        } else {
-                            // オブジェクトの中身を全て確認
-                            console.log('未知のオブジェクト形式:', Object.keys(result));
-                            qrText = String(result);
-                        }
-                    } else {
-                        console.log('想定外の形式:', result);
-                        qrText = String(result);
-                    }
-                    
-                    console.log('最終的に抽出したQRテキスト:', qrText);
-                    
-                    if (qrText && qrText.trim()) {
-                        console.log('QR読み取り成功 - 処理開始:', qrText);
-                        handleQRScanResult(qrText.trim());
-                        stopQRReader();
-                        qrReaderModal.style.display = 'none';
-                    } else {
-                        console.log('QRテキストが空です');
-                    }
-                },
-                {
-                    preferredCamera: 'environment',
-                    maxScansPerSecond: 5,
-                    highlightScanRegion: true,
-                    highlightCodeOutline: true
-                }
-            );
-            
-            console.log('QrScanner初期化完了');
-            
-            qrScanner.start().then(() => {
-                console.log('QrScanner開始成功');
-                statusElement.textContent = 'QRコードをカメラに向けてください';
-            }).catch(error => {
-                console.error('カメラエラー:', error);
-                statusElement.textContent = 'カメラにアクセスできませんでした: ' + error.message;
-                setTimeout(() => {
-                    stopQRReader();
-                    qrReaderModal.style.display = 'none';
-                }, 5000);
-            });
-        } catch (error) {
-            console.error('QrScanner初期化エラー:', error);
-            statusElement.textContent = 'QRリーダーの初期化に失敗しました: ' + error.message;
-            setTimeout(() => {
+        qrScanner = new QrScanner(videoElement, 
+            result => {
+                console.log('QRコード読み取り成功:', result);
+                handleQRScanResult(result.data || result);
+                stopQRReader();
                 qrReaderModal.style.display = 'none';
-            }, 5000);
-        }
+            },
+            {
+                onDecodeError: error => {
+                    // エラーは表示しない（連続スキャンのため）
+                },
+                maxScansPerSecond: 8,
+                highlightScanRegion: false,
+                highlightCodeOutline: true,
+                preferredCamera: 'environment', // 背面カメラ優先
+                returnDetailedScanResult: true,
+                videoConstraints: {
+                    facingMode: { exact: 'environment' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 1280 }
+                }
+            }
+        );
+        qrScanner.start().then(() => {
+            statusElement.textContent = 'QRコードをカメラに向けてください';
+        }).catch(error => {
+            console.error('カメラエラー:', error);
+            statusElement.textContent = 'カメラにアクセスできませんでした';
+            setTimeout(() => {
+                stopQRReader();
+                qrReaderModal.style.display = 'none';
+            }, 3000);
+        });
     } else {
-        console.error('QrScannerライブラリが読み込まれていません');
         statusElement.textContent = 'QRスキャナーが読み込まれていません';
         setTimeout(() => {
             qrReaderModal.style.display = 'none';
@@ -2968,17 +2826,22 @@ function handleQRScanResult(result) {
             return;
         }
         
-        // QR_PREFIXを除去して管理番号を取得
-        const mgmtNumber = result.substring(QR_PREFIX.length);
+        const dataStr = result.substring(QR_PREFIX.length);
+        console.log('QRデータ部分:', dataStr);
         
-        console.log('管理番号抽出:', mgmtNumber);
-        
-        // 管理番号で履歴復元
-        restoreFromManagementNumber(mgmtNumber);
-        
+        // 管理番号方式かチェック（すべて管理番号方式に統一）
+        if (dataStr.startsWith('M:')) {
+            // 管理番号方式：M:T001 形式
+            const mgmtNumber = dataStr.substring(2);
+            console.log('管理番号を抽出:', mgmtNumber);
+            restoreFromManagementNumber(mgmtNumber);
+        } else {
+            // 旧形式の場合は非対応メッセージ
+            alert('この形式のQRコードはサポートされていません。新しく印刷してください。');
+        }
     } catch (error) {
         console.error('QRコード解析エラー:', error);
-        alert('QRコードの読み取りに失敗しました: ' + error.message);
+        alert('QRコードの読み取りに失敗しました');
     }
 }
 
@@ -2989,41 +2852,29 @@ function restoreFromManagementNumber(mgmtNumber) {
     
     // 履歴から管理番号で検索
     getAllHistory().then(historyArr => {
-        console.log('履歴検索中... 全履歴数:', historyArr.length);
+        console.log('履歴件数:', historyArr.length);
+        console.log('履歴一覧:', historyArr.map(item => ({
+            id: item.id,
+            type: item.type,
+            managementNumber: item.managementNumber,
+            created: item.created
+        })));
         
-        // デバッグ: 全ての管理番号を表示
-        historyArr.forEach((item, index) => {
-            console.log(`履歴[${index}]:`, {
-                type: item.type,
-                managementNumber: item.managementNumber,
-                created: item.created
-            });
-        });
-        
-        const targetItem = historyArr.find(item => {
-            const match = item.managementNumber === mgmtNumber;
-            console.log('照合:', item.managementNumber, 'vs', mgmtNumber, '→', match);
-            return match;
-        });
+        const targetItem = historyArr.find(item => item.managementNumber === mgmtNumber);
         
         if (targetItem) {
             console.log('管理番号に対応する履歴を発見:', targetItem);
-            alert(`データを復元します\n管理番号: ${mgmtNumber}\nタイプ: ${targetItem.type}`);
+            alert('管理番号 ' + mgmtNumber + ' のデータを復元します！');
             restoreContentFromHistory(targetItem);
         } else {
-            const availableNumbers = historyArr
-                .map(item => item.managementNumber)
-                .filter(Boolean)
-                .sort();
-            
             console.log('管理番号に対応する履歴が見つかりません:', mgmtNumber);
-            console.log('利用可能な管理番号:', availableNumbers);
-            
-            alert(`管理番号 ${mgmtNumber} に対応するデータが見つかりませんでした\n\n利用可能な管理番号:\n${availableNumbers.join(', ')}\n\n画像:G001~ テキスト:T001~ 手書き:N001~`);
+            console.log('検索対象の管理番号:', mgmtNumber);
+            console.log('履歴の管理番号一覧:', historyArr.map(item => item.managementNumber));
+            alert('管理番号 ' + mgmtNumber + ' に対応するデータが見つかりませんでした\n履歴に保存されていない可能性があります');
         }
     }).catch(error => {
         console.error('履歴検索エラー:', error);
-        alert('履歴の検索中にエラーが発生しました: ' + error.message);
+        alert('履歴の検索中にエラーが発生しました');
     });
 }
 
@@ -3056,20 +2907,15 @@ function restoreFromQRData(qrData) {
 
 // 履歴から完全復元
 function restoreContentFromHistory(item) {
-    console.log('履歴復元開始:', item);
-    
     if (item.type === 'image') {
-        console.log('画像復元開始');
         showSection('image');
         
-        // プレビューを表示
         const previewContainer = document.getElementById('imagePreviewContainer');
         previewContainer.innerHTML = '';
         
         const img = new Image();
         img.src = item.data;
         img.onload = function() {
-            console.log('画像読み込み完了');
             let containerW = Math.min(window.innerWidth * 0.98, 480);
             let containerH = 360;
             let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
@@ -3084,132 +2930,56 @@ function restoreContentFromHistory(item) {
         };
         previewContainer.appendChild(img);
         
-        // 設定を完全復元
-        console.log('画像設定復元中...');
+        // 設定を復元
         document.getElementById('dateTimeChoice').style.display = 'flex';
         const chips = document.querySelectorAll('#dateTimeChoice .chip');
         chips.forEach(chip => chip.classList.remove('selected'));
-        if (item.dateTime === 'with') {
-            chips[0].classList.add('selected');
-            selectedChip = 'with';
-        } else {
-            chips[1].classList.add('selected');
-            selectedChip = 'without';
-        }
+        if (item.dateTime === 'with') chips[0].classList.add('selected');
+        else chips[1].classList.add('selected');
+        selectedChip = item.dateTime;
         
-        document.getElementById('copiesSelect').value = item.copies || 1;
+        document.getElementById('copiesSelect').value = item.copies;
         document.getElementById('shrinkCheckbox').checked = !!item.shrink;
-        
-        // 印刷オプションとボタンを表示
         document.getElementById('imagePrintOptions').style.display = 'flex';
         updatePrintButtonState();
         
-        // 成功メッセージ
-        alert(`QR読み取り成功！\n\n管理番号: ${item.managementNumber}\n画像とすべての設定を復元しました。\n\n発行ボタンで再印刷が可能です。`);
-        
-        // 印刷ボタンにフォーカス
-        setTimeout(() => {
-            const printBtn = document.querySelector('#imagePrintOptions .print-button');
-            if (printBtn) {
-                printBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                printBtn.style.backgroundColor = '#4CAF50';
-                printBtn.style.transform = 'scale(1.05)';
-                setTimeout(() => {
-                    printBtn.style.backgroundColor = '';
-                    printBtn.style.transform = '';
-                }, 1000);
-            }
-        }, 500);
+        alert('画像とすべての設定を復元しました！\n再印刷が可能です。');
         
     } else if (item.type === 'text') {
-        console.log('テキスト復元開始');
         showSection('text');
         
-        // テキストを復元
         document.getElementById('textInput').value = item.data;
         autoWrap(document.getElementById('textInput'));
         
         // 設定を復元
-        console.log('テキスト設定復元中...');
         const chips = document.querySelectorAll('#textDateTimeChoice .chip');
         chips.forEach(chip => chip.classList.remove('selected'));
-        if (item.dateTime === 'with') {
-            chips[0].classList.add('selected');
-            selectedTextChip = 'with';
-        } else {
-            chips[1].classList.add('selected');
-            selectedTextChip = 'without';
-        }
+        if (item.dateTime === 'with') chips[0].classList.add('selected');
+        else chips[1].classList.add('selected');
+        selectedTextChip = item.dateTime;
         
-        document.getElementById('textCopiesSelect').value = item.copies || 1;
+        document.getElementById('textCopiesSelect').value = item.copies;
         updateTextPrintButtonState();
         
-        // 成功メッセージ
-        alert(`QR読み取り成功！\n\n管理番号: ${item.managementNumber}\nテキストとすべての設定を復元しました。\n\n発行ボタンで再印刷が可能です。`);
-        
-        // 印刷ボタンにフォーカス
-        setTimeout(() => {
-            const printBtn = document.querySelector('#textPrintOptions .print-button');
-            if (printBtn) {
-                printBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                printBtn.style.backgroundColor = '#4CAF50';
-                printBtn.style.transform = 'scale(1.05)';
-                setTimeout(() => {
-                    printBtn.style.backgroundColor = '';
-                    printBtn.style.transform = '';
-                }, 1000);
-            }
-        }, 500);
+        alert('テキストとすべての設定を復元しました！\n再印刷が可能です。');
         
     } else if (item.type === 'signature') {
-        console.log('手書きサイン復元開始');
         showSection('signature');
         
         setTimeout(function() {
-            // キャンバスに手書きサインを復元
-            if (item.data && item.data.startsWith('data:image/')) {
-                const canvas = document.getElementById('signatureCanvas');
-                const ctx = canvas.getContext('2d');
-                const img = new Image();
-                img.onload = function() {
-                    console.log('手書きサイン画像読み込み完了');
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(img, 0, 0);
-                    
-                    // 設定を復元
-                    console.log('手書きサイン設定復元中...');
-                    const chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
-                    chips.forEach(chip => chip.classList.remove('selected'));
-                    if (item.dateTime === 'with') {
-                        chips[0].classList.add('selected');
-                        selectedSignatureChip = 'with';
-                    } else {
-                        chips[1].classList.add('selected');
-                        selectedSignatureChip = 'without';
-                    }
-                    
-                    document.getElementById('signatureCopiesSelect').value = item.copies || 1;
-                    updateSignaturePrintButtonState();
-                    
-                    // 成功メッセージ
-                    alert(`QR読み取り成功！\n\n管理番号: ${item.managementNumber}\n手書きサインとすべての設定を復元しました。\n\n発行ボタンで再印刷が可能です。`);
-                    
-                    // 印刷ボタンにフォーカス
-                    setTimeout(() => {
-                        const printBtn = document.querySelector('#signaturePrintOptions .print-button');
-                        if (printBtn) {
-                            printBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            printBtn.style.backgroundColor = '#4CAF50';
-                            printBtn.style.transform = 'scale(1.05)';
-                            setTimeout(() => {
-                                printBtn.style.backgroundColor = '';
-                                printBtn.style.transform = '';
-                            }, 1000);
-                        }
-                    }, 500);
-                };
-                img.src = item.data;
-            }
+            initSignaturePad(item.data, true);
+            
+            // 設定を復元
+            const chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
+            chips.forEach(chip => chip.classList.remove('selected'));
+            if (item.dateTime === 'with') chips[0].classList.add('selected');
+            else chips[1].classList.add('selected');
+            selectedSignatureChip = item.dateTime;
+            
+            document.getElementById('signatureCopiesSelect').value = item.copies;
+            updateSignaturePrintButtonState();
+            
+            alert('手書きサインとすべての設定を復元しました！\n再印刷が可能です。');
         }, 100);
     }
 }
