@@ -2248,6 +2248,9 @@ function sendToPrintAssist(event) {
                         compositeCtx.textAlign = 'left'; // 左揃えに変更
                         compositeCtx.textBaseline = 'top';
                         
+                        // 日付・時刻の開始Y位置を設定
+                        let yPos = imgY + finalImgHeight + 20; // 画像の下20px
+                        
                         // QRコードがある場合は右側に配置、ない場合は中央
                         let dateX;
                         if (qrCodeCanvas) {
@@ -2856,50 +2859,36 @@ function startQRReader() {
     qrReaderModal.style.display = 'flex';
     statusElement.textContent = 'カメラを起動中...';
     
-    // 背面カメラを優先的に使用
+    // 最もシンプルなQrScanner初期化
     if (typeof QrScanner !== 'undefined') {
-        qrScanner = new QrScanner(videoElement, 
-            result => {
-                console.log('QRコード読み取り成功:', result);
-                // QrScannerのバージョン対応：文字列またはオブジェクト
-                let qrText = '';
-                if (typeof result === 'string') {
-                    qrText = result;
-                } else if (result && result.data) {
-                    qrText = result.data;
-                } else if (result && result.result) {
-                    qrText = result.result;
-                } else {
-                    console.error('QR読み取り結果の形式が不明:', result);
-                    return;
+        try {
+            qrScanner = new QrScanner(
+                videoElement,
+                result => {
+                    console.log('QR読み取り成功:', result);
+                    const qrText = result || '';
+                    if (qrText) {
+                        handleQRScanResult(qrText);
+                        stopQRReader();
+                        qrReaderModal.style.display = 'none';
+                    }
                 }
-                
-                console.log('QRテキスト抽出:', qrText);
-                handleQRScanResult(qrText);
-                stopQRReader();
-                qrReaderModal.style.display = 'none';
-            },
-            {
-                onDecodeError: error => {
-                    // エラーは表示しない（連続スキャンのため）
-                    console.log('QRスキャンエラー:', error.message || error);
-                },
-                maxScansPerSecond: 5,
-                highlightScanRegion: false,
-                highlightCodeOutline: false,
-                preferredCamera: 'environment' // 背面カメラ優先
-            }
-        );
-        qrScanner.start().then(() => {
-            statusElement.textContent = 'QRコードをカメラに向けてください';
-        }).catch(error => {
-            console.error('カメラエラー:', error);
-            statusElement.textContent = 'カメラにアクセスできませんでした';
-            setTimeout(() => {
-                stopQRReader();
-                qrReaderModal.style.display = 'none';
-            }, 3000);
-        });
+            );
+            
+            qrScanner.start().then(() => {
+                statusElement.textContent = 'QRコードをカメラに向けてください';
+            }).catch(error => {
+                console.error('カメラエラー:', error);
+                statusElement.textContent = 'カメラにアクセスできませんでした';
+                setTimeout(() => {
+                    stopQRReader();
+                    qrReaderModal.style.display = 'none';
+                }, 3000);
+            });
+        } catch (error) {
+            console.error('QrScannerエラー:', error);
+            statusElement.textContent = 'QRリーダーの初期化に失敗しました';
+        }
     } else {
         statusElement.textContent = 'QRスキャナーが読み込まれていません';
         setTimeout(() => {
@@ -3127,4 +3116,3 @@ function restoreContentFromQROnly(qrData) {
 </script>
 </body>
 </html>
-
