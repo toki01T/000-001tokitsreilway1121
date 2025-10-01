@@ -1026,9 +1026,11 @@ function openDB() {
     });
 }
 function addHistory(item) {
-    // QRコード用データを追加
+    // QRコード用データを追加（管理番号を生成してitemに追加）
     const qrData = generateQRData(item);
+    const managementId = qrData.substring(QR_PREFIX.length);
     item.qrData = qrData;
+    item.managementId = managementId; // 管理番号を履歴に保存
     
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
@@ -1713,7 +1715,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 if (qrData) {
                     qrCodeCanvas = generateQRCode(qrData);
                     if (qrCodeCanvas) {
-                        const qrSize = 42; // 1.5cm（42px）サイズ
+                        const qrSize = 80; // 1.5cm相当のサイズ（読み取りやすく調整）
                         let qrX, qrY;
                         
                         if (isDateTimeEnabled) {
@@ -1957,7 +1959,7 @@ function sendToPrintAssist(event) {
                         if (qrData) {
                             qrCodeCanvas = generateQRCode(qrData);
                             if (qrCodeCanvas) {
-                                const qrSize = 42; // 1.5cm（42px）サイズ
+                                const qrSize = 80; // 1.5cm相当のサイズ（読み取りやすく調整）
                                 let qrX, qrY;
                                 
                                 if (isDateTimeEnabled) {
@@ -2501,7 +2503,7 @@ function printText() {
             if (qrData) {
                 qrCodeCanvas = generateQRCode(qrData);
                 if (qrCodeCanvas) {
-                    const qrSize = 42; // 1.5cm（42px）サイズ
+                    const qrSize = 80; // 1.5cm相当のサイズ（読み取りやすく調整）
                     let qrX, qrY;
                     
                     if (isDateTimeEnabled) {
@@ -2666,24 +2668,19 @@ if ('serviceWorker' in navigator) {
 
 // === QRコード機能 ===
 
-// 管理番号生成
-function generateManagementId() {
-    const now = new Date();
-    const timestamp = now.getTime();
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    const id = 'T' + timestamp.toString().slice(-6) + random.slice(-2);
-    return id;
-}
-
-// QRコード用データの生成
+// QRコード用データの生成（管理番号ベース）
 function generateQRData(item) {
-    // 管理番号を生成（例: T123456）
-    const managementId = generateManagementId();
+    // 8桁の管理番号を生成（年月日時分 + ランダム2桁）
+    const now = new Date();
+    const yy = now.getFullYear().toString().slice(2);
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mn = String(now.getMinutes()).padStart(2, '0');
+    const rand = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+    const managementId = yy + mm + dd + hh + mn + rand;
     
-    // 履歴にmanagementIdを保存
-    item.managementId = managementId;
-    
-    // QRコードには管理番号のみ埋め込み
+    // QRコードには管理番号のみ
     return QR_PREFIX + managementId;
 }
 
@@ -2744,13 +2741,11 @@ function initQRReader() {
         qrReaderModal.style.display = 'none';
     };
     
-    // キャンセルボタン
-    if (qrReaderCancelBtn) {
-        qrReaderCancelBtn.onclick = () => {
-            stopQRReader();
-            qrReaderModal.style.display = 'none';
-        };
-    }
+    // キャンセルボタンでも閉じる
+    qrReaderCancelBtn.onclick = () => {
+        stopQRReader();
+        qrReaderModal.style.display = 'none';
+    };
     
     // モーダル背景クリックで閉じる
     qrReaderModal.onclick = (e) => {
@@ -2825,18 +2820,20 @@ function stopQRReader() {
 // QRコード読み取り結果の処理
 function handleQRScanResult(result) {
     try {
+        console.log('QRコード読み取り結果:', result);
+        
         // アプリ専用QRコードかチェック
         if (!result.startsWith(QR_PREFIX)) {
             alert('このアプリで生成されたQRコードではありません');
             return;
         }
         
-        // 管理番号を抽出
+        // 管理番号を取得
         const managementId = result.substring(QR_PREFIX.length);
-        if (!managementId) throw new Error('管理番号が見つかりません');
+        console.log('管理番号:', managementId);
         
         // 管理番号で履歴を検索
-        searchHistoryByManagementId(managementId);
+        restoreFromManagementId(managementId);
         
     } catch (error) {
         console.error('QRコード解析エラー:', error);
@@ -2844,49 +2841,24 @@ function handleQRScanResult(result) {
     }
 }
 
-// 管理番号で履歴検索
-function searchHistoryByManagementId(managementId) {
+// 管理番号から履歴を検索して復元
+function restoreFromManagementId(managementId) {
+    console.log('管理番号で履歴検索:', managementId);
+    
     getAllHistory().then(historyArr => {
-        const targetItem = historyArr.find(item => item.managementId === managementId);
+        const targetItem = historyArr.find(item => 
+            item.managementId === managementId
+        );
         
         if (targetItem) {
-            console.log('管理番号で履歴アイテムを発見:', managementId, targetItem);
+            console.log('管理番号に対応する履歴を発見:', targetItem);
             restoreContentFromHistory(targetItem);
         } else {
-            console.log('管理番号が履歴に見つかりません:', managementId);
-            alert(`管理番号 ${managementId} に対応するデータが見つかりませんでした。\n印刷履歴が削除されている可能性があります。`);
+            alert('管理番号 ' + managementId + ' に対応するデータが見つかりませんでした。\n\n削除された可能性があります。');
         }
     }).catch(error => {
         console.error('履歴検索エラー:', error);
         alert('履歴の検索中にエラーが発生しました');
-    });
-}
-
-// QRコードデータからコンテンツを復元（旧方式 - 互換性のため残す）
-function restoreFromQRData(qrData) {
-    // 展開されたデータを使用
-    const expandedData = {
-        id: qrData.id,
-        type: qrData.t,
-        dateTime: qrData.d,
-        copies: qrData.c,
-        created: qrData.created
-    };
-    // 履歴から該当データを検索（id一致 or createdが30秒以内でtype一致）
-    getAllHistory().then(historyArr => {
-        const targetItem = historyArr.find(item =>
-            (item.id == expandedData.id ||
-             (item.created && expandedData.created && Math.abs(item.created - expandedData.created) < 30000 && item.type === expandedData.type))
-        );
-        if (targetItem) {
-            // 履歴アイテムが見つかった場合
-            console.log('対応する履歴アイテムを発見:', targetItem);
-            restoreContentFromHistory(targetItem);
-        } else {
-            // 履歴にない場合はQRデータのみで復元
-            console.log('履歴にないため、QRデータのみで復元');
-            restoreContentFromQROnly(qrData);
-        }
     });
 }
 
