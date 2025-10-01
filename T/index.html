@@ -1012,18 +1012,6 @@ const QR_VERSION = 'v1.0';
 const DB_NAME = 'toki01_history';
 const DB_VERSION = 1;
 const STORE_NAME = 'history';
-
-// 管理番号生成関数
-function generateManagementNumber() {
-    const now = new Date();
-    const yymmdd = now.getFullYear().toString().slice(2) + 
-                   String(now.getMonth() + 1).padStart(2, '0') + 
-                   String(now.getDate()).padStart(2, '0');
-    const timeSeq = String(now.getHours()).padStart(2, '0') + 
-                    String(now.getMinutes()).padStart(2, '0') + 
-                    String(now.getSeconds()).padStart(2, '0');
-    return `T${yymmdd}-${timeSeq}`;
-}
 function openDB() {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -1038,11 +1026,7 @@ function openDB() {
     });
 }
 function addHistory(item) {
-    // 管理番号を生成してアイテムに追加
-    const managementNumber = generateManagementNumber();
-    item.managementNumber = managementNumber;
-    
-    // QRコード用データを追加（管理番号ベース）
+    // QRコード用データを追加
     const qrData = generateQRData(item);
     item.qrData = qrData;
     
@@ -1690,8 +1674,8 @@ document.getElementById('signaturePrintButton').onclick = function() {
             const signatureTopMargin = 8; // 手書き用上余白
             // 日付・時刻あり時は下余白を小さく
             const signatureBottomMargin = isDateTimeEnabled ? 8 : 25;
-            // QRコード有効時のみ余白（1.5cmサイズに合わせて調整）
-            const qrCodeMargin = isQrEnabledForSignature ? 60 : 0;
+            // QRコード有効時のみ余白
+            const qrCodeMargin = isQrEnabledForSignature ? 200 : 0;
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
             const signatureScale = 0.92; // 92%にスケール（85%から修正）
             const signatureWidth = Math.round((outW / pxPerMm * mmToPx) * signatureScale);
@@ -1729,7 +1713,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 if (qrData) {
                     qrCodeCanvas = generateQRCode(qrData);
                     if (qrCodeCanvas) {
-                        const qrSize = 42; // 1.5cmサイズ（約42px）
+                        const qrSize = 42; // 1.5cm（42px）サイズ
                         let qrX, qrY;
                         
                         if (isDateTimeEnabled) {
@@ -1932,7 +1916,7 @@ function sendToPrintAssist(event) {
                     const imageTopMargin = -50; // 画像用上余白
                     const imageBottomMargin = 13; // 画像用下余白
                     const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
-                    const qrCodeMargin = isQrEnabledForImage ? 60 : 0; // QRコード用の追加余白（1.5cmサイズ対応）
+                    const qrCodeMargin = isQrEnabledForImage ? 200 : 0; // QRコード用の追加余白（有効時のみ）
                     const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrCodeMargin;
                     
                     compositeCanvas.width = canvasWidth;
@@ -1973,7 +1957,7 @@ function sendToPrintAssist(event) {
                         if (qrData) {
                             qrCodeCanvas = generateQRCode(qrData);
                             if (qrCodeCanvas) {
-                                const qrSize = 42; // 1.5cmサイズ（約42px）
+                                const qrSize = 42; // 1.5cm（42px）サイズ
                                 let qrX, qrY;
                                 
                                 if (isDateTimeEnabled) {
@@ -2474,7 +2458,7 @@ function printText() {
         }
         
         // QRコード用の追加スペースを確保
-        const qrCodeMargin = isQrEnabledForText ? 60 : 0; // QRコード分のスペース（1.5cmサイズ対応）
+        const qrCodeMargin = isQrEnabledForText ? 200 : 0; // QRコード分のスペース（有効時のみ）
         const canvasHeight = Math.round(textHeight + 60 + qrCodeMargin); // 上下余白調整 + QRコード用余白
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
@@ -2517,7 +2501,7 @@ function printText() {
             if (qrData) {
                 qrCodeCanvas = generateQRCode(qrData);
                 if (qrCodeCanvas) {
-                    const qrSize = 42; // 1.5cmサイズ（約42px）
+                    const qrSize = 42; // 1.5cm（42px）サイズ
                     let qrX, qrY;
                     
                     if (isDateTimeEnabled) {
@@ -2682,12 +2666,25 @@ if ('serviceWorker' in navigator) {
 
 // === QRコード機能 ===
 
-// QRコード用データの生成（管理番号ベース）
+// 管理番号生成
+function generateManagementId() {
+    const now = new Date();
+    const timestamp = now.getTime();
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const id = 'T' + timestamp.toString().slice(-6) + random.slice(-2);
+    return id;
+}
+
+// QRコード用データの生成
 function generateQRData(item) {
-    // 管理番号のみをQRコードに埋め込み
-    // 例: TOKI01_T241001-143052
-    const managementNumber = item.managementNumber || generateManagementNumber();
-    return QR_PREFIX + managementNumber;
+    // 管理番号を生成（例: T123456）
+    const managementId = generateManagementId();
+    
+    // 履歴にmanagementIdを保存
+    item.managementId = managementId;
+    
+    // QRコードには管理番号のみ埋め込み
+    return QR_PREFIX + managementId;
 }
 
 // QRコード画像の生成
@@ -2739,6 +2736,7 @@ function generateQRCode(data) {
 function initQRReader() {
     const qrReaderModal = document.getElementById('qrReaderModal');
     const closeQrReader = document.getElementById('closeQrReader');
+    const qrReaderCancelBtn = document.getElementById('qrReaderCancelBtn');
     const qrReaderStatus = document.getElementById('qrReaderStatus');
     
     closeQrReader.onclick = () => {
@@ -2746,8 +2744,7 @@ function initQRReader() {
         qrReaderModal.style.display = 'none';
     };
     
-    // キャンセルボタンのイベントリスナー追加
-    const qrReaderCancelBtn = document.getElementById('qrReaderCancelBtn');
+    // キャンセルボタン
     if (qrReaderCancelBtn) {
         qrReaderCancelBtn.onclick = () => {
             stopQRReader();
@@ -2835,11 +2832,11 @@ function handleQRScanResult(result) {
         }
         
         // 管理番号を抽出
-        const managementNumber = result.substring(QR_PREFIX.length);
-        console.log('読み取った管理番号:', managementNumber);
+        const managementId = result.substring(QR_PREFIX.length);
+        if (!managementId) throw new Error('管理番号が見つかりません');
         
-        // 管理番号で履歴照会
-        restoreFromManagementNumber(managementNumber);
+        // 管理番号で履歴を検索
+        searchHistoryByManagementId(managementId);
         
     } catch (error) {
         console.error('QRコード解析エラー:', error);
@@ -2847,28 +2844,25 @@ function handleQRScanResult(result) {
     }
 }
 
-// 管理番号から履歴照会・復元
-function restoreFromManagementNumber(managementNumber) {
-    console.log('管理番号で履歴照会:', managementNumber);
-    
+// 管理番号で履歴検索
+function searchHistoryByManagementId(managementId) {
     getAllHistory().then(historyArr => {
-        const targetItem = historyArr.find(item => 
-            item.managementNumber === managementNumber
-        );
+        const targetItem = historyArr.find(item => item.managementId === managementId);
         
         if (targetItem) {
-            console.log('対応する履歴アイテムを発見:', targetItem);
+            console.log('管理番号で履歴アイテムを発見:', managementId, targetItem);
             restoreContentFromHistory(targetItem);
         } else {
-            alert(`管理番号 ${managementNumber} に対応するデータが見つかりませんでした。\n履歴から削除されている可能性があります。`);
+            console.log('管理番号が履歴に見つかりません:', managementId);
+            alert(`管理番号 ${managementId} に対応するデータが見つかりませんでした。\n印刷履歴が削除されている可能性があります。`);
         }
     }).catch(error => {
-        console.error('履歴照会エラー:', error);
-        alert('履歴の照会に失敗しました。');
+        console.error('履歴検索エラー:', error);
+        alert('履歴の検索中にエラーが発生しました');
     });
 }
 
-// QRコードデータからコンテンツを復元（旧方式・互換性のため残存）
+// QRコードデータからコンテンツを復元（旧方式 - 互換性のため残す）
 function restoreFromQRData(qrData) {
     // 展開されたデータを使用
     const expandedData = {
