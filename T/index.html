@@ -2427,15 +2427,15 @@ function printText() {
     const textInput = document.getElementById('textInput');
     let text = textInput.value;
     
-    console.log('printText実行:', {
+    console.log('printText開始:', {
         text: text.trim(),
         selectedTextChip: selectedTextChip,
         isEmpty: text.trim() === '',
-        isChipEmpty: selectedTextChip === ''
+        chipEmpty: selectedTextChip === ''
     });
     
     if (text.trim() === '' || selectedTextChip === '') {
-        alert('テキストまたは日付・時刻設定が選択されていません\nテキスト: ' + (text.trim() === '' ? '空' : 'あり') + '\n日付設定: ' + (selectedTextChip || '未選択'));
+        console.log('印刷中止:', text.trim() === '' ? 'テキストが空' : 'チップが未選択');
         return;
     }
     
@@ -2830,7 +2830,7 @@ function initQRReader() {
         qrReaderModal.style.display = 'none';
     };
     
-    // キャンセルボタンの処理
+    // キャンセルボタンの動作も追加
     if (qrReaderCancelBtn) {
         qrReaderCancelBtn.onclick = () => {
             stopQRReader();
@@ -2861,24 +2861,33 @@ function startQRReader() {
         qrScanner = new QrScanner(videoElement, 
             result => {
                 console.log('QRコード読み取り成功:', result);
-                handleQRScanResult(result.data || result);
+                // QrScannerのバージョン対応：文字列またはオブジェクト
+                let qrText = '';
+                if (typeof result === 'string') {
+                    qrText = result;
+                } else if (result && result.data) {
+                    qrText = result.data;
+                } else if (result && result.result) {
+                    qrText = result.result;
+                } else {
+                    console.error('QR読み取り結果の形式が不明:', result);
+                    return;
+                }
+                
+                console.log('QRテキスト抽出:', qrText);
+                handleQRScanResult(qrText);
                 stopQRReader();
                 qrReaderModal.style.display = 'none';
             },
             {
                 onDecodeError: error => {
                     // エラーは表示しない（連続スキャンのため）
+                    console.log('QRスキャンエラー:', error.message || error);
                 },
-                maxScansPerSecond: 8,
+                maxScansPerSecond: 5,
                 highlightScanRegion: false,
-                highlightCodeOutline: true,
-                preferredCamera: 'environment', // 背面カメラ優先
-                returnDetailedScanResult: true,
-                videoConstraints: {
-                    facingMode: { exact: 'environment' },
-                    width: { ideal: 1280 },
-                    height: { ideal: 1280 }
-                }
+                highlightCodeOutline: false,
+                preferredCamera: 'environment' // 背面カメラ優先
             }
         );
         qrScanner.start().then(() => {
@@ -2913,28 +2922,14 @@ function handleQRScanResult(result) {
     try {
         console.log('QRコード読み取り結果:', result);
         
-        // resultがオブジェクトの場合、dataプロパティを確認
-        let qrText = '';
-        if (typeof result === 'string') {
-            qrText = result;
-        } else if (result && result.data) {
-            qrText = result.data;
-        } else if (result && result.text) {
-            qrText = result.text;
-        } else {
-            throw new Error('読み取り結果の形式が不正です: ' + typeof result);
-        }
-        
-        console.log('QRテキスト:', qrText);
-        
         // アプリ専用QRコードかチェック
-        if (!qrText.startsWith(QR_PREFIX)) {
-            alert('このアプリで生成されたQRコードではありません\n読み取り結果: ' + qrText);
+        if (!result.startsWith(QR_PREFIX)) {
+            alert('このアプリで生成されたQRコードではありません');
             return;
         }
         
         // QR_PREFIXを除去して管理番号を取得
-        const mgmtNumber = qrText.substring(QR_PREFIX.length);
+        const mgmtNumber = result.substring(QR_PREFIX.length);
         
         console.log('管理番号抽出:', mgmtNumber);
         
@@ -2943,7 +2938,7 @@ function handleQRScanResult(result) {
         
     } catch (error) {
         console.error('QRコード解析エラー:', error);
-        alert('QRコードの読み取りに失敗しました\nエラー: ' + error.message + '\n結果: ' + JSON.stringify(result));
+        alert('QRコードの読み取りに失敗しました: ' + error.message);
     }
 }
 
@@ -2951,11 +2946,6 @@ function handleQRScanResult(result) {
 // 管理番号から履歴を復元
 function restoreFromManagementNumber(mgmtNumber) {
     console.log('管理番号で復元開始:', mgmtNumber);
-    
-    if (!mgmtNumber || mgmtNumber.trim() === '') {
-        alert('管理番号が空です');
-        return;
-    }
     
     // 履歴から管理番号で検索
     getAllHistory().then(historyArr => {
@@ -2993,7 +2983,7 @@ function restoreFromManagementNumber(mgmtNumber) {
         }
     }).catch(error => {
         console.error('履歴検索エラー:', error);
-        alert('履歴の検索中にエラーが発生しました\nエラー: ' + error.message);
+        alert('履歴の検索中にエラーが発生しました: ' + error.message);
     });
 }
 
