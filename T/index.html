@@ -1713,7 +1713,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 if (qrData) {
                     qrCodeCanvas = generateQRCode(qrData);
                     if (qrCodeCanvas) {
-                        const qrSize = 28; // 10mm（約28px）で高密度読み取り対応
+                        const qrSize = 50; // 1.5cmサイズに調整（読み取り最適化）
                         let qrX, qrY;
                         
                         if (isDateTimeEnabled) {
@@ -1957,7 +1957,7 @@ function sendToPrintAssist(event) {
                         if (qrData) {
                             qrCodeCanvas = generateQRCode(qrData);
                             if (qrCodeCanvas) {
-                                const qrSize = 28; // 10mm（約28px）で高密度読み取り対応
+                                const qrSize = 50; // 1.5cmサイズに調整（読み取り最適化）
                                 let qrX, qrY;
                                 
                                 if (isDateTimeEnabled) {
@@ -2501,7 +2501,7 @@ function printText() {
             if (qrData) {
                 qrCodeCanvas = generateQRCode(qrData);
                 if (qrCodeCanvas) {
-                    const qrSize = 28; // 10mm（約28px）で高密度読み取り対応
+                    const qrSize = 50; // 1.5cmサイズに調整（読み取り最適化）
                     let qrX, qrY;
                     
                     if (isDateTimeEnabled) {
@@ -2666,12 +2666,42 @@ if ('serviceWorker' in navigator) {
 
 // === QRコード機能 ===
 
-// QRコード用データの生成（管理番号方式）
+// 管理番号システム用カウンター
+let managementCounter = parseInt(localStorage.getItem('toki01_mgmt_counter') || '0');
+
+// 管理番号生成
+function generateManagementNumber(type) {
+    managementCounter++;
+    localStorage.setItem('toki01_mgmt_counter', managementCounter.toString());
+    const prefix = type === 'text' ? 'T' : type === 'image' ? 'I' : 'S';
+    return prefix + managementCounter.toString().padStart(3, '0');
+}
+
+// QRコード用データの生成
 function generateQRData(item) {
-    // 管理番号のみをQRコードに埋め込み（10mmサイズ対応）
-    // 例: TOKI01_ID12345
-    const managementId = item.id || Date.now();
-    return QR_PREFIX + 'ID' + managementId;
+    // データサイズを判定し、大きい場合は管理番号方式
+    const isLargeData = 
+        (item.type === 'text' && item.data && item.data.length > 50) ||
+        (item.type === 'image') || 
+        (item.type === 'signature');
+    
+    if (isLargeData) {
+        // 管理番号方式：短い管理番号をQRに埋め込み
+        const mgmtNumber = generateManagementNumber(item.type);
+        item.managementNumber = mgmtNumber;
+        
+        // QRコードには管理番号のみ
+        return QR_PREFIX + 'M:' + mgmtNumber;
+    } else {
+        // 小データ：従来のカンマ区切り方式
+        const typeChar = item.type ? item.type.charAt(0) : 't';
+        const now = new Date();
+        const yymmdd = now.getFullYear().toString().slice(2) + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+        const copies = item.copies || 1;
+        const id = item.id || Date.now();
+        const created = item.created || Date.now();
+        return QR_PREFIX + [typeChar, yymmdd, copies, id, created].join(',');
+    }
 }
 
 // QRコード画像の生成
@@ -2800,7 +2830,7 @@ function stopQRReader() {
     }
 }
 
-// QRコード読み取り結果の処理（管理番号方式）
+// QRコード読み取り結果の処理
 function handleQRScanResult(result) {
     try {
         // アプリ専用QRコードかチェック
@@ -2809,48 +2839,55 @@ function handleQRScanResult(result) {
             return;
         }
         
-        // 管理番号を抽出（例: TOKI01_ID12345 → 12345）
-        const qrData = result.substring(QR_PREFIX.length);
-        if (!qrData.startsWith('ID')) {
-            throw new Error('管理番号形式不正');
+        const dataStr = result.substring(QR_PREFIX.length);
+        
+        // 管理番号方式かチェック
+        if (dataStr.startsWith('M:')) {
+            // 管理番号方式：M:T001 形式
+            const mgmtNumber = dataStr.substring(2);
+            restoreFromManagementNumber(mgmtNumber);
+        } else {
+            // カンマ区切り方式
+            const parts = dataStr.split(',');
+            if (parts.length < 3) throw new Error('データ形式不正');
+            // t, yymmdd, copies, id, created
+            const data = {
+                t: parts[0],
+                d: parts[1],
+                c: parts[2],
+                id: parts[3] || '',
+                created: parts[4] || ''
+            };
+            restoreFromQRData(data);
         }
-        const managementId = qrData.substring(2); // 'ID'を除去
-        
-        // 管理番号で履歴検索・復元
-        restoreFromManagementId(managementId);
-        
     } catch (error) {
         console.error('QRコード解析エラー:', error);
         alert('無効なQRコードです');
     }
 }
 
-// 管理番号から履歴検索・復元
-function restoreFromManagementId(managementId) {
-    console.log('管理番号で履歴検索:', managementId);
+// QRコードデータからコンテンツを復元
+// 管理番号から履歴を復元
+function restoreFromManagementNumber(mgmtNumber) {
+    console.log('管理番号で復元:', mgmtNumber);
     
     // 履歴から管理番号で検索
     getAllHistory().then(historyArr => {
-        const targetItem = historyArr.find(item => 
-            item.id == managementId || 
-            item.created == managementId ||
-            (item.qrData && item.qrData.includes('ID' + managementId))
-        );
+        const targetItem = historyArr.find(item => item.managementNumber === mgmtNumber);
         
         if (targetItem) {
-            console.log('管理番号で履歴アイテム発見:', targetItem);
+            console.log('管理番号に対応する履歴を発見:', targetItem);
             restoreContentFromHistory(targetItem);
         } else {
-            console.log('管理番号に対応する履歴なし:', managementId);
-            alert('この管理番号のデータが見つかりませんでした。\n削除された可能性があります。');
+            console.log('管理番号に対応する履歴が見つかりません:', mgmtNumber);
+            alert('管理番号 ' + mgmtNumber + ' に対応するデータが見つかりませんでした');
         }
     }).catch(error => {
         console.error('履歴検索エラー:', error);
-        alert('履歴の検索中にエラーが発生しました。');
+        alert('履歴の検索中にエラーが発生しました');
     });
 }
 
-// QRコードデータからコンテンツを復元
 function restoreFromQRData(qrData) {
     // 展開されたデータを使用
     const expandedData = {
