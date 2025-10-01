@@ -1025,9 +1025,9 @@ function openDB() {
         req.onerror = () => reject(req.error);
     });
 }
-function addHistory(item) {
+async function addHistory(item) {
     // QRコード用データを追加（管理番号も設定される）
-    const qrData = generateQRData(item);
+    const qrData = await generateQRData(item);
     item.qrData = qrData;
     
     console.log('履歴保存:', {
@@ -1847,6 +1847,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
     // 現在の1枚を印刷（シンプル実行）
     printSignatureCopy();
     
+    // 履歴保存（非同期）
     addHistory({
         type: 'signature',
         mode: 'signature',
@@ -1854,6 +1855,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
         dateTime: selectedSignatureChip,
         copies: selectedCopies,
         created: Date.now()
+    }).then(() => {
+        console.log('手書きサイン印刷履歴保存完了');
+    }).catch(error => {
+        console.error('手書きサイン印刷履歴保存エラー:', error);
     });
 };
 // --- 画像印刷 ---
@@ -2330,6 +2335,7 @@ function sendToPrintAssist(event) {
             // 現在の1枚を印刷（シンプル実行）
             printImageCopy();
             
+            // 履歴保存（非同期）
             addHistory({
                 type: 'image',
                 mode: 'image',
@@ -2338,6 +2344,10 @@ function sendToPrintAssist(event) {
                 copies: selectedCopies,
                 shrink: shrinkChecked,
                 created: Date.now()
+            }).then(() => {
+                console.log('画像印刷履歴保存完了');
+            }).catch(error => {
+                console.error('画像印刷履歴保存エラー:', error);
             });
         };
         img.src = 'data:image/png;base64,' + base64Image;
@@ -2631,6 +2641,8 @@ function printText() {
     
     // 現在の1枚を印刷（シンプル実行）
     printTextCopy();
+    
+    // 履歴保存（非同期）
     addHistory({
         type: 'text',
         mode: 'text',
@@ -2638,6 +2650,10 @@ function printText() {
         dateTime: selectedTextChip,
         copies: selectedTextCopies,
         created: Date.now()
+    }).then(() => {
+        console.log('テキスト印刷履歴保存完了');
+    }).catch(error => {
+        console.error('テキスト印刷履歴保存エラー:', error);
     });
 }
 function toggleClearButton() {
@@ -2680,47 +2696,58 @@ let textCounter = parseInt(localStorage.getItem('toki01_text_counter') || '0');
 let imageCounter = parseInt(localStorage.getItem('toki01_image_counter') || '0');
 let signatureCounter = parseInt(localStorage.getItem('toki01_signature_counter') || '0');
 
-// 管理番号生成（タイプ別カウンター）
+// 管理番号生成（タイプ別カウンター + 重複チェック）
 function generateManagementNumber(type) {
-    let counter, prefix, storageKey;
-    
-    if (type === 'text') {
-        textCounter++;
-        counter = textCounter;
-        prefix = 'T';
-        storageKey = 'toki01_text_counter';
+    return getAllHistory().then(historyArr => {
+        let counter, prefix, storageKey;
+        
+        if (type === 'text') {
+            prefix = 'T';
+            storageKey = 'toki01_text_counter';
+            // 既存の最大番号を取得
+            const existingNumbers = historyArr
+                .filter(item => item.managementNumber && item.managementNumber.startsWith('T'))
+                .map(item => parseInt(item.managementNumber.substring(1)))
+                .filter(num => !isNaN(num));
+            counter = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+        } else if (type === 'image') {
+            prefix = 'G';
+            storageKey = 'toki01_image_counter';
+            const existingNumbers = historyArr
+                .filter(item => item.managementNumber && item.managementNumber.startsWith('G'))
+                .map(item => parseInt(item.managementNumber.substring(1)))
+                .filter(num => !isNaN(num));
+            counter = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+        } else if (type === 'signature') {
+            prefix = 'N';
+            storageKey = 'toki01_signature_counter';
+            const existingNumbers = historyArr
+                .filter(item => item.managementNumber && item.managementNumber.startsWith('N'))
+                .map(item => parseInt(item.managementNumber.substring(1)))
+                .filter(num => !isNaN(num));
+            counter = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+        } else {
+            prefix = 'T';
+            storageKey = 'toki01_text_counter';
+            const existingNumbers = historyArr
+                .filter(item => item.managementNumber && item.managementNumber.startsWith('T'))
+                .map(item => parseInt(item.managementNumber.substring(1)))
+                .filter(num => !isNaN(num));
+            counter = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+        }
+        
         localStorage.setItem(storageKey, counter.toString());
-    } else if (type === 'image') {
-        imageCounter++;
-        counter = imageCounter;
-        prefix = 'G';
-        storageKey = 'toki01_image_counter';
-        localStorage.setItem(storageKey, counter.toString());
-    } else if (type === 'signature') {
-        signatureCounter++;
-        counter = signatureCounter;
-        prefix = 'N';
-        storageKey = 'toki01_signature_counter';
-        localStorage.setItem(storageKey, counter.toString());
-    } else {
-        // フォールバック
-        textCounter++;
-        counter = textCounter;
-        prefix = 'T';
-        storageKey = 'toki01_text_counter';
-        localStorage.setItem(storageKey, counter.toString());
-    }
-    
-    const mgmtNumber = prefix + counter.toString().padStart(3, '0');
-    console.log('管理番号生成:', type, '->', mgmtNumber);
-    return mgmtNumber;
+        const mgmtNumber = prefix + counter.toString().padStart(3, '0');
+        console.log('管理番号生成:', type, '->', mgmtNumber, '既存最大:', Math.max(...(existingNumbers || [0])));
+        return mgmtNumber;
+    });
 }
 
-// QRコード用データの生成
-function generateQRData(item) {
+// QRコード用データの生成（非同期対応）
+async function generateQRData(item) {
     // 管理番号がまだ生成されていない場合のみ生成
     if (!item.managementNumber) {
-        item.managementNumber = generateManagementNumber(item.type);
+        item.managementNumber = await generateManagementNumber(item.type);
     }
     
     console.log('QRデータ生成:', item.managementNumber, 'タイプ:', item.type);
