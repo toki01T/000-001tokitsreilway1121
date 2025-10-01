@@ -1026,9 +1026,17 @@ function openDB() {
     });
 }
 function addHistory(item) {
-    // QRコード用データを追加
-    const qrData = generateQRData(item);
-    item.qrData = qrData;
+    // 管理番号が設定されていればQRコード生成（既に実行済みなら重複実行しない）
+    if (!item.qrData && item.managementNumber) {
+        item.qrData = QR_PREFIX + 'M:' + item.managementNumber;
+        console.log('履歴保存：QRデータ設定', item.qrData);
+    }
+    
+    console.log('履歴保存：', {
+        type: item.type,
+        managementNumber: item.managementNumber,
+        qrData: item.qrData
+    });
     
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
@@ -1701,6 +1709,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             let qrCodeCanvas = null;
             
             if (isQrEnabledForSignature) {
+                // 履歴保存と同一のオブジェクトを参照（管理番号が既に設定済み）
                 const historyItem = {
                     type: 'signature',
                     mode: 'signature',
@@ -1709,7 +1718,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     copies: selectedCopies,
                     created: Date.now()
                 };
+                // 管理番号生成（履歴保存時に使用）
                 const qrData = generateQRData(historyItem);
+                console.log('QRコード生成：管理番号', historyItem.managementNumber);
+                
                 if (qrData) {
                     qrCodeCanvas = generateQRCode(qrData);
                     if (qrCodeCanvas) {
@@ -1838,14 +1850,23 @@ document.getElementById('signaturePrintButton').onclick = function() {
     // 現在の1枚を印刷（シンプル実行）
     printSignatureCopy();
     
-    addHistory({
+    // 履歴保存用のアイテム（QRコード生成と同一オブジェクト）
+    let historyItem = {
         type: 'signature',
         mode: 'signature',
         data: tmpCanvas.toDataURL("image/png"),
         dateTime: selectedSignatureChip,
         copies: selectedCopies,
         created: Date.now()
-    });
+    };
+    
+    // QRコード有効時は管理番号も生成してから履歴保存
+    if (isQrEnabledForSignature) {
+        const qrData = generateQRData(historyItem);
+        console.log('手書きサイン：管理番号を設定', historyItem.managementNumber);
+    }
+    
+    addHistory(historyItem);
 };
 // --- 画像印刷 ---
 function sendToPrintAssist(event) {
@@ -2321,7 +2342,8 @@ function sendToPrintAssist(event) {
             // 現在の1枚を印刷（シンプル実行）
             printImageCopy();
             
-            addHistory({
+            // 履歴保存用のアイテム（QRコード生成と同一オブジェクト）
+            let historyItem = {
                 type: 'image',
                 mode: 'image',
                 data: 'data:image/png;base64,' + base64Image,
@@ -2329,7 +2351,15 @@ function sendToPrintAssist(event) {
                 copies: selectedCopies,
                 shrink: shrinkChecked,
                 created: Date.now()
-            });
+            };
+            
+            // QRコード有効時は管理番号も生成してから履歴保存
+            if (isQrEnabledForImage) {
+                const qrData = generateQRData(historyItem);
+                console.log('画像：管理番号を設定', historyItem.managementNumber);
+            }
+            
+            addHistory(historyItem);
         };
         img.src = 'data:image/png;base64,' + base64Image;
     }
@@ -2622,14 +2652,24 @@ function printText() {
     
     // 現在の1枚を印刷（シンプル実行）
     printTextCopy();
-    addHistory({
+    
+    // 履歴保存用のアイテム（QRコード生成と同一オブジェクト）
+    let historyItem = {
         type: 'text',
         mode: 'text',
         data: textInput.value,
         dateTime: selectedTextChip,
         copies: selectedTextCopies,
         created: Date.now()
-    });
+    };
+    
+    // QRコード有効時は管理番号も生成してから履歴保存
+    if (isQrEnabledForText) {
+        const qrData = generateQRData(historyItem);
+        console.log('テキスト：管理番号を設定', historyItem.managementNumber);
+    }
+    
+    addHistory(historyItem);
 }
 function toggleClearButton() {
     const textInput = document.getElementById('textInput');
