@@ -2679,29 +2679,14 @@ function generateManagementNumber(type) {
 
 // QRコード用データの生成
 function generateQRData(item) {
-    // データサイズを判定し、大きい場合は管理番号方式
-    const isLargeData = 
-        (item.type === 'text' && item.data && item.data.length > 50) ||
-        (item.type === 'image') || 
-        (item.type === 'signature');
+    // すべてのデータを管理番号方式に統一
+    const mgmtNumber = generateManagementNumber(item.type);
+    item.managementNumber = mgmtNumber;
     
-    if (isLargeData) {
-        // 管理番号方式：短い管理番号をQRに埋め込み
-        const mgmtNumber = generateManagementNumber(item.type);
-        item.managementNumber = mgmtNumber;
-        
-        // QRコードには管理番号のみ
-        return QR_PREFIX + 'M:' + mgmtNumber;
-    } else {
-        // 小データ：従来のカンマ区切り方式
-        const typeChar = item.type ? item.type.charAt(0) : 't';
-        const now = new Date();
-        const yymmdd = now.getFullYear().toString().slice(2) + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
-        const copies = item.copies || 1;
-        const id = item.id || Date.now();
-        const created = item.created || Date.now();
-        return QR_PREFIX + [typeChar, yymmdd, copies, id, created].join(',');
-    }
+    console.log('管理番号生成:', mgmtNumber, 'アイテム:', item);
+    
+    // QRコードには管理番号のみ（最短・最も読み取りやすい）
+    return QR_PREFIX + mgmtNumber;
 }
 
 // QRコード画像の生成
@@ -2833,58 +2818,55 @@ function stopQRReader() {
 // QRコード読み取り結果の処理
 function handleQRScanResult(result) {
     try {
+        console.log('QRコード読み取り結果:', result);
+        
         // アプリ専用QRコードかチェック
         if (!result.startsWith(QR_PREFIX)) {
             alert('このアプリで生成されたQRコードではありません');
             return;
         }
         
-        const dataStr = result.substring(QR_PREFIX.length);
+        // QR_PREFIXを除去して管理番号を取得
+        const mgmtNumber = result.substring(QR_PREFIX.length);
         
-        // 管理番号方式かチェック
-        if (dataStr.startsWith('M:')) {
-            // 管理番号方式：M:T001 形式
-            const mgmtNumber = dataStr.substring(2);
-            restoreFromManagementNumber(mgmtNumber);
-        } else {
-            // カンマ区切り方式
-            const parts = dataStr.split(',');
-            if (parts.length < 3) throw new Error('データ形式不正');
-            // t, yymmdd, copies, id, created
-            const data = {
-                t: parts[0],
-                d: parts[1],
-                c: parts[2],
-                id: parts[3] || '',
-                created: parts[4] || ''
-            };
-            restoreFromQRData(data);
-        }
+        console.log('管理番号抽出:', mgmtNumber);
+        
+        // 管理番号で履歴復元
+        restoreFromManagementNumber(mgmtNumber);
+        
     } catch (error) {
         console.error('QRコード解析エラー:', error);
-        alert('無効なQRコードです');
+        alert('QRコードの読み取りに失敗しました: ' + error.message);
     }
 }
 
 // QRコードデータからコンテンツを復元
 // 管理番号から履歴を復元
 function restoreFromManagementNumber(mgmtNumber) {
-    console.log('管理番号で復元:', mgmtNumber);
+    console.log('管理番号で復元開始:', mgmtNumber);
     
     // 履歴から管理番号で検索
     getAllHistory().then(historyArr => {
-        const targetItem = historyArr.find(item => item.managementNumber === mgmtNumber);
+        console.log('履歴検索中... 全履歴数:', historyArr.length);
+        
+        const targetItem = historyArr.find(item => {
+            console.log('チェック中:', item.managementNumber, 'vs', mgmtNumber);
+            return item.managementNumber === mgmtNumber;
+        });
         
         if (targetItem) {
             console.log('管理番号に対応する履歴を発見:', targetItem);
+            alert('データを復元します: ' + mgmtNumber);
             restoreContentFromHistory(targetItem);
         } else {
             console.log('管理番号に対応する履歴が見つかりません:', mgmtNumber);
-            alert('管理番号 ' + mgmtNumber + ' に対応するデータが見つかりませんでした');
+            console.log('利用可能な管理番号:', historyArr.map(item => item.managementNumber).filter(Boolean));
+            alert('管理番号 ' + mgmtNumber + ' に対応するデータが見つかりませんでした\n\n利用可能な管理番号:\n' + 
+                  historyArr.map(item => item.managementNumber).filter(Boolean).join(', '));
         }
     }).catch(error => {
         console.error('履歴検索エラー:', error);
-        alert('履歴の検索中にエラーが発生しました');
+        alert('履歴の検索中にエラーが発生しました: ' + error.message);
     });
 }
 
