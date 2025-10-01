@@ -1026,15 +1026,24 @@ function openDB() {
     });
 }
 function addHistory(item) {
-    // QRコード用データを追加
+    // QRコード用データを追加（管理番号も設定される）
     const qrData = generateQRData(item);
     item.qrData = qrData;
+    
+    console.log('履歴保存:', {
+        type: item.type,
+        managementNumber: item.managementNumber,
+        qrData: item.qrData
+    });
     
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
             tx.objectStore(STORE_NAME).add(item);
-            tx.oncomplete = () => resolve();
+            tx.oncomplete = () => {
+                console.log('履歴保存完了:', item.managementNumber);
+                resolve();
+            };
             tx.onerror = () => reject(tx.error);
         });
     });
@@ -2666,49 +2675,58 @@ if ('serviceWorker' in navigator) {
 
 // === QRコード機能 ===
 
-// 管理番号システム用カウンター（タイプ別）
-let imageCounter = parseInt(localStorage.getItem('toki01_image_counter') || '0');
+// 管理番号システム用カウンター（タイプ別に分離）
 let textCounter = parseInt(localStorage.getItem('toki01_text_counter') || '0');
+let imageCounter = parseInt(localStorage.getItem('toki01_image_counter') || '0');
 let signatureCounter = parseInt(localStorage.getItem('toki01_signature_counter') || '0');
 
-// 管理番号生成（認識率向上のため明確に分類）
+// 管理番号生成（タイプ別カウンター）
 function generateManagementNumber(type) {
-    let prefix, counter, storageKey;
+    let counter, prefix, storageKey;
     
-    if (type === 'image') {
-        imageCounter++;
-        counter = imageCounter;
-        prefix = 'G'; // 画像：G001
-        storageKey = 'toki01_image_counter';
-    } else if (type === 'text') {
+    if (type === 'text') {
         textCounter++;
         counter = textCounter;
-        prefix = 'T'; // テキスト：T001
+        prefix = 'T';
         storageKey = 'toki01_text_counter';
-    } else { // signature
+        localStorage.setItem(storageKey, counter.toString());
+    } else if (type === 'image') {
+        imageCounter++;
+        counter = imageCounter;
+        prefix = 'G';
+        storageKey = 'toki01_image_counter';
+        localStorage.setItem(storageKey, counter.toString());
+    } else if (type === 'signature') {
         signatureCounter++;
         counter = signatureCounter;
-        prefix = 'N'; // 手書き(電子サイン)：N001
+        prefix = 'N';
         storageKey = 'toki01_signature_counter';
+        localStorage.setItem(storageKey, counter.toString());
+    } else {
+        // フォールバック
+        textCounter++;
+        counter = textCounter;
+        prefix = 'T';
+        storageKey = 'toki01_text_counter';
+        localStorage.setItem(storageKey, counter.toString());
     }
     
-    localStorage.setItem(storageKey, counter.toString());
     const mgmtNumber = prefix + counter.toString().padStart(3, '0');
-    
     console.log('管理番号生成:', type, '->', mgmtNumber);
     return mgmtNumber;
 }
 
 // QRコード用データの生成
 function generateQRData(item) {
-    // すべてのデータを管理番号方式に統一
-    const mgmtNumber = generateManagementNumber(item.type);
-    item.managementNumber = mgmtNumber;
+    // 管理番号がまだ生成されていない場合のみ生成
+    if (!item.managementNumber) {
+        item.managementNumber = generateManagementNumber(item.type);
+    }
     
-    console.log('管理番号生成:', mgmtNumber, 'アイテム:', item);
+    console.log('QRデータ生成:', item.managementNumber, 'タイプ:', item.type);
     
     // QRコードには管理番号のみ（最短・最も読み取りやすい）
-    return QR_PREFIX + mgmtNumber;
+    return QR_PREFIX + item.managementNumber;
 }
 
 // QRコード画像の生成
@@ -2871,48 +2889,35 @@ function restoreFromManagementNumber(mgmtNumber) {
     getAllHistory().then(historyArr => {
         console.log('履歴検索中... 全履歴数:', historyArr.length);
         
-        // 新しい管理番号体系（G001、T001、N001）で検索
-        let targetItem = historyArr.find(item => {
-            console.log('チェック中:', item.managementNumber, 'vs', mgmtNumber);
-            return item.managementNumber === mgmtNumber;
+        // デバッグ: 全ての管理番号を表示
+        historyArr.forEach((item, index) => {
+            console.log(`履歴[${index}]:`, {
+                type: item.type,
+                managementNumber: item.managementNumber,
+                created: item.created
+            });
         });
         
-        // 見つからない場合、旧体系（I001、T001、S001）でも検索
-        if (!targetItem) {
-            console.log('新体系で見つからないため、旧体系でも検索');
-            const oldMapping = {
-                'G': 'I', // G001 -> I001
-                'T': 'T', // T001 -> T001 (同じ)
-                'N': 'S'  // N001 -> S001
-            };
-            
-            if (mgmtNumber.length >= 4) {
-                const newPrefix = mgmtNumber.charAt(0);
-                const number = mgmtNumber.substring(1);
-                const oldPrefix = oldMapping[newPrefix];
-                
-                if (oldPrefix) {
-                    const oldMgmtNumber = oldPrefix + number;
-                    console.log('旧体系管理番号で検索:', oldMgmtNumber);
-                    targetItem = historyArr.find(item => item.managementNumber === oldMgmtNumber);
-                }
-            }
-        }
+        const targetItem = historyArr.find(item => {
+            const match = item.managementNumber === mgmtNumber;
+            console.log('照合:', item.managementNumber, 'vs', mgmtNumber, '→', match);
+            return match;
+        });
         
         if (targetItem) {
             console.log('管理番号に対応する履歴を発見:', targetItem);
-            alert('データを復元します: ' + mgmtNumber + '\n' + 
-                  (targetItem.type === 'image' ? '画像' : 
-                   targetItem.type === 'text' ? 'テキスト' : '手書きサイン'));
+            alert(`データを復元します\n管理番号: ${mgmtNumber}\nタイプ: ${targetItem.type}`);
             restoreContentFromHistory(targetItem);
         } else {
+            const availableNumbers = historyArr
+                .map(item => item.managementNumber)
+                .filter(Boolean)
+                .sort();
+            
             console.log('管理番号に対応する履歴が見つかりません:', mgmtNumber);
-            const availableNumbers = historyArr.map(item => item.managementNumber).filter(Boolean);
             console.log('利用可能な管理番号:', availableNumbers);
             
-            alert('管理番号 ' + mgmtNumber + ' に対応するデータが見つかりませんでした\n\n' +
-                  '利用可能な管理番号:\n' + availableNumbers.join(', ') + '\n\n' +
-                  '新体系: G=画像, T=テキスト, N=手書き');
+            alert(`管理番号 ${mgmtNumber} に対応するデータが見つかりませんでした\n\n利用可能な管理番号:\n${availableNumbers.join(', ')}\n\n画像:G001~ テキスト:T001~ 手書き:N001~`);
         }
     }).catch(error => {
         console.error('履歴検索エラー:', error);
