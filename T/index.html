@@ -1659,7 +1659,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
     
-    function printSignatureCopy() {
+    async function printSignatureCopy() {
         // 新しいキャンバスで全体を合成
         const compositeCanvas = document.createElement('canvas');
         const compositeCtx = compositeCanvas.getContext('2d');
@@ -1718,7 +1718,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     copies: selectedCopies,
                     created: Date.now()
                 };
-                const qrData = generateQRData(historyItem);
+                const qrData = await generateQRData(historyItem);
                 if (qrData) {
                     qrCodeCanvas = generateQRCode(qrData);
                     if (qrCodeCanvas) {
@@ -1912,7 +1912,7 @@ function sendToPrintAssist(event) {
                 // アップロードされた画像を読み込み
                 const uploadedImg = new Image();
                 uploadedImg.crossOrigin = 'anonymous'; // 画像品質向上
-                uploadedImg.onload = function() {
+                uploadedImg.onload = async function() {
                     // 日付・時刻の高さを計算
                     let dateTimeHeight = 0;
                     if (isDateTimeEnabled) {
@@ -1967,7 +1967,7 @@ function sendToPrintAssist(event) {
                             shrink: shrinkChecked,
                             created: Date.now()
                         };
-                        const qrData = generateQRData(historyItem);
+                        const qrData = await generateQRData(historyItem);
                         if (qrData) {
                             qrCodeCanvas = generateQRCode(qrData);
                             if (qrCodeCanvas) {
@@ -2467,7 +2467,7 @@ function printText() {
     // QRコード有効チェック
     const isQrEnabledForText = document.getElementById('textQrCheckbox').checked;
     
-    function printTextCopy() {
+    async function printTextCopy() {
         let printText = wrappedLines.join("\n");
         
         // キャンバスでテキストを画像として生成
@@ -2536,7 +2536,7 @@ function printText() {
                 copies: selectedTextCopies,
                 created: Date.now()
             };
-            const qrData = generateQRData(historyItem);
+            const qrData = await generateQRData(historyItem);
             if (qrData) {
                 qrCodeCanvas = generateQRCode(qrData);
                 if (qrCodeCanvas) {
@@ -2866,13 +2866,33 @@ function startQRReader() {
                 videoElement,
                 result => {
                     console.log('QR読み取り成功:', result);
-                    const qrText = result || '';
-                    if (qrText) {
-                        handleQRScanResult(qrText);
+                    
+                    // QrScannerのバージョン対応：複数の可能な形式をチェック
+                    let qrText = '';
+                    if (typeof result === 'string') {
+                        qrText = result;
+                    } else if (result && typeof result.data === 'string') {
+                        qrText = result.data;
+                    } else if (result && typeof result.result === 'string') {
+                        qrText = result.result;
+                    } else if (result && typeof result.text === 'string') {
+                        qrText = result.text;
+                    } else if (result && result.toString) {
+                        qrText = result.toString();
+                    } else {
+                        console.error('QR読み取り結果の形式が不明:', result);
+                        statusElement.textContent = 'QRコードの形式が不明です';
+                        return;
+                    }
+                    
+                    console.log('QRテキスト抽出:', qrText);
+                    if (qrText && qrText.trim()) {
+                        handleQRScanResult(qrText.trim());
                         stopQRReader();
                         qrReaderModal.style.display = 'none';
                     }
-                }
+                },
+                { preferredCamera: 'environment' }
             );
             
             qrScanner.start().then(() => {
@@ -2911,16 +2931,32 @@ function handleQRScanResult(result) {
     try {
         console.log('QRコード読み取り結果:', result);
         
+        // 結果が空でないことを確認
+        if (!result || typeof result !== 'string' || !result.trim()) {
+            console.error('QRコード結果が空または無効:', result);
+            alert('QRコードの読み取り結果が無効です');
+            return;
+        }
+        
+        const qrText = result.trim();
+        
         // アプリ専用QRコードかチェック
-        if (!result.startsWith(QR_PREFIX)) {
-            alert('このアプリで生成されたQRコードではありません');
+        if (!qrText.startsWith(QR_PREFIX)) {
+            console.log('他のアプリのQRコード:', qrText);
+            alert(`⚠️ このアプリで生成されたQRコードではありません\n\n読み取り結果: ${qrText.substring(0, 50)}${qrText.length > 50 ? '...' : ''}\n\n${QR_PREFIX}で始まるQRコードのみ有効です`);
             return;
         }
         
         // QR_PREFIXを除去して管理番号を取得
-        const mgmtNumber = result.substring(QR_PREFIX.length);
+        const mgmtNumber = qrText.substring(QR_PREFIX.length);
         
         console.log('管理番号抽出:', mgmtNumber);
+        
+        if (!mgmtNumber) {
+            console.error('管理番号が空');
+            alert('QRコードから管理番号を取得できませんでした');
+            return;
+        }
         
         // 管理番号で履歴復元
         restoreFromManagementNumber(mgmtNumber);
@@ -2957,7 +2993,17 @@ function restoreFromManagementNumber(mgmtNumber) {
         
         if (targetItem) {
             console.log('管理番号に対応する履歴を発見:', targetItem);
-            alert(`データを復元します\n管理番号: ${mgmtNumber}\nタイプ: ${targetItem.type}`);
+            
+            // タイプ別の分かりやすいメッセージ
+            let typeText = '';
+            if (targetItem.type === 'image') typeText = '画像';
+            else if (targetItem.type === 'text') typeText = 'テキスト';
+            else if (targetItem.type === 'signature') typeText = '手書きサイン';
+            
+            const dateText = targetItem.created ? new Date(targetItem.created).toLocaleString('ja-JP') : '';
+            
+            alert(`✅ データを復元します！\n\n📋 管理番号: ${mgmtNumber}\n📄 種類: ${typeText}\n📅 作成日時: ${dateText}\n\n印刷設定も含めて完全復元されます。`);
+            
             restoreContentFromHistory(targetItem);
         } else {
             const availableNumbers = historyArr
