@@ -1722,6 +1722,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     created: Date.now(),
                     managementId: managementId // 管理番号を事前に設定
                 };
+                
+                // グローバル変数に保存（後で履歴保存に使用）
+                window.currentHistoryItem = historyItem;
+                
                 const qrData = generateQRData(historyItem);
                 if (qrData) {
                     qrCodeCanvas = generateQRCode(qrData);
@@ -1849,16 +1853,25 @@ document.getElementById('signaturePrintButton').onclick = function() {
     }
     
     // 現在の1枚を印刷（シンプル実行）
+    console.log('手書きサイン印刷開始 - QRコード有効:', isQrEnabledForSignature);
     printSignatureCopy();
     
-    addHistory({
-        type: 'signature',
-        mode: 'signature',
-        data: tmpCanvas.toDataURL("image/png"),
-        dateTime: selectedSignatureChip,
-        copies: selectedCopies,
-        created: Date.now()
-    });
+    // 印刷で使用したhistoryItemを履歴に保存（QRコード有効時）
+    if (isQrEnabledForSignature && window.currentHistoryItem) {
+        console.log('QRコード有効 - 印刷用historyItemを履歴に保存:', window.currentHistoryItem);
+        addHistory(window.currentHistoryItem);
+    } else {
+        // QRコード無効時は通常の履歴保存
+        console.log('QRコード無効 - 通常の履歴保存');
+        addHistory({
+            type: 'signature',
+            mode: 'signature',
+            data: tmpCanvas.toDataURL("image/png"),
+            dateTime: selectedSignatureChip,
+            copies: selectedCopies,
+            created: Date.now()
+        });
+    }
 };
 // --- 画像印刷 ---
 function sendToPrintAssist(event) {
@@ -1977,6 +1990,10 @@ function sendToPrintAssist(event) {
                             created: Date.now(),
                             managementId: managementId // 管理番号を事前に設定
                         };
+                        
+                        // グローバル変数に保存（後で履歴保存に使用）
+                        window.currentHistoryItem = historyItem;
+                        
                         const qrData = generateQRData(historyItem);
                         if (qrData) {
                             qrCodeCanvas = generateQRCode(qrData);
@@ -2345,15 +2362,21 @@ function sendToPrintAssist(event) {
             // 現在の1枚を印刷（シンプル実行）
             printImageCopy();
             
-            addHistory({
-                type: 'image',
-                mode: 'image',
-                data: 'data:image/png;base64,' + base64Image,
-                dateTime: selectedChip,
-                copies: selectedCopies,
-                shrink: shrinkChecked,
-                created: Date.now()
-            });
+            // 印刷で使用したhistoryItemを履歴に保存（QRコード有効時）
+            if (isQrEnabledForImage && window.currentHistoryItem) {
+                addHistory(window.currentHistoryItem);
+            } else {
+                // QRコード無効時は通常の履歴保存
+                addHistory({
+                    type: 'image',
+                    mode: 'image',
+                    data: 'data:image/png;base64,' + base64Image,
+                    dateTime: selectedChip,
+                    copies: selectedCopies,
+                    shrink: shrinkChecked,
+                    created: Date.now()
+                });
+            }
         };
         img.src = 'data:image/png;base64,' + base64Image;
     }
@@ -2532,6 +2555,10 @@ function printText() {
                 created: Date.now(),
                 managementId: managementId // 管理番号を事前に設定
             };
+            
+            // グローバル変数に保存（後で履歴保存に使用）
+            window.currentHistoryItem = historyItem;
+            
             const qrData = generateQRData(historyItem);
             if (qrData) {
                 qrCodeCanvas = generateQRCode(qrData);
@@ -2657,14 +2684,21 @@ function printText() {
     
     // 現在の1枚を印刷（シンプル実行）
     printTextCopy();
-    addHistory({
-        type: 'text',
-        mode: 'text',
-        data: textInput.value,
-        dateTime: selectedTextChip,
-        copies: selectedTextCopies,
-        created: Date.now()
-    });
+    
+    // 印刷で使用したhistoryItemを履歴に保存（QRコード有効時）
+    if (isQrEnabledForText && window.currentHistoryItem) {
+        addHistory(window.currentHistoryItem);
+    } else {
+        // QRコード無効時は通常の履歴保存
+        addHistory({
+            type: 'text',
+            mode: 'text',
+            data: textInput.value,
+            dateTime: selectedTextChip,
+            copies: selectedTextCopies,
+            created: Date.now()
+        });
+    }
 }
 function toggleClearButton() {
     const textInput = document.getElementById('textInput');
