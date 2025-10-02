@@ -1110,18 +1110,18 @@ function openDB() {
     });
 }
 function addHistory(item) {
-    // QRコード用データを先に追加
-    if (item.qrPrinted) {
-        const qrData = generateQRData(item);
-        item.qrData = qrData;
-    }
-    
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
             tx.objectStore(STORE_NAME).add(item);
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
+            tx.oncomplete = () => {
+                console.log('履歴保存完了 - 管理番号:', item.managementId || 'QRなし');
+                resolve();
+            };
+            tx.onerror = () => {
+                console.error('履歴保存エラー:', tx.error);
+                reject(tx.error);
+            };
         });
     });
 }
@@ -1778,8 +1778,8 @@ document.getElementById('signaturePrintButton').onclick = function() {
             const signatureScale = 0.92; // 92%にスケール（85%から修正）
             const signatureWidth = Math.round((outW / pxPerMm * mmToPx) * signatureScale);
             const signatureHeight = Math.round((outH / pxPerMm * mmToPx) * signatureScale);
-            const qrCodeHeight = qrPrintEnabled ? 120 : 0; // QRコードの高さを考慮
-            const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin + qrCodeHeight;
+            const qrBottomMargin = qrPrintEnabled ? 140 : 0; // QRコード用の下部余白を追加
+            const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin + qrBottomMargin;
             
             compositeCanvas.width = canvasWidth;
             compositeCanvas.height = totalHeight;
@@ -1797,48 +1797,31 @@ document.getElementById('signaturePrintButton').onclick = function() {
             
             // QRコードを生成して左側に配置（チェックボックス確認）
             let qrCodeCanvas = null;
-            let historyItem = null;
+            let managementId = null;
             console.log('手書き印刷 - QRチェックボックス状態:', qrPrintEnabled);
             if (qrPrintEnabled) {
                 console.log('QRコード生成開始（手書き）');
-                historyItem = {
-                    type: 'signature',
-                    mode: 'signature',
-                    data: tmpCanvas.toDataURL("image/png"),
-                    dateTime: selectedSignatureChip,
-                    copies: selectedCopies,
-                    created: Date.now(),
-                    qrPrinted: true
-                };
-                const qrData = generateQRData(historyItem);
-                if (qrData) {
-                    qrCodeCanvas = generateQRCode(qrData);
-                    if (qrCodeCanvas) {
-                        const qrSize = 120; // QRコードのサイズを大きく設定
-                        const qrX = 30; // 左端から30pxの位置
-                        let qrY;
-                        if (isDateTimeEnabled) {
-                            // 日付・時刻ありの場合：日付・時刻の左側に配置
-                            qrY = signatureY + signatureHeight + 20; // サインの下、日付の横
-                        } else {
-                            // 日付・時刻なしの場合：手書きの下部左側
-                            qrY = signatureY + signatureHeight + 20; // サインの下
-                        }
-                        console.log('QRコード描画位置:', qrX, qrY, qrSize);
-                        compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
+                // 管理番号を事前に生成
+                managementId = 'TOKI' + Date.now().toString().slice(-8);
+                console.log('生成された管理番号:', managementId);
+                
+                qrCodeCanvas = generateQRCode(managementId);
+                if (qrCodeCanvas) {
+                    const qrSize = 120; // QRコードのサイズを大きく設定
+                    const qrX = 30; // 左端から30pxの位置
+                    let qrY;
+                    if (isDateTimeEnabled) {
+                        // 日付・時刻ありの場合：日付・時刻の左側に配置
+                        qrY = signatureY + signatureHeight + 20; // サインの下、日付の横
+                    } else {
+                        // 日付・時刻なしの場合：手書きの下部左側
+                        qrY = signatureY + signatureHeight + 20; // サインの下
                     }
+                    console.log('QRコード描画位置:', qrX, qrY, qrSize);
+                    compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
                 }
             } else {
                 console.log('QRコードなしで印刷（手書き）');
-                historyItem = {
-                    type: 'signature',
-                    mode: 'signature',
-                    data: tmpCanvas.toDataURL("image/png"),
-                    dateTime: selectedSignatureChip,
-                    copies: selectedCopies,
-                    created: Date.now(),
-                    qrPrinted: false
-                };
             }
             
             // 日付・時刻を描画
@@ -1935,8 +1918,17 @@ document.getElementById('signaturePrintButton').onclick = function() {
     // 現在の1枚を印刷（シンプル実行）
     printSignatureCopy();
     
-    // 履歴に保存
-    addHistory(historyItem);
+    
+    addHistory({
+        type: 'signature',
+        mode: 'signature',
+        data: tmpCanvas.toDataURL("image/png"),
+        dateTime: selectedSignatureChip,
+        copies: selectedCopies,
+        qrPrinted: qrPrintEnabled,
+        managementId: managementId, // 管理番号を設定
+        created: Date.now()
+    });
 };
 // --- 画像印刷 ---
 function sendToPrintAssist(event) {
@@ -2005,8 +1997,8 @@ function sendToPrintAssist(event) {
                     const imageTopMargin = -50; // 画像用上余白
                     const imageBottomMargin = 13; // 画像用下余白
                     const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
-                    const qrCodeHeight = qrPrintEnabled ? 120 : 0; // QRコードの高さを考慮
-                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrCodeHeight;
+                    const qrBottomMargin = qrPrintEnabled ? 140 : 0; // QRコード用の下部余白を追加
+                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrBottomMargin;
                     
                     compositeCanvas.width = canvasWidth;
                     compositeCanvas.height = totalHeight;
@@ -2031,50 +2023,31 @@ function sendToPrintAssist(event) {
                     
                     // QRコードを生成して左側に配置（チェックボックス確認）
                     let qrCodeCanvas = null;
-                    let historyItem = null;
+                    let managementId = null;
                     console.log('画像印刷 - QRチェックボックス状態:', qrPrintEnabled);
                     if (qrPrintEnabled) {
                         console.log('QRコード生成開始（画像）');
-                        historyItem = {
-                            type: 'image',
-                            mode: 'image',
-                            data: 'data:image/png;base64,' + base64Image,
-                            dateTime: selectedChip,
-                            copies: selectedCopies,
-                            shrink: shrinkChecked,
-                            created: Date.now(),
-                            qrPrinted: true
-                        };
-                        const qrData = generateQRData(historyItem);
-                        if (qrData) {
-                            qrCodeCanvas = generateQRCode(qrData);
-                            if (qrCodeCanvas) {
-                                const qrSize = 120; // QRコードのサイズを大きく設定
-                                const qrX = 30; // 左端から30pxの位置
-                                let qrY;
-                                if (isDateTimeEnabled) {
-                                    // 日付・時刻ありの場合：日付・時刻の左側に配置
-                                    qrY = imgY + finalImgHeight + 20; // 画像の下、日付の横
-                                } else {
-                                    // 日付・時刻なしの場合：画像の下部左側
-                                    qrY = imgY + finalImgHeight + 20; // 画像の下
-                                }
-                                console.log('QRコード描画位置:', qrX, qrY, qrSize);
-                                compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
+                        // 管理番号を事前に生成
+                        managementId = 'TOKI' + Date.now().toString().slice(-8);
+                        console.log('生成された管理番号:', managementId);
+                        
+                        qrCodeCanvas = generateQRCode(managementId);
+                        if (qrCodeCanvas) {
+                            const qrSize = 120; // QRコードのサイズを大きく設定
+                            const qrX = 30; // 左端から30pxの位置
+                            let qrY;
+                            if (isDateTimeEnabled) {
+                                // 日付・時刻ありの場合：日付・時刻の左側に配置
+                                qrY = imgY + finalImgHeight + 20; // 画像の下、日付の横
+                            } else {
+                                // 日付・時刻なしの場合：画像の下部左側
+                                qrY = imgY + finalImgHeight + 20; // 画像の下
                             }
+                            console.log('QRコード描画位置:', qrX, qrY, qrSize);
+                            compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
                         }
                     } else {
                         console.log('QRコードなしで印刷（画像）');
-                        historyItem = {
-                            type: 'image',
-                            mode: 'image',
-                            data: 'data:image/png;base64,' + base64Image,
-                            dateTime: selectedChip,
-                            copies: selectedCopies,
-                            shrink: shrinkChecked,
-                            created: Date.now(),
-                            qrPrinted: false
-                        };
                     }
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
@@ -2412,8 +2385,17 @@ function sendToPrintAssist(event) {
             // 現在の1枚を印刷（シンプル実行）
             printImageCopy();
             
-            // 履歴に保存
-            addHistory(historyItem);
+            addHistory({
+                type: 'image',
+                mode: 'image',
+                data: 'data:image/png;base64,' + base64Image,
+                dateTime: selectedChip,
+                copies: selectedCopies,
+                shrink: shrinkChecked,
+                qrPrinted: qrPrintEnabled,
+                managementId: managementId, // 管理番号を設定
+                created: Date.now()
+            });
         };
         img.src = 'data:image/png;base64,' + base64Image;
     }
@@ -2539,11 +2521,9 @@ function printText() {
             textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
         }
         
-        // QRコードのスペースを追加
-        const qrCodeHeight = qrPrintEnabled ? 120 : 0;
-        textHeight += qrCodeHeight;
-        
-        const canvasHeight = Math.round(textHeight + 60); // 上下余白調整
+        // QRコード用の下部余白を追加
+        const qrBottomMargin = qrPrintEnabled ? 140 : 0;
+        const canvasHeight = Math.round(textHeight + 60 + qrBottomMargin); // 上下余白調整 + QRコード余白
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
         
@@ -2569,49 +2549,32 @@ function printText() {
         
         // QRコードを生成して左側に配置（チェックボックス確認）
         let qrCodeCanvas = null;
-        let historyItem = null;
+        let managementId = null;
         console.log('テキスト印刷 - QRチェックボックス状態:', qrPrintEnabled);
         if (qrPrintEnabled) {
             console.log('QRコード生成開始（テキスト）');
-            historyItem = {
-                type: 'text',
-                mode: 'text',
-                data: textInput.value,
-                dateTime: selectedTextChip,
-                copies: selectedTextCopies,
-                created: Date.now(),
-                qrPrinted: true
-            };
-            const qrData = generateQRData(historyItem);
-            if (qrData) {
-                qrCodeCanvas = generateQRCode(qrData);
-                if (qrCodeCanvas) {
-                    const qrSize = 120; // QRコードのサイズを大きく設定
-                    const qrX = 30; // 左端から30pxの位置
-                    const textEndY = yPos;
-                    let qrY;
-                    if (isDateTimeEnabled) {
-                        // 日付・時刻ありの場合：日付・時刻の左側に配置
-                        qrY = textEndY + 20; // テキストの下、日付の横
-                    } else {
-                        // 日付・時刻なしの場合：テキストの下部左側
-                        qrY = textEndY + 10;
-                    }
-                    console.log('QRコード描画位置:', qrX, qrY, qrSize);
-                    ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
+            // 管理番号を事前に生成
+            managementId = 'TOKI' + Date.now().toString().slice(-8);
+            console.log('生成された管理番号:', managementId);
+            
+            qrCodeCanvas = generateQRCode(managementId);
+            if (qrCodeCanvas) {
+                const qrSize = 120; // QRコードのサイズを大きく設定
+                const qrX = 30; // 左端から30pxの位置
+                const textEndY = yPos;
+                let qrY;
+                if (isDateTimeEnabled) {
+                    // 日付・時刻ありの場合：日付・時刻の左側に配置
+                    qrY = textEndY + 20; // テキストの下、日付の横
+                } else {
+                    // 日付・時刻なしの場合：テキストの下部左側
+                    qrY = textEndY + 10;
                 }
+                console.log('QRコード描画位置:', qrX, qrY, qrSize);
+                ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
             }
         } else {
             console.log('QRコードなしで印刷（テキスト）');
-            historyItem = {
-                type: 'text',
-                mode: 'text',
-                data: textInput.value,
-                dateTime: selectedTextChip,
-                copies: selectedTextCopies,
-                created: Date.now(),
-                qrPrinted: false
-            };
         }
         
         // 日付・時刻を描画
@@ -2702,9 +2665,16 @@ function printText() {
     
     // 現在の1枚を印刷（シンプル実行）
     printTextCopy();
-    
-    // 履歴に保存
-    addHistory(historyItem);
+    addHistory({
+        type: 'text',
+        mode: 'text',
+        data: textInput.value,
+        dateTime: selectedTextChip,
+        copies: selectedTextCopies,
+        qrPrinted: qrPrintEnabled,
+        managementId: managementId, // 管理番号を設定
+        created: Date.now()
+    });
 }
 function toggleClearButton() {
     const textInput = document.getElementById('textInput');
@@ -2743,17 +2713,18 @@ if ('serviceWorker' in navigator) {
 
 // QRコード用データの生成（管理番号方式）
 function generateQRData(item) {
-    const managementId = 'TOKI' + Date.now().toString().slice(-8); // 8桁の管理番号
+    // 既に管理番号が設定されている場合はそれを使用
+    if (item.managementId) {
+        console.log('既存の管理番号を使用:', item.managementId);
+        return item.managementId;
+    }
     
-    // 超シンプルなQRデータ（容量最小化）
-    const qrData = managementId; // 管理番号のみ
-    
-    // 履歴に管理番号を保存
+    // 新しい管理番号を生成
+    const managementId = 'TOKI' + Date.now().toString().slice(-8);
     item.managementId = managementId;
     
-    console.log('QRデータ生成 - 管理番号:', managementId);
-    console.log('QRデータ生成 - アイテム:', item);
-    return qrData;
+    console.log('新しい管理番号を生成:', managementId);
+    return managementId;
 }
 
 // QRコード画像の生成
@@ -2908,8 +2879,8 @@ function restoreFromManagementId(managementId) {
     
     // 履歴から管理番号で対象アイテムを検索
     getAllHistory().then(historyList => {
-        console.log('履歴の総数:', historyList.length);
-        console.log('履歴内の管理番号一覧:', historyList.map(item => item.managementId).filter(id => id));
+        console.log('履歴件数:', historyList.length);
+        console.log('履歴の管理番号一覧:', historyList.map(item => item.managementId).filter(id => id));
         
         const targetItem = historyList.find(item => 
             item.managementId === managementId
@@ -2919,9 +2890,9 @@ function restoreFromManagementId(managementId) {
             console.log('管理番号に対応する履歴アイテムを発見:', targetItem);
             restoreContentFromHistory(targetItem);
         } else {
-            console.error('履歴検索失敗 - 対象の管理番号:', managementId);
-            console.log('検索対象の履歴:', historyList);
-            alert('この管理番号のデータは履歴にありません。\n管理番号: ' + managementId);
+            console.error('履歴検索失敗 - 管理番号:', managementId);
+            console.log('利用可能な管理番号:', historyList.filter(item => item.managementId).map(item => item.managementId));
+            alert('この管理番号のデータは履歴にありません。\n管理番号: ' + managementId + '\n\n履歴を確認してください。');
         }
     }).catch(error => {
         console.error('履歴取得エラー:', error);
