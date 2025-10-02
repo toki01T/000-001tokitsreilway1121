@@ -1110,31 +1110,21 @@ function openDB() {
     });
 }
 function addHistory(item) {
-    // QRコード用データを追加
-    if (item.qrPrinted && !item.managementId) {
+    // QRコード用データを追加（QRコードが有効な場合のみ）
+    if (item.qrPrinted) {
         const qrData = generateQRData(item);
         item.qrData = qrData;
     }
     
-    console.log('履歴保存:', {
-        type: item.type,
-        managementId: item.managementId,
-        qrPrinted: item.qrPrinted,
-        created: item.created
-    });
-    
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
-            const request = tx.objectStore(STORE_NAME).add(item);
-            request.onsuccess = () => {
-                console.log('履歴保存成功:', request.result);
-                resolve(request.result);
+            tx.objectStore(STORE_NAME).add(item);
+            tx.oncomplete = () => {
+                console.log('履歴保存完了:', item.managementId);
+                resolve();
             };
-            request.onerror = () => {
-                console.error('履歴保存エラー:', request.error);
-                reject(request.error);
-            };
+            tx.onerror = () => reject(tx.error);
         });
     });
 }
@@ -1786,13 +1776,13 @@ document.getElementById('signaturePrintButton').onclick = function() {
             // 全体の高さを計算（手書き用の余白設定、サイズ縮小）
             const signatureTopMargin = 8; // 手書き用上余白
             const signatureBottomMargin = 25; // 手書き用下余白
-            const qrSpaceMargin = qrPrintEnabled ? 140 : 0; // QRコード用追加スペース
+            const qrBottomMargin = qrPrintEnabled ? 140 : 0; // QRコード用追加余白
             
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
             const signatureScale = 0.92; // 92%にスケール（85%から修正）
             const signatureWidth = Math.round((outW / pxPerMm * mmToPx) * signatureScale);
             const signatureHeight = Math.round((outH / pxPerMm * mmToPx) * signatureScale);
-            const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin + qrSpaceMargin;
+            const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin + qrBottomMargin;
             
             compositeCanvas.width = canvasWidth;
             compositeCanvas.height = totalHeight;
@@ -1810,7 +1800,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             
             // QRコードを生成して左側に配置（チェックボックス確認）
             let qrCodeCanvas = null;
-            let historyItem = null; // 履歴アイテムを外部で定義
+            let historyItem = null;
             console.log('手書き印刷 - QRチェックボックス状態:', qrPrintEnabled);
             if (qrPrintEnabled) {
                 console.log('QRコード生成開始（手書き）');
@@ -1948,11 +1938,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
     // 現在の1枚を印刷（シンプル実行）
     printSignatureCopy();
     
-    // 履歴を保存（QRコード生成後）
+    // 履歴保存（historyItemを使用）
     if (historyItem) {
         addHistory(historyItem);
     }
-};
 };
 // --- 画像印刷 ---
 function sendToPrintAssist(event) {
@@ -2021,8 +2010,8 @@ function sendToPrintAssist(event) {
                     const imageTopMargin = -50; // 画像用上余白
                     const imageBottomMargin = 13; // 画像用下余白
                     const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
-                    const qrSpaceMargin = qrPrintEnabled ? 140 : 0; // QRコード用追加スペース
-                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrSpaceMargin;
+                    const qrBottomMargin = qrPrintEnabled ? 140 : 0; // QRコード用追加余白
+                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrBottomMargin;
                     
                     compositeCanvas.width = canvasWidth;
                     compositeCanvas.height = totalHeight;
@@ -2047,7 +2036,7 @@ function sendToPrintAssist(event) {
                     
                     // QRコードを生成して左側に配置（チェックボックス確認）
                     let qrCodeCanvas = null;
-                    let historyItem = null; // 履歴アイテムを外部で定義
+                    let historyItem = null;
                     console.log('画像印刷 - QRチェックボックス状態:', qrPrintEnabled);
                     if (qrPrintEnabled) {
                         console.log('QRコード生成開始（画像）');
@@ -2428,7 +2417,7 @@ function sendToPrintAssist(event) {
             // 現在の1枚を印刷（シンプル実行）
             printImageCopy();
             
-            // 履歴を保存（QRコード生成後）
+            // 履歴保存（historyItemを使用）
             if (historyItem) {
                 addHistory(historyItem);
             }
@@ -2557,9 +2546,10 @@ function printText() {
             textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
         }
         
-        // QRコード用追加スペース
-        const qrSpaceMargin = qrPrintEnabled ? 140 : 0;
-        const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整
+        // QRコード用追加余白
+        const qrBottomMargin = qrPrintEnabled ? 140 : 0;
+        
+        const canvasHeight = Math.round(textHeight + 60 + qrBottomMargin); // 上下余白調整 + QR余白
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
         
@@ -2585,7 +2575,7 @@ function printText() {
         
         // QRコードを生成して左側に配置（チェックボックス確認）
         let qrCodeCanvas = null;
-        let historyItem = null; // 履歴アイテムを外部で定義
+        let historyItem = null;
         console.log('テキスト印刷 - QRチェックボックス状態:', qrPrintEnabled);
         if (qrPrintEnabled) {
             console.log('QRコード生成開始（テキスト）');
@@ -2719,7 +2709,7 @@ function printText() {
     // 現在の1枚を印刷（シンプル実行）
     printTextCopy();
     
-    // 履歴を保存（QRコード生成後）
+    // 履歴保存（historyItemを使用）
     if (historyItem) {
         addHistory(historyItem);
     }
@@ -2761,6 +2751,12 @@ if ('serviceWorker' in navigator) {
 
 // QRコード用データの生成（管理番号方式）
 function generateQRData(item) {
+    // 既に管理番号が設定されている場合はそれを使用
+    if (item.managementId) {
+        console.log('既存の管理番号を使用:', item.managementId);
+        return item.managementId;
+    }
+    
     const managementId = 'TOKI' + Date.now().toString().slice(-8); // 8桁の管理番号
     
     // 超シンプルなQRデータ（容量最小化）
@@ -2769,7 +2765,7 @@ function generateQRData(item) {
     // 履歴に管理番号を保存
     item.managementId = managementId;
     
-    console.log('QRデータ生成:', qrData);
+    console.log('新しい管理番号を生成:', qrData);
     return qrData;
 }
 
@@ -2925,13 +2921,6 @@ function restoreFromManagementId(managementId) {
     
     // 履歴から管理番号で対象アイテムを検索
     getAllHistory().then(historyList => {
-        console.log('履歴一覧:', historyList.map(item => ({
-            id: item.id,
-            managementId: item.managementId,
-            type: item.type,
-            created: item.created
-        })));
-        
         const targetItem = historyList.find(item => 
             item.managementId === managementId
         );
@@ -2940,15 +2929,8 @@ function restoreFromManagementId(managementId) {
             console.log('管理番号に対応する履歴アイテムを発見:', targetItem);
             restoreContentFromHistory(targetItem);
         } else {
-            // より詳細なエラー情報を表示
-            alert(`この管理番号のデータは履歴にありません。\n` +
-                  `管理番号: ${managementId}\n` +
-                  `現在の履歴件数: ${historyList.length}件\n` +
-                  `※印刷直後でない場合は、ページを再読み込みしてから試してください。`);
+            alert('この管理番号のデータは履歴にありません。\n管理番号: ' + managementId);
         }
-    }).catch(error => {
-        console.error('履歴検索エラー:', error);
-        alert('履歴の検索中にエラーが発生しました。\nページを再読み込みしてから試してください。');
     });
 }
 
