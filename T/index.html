@@ -2440,7 +2440,7 @@ function sendToPrintAssist(event) {
                             dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
                         } else {
                             // QRコード印刷なしの場合：中央に配置
-                            dateTimeX = Math.round(canvasWidth / 2); // 画面中央
+                            dateTimeX = Math.round(canvasWidth / 2) - 40; // 画面中央
                         }
                         
                         let yPos = imgY + finalImgHeight + 10; // 画像の下
