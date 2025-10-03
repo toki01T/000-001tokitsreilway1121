@@ -3059,9 +3059,9 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
     try {
         console.log('QrScannerライブラリを試行中...');
         
-        // ライブラリの確認（短縮）
+        // ライブラリの確認（待機時間短縮）
         if (typeof QrScanner === 'undefined') {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 200));
             if (typeof QrScanner === 'undefined') {
                 throw new Error('QrScannerライブラリが読み込まれていません');
             }
@@ -3073,7 +3073,7 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
             throw new Error('カメラが見つかりません');
         }
         
-        // QRスキャナーを作成（超高速設定）
+        // QRスキャナーを作成（最高速設定）
         window.qrScanner = new QrScanner(
             videoElement,
             (result) => {
@@ -3086,15 +3086,25 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
                 highlightScanRegion: false,
                 highlightCodeOutline: false,
                 preferredCamera: 'environment',
-                maxScansPerSecond: 60, // 最大値に設定
+                maxScansPerSecond: 60,
                 calculateScanRegion: (video) => ({
-                    x: Math.round(video.videoWidth * 0.1),
-                    y: Math.round(video.videoHeight * 0.1),
-                    width: Math.round(video.videoWidth * 0.8),
-                    height: Math.round(video.videoHeight * 0.8)
+                    x: 0,
+                    y: 0,
+                    width: video.videoWidth,
+                    height: video.videoHeight
                 })
             }
         );
+        
+        // カメラ解像度を高速化のため低めに設定
+        await window.qrScanner.setCamera('environment');
+        window.qrScanner._qrEnginePromise = window.qrScanner._qrEnginePromise.then(qrEngine => {
+            qrEngine.setOptions({
+                inversionMode: 'both',
+                tryHarder: false
+            });
+            return qrEngine;
+        });
         
         await window.qrScanner.start();
         statusElement.textContent = '';
@@ -3110,19 +3120,18 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
 async function tryZXingLibrary(videoElement, statusElement) {
     try {
         if (typeof ZXing === 'undefined') {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 200));
             if (typeof ZXing === 'undefined') {
                 throw new Error('ZXingライブラリが読み込まれていません');
             }
         }
         
-        // MediaStreamを取得（高速化設定）
+        // MediaStreamを取得（高速化のため解像度を下げる）
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { 
                 facingMode: 'environment',
-                width: { ideal: 640, max: 1280 },
-                height: { ideal: 480, max: 720 },
-                frameRate: { ideal: 30, max: 60 }
+                width: { ideal: 640 },
+                height: { ideal: 480 }
             }
         });
         
@@ -3152,13 +3161,14 @@ async function tryZXingLibrary(videoElement, statusElement) {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 
-                // 処理を高速化するため、解像度を下げる
-                const scale = 0.5;
-                canvas.width = videoElement.videoWidth * scale;
-                canvas.height = videoElement.videoHeight * scale;
-                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                // 高速化のため画質を下げる
+                const width = Math.min(videoElement.videoWidth, 640);
+                const height = Math.min(videoElement.videoHeight, 480);
+                canvas.width = width;
+                canvas.height = height;
                 
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(videoElement, 0, 0, width, height);
+                const imageData = ctx.getImageData(0, 0, width, height);
                 const code = await codeReader.decodeFromImageData(imageData);
                 
                 if (code && code.text) {
@@ -3170,8 +3180,8 @@ async function tryZXingLibrary(videoElement, statusElement) {
                 // QRコードが見つからない場合は正常
             }
             
-            // 16ms後に再スキャン（超高速化 - 60FPS相当）
-            setTimeout(scanLoop, 16);
+            // 20ms後に再スキャン（超高速）
+            setTimeout(scanLoop, 20);
         };
         
         scanLoop();
