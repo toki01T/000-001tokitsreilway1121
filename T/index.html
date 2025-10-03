@@ -3086,7 +3086,7 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
                 highlightScanRegion: false,
                 highlightCodeOutline: false,
                 preferredCamera: 'environment',
-                maxScansPerSecond: 25,
+                maxScansPerSecond: 30,
                 calculateScanRegion: (video) => ({
                     x: 0,
                     y: 0,
@@ -3166,7 +3166,7 @@ async function tryZXingLibrary(videoElement, statusElement) {
                 // QRコードが見つからない場合は正常
             }
             
-            // 50ms後に再スキャン（読み取り性能向上）
+            // 50ms後に再スキャン（高速化）
             setTimeout(scanLoop, 50);
         };
         
@@ -3350,25 +3350,25 @@ function restoreContentFromHistory(item) {
         console.log('画像復元 - item:', item);
         console.log('画像復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
         
-        // QRチェックボックスの復元を遅延実行で確実にする
+        // QRチェックボックスの確実な復元
         setTimeout(() => {
             const qrCheckbox = document.getElementById('qrPrintCheckbox');
             if (qrCheckbox) {
                 // より確実な復元処理
                 const qrValue = item.qrPrinted;
-                const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
-                qrCheckbox.checked = shouldCheck;
-                console.log('画像復元 - チェックボックス設定:', shouldCheck, '実際の値:', qrCheckbox.checked);
+                const shouldBeChecked = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
+                qrCheckbox.checked = shouldBeChecked;
+                console.log('画像復元 - チェックボックス設定:', shouldBeChecked, '実際:', qrCheckbox.checked);
+                
+                // 複数回の設定を試す
+                if (qrCheckbox.checked !== shouldBeChecked) {
+                    qrCheckbox.checked = shouldBeChecked;
+                    console.log('画像復元 - 再設定後:', qrCheckbox.checked);
+                }
                 
                 // 強制的にチェンジイベントを発火
-                const changeEvent = new Event('change', { bubbles: true });
-                qrCheckbox.dispatchEvent(changeEvent);
-                
-                // さらに確実にするためinputイベントも発火
-                const inputEvent = new Event('input', { bubbles: true });
-                qrCheckbox.dispatchEvent(inputEvent);
-                
-                console.log('画像復元 - 最終チェックボックス状態:', qrCheckbox.checked);
+                qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                qrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
             } else {
                 console.error('❌ QRチェックボックスが見つかりません');
             }
@@ -3393,25 +3393,25 @@ function restoreContentFromHistory(item) {
         console.log('テキスト復元 - item:', item);
         console.log('テキスト復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
         
-        // QRチェックボックスの復元を遅延実行で確実にする
+        // QRチェックボックスの確実な復元
         setTimeout(() => {
             const textQrCheckbox = document.getElementById('textQrPrintCheckbox');
             if (textQrCheckbox) {
                 // より確実な復元処理
                 const qrValue = item.qrPrinted;
-                const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
-                textQrCheckbox.checked = shouldCheck;
-                console.log('テキスト復元 - チェックボックス設定:', shouldCheck, '実際の値:', textQrCheckbox.checked);
+                const shouldBeChecked = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
+                textQrCheckbox.checked = shouldBeChecked;
+                console.log('テキスト復元 - チェックボックス設定:', shouldBeChecked, '実際:', textQrCheckbox.checked);
+                
+                // 複数回の設定を試す
+                if (textQrCheckbox.checked !== shouldBeChecked) {
+                    textQrCheckbox.checked = shouldBeChecked;
+                    console.log('テキスト復元 - 再設定後:', textQrCheckbox.checked);
+                }
                 
                 // 強制的にチェンジイベントを発火
-                const changeEvent = new Event('change', { bubbles: true });
-                textQrCheckbox.dispatchEvent(changeEvent);
-                
-                // さらに確実にするためinputイベントも発火
-                const inputEvent = new Event('input', { bubbles: true });
-                textQrCheckbox.dispatchEvent(inputEvent);
-                
-                console.log('テキスト復元 - 最終チェックボックス状態:', textQrCheckbox.checked);
+                textQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                textQrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
             } else {
                 console.error('❌ テキストQRチェックボックスが見つかりません');
             }
@@ -3435,30 +3435,29 @@ function restoreContentFromHistory(item) {
             console.log('手書き復元 - item:', item);
             console.log('手書き復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
             
-            // QRチェックボックスの復元を遅延実行で確実にする
+            // QRチェックボックスの確実な復元
             setTimeout(() => {
                 const signatureQrCheckbox = document.getElementById('signatureQrPrintCheckbox');
                 if (signatureQrCheckbox) {
                     // より確実な復元処理
                     const qrValue = item.qrPrinted;
-                    const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
-                    signatureQrCheckbox.checked = shouldCheck;
-                    console.log('手書き復元 - チェックボックス設定:', shouldCheck, '実際の値:', signatureQrCheckbox.checked);
+                    const shouldBeChecked = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
+                    signatureQrCheckbox.checked = shouldBeChecked;
+                    console.log('手書き復元 - チェックボックス設定:', shouldBeChecked, '実際:', signatureQrCheckbox.checked);
+                    
+                    // 複数回の設定を試す
+                    if (signatureQrCheckbox.checked !== shouldBeChecked) {
+                        signatureQrCheckbox.checked = shouldBeChecked;
+                        console.log('手書き復元 - 再設定後:', signatureQrCheckbox.checked);
+                    }
                     
                     // 強制的にチェンジイベントを発火
-                    const changeEvent = new Event('change', { bubbles: true });
-                    signatureQrCheckbox.dispatchEvent(changeEvent);
-                    
-                    // さらに確実にするためinputイベントも発火
-                    const inputEvent = new Event('input', { bubbles: true });
-                    signatureQrCheckbox.dispatchEvent(inputEvent);
-                    
-                    console.log('手書き復元 - 最終チェックボックス状態:', signatureQrCheckbox.checked);
+                    signatureQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    signatureQrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
                 } else {
                     console.error('❌ 手書きQRチェックボックスが見つかりません');
                 }
-            }, 100);
-            
+            }, 150);
             updateSignaturePrintButtonState();
             
         }, 100);
