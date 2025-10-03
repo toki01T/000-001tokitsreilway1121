@@ -1559,14 +1559,8 @@ window.onload = function() {
     
     // QRライブラリの初期化チェック
     setTimeout(() => {
-        console.log('=== QRライブラリ初期化チェック ===');
-        console.log('QrScanner:', typeof QrScanner);
-        console.log('ZXing:', typeof ZXing);
-        
         if (typeof QrScanner === 'undefined' && typeof ZXing === 'undefined') {
             console.warn('⚠️ QRスキャナーライブラリが読み込まれていません');
-        } else {
-            console.log('✅ QRスキャナーライブラリ読み込み完了');
         }
     }, 2000);
     
@@ -1892,7 +1886,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             // 全体の高さを計算（手書き用の余白設定、サイズ縮小）
             const signatureTopMargin = 8; // 手書き用上余白
             const signatureBottomMargin = 25; // 手書き用下余白
-            const qrSpaceMargin = qrPrintEnabled ? 140 : 0; // QRコード用余白
+            const qrSpaceMargin = qrPrintEnabled ? 60 : 0; // QRコード用余白を削減（140→60）
             
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
             const signatureScale = 0.92; // 92%にスケール（85%から修正）
@@ -1973,8 +1967,15 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 compositeCtx.textAlign = 'center';
                 compositeCtx.textBaseline = 'top';
                 
-                // 日付・時刻を右側に配置（QRコードの右側）
-                const dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
+                // 日付・時刻の位置を決定
+                let dateTimeX;
+                if (qrPrintEnabled) {
+                    // QRコードありの場合：右寄りに配置
+                    dateTimeX = Math.round(canvasWidth / 2) + 40;
+                } else {
+                    // QRコードなしの場合：中央に配置
+                    dateTimeX = Math.round(canvasWidth / 2);
+                }
                 
                 let yPos = signatureY + signatureHeight + 5; // 縮小されたサインの下
                 
@@ -2133,8 +2134,8 @@ function sendToPrintAssist(event) {
                     // 全体の高さを計算（画像用の余白設定）
                     const imageTopMargin = -50; // 画像用上余白
                     const imageBottomMargin = 13; // 画像用下余白
-                    const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
-                    const qrSpaceMargin = qrPrintEnabled ? 140 : 0; // QRコード用余白
+                    const dateBottomMargin = isDateTimeEnabled ? 40 : 20; // 日付有りの場合のみ追加余白
+                    const qrSpaceMargin = qrPrintEnabled ? 60 : 0; // QRコード用余白を削減（140→60）
                     const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrSpaceMargin;
                     
                     compositeCanvas.width = canvasWidth;
@@ -2455,8 +2456,15 @@ function sendToPrintAssist(event) {
                         compositeCtx.textAlign = 'center';
                         compositeCtx.textBaseline = 'top';
                         
-                        // 日付・時刻を右側に配置（QRコードの右側）
-                        const dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
+                        // 日付・時刻の位置を決定
+                        let dateTimeX;
+                        if (qrPrintEnabled) {
+                            // QRコードありの場合：右寄りに配置
+                            dateTimeX = Math.round(canvasWidth / 2) + 40;
+                        } else {
+                            // QRコードなしの場合：中央に配置
+                            dateTimeX = Math.round(canvasWidth / 2);
+                        }
                         
                         let yPos = imgY + finalImgHeight + 10; // 画像の下
                         
@@ -2762,8 +2770,15 @@ function printText() {
             ctx.font = `${dateFontSize}px Arial, sans-serif`;
             const dateLineHeight = dateFontSize * 1.2;
             
-            // 日付・時刻を右側に配置（QRコードの右側）
-            const dateTimeX = Math.round(canvasWidth / 2) + 20; // 中央より右に20px移動
+            // 日付・時刻の位置を決定
+            let dateTimeX;
+            if (qrPrintEnabled) {
+                // QRコードありの場合：右寄りに配置
+                dateTimeX = Math.round(canvasWidth / 2) + 20;
+            } else {
+                // QRコードなしの場合：中央に配置
+                dateTimeX = Math.round(canvasWidth / 2) - 50; // テキストと同じ位置調整
+            }
             
             // 日付行
             const dateText = `${year}年 ${month}月${day}日`;
@@ -3035,7 +3050,6 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
         window.qrScanner = new QrScanner(
             videoElement,
             (result) => {
-                console.log('✅ QrScannerで検出:', result);
                 const qrData = (typeof result === 'object' && result.data) ? result.data : result;
                 handleQRScanResult(qrData);
             },
@@ -3056,7 +3070,6 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
         
         await window.qrScanner.start();
         statusElement.textContent = 'QRコードを画面に向けてください';
-        console.log('✅ QrScannerライブラリ開始成功');
         return true;
         
     } catch (error) {
@@ -3119,7 +3132,6 @@ async function tryZXingLibrary(videoElement, statusElement) {
                 const code = await codeReader.decodeFromImageData(imageData);
                 
                 if (code && code.text) {
-                    console.log('✅ ZXingで検出:', code.text);
                     handleQRScanResult(code.text);
                     return;
                 }
@@ -3165,11 +3177,6 @@ async function stopQRReader() {
 // QRコード読み取り結果の処理
 function handleQRScanResult(result) {
     try {
-        console.log('=== QRコード読み取り結果 ===');
-        console.log('Raw result:', result);
-        console.log('Result type:', typeof result);
-        console.log('Result length:', result ? result.length : 'undefined');
-        
         // まずスキャナーを停止
         stopQRReader();
         
@@ -3179,24 +3186,22 @@ function handleQRScanResult(result) {
         
         // 管理番号かチェック（TOKIで始まる16桁）
         if (!result.startsWith('TOKI')) {
-            console.log('TOKIで始まらないQRコード:', result);
+            console.log('❌ TOKIで始まらないQRコード:', result);
             alert('このアプリで生成されたQRコードではありません\n読み取った内容: ' + result);
             return;
         }
         
         if (result.length !== 16) {
-            console.log('長さが16桁でないQRコード:', result, 'length:', result.length);
+            console.log('❌ 長さが16桁でないQRコード:', result, 'length:', result.length);
             alert('無効な管理番号です\n読み取った内容: ' + result + '\n長さ: ' + result.length + '桁（16桁である必要があります）');
             return;
         }
-        
-        console.log('✅ 有効な管理番号を検出:', result);
         
         // 管理番号で履歴を検索
         restoreFromManagementId(result);
         
     } catch (error) {
-        console.error('QRコード解析エラー:', error);
+        console.error('❌ QRコード解析エラー:', error);
         alert('QRコード解析に失敗しました: ' + error.message);
         stopQRReader();
     }
@@ -3204,30 +3209,14 @@ function handleQRScanResult(result) {
 
 // 管理番号からコンテンツを復元
 async function restoreFromManagementId(managementId) {
-    console.log('=== QRコード復元開始 ===');
-    console.log('読み取った管理番号:', managementId);
-    
     try {
         // 履歴から管理番号で対象アイテムを検索
         const historyList = await getAllHistory();
-        console.log('履歴総数:', historyList.length);
         
         if (historyList.length === 0) {
             alert('履歴データがありません。\n印刷履歴を確認してください。');
             return;
         }
-        
-        // 全履歴の管理番号をログ出力
-        console.log('=== 履歴データ詳細 ===');
-        historyList.forEach((item, index) => {
-            console.log(`履歴${index + 1}:`, {
-                id: item.id,
-                managementId: item.managementId || '未設定',
-                type: item.type,
-                created: new Date(item.created).toLocaleString(),
-                hasData: !!item.data
-            });
-        });
         
         // 完全一致検索
         const targetItem = historyList.find(item => 
@@ -3235,8 +3224,6 @@ async function restoreFromManagementId(managementId) {
         );
         
         if (targetItem) {
-            console.log('✅ 管理番号に対応する履歴アイテムを発見:', targetItem);
-            
             // データの存在確認
             if (!targetItem.data) {
                 console.error('❌ 履歴データが不完全:', targetItem);
@@ -3277,7 +3264,7 @@ async function restoreFromManagementId(managementId) {
             alert(errorMessage);
         }
     } catch (error) {
-        console.error('履歴取得エラー:', error);
+        console.error('❌ 履歴取得エラー:', error);
         alert('❌ 履歴の取得に失敗しました: ' + error.message);
     }
 }
