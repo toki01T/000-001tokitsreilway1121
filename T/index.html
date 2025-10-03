@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -1556,6 +1557,19 @@ window.onload = function() {
     initSignaturePad();
     initQRReader();
     
+    // QRライブラリの初期化チェック
+    setTimeout(() => {
+        console.log('=== QRライブラリ初期化チェック ===');
+        console.log('QrScanner:', typeof QrScanner);
+        console.log('ZXing:', typeof ZXing);
+        
+        if (typeof QrScanner === 'undefined' && typeof ZXing === 'undefined') {
+            console.warn('⚠️ QRスキャナーライブラリが読み込まれていません');
+        } else {
+            console.log('✅ QRスキャナーライブラリ読み込み完了');
+        }
+    }, 2000);
+    
     // 【枚数印刷の自動続行システム】
     checkAndContinuePrinting();
 };
@@ -2956,7 +2970,7 @@ function initQRReader() {
     };
 }
 
-// QRリーダー開始
+// QRリーダー開始（フォールバック機能付き）
 async function startQRReader() {
     console.log('=== QRスキャナー開始処理 ===');
     
@@ -2968,66 +2982,163 @@ async function startQRReader() {
     qrReaderModal.style.display = 'flex';
     statusElement.textContent = 'カメラを起動中...';
     
+    // 既存のスキャナーがあれば停止
+    if (window.qrScanner) {
+        console.log('既存のスキャナーを停止中...');
+        try {
+            await window.qrScanner.stop();
+            window.qrScanner.destroy();
+        } catch (e) {
+            console.warn('既存スキャナー停止時のエラー:', e);
+        }
+        window.qrScanner = null;
+    }
+    
+    // まずQrScannerライブラリを試す
+    if (await tryQrScannerLibrary(videoElement, statusElement)) {
+        return;
+    }
+    
+    // フォールバック: ZXingライブラリを試す
+    if (await tryZXingLibrary(videoElement, statusElement)) {
+        return;
+    }
+    
+    // 全て失敗した場合
+    statusElement.textContent = 'QRスキャナーの初期化に失敗しました';
+    setTimeout(() => {
+        qrReaderModal.style.display = 'none';
+        alert('QRコードリーダーが利用できません\nブラウザまたはデバイスがサポートしていない可能性があります');
+    }, 3000);
+}
+
+// QrScannerライブラリを使用
+async function tryQrScannerLibrary(videoElement, statusElement) {
     try {
-        // QrScannerライブラリのチェック
-        console.log('QrScanner availability:', typeof QrScanner);
+        console.log('QrScannerライブラリを試行中...');
+        
+        // ライブラリの確認（少し待機）
         if (typeof QrScanner === 'undefined') {
-            throw new Error('QRスキャナーライブラリが読み込まれていません');
-        }
-        
-        // 既存のスキャナーがあれば停止
-        if (window.qrScanner) {
-            console.log('既存のスキャナーを停止中...');
-            try {
-                await window.qrScanner.stop();
-                window.qrScanner.destroy();
-            } catch (e) {
-                console.warn('既存スキャナー停止時のエラー:', e);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (typeof QrScanner === 'undefined') {
+                throw new Error('QrScannerライブラリが読み込まれていません');
             }
-            window.qrScanner = null;
         }
         
-        // カメラのサポート確認
+        // カメラサポート確認
         const hasCamera = await QrScanner.hasCamera();
-        console.log('カメラサポート:', hasCamera);
         if (!hasCamera) {
             throw new Error('カメラが見つかりません');
         }
         
         // QRスキャナーを作成
-        console.log('QRスキャナーを作成中...');
         window.qrScanner = new QrScanner(
             videoElement,
             (result) => {
-                console.log('✅ QRコード検出:', result);
-                const qrData = result.data || result;
+                console.log('✅ QrScannerで検出:', result);
+                const qrData = (typeof result === 'object' && result.data) ? result.data : result;
                 handleQRScanResult(qrData);
             },
             {
-                returnDetailedScanResult: true,
+                returnDetailedScanResult: false,
                 highlightScanRegion: false,
                 highlightCodeOutline: false,
                 preferredCamera: 'environment',
-                maxScansPerSecond: 3
+                maxScansPerSecond: 10,
+                calculateScanRegion: (video) => ({
+                    x: 0,
+                    y: 0,
+                    width: video.videoWidth,
+                    height: video.videoHeight
+                })
             }
         );
         
-        // カメラ開始
-        console.log('カメラを開始中...');
         await window.qrScanner.start();
-        
-        statusElement.textContent = 'QRコードをカメラに向けてください';
-        console.log('✅ QRスキャナー開始成功');
+        statusElement.textContent = 'QRコードを画面に向けてください';
+        console.log('✅ QrScannerライブラリ開始成功');
+        return true;
         
     } catch (error) {
-        console.error('❌ QRスキャナー開始エラー:', error);
-        statusElement.textContent = `エラー: ${error.message}`;
+        console.warn('QrScannerライブラリ失敗:', error);
+        return false;
+    }
+}
+
+// ZXingライブラリをフォールバックとして使用
+async function tryZXingLibrary(videoElement, statusElement) {
+    try {
+        console.log('ZXingライブラリをフォールバックとして試行中...');
         
-        // 3秒後にモーダルを閉じる
-        setTimeout(() => {
-            qrReaderModal.style.display = 'none';
-            alert('QRコードリーダーの起動に失敗しました\n' + error.message);
-        }, 3000);
+        if (typeof ZXing === 'undefined') {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (typeof ZXing === 'undefined') {
+                throw new Error('ZXingライブラリが読み込まれていません');
+            }
+        }
+        
+        // MediaStreamを取得
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { 
+                facingMode: 'environment',
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        });
+        
+        videoElement.srcObject = stream;
+        await videoElement.play();
+        
+        // QRコードリーダーを作成
+        const codeReader = new ZXing.BrowserQRCodeReader();
+        
+        // 継続的にスキャン
+        window.qrScanner = {
+            scanning: true,
+            stop: () => {
+                window.qrScanner.scanning = false;
+                stream.getTracks().forEach(track => track.stop());
+            },
+            destroy: () => {
+                window.qrScanner.scanning = false;
+                stream.getTracks().forEach(track => track.stop());
+            }
+        };
+        
+        const scanLoop = async () => {
+            if (!window.qrScanner.scanning) return;
+            
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                ctx.drawImage(videoElement, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = await codeReader.decodeFromImageData(imageData);
+                
+                if (code && code.text) {
+                    console.log('✅ ZXingで検出:', code.text);
+                    handleQRScanResult(code.text);
+                    return;
+                }
+            } catch (e) {
+                // QRコードが見つからない場合は正常
+            }
+            
+            // 100ms後に再スキャン
+            setTimeout(scanLoop, 100);
+        };
+        
+        scanLoop();
+        statusElement.textContent = 'QRコードを画面に向けてください (ZXing)';
+        console.log('✅ ZXingライブラリ開始成功');
+        return true;
+        
+    } catch (error) {
+        console.warn('ZXingライブラリ失敗:', error);
+        return false;
     }
 }
 
