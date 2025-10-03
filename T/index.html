@@ -787,136 +787,94 @@ footer p {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.9);
+    background: #f8f9fa;
     z-index: 10000;
     display: none;
-    align-items: center;
-    justify-content: center;
     flex-direction: column;
 }
 
 #qrReaderContainer {
-    position: relative;
-    background: #fff;
-    border-radius: 15px;
-    padding: 20px;
-    max-width: 400px;
-    max-height: 500px;
-    width: 90vw;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    text-align: center;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 #qrReaderTitle {
+    background: var(--primary-color);
+    color: white;
     font-size: 1.2rem;
     font-weight: bold;
-    color: var(--primary-color);
-    margin: 0 0 15px 0;
+    padding: 15px;
+    margin: 0;
     text-align: center;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 #qrReader {
     width: 100%;
-    max-width: 300px;
-    height: 300px;
-    border: 3px solid var(--primary-color);
-    border-radius: 12px;
+    height: calc(100% - 140px);
     background: #000;
-    margin: 0 auto 15px auto;
-    display: block;
+    object-fit: cover;
 }
 
 #closeQrReader {
     position: absolute;
-    top: 15px;
+    top: 12px;
     right: 15px;
-    background: var(--primary-color);
+    background: rgba(255,255,255,0.2);
     color: white;
     border: none;
-    width: 35px;
-    height: 35px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     cursor: pointer;
-    font-size: 20px;
+    font-size: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     transition: background 0.2s;
 }
 
 #closeQrReader:hover {
-    background: var(--primary-hover);
+    background: rgba(255,255,255,0.3);
 }
 
 #qrReaderStatus {
+    background: white;
     text-align: center;
-    margin-top: 10px;
+    padding: 15px;
     font-size: 14px;
     color: var(--text-color);
-    min-height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 10px;
+    border-top: 1px solid #e0e0e0;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
 }
 
 .qr-instructions {
-    background: var(--chip-bg);
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: 10px;
+    background: rgba(255,255,255,0.95);
+    padding: 10px 15px;
     font-size: 13px;
     color: var(--text-color);
     line-height: 1.4;
+    text-align: center;
+    border-bottom: 1px solid #e0e0e0;
 }
 
+/* QRスキャン関連の装飾を削除 */
 .qr-scan-frame {
+    width: 100%;
+    height: 100%;
     position: relative;
-    display: inline-block;
 }
 
-.qr-scan-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border: 2px solid transparent;
-    border-radius: 12px;
-    pointer-events: none;
-}
-
-.qr-scan-overlay::before {
-    content: '';
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    width: 20px;
-    height: 20px;
-    border-top: 3px solid #00ff00;
-    border-left: 3px solid #00ff00;
-}
-
-.qr-scan-overlay::after {
-    content: '';
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 20px;
-    height: 20px;
-    border-top: 3px solid #00ff00;
-    border-right: 3px solid #00ff00;
-}
-
+.qr-scan-overlay,
 .qr-scan-corners {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    width: 20px;
-    height: 20px;
-    border-bottom: 3px solid #00ff00;
-    border-left: 3px solid #00ff00;
+    display: none;
 }
 
 .qr-scan-corners::after {
@@ -1060,19 +1018,17 @@ footer p {
 <!-- QRコードリーダーモーダル -->
 <div id="qrReaderModal">
     <div id="qrReaderContainer">
-        <button id="closeQrReader">×</button>
-        <h3 id="qrReaderTitle">QRコード読み取り</h3>
+        <div id="qrReaderTitle">
+            QRコード読み取り
+            <button id="closeQrReader">×</button>
+        </div>
+        <div class="qr-instructions">
+            印刷物のQRコードをカメラに向けてください
+        </div>
         <div class="qr-scan-frame">
             <video id="qrReader"></video>
-            <div class="qr-scan-overlay">
-                <div class="qr-scan-corners"></div>
-            </div>
         </div>
         <div id="qrReaderStatus">カメラを起動中...</div>
-        <div class="qr-instructions">
-            印刷物のQRコードをカメラに向けてください<br>
-            背面カメラでの読み取りに対応しています
-        </div>
     </div>
 </div>
 <main>
@@ -3002,71 +2958,97 @@ function initQRReader() {
 
 // QRリーダー開始
 async function startQRReader() {
+    console.log('=== QRスキャナー開始処理 ===');
+    
     const qrReaderModal = document.getElementById('qrReaderModal');
     const videoElement = document.getElementById('qrReader');
     const statusElement = document.getElementById('qrReaderStatus');
     
+    // モーダルを表示
     qrReaderModal.style.display = 'flex';
     statusElement.textContent = 'カメラを起動中...';
     
     try {
-        // QrScannerライブラリが読み込まれているかチェック
+        // QrScannerライブラリのチェック
+        console.log('QrScanner availability:', typeof QrScanner);
         if (typeof QrScanner === 'undefined') {
             throw new Error('QRスキャナーライブラリが読み込まれていません');
         }
         
-        // 既存のスキャナーを停止
-        if (qrScanner) {
-            await qrScanner.stop();
-            qrScanner.destroy();
-            qrScanner = null;
+        // 既存のスキャナーがあれば停止
+        if (window.qrScanner) {
+            console.log('既存のスキャナーを停止中...');
+            try {
+                await window.qrScanner.stop();
+                window.qrScanner.destroy();
+            } catch (e) {
+                console.warn('既存スキャナー停止時のエラー:', e);
+            }
+            window.qrScanner = null;
         }
         
-        // 新しいスキャナーを作成
-        qrScanner = new QrScanner(
+        // カメラのサポート確認
+        const hasCamera = await QrScanner.hasCamera();
+        console.log('カメラサポート:', hasCamera);
+        if (!hasCamera) {
+            throw new Error('カメラが見つかりません');
+        }
+        
+        // QRスキャナーを作成
+        console.log('QRスキャナーを作成中...');
+        window.qrScanner = new QrScanner(
             videoElement,
             (result) => {
-                console.log('QRコード読み取り成功:', result.data || result);
+                console.log('✅ QRコード検出:', result);
                 const qrData = result.data || result;
                 handleQRScanResult(qrData);
-                stopQRReader();
-                qrReaderModal.style.display = 'none';
             },
             {
                 returnDetailedScanResult: true,
-                highlightScanRegion: true,
-                highlightCodeOutline: true,
-                preferredCamera: 'environment', // 背面カメラ優先
-                maxScansPerSecond: 5
+                highlightScanRegion: false,
+                highlightCodeOutline: false,
+                preferredCamera: 'environment',
+                maxScansPerSecond: 3
             }
         );
         
-        // カメラを開始
-        await qrScanner.start();
+        // カメラ開始
+        console.log('カメラを開始中...');
+        await window.qrScanner.start();
+        
         statusElement.textContent = 'QRコードをカメラに向けてください';
-        console.log('QRスキャナー開始成功');
+        console.log('✅ QRスキャナー開始成功');
         
     } catch (error) {
-        console.error('QRスキャナー開始エラー:', error);
-        statusElement.textContent = 'カメラにアクセスできませんでした: ' + error.message;
+        console.error('❌ QRスキャナー開始エラー:', error);
+        statusElement.textContent = `エラー: ${error.message}`;
+        
+        // 3秒後にモーダルを閉じる
         setTimeout(() => {
             qrReaderModal.style.display = 'none';
+            alert('QRコードリーダーの起動に失敗しました\n' + error.message);
         }, 3000);
     }
 }
 
 // QRリーダー停止
 async function stopQRReader() {
-    if (qrScanner) {
+    console.log('=== QRスキャナー停止処理 ===');
+    
+    if (window.qrScanner) {
         try {
-            await qrScanner.stop();
-            qrScanner.destroy();
-            qrScanner = null;
-            console.log('QRスキャナー停止完了');
+            await window.qrScanner.stop();
+            window.qrScanner.destroy();
+            window.qrScanner = null;
+            console.log('✅ QRスキャナー停止完了');
         } catch (error) {
-            console.error('QRスキャナー停止エラー:', error);
+            console.error('❌ QRスキャナー停止エラー:', error);
         }
     }
+    
+    // モーダルを閉じる
+    const qrReaderModal = document.getElementById('qrReaderModal');
+    qrReaderModal.style.display = 'none';
 }
 
 // QRコード読み取り結果の処理
@@ -3076,6 +3058,9 @@ function handleQRScanResult(result) {
         console.log('Raw result:', result);
         console.log('Result type:', typeof result);
         console.log('Result length:', result ? result.length : 'undefined');
+        
+        // まずスキャナーを停止
+        stopQRReader();
         
         if (!result || typeof result !== 'string') {
             throw new Error('無効なQRコードデータです');
@@ -3102,6 +3087,7 @@ function handleQRScanResult(result) {
     } catch (error) {
         console.error('QRコード解析エラー:', error);
         alert('QRコード解析に失敗しました: ' + error.message);
+        stopQRReader();
     }
 }
 
@@ -3111,14 +3097,6 @@ async function restoreFromManagementId(managementId) {
     console.log('読み取った管理番号:', managementId);
     
     try {
-        // QRスキャナーを停止してモーダルを閉じる
-        if (qrScanner) {
-            qrScanner.stop();
-            qrScanner.destroy();
-            qrScanner = null;
-        }
-        document.getElementById('qrScanModal').style.display = 'none';
-        
         // 履歴から管理番号で対象アイテムを検索
         const historyList = await getAllHistory();
         console.log('履歴総数:', historyList.length);
