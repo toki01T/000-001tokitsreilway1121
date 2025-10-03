@@ -1942,8 +1942,15 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 compositeCtx.textAlign = 'center';
                 compositeCtx.textBaseline = 'top';
                 
-                // 日付・時刻を右側に配置（QRコードの右側）
-                const dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
+                // QRコード印刷の有無で位置を調整
+                let dateTimeX;
+                if (qrPrintEnabled) {
+                    // QRコード印刷ありの場合：QRコードの右側に配置
+                    dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
+                } else {
+                    // QRコード印刷なしの場合：中央に配置
+                    dateTimeX = Math.round(canvasWidth / 2); // 画面中央
+                }
                 
                 let yPos = signatureY + signatureHeight + 5; // 縮小されたサインの下
                 
@@ -2422,8 +2429,15 @@ function sendToPrintAssist(event) {
                         compositeCtx.textAlign = 'center';
                         compositeCtx.textBaseline = 'top';
                         
-                        // 日付・時刻を右側に配置（QRコードの右側）
-                        const dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
+                        // QRコード印刷の有無で位置を調整
+                        let dateTimeX;
+                        if (qrPrintEnabled) {
+                            // QRコード印刷ありの場合：QRコードの右側に配置
+                            dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
+                        } else {
+                            // QRコード印刷なしの場合：中央に配置
+                            dateTimeX = Math.round(canvasWidth / 2); // 画面中央
+                        }
                         
                         let yPos = imgY + finalImgHeight + 10; // 画像の下
                         
@@ -2728,8 +2742,15 @@ function printText() {
             ctx.font = `${dateFontSize}px Arial, sans-serif`;
             const dateLineHeight = dateFontSize * 1.2;
             
-            // 日付・時刻を右側に配置（QRコードの右側）
-            const dateTimeX = Math.round(canvasWidth / 2) + 20; // 中央より右に20px移動
+            // QRコード印刷の有無で位置を調整
+            let dateTimeX;
+            if (qrPrintEnabled) {
+                // QRコード印刷ありの場合：QRコードの右側に配置
+                dateTimeX = Math.round(canvasWidth / 2) + 20; // 中央より右に20px移動
+            } else {
+                // QRコード印刷なしの場合：中央に配置
+                dateTimeX = Math.round(canvasWidth / 2); // 画面中央
+            }
             
             // 日付行
             const dateText = `${year}年 ${month}月${day}日`;
