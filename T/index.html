@@ -113,7 +113,7 @@ header {
     right: 4rem;
     top: 50%;
     transform: translateY(-50%);
-    background: var(--footer-bg);
+    background: var(--primary-color);
     border: 2px solid #fff;
     color: #fff;
     font-size: 0.9rem;
@@ -977,16 +977,15 @@ footer p {
 
 /* QRアイコン（履歴表示用） */
 .historyQrIcon {
+    background: var(--primary-color);
+    color: #fff;
     font-size: 12px;
     font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 3px;
     margin-right: 8px;
     display: inline-block;
     cursor: default;
-    background: var(--footer-bg);
-    color: #fff;
-    padding: 2px 6px;
-    border-radius: 3px;
-    border: 1px solid #ccc;
 }
 </style>
 </head>
@@ -1877,7 +1876,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             // 全体の高さを計算（手書き用の余白設定、サイズ縮小）
             const signatureTopMargin = 8; // 手書き用上余白
             const signatureBottomMargin = 25; // 手書き用下余白
-            const qrSpaceMargin = qrPrintEnabled ? 70 : 0; // QRコード用余白
+            const qrSpaceMargin = qrPrintEnabled ? (selectedSignatureChip === 'with' ? 70 : 80) : 0; // 日付ありは70px、なしは80px
             
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
             const signatureScale = 0.92; // 92%にスケール（85%から修正）
@@ -2127,7 +2126,7 @@ function sendToPrintAssist(event) {
                     const imageTopMargin = -50; // 画像用上余白
                     const imageBottomMargin = 13; // 画像用下余白
                     const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
-                    const qrSpaceMargin = qrPrintEnabled ? 70 : 0; // QRコード用余白
+                    const qrSpaceMargin = qrPrintEnabled ? (selectedChip === 'with' ? 70 : 80) : 0; // QRコード用余白（日付ありは70px、なしは80px）
                     const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrSpaceMargin;
                     
                     compositeCanvas.width = canvasWidth;
@@ -2676,7 +2675,7 @@ function printText() {
         }
         
         // QRコード用スペースを追加
-        const qrSpaceMargin = qrPrintEnabled ? 70 : 0;
+        const qrSpaceMargin = qrPrintEnabled ? (selectedTextChip === 'with' ? 70 : 80) : 0; // 日付ありは70px、なしは80px
         
         const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
         canvas.width = canvasWidth;
@@ -3322,8 +3321,12 @@ function restoreContentFromHistory(item) {
         console.log('テキスト復元 - item:', item);
         console.log('テキスト復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
         const textQrCheckbox = document.getElementById('textQrPrintCheckbox');
-        textQrCheckbox.checked = (item.qrPrinted === true || item.qrPrinted === 'true');
-        console.log('テキスト復元 - チェックボックス設定後:', textQrCheckbox.checked);
+        if (textQrCheckbox) {
+            textQrCheckbox.checked = Boolean(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1);
+            console.log('テキスト復元 - チェックボックス設定後:', textQrCheckbox.checked);
+        } else {
+            console.error('❌ テキストQRチェックボックスが見つかりません');
+        }
         updateTextPrintButtonState();
         
     } else if (item.type === 'signature') {
