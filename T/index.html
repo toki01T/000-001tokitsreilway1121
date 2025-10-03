@@ -113,15 +113,17 @@ header {
     right: 4rem;
     top: 50%;
     transform: translateY(-50%);
-    background: transparent;
-    border: none;
+    background: #333;
+    border: 2px solid #fff;
     color: #fff;
-    font-size: 1.5rem;
+    font-size: 0.9rem;
+    font-weight: bold;
     cursor: pointer;
     z-index: 12;
-    padding: 0;
+    padding: 4px 8px;
     width: auto;
     height: auto;
+    border-radius: 4px;
 }
 #qrCodeBtn:focus, #historyMenuBtn:focus { outline: none; }
 #historyDrawer {
@@ -986,7 +988,7 @@ footer p {
 <header>
     <div class="navbar">
         <a class="navbar-brand" href="#">toki01Ⓣ</a>
-        <button id="qrCodeBtn" title="QRコード読み取り">📱</button>
+        <button id="qrCodeBtn" title="QRコード読み取り">QR</button>
         <button id="historyMenuBtn" title="履歴"><span>&#9776;</span></button>
     </div>
 </header>
@@ -1183,6 +1185,8 @@ function addHistory(item) {
         type: item.type,
         managementId: item.managementId,
         hasData: !!item.data,
+        qrPrinted: item.qrPrinted,
+        qrPrintedType: typeof item.qrPrinted,
         created: new Date(item.created).toLocaleString()
     });
     
@@ -1867,7 +1871,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             // 全体の高さを計算（手書き用の余白設定、サイズ縮小）
             const signatureTopMargin = 8; // 手書き用上余白
             const signatureBottomMargin = 25; // 手書き用下余白
-            const qrSpaceMargin = qrPrintEnabled ? 140 : 0; // QRコード用余白
+            const qrSpaceMargin = qrPrintEnabled ? 80 : 0; // QRコード用余白
             
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
             const signatureScale = 0.92; // 92%にスケール（85%から修正）
@@ -2117,7 +2121,7 @@ function sendToPrintAssist(event) {
                     const imageTopMargin = -50; // 画像用上余白
                     const imageBottomMargin = 13; // 画像用下余白
                     const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
-                    const qrSpaceMargin = qrPrintEnabled ? 140 : 0; // QRコード用余白
+                    const qrSpaceMargin = qrPrintEnabled ? 80 : 0; // QRコード用余白
                     const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrSpaceMargin;
                     
                     compositeCanvas.width = canvasWidth;
@@ -2666,7 +2670,7 @@ function printText() {
         }
         
         // QRコード用スペースを追加
-        const qrSpaceMargin = qrPrintEnabled ? 140 : 0;
+        const qrSpaceMargin = qrPrintEnabled ? 80 : 0;
         
         const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
         canvas.width = canvasWidth;
@@ -3283,9 +3287,15 @@ function restoreContentFromHistory(item) {
         selectedChip = item.dateTime;
         
         document.getElementById('copiesSelect').value = item.copies;
+        console.log('画像復元 - item:', item);
         console.log('画像復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
-        document.getElementById('qrPrintCheckbox').checked = !!item.qrPrinted;
-        console.log('画像復元 - チェックボックス設定後:', document.getElementById('qrPrintCheckbox').checked);
+        const qrCheckbox = document.getElementById('qrPrintCheckbox');
+        if (qrCheckbox) {
+            qrCheckbox.checked = Boolean(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1);
+            console.log('画像復元 - チェックボックス設定後:', qrCheckbox.checked);
+        } else {
+            console.error('❌ QRチェックボックスが見つかりません');
+        }
         document.getElementById('imagePrintOptions').style.display = 'flex';
         updatePrintButtonState();
         
@@ -3303,9 +3313,15 @@ function restoreContentFromHistory(item) {
         selectedTextChip = item.dateTime;
         
         document.getElementById('textCopiesSelect').value = item.copies;
+        console.log('テキスト復元 - item:', item);
         console.log('テキスト復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
-        document.getElementById('textQrPrintCheckbox').checked = !!item.qrPrinted;
-        console.log('テキスト復元 - チェックボックス設定後:', document.getElementById('textQrPrintCheckbox').checked);
+        const textQrCheckbox = document.getElementById('textQrPrintCheckbox');
+        if (textQrCheckbox) {
+            textQrCheckbox.checked = Boolean(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1);
+            console.log('テキスト復元 - チェックボックス設定後:', textQrCheckbox.checked);
+        } else {
+            console.error('❌ テキストQRチェックボックスが見つかりません');
+        }
         updateTextPrintButtonState();
         
     } else if (item.type === 'signature') {
@@ -3322,9 +3338,15 @@ function restoreContentFromHistory(item) {
             selectedSignatureChip = item.dateTime;
             
             document.getElementById('signatureCopiesSelect').value = item.copies;
+            console.log('手書き復元 - item:', item);
             console.log('手書き復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
-            document.getElementById('signatureQrPrintCheckbox').checked = !!item.qrPrinted;
-            console.log('手書き復元 - チェックボックス設定後:', document.getElementById('signatureQrPrintCheckbox').checked);
+            const signatureQrCheckbox = document.getElementById('signatureQrPrintCheckbox');
+            if (signatureQrCheckbox) {
+                signatureQrCheckbox.checked = Boolean(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1);
+                console.log('手書き復元 - チェックボックス設定後:', signatureQrCheckbox.checked);
+            } else {
+                console.error('❌ 手書きQRチェックボックスが見つかりません');
+            }
             updateSignaturePrintButtonState();
             
         }, 100);
