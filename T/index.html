@@ -1537,14 +1537,8 @@ window.onload = function() {
     
     // QRライブラリの初期化チェック
     setTimeout(() => {
-        console.log('=== QRライブラリ初期化チェック ===');
-        console.log('QrScanner:', typeof QrScanner);
-        console.log('ZXing:', typeof ZXing);
-        
         if (typeof QrScanner === 'undefined' && typeof ZXing === 'undefined') {
-            console.warn('⚠️ QRスキャナーライブラリが読み込まれていません');
-        } else {
-            console.log('✅ QRスキャナーライブラリ読み込み完了');
+            console.error('❌ QRスキャナーライブラリが読み込まれていません');
         }
     }, 2000);
     
@@ -2944,8 +2938,6 @@ function initQRReader() {
 
 // QRリーダー開始（フォールバック機能付き）
 async function startQRReader() {
-    console.log('=== QRスキャナー開始処理 ===');
-    
     const qrReaderModal = document.getElementById('qrReaderModal');
     const videoElement = document.getElementById('qrReader');
     const statusElement = document.getElementById('qrReaderStatus');
@@ -2956,12 +2948,11 @@ async function startQRReader() {
     
     // 既存のスキャナーがあれば停止
     if (window.qrScanner) {
-        console.log('既存のスキャナーを停止中...');
         try {
             await window.qrScanner.stop();
             window.qrScanner.destroy();
         } catch (e) {
-            console.warn('既存スキャナー停止時のエラー:', e);
+            console.warn('❌ 既存スキャナー停止時のエラー:', e);
         }
         window.qrScanner = null;
     }
@@ -2977,6 +2968,7 @@ async function startQRReader() {
     }
     
     // 全て失敗した場合
+    console.error('❌ 全てのQRスキャナーライブラリが失敗しました');
     statusElement.textContent = 'QRスキャナーの初期化に失敗しました';
     setTimeout(() => {
         qrReaderModal.style.display = 'none';
@@ -2987,8 +2979,6 @@ async function startQRReader() {
 // QrScannerライブラリを使用
 async function tryQrScannerLibrary(videoElement, statusElement) {
     try {
-        console.log('QrScannerライブラリを試行中...');
-        
         // ライブラリの確認（少し待機）
         if (typeof QrScanner === 'undefined') {
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -3028,11 +3018,10 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
         
         await window.qrScanner.start();
         statusElement.textContent = 'QRコードを画面に向けてください';
-        console.log('✅ QrScannerライブラリ開始成功');
         return true;
         
     } catch (error) {
-        console.warn('QrScannerライブラリ失敗:', error);
+        console.warn('❌ QrScannerライブラリ失敗:', error);
         return false;
     }
 }
@@ -3040,8 +3029,6 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
 // ZXingライブラリをフォールバックとして使用
 async function tryZXingLibrary(videoElement, statusElement) {
     try {
-        console.log('ZXingライブラリをフォールバックとして試行中...');
-        
         if (typeof ZXing === 'undefined') {
             await new Promise(resolve => setTimeout(resolve, 1000));
             if (typeof ZXing === 'undefined') {
@@ -3105,25 +3092,21 @@ async function tryZXingLibrary(videoElement, statusElement) {
         
         scanLoop();
         statusElement.textContent = 'QRコードを画面に向けてください (ZXing)';
-        console.log('✅ ZXingライブラリ開始成功');
         return true;
         
     } catch (error) {
-        console.warn('ZXingライブラリ失敗:', error);
+        console.warn('❌ ZXingライブラリ失敗:', error);
         return false;
     }
 }
 
 // QRリーダー停止
 async function stopQRReader() {
-    console.log('=== QRスキャナー停止処理 ===');
-    
     if (window.qrScanner) {
         try {
             await window.qrScanner.stop();
             window.qrScanner.destroy();
             window.qrScanner = null;
-            console.log('✅ QRスキャナー停止完了');
         } catch (error) {
             console.error('❌ QRスキャナー停止エラー:', error);
         }
@@ -3169,30 +3152,15 @@ function handleQRScanResult(result) {
 
 // 管理番号からコンテンツを復元
 async function restoreFromManagementId(managementId) {
-    console.log('=== QRコード復元開始 ===');
-    console.log('読み取った管理番号:', managementId);
-    
     try {
         // 履歴から管理番号で対象アイテムを検索
         const historyList = await getAllHistory();
-        console.log('履歴総数:', historyList.length);
         
         if (historyList.length === 0) {
+            console.error('❌ 履歴データがありません');
             alert('履歴データがありません。\n印刷履歴を確認してください。');
             return;
         }
-        
-        // 全履歴の管理番号をログ出力
-        console.log('=== 履歴データ詳細 ===');
-        historyList.forEach((item, index) => {
-            console.log(`履歴${index + 1}:`, {
-                id: item.id,
-                managementId: item.managementId || '未設定',
-                type: item.type,
-                created: new Date(item.created).toLocaleString(),
-                hasData: !!item.data
-            });
-        });
         
         // 完全一致検索
         const targetItem = historyList.find(item => 
@@ -3200,8 +3168,6 @@ async function restoreFromManagementId(managementId) {
         );
         
         if (targetItem) {
-            console.log('✅ 管理番号に対応する履歴アイテムを発見:', targetItem);
-            
             // データの存在確認
             if (!targetItem.data) {
                 console.error('❌ 履歴データが不完全:', targetItem);
@@ -3209,16 +3175,15 @@ async function restoreFromManagementId(managementId) {
                 return;
             }
             
-            // 復元実行
+            // 復元実行（成功時はログなし）
             restoreContentFromHistory(targetItem);
             
             // 成功メッセージ
             alert(`✅ データを復元しました！\n\n管理番号: ${managementId}\n種類: ${targetItem.type}\n作成日時: ${new Date(targetItem.created).toLocaleString()}`);
             
         } else {
-            console.error('❌ 履歴検索失敗');
-            console.error('探している管理番号:', managementId);
-            console.error('履歴の管理番号一覧:', historyList.map(item => item.managementId).filter(id => id));
+            console.error('❌ 履歴検索失敗 - 管理番号:', managementId);
+            console.error('❌ 履歴の管理番号一覧:', historyList.map(item => item.managementId).filter(id => id));
             
             // より詳細なエラー情報
             const tokiItems = historyList.filter(item => 
@@ -3242,7 +3207,7 @@ async function restoreFromManagementId(managementId) {
             alert(errorMessage);
         }
     } catch (error) {
-        console.error('履歴取得エラー:', error);
+        console.error('❌ 履歴取得エラー:', error);
         alert('❌ 履歴の取得に失敗しました: ' + error.message);
     }
 }
@@ -3250,11 +3215,7 @@ async function restoreFromManagementId(managementId) {
 // 履歴から完全復元
 function restoreContentFromHistory(item) {
     try {
-        console.log('=== コンテンツ復元開始 ===');
-        console.log('復元対象:', item);
-        
         if (item.type === 'image') {
-            console.log('画像データを復元中...');
             showSection('image');
             
             const previewContainer = document.getElementById('imagePreviewContainer');
@@ -3263,7 +3224,6 @@ function restoreContentFromHistory(item) {
             const img = new Image();
             img.src = item.data;
             img.onload = function() {
-                console.log('✅ 画像読み込み完了');
                 let containerW = Math.min(window.innerWidth * 0.98, 480);
                 let containerH = 360;
             let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
@@ -3291,10 +3251,7 @@ function restoreContentFromHistory(item) {
         document.getElementById('imagePrintOptions').style.display = 'flex';
         updatePrintButtonState();
         
-        console.log('✅ 画像復元完了');
-        
     } else if (item.type === 'text') {
-        console.log('テキストデータを復元中...');
         showSection('text');
         
         document.getElementById('textInput').value = item.data;
@@ -3311,10 +3268,7 @@ function restoreContentFromHistory(item) {
         document.getElementById('textQrPrintCheckbox').checked = !!item.qrPrinted;
         updateTextPrintButtonState();
         
-        console.log('✅ テキスト復元完了');
-        
     } else if (item.type === 'signature') {
-        console.log('手書きサインデータを復元中...');
         showSection('signature');
         
         setTimeout(function() {
@@ -3330,11 +3284,9 @@ function restoreContentFromHistory(item) {
             document.getElementById('signatureCopiesSelect').value = item.copies;
             document.getElementById('signatureQrPrintCheckbox').checked = !!item.qrPrinted;
             updateSignaturePrintButtonState();
-            
-            console.log('✅ 手書きサイン復元完了');
         }, 100);
     } else {
-        console.warn('⚠️ 未対応のデータタイプ:', item.type);
+        console.error('❌ 未対応のデータタイプ:', item.type);
         throw new Error('未対応のデータタイプです: ' + item.type);
     }
     
