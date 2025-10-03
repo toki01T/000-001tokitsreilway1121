@@ -3350,7 +3350,11 @@ async function restoreFromManagementId(managementId) {
 // 履歴から完全復元
 function restoreContentFromHistory(item) {
     try {
+        console.log('🔄 履歴復元開始 - アイテムタイプ:', item.type);
+        console.log('🔄 復元データ全体:', item);
+        
         if (item.type === 'image') {
+            console.log('📸 画像セクション復元開始');
             showSection('image');
             
             const previewContainer = document.getElementById('imagePreviewContainer');
@@ -3384,27 +3388,49 @@ function restoreContentFromHistory(item) {
         document.getElementById('copiesSelect').value = item.copies;
         console.log('画像復元 - item:', item);
         console.log('画像復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
-        const qrCheckbox = document.getElementById('qrPrintCheckbox');
-        if (qrCheckbox) {
-            // より確実な真偽値判定
-            const shouldCheck = Boolean(
-                item.qrPrinted === true || 
-                item.qrPrinted === 'true' || 
-                item.qrPrinted === 1 || 
-                item.qrPrinted === '1'
-            );
-            qrCheckbox.checked = shouldCheck;
-            console.log('画像復元 - チェックボックス設定後:', qrCheckbox.checked, '判定値:', shouldCheck);
-            
-            // チェックボックス変更イベントを発火
-            qrCheckbox.dispatchEvent(new Event('change'));
-        } else {
-            console.error('❌ QRチェックボックスが見つかりません');
-        }
+        
+        // DOM要素が確実に表示された後にチェックボックスを設定
+        setTimeout(() => {
+            const qrCheckbox = document.getElementById('qrPrintCheckbox');
+            if (qrCheckbox) {
+                // より確実な真偽値判定
+                const shouldCheck = Boolean(
+                    item.qrPrinted === true || 
+                    item.qrPrinted === 'true' || 
+                    item.qrPrinted === 1 || 
+                    item.qrPrinted === '1'
+                );
+                qrCheckbox.checked = shouldCheck;
+                console.log('画像復元 - チェックボックス設定後:', qrCheckbox.checked, '判定値:', shouldCheck);
+                
+                // チェックボックス変更イベントを発火
+                qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // 設定後の確認
+                setTimeout(() => {
+                    console.log('📸 画像復元 - 最終確認 checked:', qrCheckbox.checked);
+                }, 10);
+            } else {
+                console.error('❌ QRチェックボックスが見つかりません - 再試行します');
+                // 再試行
+                setTimeout(() => {
+                    const retryCheckbox = document.getElementById('qrPrintCheckbox');
+                    if (retryCheckbox) {
+                        const shouldCheck = Boolean(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1 || item.qrPrinted === '1');
+                        retryCheckbox.checked = shouldCheck;
+                        retryCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                        console.log('📸 画像復元 - 再試行成功:', retryCheckbox.checked);
+                    } else {
+                        console.error('❌ 再試行でもQRチェックボックスが見つかりません');
+                    }
+                }, 200);
+            }
+        }, 100);
         document.getElementById('imagePrintOptions').style.display = 'flex';
         updatePrintButtonState();
         
     } else if (item.type === 'text') {
+        console.log('📝 テキストセクション復元開始');
         showSection('text');
         
         document.getElementById('textInput').value = item.data;
@@ -3420,26 +3446,36 @@ function restoreContentFromHistory(item) {
         document.getElementById('textCopiesSelect').value = item.copies;
         console.log('テキスト復元 - item:', item);
         console.log('テキスト復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
-        const textQrCheckbox = document.getElementById('textQrPrintCheckbox');
-        if (textQrCheckbox) {
-            // より確実な真偽値判定
-            const shouldCheck = Boolean(
-                item.qrPrinted === true || 
-                item.qrPrinted === 'true' || 
-                item.qrPrinted === 1 || 
-                item.qrPrinted === '1'
-            );
-            textQrCheckbox.checked = shouldCheck;
-            console.log('テキスト復元 - チェックボックス設定後:', textQrCheckbox.checked, '判定値:', shouldCheck);
-            
-            // チェックボックス変更イベントを発火
-            textQrCheckbox.dispatchEvent(new Event('change'));
-        } else {
-            console.error('❌ テキストQRチェックボックスが見つかりません');
-        }
+        
+        // DOM要素が確実に表示された後にチェックボックスを設定
+        setTimeout(() => {
+            const textQrCheckbox = document.getElementById('textQrPrintCheckbox');
+            if (textQrCheckbox) {
+                // より確実な真偽値判定
+                const shouldCheck = Boolean(
+                    item.qrPrinted === true || 
+                    item.qrPrinted === 'true' || 
+                    item.qrPrinted === 1 || 
+                    item.qrPrinted === '1'
+                );
+                textQrCheckbox.checked = shouldCheck;
+                console.log('テキスト復元 - チェックボックス設定後:', textQrCheckbox.checked, '判定値:', shouldCheck);
+                
+                // チェックボックス変更イベントを発火
+                textQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // 設定後の確認
+                setTimeout(() => {
+                    console.log('📝 テキスト復元 - 最終確認 checked:', textQrCheckbox.checked);
+                }, 10);
+            } else {
+                console.error('❌ テキストQRチェックボックスが見つかりません');
+            }
+        }, 100);
         updateTextPrintButtonState();
         
     } else if (item.type === 'signature') {
+        console.log('✍️ 手書きセクション復元開始');
         showSection('signature');
         
         setTimeout(function() {
@@ -3455,23 +3491,32 @@ function restoreContentFromHistory(item) {
             document.getElementById('signatureCopiesSelect').value = item.copies;
             console.log('手書き復元 - item:', item);
             console.log('手書き復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
-            const signatureQrCheckbox = document.getElementById('signatureQrPrintCheckbox');
-            if (signatureQrCheckbox) {
-                // より確実な真偽値判定
-                const shouldCheck = Boolean(
-                    item.qrPrinted === true || 
-                    item.qrPrinted === 'true' || 
-                    item.qrPrinted === 1 || 
-                    item.qrPrinted === '1'
-                );
-                signatureQrCheckbox.checked = shouldCheck;
-                console.log('手書き復元 - チェックボックス設定後:', signatureQrCheckbox.checked, '判定値:', shouldCheck);
-                
-                // チェックボックス変更イベントを発火
-                signatureQrCheckbox.dispatchEvent(new Event('change'));
-            } else {
-                console.error('❌ 手書きQRチェックボックスが見つかりません');
-            }
+            
+            // さらに遅延してチェックボックスを設定（SignaturePad初期化後）
+            setTimeout(() => {
+                const signatureQrCheckbox = document.getElementById('signatureQrPrintCheckbox');
+                if (signatureQrCheckbox) {
+                    // より確実な真偽値判定
+                    const shouldCheck = Boolean(
+                        item.qrPrinted === true || 
+                        item.qrPrinted === 'true' || 
+                        item.qrPrinted === 1 || 
+                        item.qrPrinted === '1'
+                    );
+                    signatureQrCheckbox.checked = shouldCheck;
+                    console.log('手書き復元 - チェックボックス設定後:', signatureQrCheckbox.checked, '判定値:', shouldCheck);
+                    
+                    // チェックボックス変更イベントを発火
+                    signatureQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    // 設定後の確認
+                    setTimeout(() => {
+                        console.log('✍️ 手書き復元 - 最終確認 checked:', signatureQrCheckbox.checked);
+                    }, 10);
+                } else {
+                    console.error('❌ 手書きQRチェックボックスが見つかりません');
+                }
+            }, 50);
             updateSignaturePrintButtonState();
             
         }, 100);
