@@ -8,7 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
+<script src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -787,46 +787,66 @@ footer p {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.9);
     z-index: 10000;
     display: none;
     align-items: center;
     justify-content: center;
+    flex-direction: column;
 }
 
 #qrReaderContainer {
     position: relative;
     background: #fff;
-    border-radius: 10px;
+    border-radius: 15px;
     padding: 20px;
     max-width: 400px;
     max-height: 500px;
     width: 90vw;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    text-align: center;
+}
+
+#qrReaderTitle {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin: 0 0 15px 0;
+    text-align: center;
 }
 
 #qrReader {
     width: 100%;
     max-width: 300px;
     height: 300px;
-    border: 2px solid var(--primary-color);
-    border-radius: 8px;
+    border: 3px solid var(--primary-color);
+    border-radius: 12px;
+    background: #000;
+    margin: 0 auto 15px auto;
+    display: block;
 }
 
 #closeQrReader {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 15px;
+    right: 15px;
     background: var(--primary-color);
     color: white;
     border: none;
-    width: 30px;
-    height: 30px;
+    width: 35px;
+    height: 35px;
     border-radius: 50%;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: background 0.2s;
+}
+
+#closeQrReader:hover {
+    background: var(--primary-hover);
 }
 
 #qrReaderStatus {
@@ -834,6 +854,80 @@ footer p {
     margin-top: 10px;
     font-size: 14px;
     color: var(--text-color);
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+}
+
+.qr-instructions {
+    background: var(--chip-bg);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--text-color);
+    line-height: 1.4;
+}
+
+.qr-scan-frame {
+    position: relative;
+    display: inline-block;
+}
+
+.qr-scan-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    pointer-events: none;
+}
+
+.qr-scan-overlay::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 20px;
+    height: 20px;
+    border-top: 3px solid #00ff00;
+    border-left: 3px solid #00ff00;
+}
+
+.qr-scan-overlay::after {
+    content: '';
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 20px;
+    height: 20px;
+    border-top: 3px solid #00ff00;
+    border-right: 3px solid #00ff00;
+}
+
+.qr-scan-corners {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 20px;
+    height: 20px;
+    border-bottom: 3px solid #00ff00;
+    border-left: 3px solid #00ff00;
+}
+
+.qr-scan-corners::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: -260px;
+    width: 20px;
+    height: 20px;
+    border-bottom: 3px solid #00ff00;
+    border-right: 3px solid #00ff00;
 }
 
 .qr-code-container {
@@ -967,9 +1061,18 @@ footer p {
 <div id="qrReaderModal">
     <div id="qrReaderContainer">
         <button id="closeQrReader">×</button>
-        <h3 style="text-align: center; margin-top: 0;">QRコード読み取り</h3>
-        <video id="qrReader"></video>
+        <h3 id="qrReaderTitle">QRコード読み取り</h3>
+        <div class="qr-scan-frame">
+            <video id="qrReader"></video>
+            <div class="qr-scan-overlay">
+                <div class="qr-scan-corners"></div>
+            </div>
+        </div>
         <div id="qrReaderStatus">カメラを起動中...</div>
+        <div class="qr-instructions">
+            印刷物のQRコードをカメラに向けてください<br>
+            背面カメラでの読み取りに対応しています
+        </div>
     </div>
 </div>
 <main>
@@ -1110,17 +1213,65 @@ function openDB() {
     });
 }
 function addHistory(item) {
-    // QRコード用データを追加
-    const qrData = generateQRData(item);
-    item.qrData = qrData;
+    console.log('=== 履歴追加処理開始 ===');
+    console.log('追加データ:', item);
+    
+    // 管理番号が未設定の場合は生成
+    if (!item.managementId) {
+        item.managementId = generateQRData(item);
+        console.log('管理番号を生成:', item.managementId);
+    }
+    
+    // 必須データの確認
+    if (!item.type || !item.data) {
+        console.error('❌ 必須データが不足:', {
+            type: !!item.type,
+            data: !!item.data
+        });
+        return Promise.reject(new Error('必須データが不足しています'));
+    }
+    
+    // 作成日時の設定
+    if (!item.created) {
+        item.created = Date.now();
+    }
+    
+    console.log('✅ 履歴データ準備完了:', {
+        id: item.id,
+        type: item.type,
+        managementId: item.managementId,
+        hasData: !!item.data,
+        created: new Date(item.created).toLocaleString()
+    });
     
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
-            tx.objectStore(STORE_NAME).add(item);
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
+            const store = tx.objectStore(STORE_NAME);
+            const addReq = store.add(item);
+            
+            addReq.onsuccess = () => {
+                console.log('✅ 履歴をデータベースに保存完了');
+                resolve();
+            };
+            
+            addReq.onerror = (event) => {
+                console.error('❌ 履歴保存エラー:', event.target.error);
+                reject(event.target.error);
+            };
+            
+            tx.oncomplete = () => {
+                console.log('✅ トランザクション完了');
+            };
+            
+            tx.onerror = (event) => {
+                console.error('❌ トランザクションエラー:', event.target.error);
+                reject(event.target.error);
+            };
         });
+    }).catch(error => {
+        console.error('❌ addHistory全体エラー:', error);
+        throw error;
     });
 }
 function getAllHistory(typeFilter = null) {
@@ -2850,7 +3001,7 @@ function initQRReader() {
 }
 
 // QRリーダー開始
-function startQRReader() {
+async function startQRReader() {
     const qrReaderModal = document.getElementById('qrReaderModal');
     const videoElement = document.getElementById('qrReader');
     const statusElement = document.getElementById('qrReaderStatus');
@@ -2858,38 +3009,46 @@ function startQRReader() {
     qrReaderModal.style.display = 'flex';
     statusElement.textContent = 'カメラを起動中...';
     
-    // 背面カメラを優先的に使用
-    if (typeof QrScanner !== 'undefined') {
-        qrScanner = new QrScanner(videoElement, 
-            result => {
-                console.log('QRコード読み取り成功:', result);
-                handleQRScanResult(result.data || result);
+    try {
+        // QrScannerライブラリが読み込まれているかチェック
+        if (typeof QrScanner === 'undefined') {
+            throw new Error('QRスキャナーライブラリが読み込まれていません');
+        }
+        
+        // 既存のスキャナーを停止
+        if (qrScanner) {
+            await qrScanner.stop();
+            qrScanner.destroy();
+            qrScanner = null;
+        }
+        
+        // 新しいスキャナーを作成
+        qrScanner = new QrScanner(
+            videoElement,
+            (result) => {
+                console.log('QRコード読み取り成功:', result.data || result);
+                const qrData = result.data || result;
+                handleQRScanResult(qrData);
                 stopQRReader();
                 qrReaderModal.style.display = 'none';
             },
             {
-                onDecodeError: error => {
-                    // エラーは表示しない（連続スキャンのため）
-                },
-                maxScansPerSecond: 5,
+                returnDetailedScanResult: true,
                 highlightScanRegion: true,
                 highlightCodeOutline: true,
-                preferredCamera: 'environment' // 背面カメラ優先
+                preferredCamera: 'environment', // 背面カメラ優先
+                maxScansPerSecond: 5
             }
         );
         
-        qrScanner.start().then(() => {
-            statusElement.textContent = 'QRコードをカメラに向けてください';
-        }).catch(error => {
-            console.error('カメラエラー:', error);
-            statusElement.textContent = 'カメラにアクセスできませんでした';
-            setTimeout(() => {
-                stopQRReader();
-                qrReaderModal.style.display = 'none';
-            }, 3000);
-        });
-    } else {
-        statusElement.textContent = 'QRスキャナーが読み込まれていません';
+        // カメラを開始
+        await qrScanner.start();
+        statusElement.textContent = 'QRコードをカメラに向けてください';
+        console.log('QRスキャナー開始成功');
+        
+    } catch (error) {
+        console.error('QRスキャナー開始エラー:', error);
+        statusElement.textContent = 'カメラにアクセスできませんでした: ' + error.message;
         setTimeout(() => {
             qrReaderModal.style.display = 'none';
         }, 3000);
@@ -2897,74 +3056,162 @@ function startQRReader() {
 }
 
 // QRリーダー停止
-function stopQRReader() {
+async function stopQRReader() {
     if (qrScanner) {
-        qrScanner.stop();
-        qrScanner.destroy();
-        qrScanner = null;
+        try {
+            await qrScanner.stop();
+            qrScanner.destroy();
+            qrScanner = null;
+            console.log('QRスキャナー停止完了');
+        } catch (error) {
+            console.error('QRスキャナー停止エラー:', error);
+        }
     }
 }
 
 // QRコード読み取り結果の処理
 function handleQRScanResult(result) {
     try {
-        console.log('QRコード読み取り結果:', result);
+        console.log('=== QRコード読み取り結果 ===');
+        console.log('Raw result:', result);
+        console.log('Result type:', typeof result);
+        console.log('Result length:', result ? result.length : 'undefined');
+        
+        if (!result || typeof result !== 'string') {
+            throw new Error('無効なQRコードデータです');
+        }
         
         // 管理番号かチェック（TOKIで始まる16桁）
-        if (!result.startsWith('TOKI') || result.length !== 16) {
-            alert('このアプリで生成されたQRコードではありません');
+        if (!result.startsWith('TOKI')) {
+            console.log('TOKIで始まらないQRコード:', result);
+            alert('このアプリで生成されたQRコードではありません\n読み取った内容: ' + result);
             return;
         }
+        
+        if (result.length !== 16) {
+            console.log('長さが16桁でないQRコード:', result, 'length:', result.length);
+            alert('無効な管理番号です\n読み取った内容: ' + result + '\n長さ: ' + result.length + '桁（16桁である必要があります）');
+            return;
+        }
+        
+        console.log('✅ 有効な管理番号を検出:', result);
         
         // 管理番号で履歴を検索
         restoreFromManagementId(result);
         
     } catch (error) {
         console.error('QRコード解析エラー:', error);
-        alert('無効なQRコードです');
+        alert('QRコード解析に失敗しました: ' + error.message);
     }
 }
 
 // 管理番号からコンテンツを復元
-function restoreFromManagementId(managementId) {
-    console.log('管理番号で検索:', managementId);
+async function restoreFromManagementId(managementId) {
+    console.log('=== QRコード復元開始 ===');
+    console.log('読み取った管理番号:', managementId);
     
-    // 履歴から管理番号で対象アイテムを検索
-    getAllHistory().then(historyList => {
-        console.log('履歴総数:', historyList.length);
-        console.log('履歴内の管理番号一覧:', historyList.map(item => item.managementId));
+    try {
+        // QRスキャナーを停止してモーダルを閉じる
+        if (qrScanner) {
+            qrScanner.stop();
+            qrScanner.destroy();
+            qrScanner = null;
+        }
+        document.getElementById('qrScanModal').style.display = 'none';
         
+        // 履歴から管理番号で対象アイテムを検索
+        const historyList = await getAllHistory();
+        console.log('履歴総数:', historyList.length);
+        
+        if (historyList.length === 0) {
+            alert('履歴データがありません。\n印刷履歴を確認してください。');
+            return;
+        }
+        
+        // 全履歴の管理番号をログ出力
+        console.log('=== 履歴データ詳細 ===');
+        historyList.forEach((item, index) => {
+            console.log(`履歴${index + 1}:`, {
+                id: item.id,
+                managementId: item.managementId || '未設定',
+                type: item.type,
+                created: new Date(item.created).toLocaleString(),
+                hasData: !!item.data
+            });
+        });
+        
+        // 完全一致検索
         const targetItem = historyList.find(item => 
             item.managementId === managementId
         );
         
         if (targetItem) {
-            console.log('管理番号に対応する履歴アイテムを発見:', targetItem);
+            console.log('✅ 管理番号に対応する履歴アイテムを発見:', targetItem);
+            
+            // データの存在確認
+            if (!targetItem.data) {
+                console.error('❌ 履歴データが不完全:', targetItem);
+                alert('履歴データが破損しています。\n管理番号: ' + managementId);
+                return;
+            }
+            
+            // 復元実行
             restoreContentFromHistory(targetItem);
+            
+            // 成功メッセージ
+            alert(`✅ データを復元しました！\n\n管理番号: ${managementId}\n種類: ${targetItem.type}\n作成日時: ${new Date(targetItem.created).toLocaleString()}`);
+            
         } else {
-            console.error('履歴検索失敗 - 管理番号:', managementId);
-            console.error('履歴の全管理番号:', historyList.map(item => `${item.id}: ${item.managementId}`));
-            alert('この管理番号のデータは履歴にありません。\n管理番号: ' + managementId + '\n履歴を確認してください。');
+            console.error('❌ 履歴検索失敗');
+            console.error('探している管理番号:', managementId);
+            console.error('履歴の管理番号一覧:', historyList.map(item => item.managementId).filter(id => id));
+            
+            // より詳細なエラー情報
+            const tokiItems = historyList.filter(item => 
+                item.managementId && item.managementId.startsWith('TOKI')
+            );
+            
+            let errorMessage = `❌ この管理番号のデータは履歴にありません\n\n`;
+            errorMessage += `読み取った管理番号: ${managementId}\n`;
+            errorMessage += `総履歴件数: ${historyList.length}件\n`;
+            errorMessage += `管理番号付き履歴: ${tokiItems.length}件\n`;
+            
+            if (tokiItems.length > 0) {
+                errorMessage += `\n📋 履歴内の管理番号 (最新3件):\n`;
+                tokiItems.slice(-3).forEach((item, index) => {
+                    errorMessage += `${index + 1}. ${item.managementId} (${item.type})\n`;
+                });
+            } else {
+                errorMessage += `\n⚠️ QRコード付きの印刷履歴がありません`;
+            }
+            
+            alert(errorMessage);
         }
-    }).catch(error => {
+    } catch (error) {
         console.error('履歴取得エラー:', error);
-        alert('履歴の取得に失敗しました。');
-    });
+        alert('❌ 履歴の取得に失敗しました: ' + error.message);
+    }
 }
 
 // 履歴から完全復元
 function restoreContentFromHistory(item) {
-    if (item.type === 'image') {
-        showSection('image');
+    try {
+        console.log('=== コンテンツ復元開始 ===');
+        console.log('復元対象:', item);
         
-        const previewContainer = document.getElementById('imagePreviewContainer');
-        previewContainer.innerHTML = '';
-        
-        const img = new Image();
-        img.src = item.data;
-        img.onload = function() {
-            let containerW = Math.min(window.innerWidth * 0.98, 480);
-            let containerH = 360;
+        if (item.type === 'image') {
+            console.log('画像データを復元中...');
+            showSection('image');
+            
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            previewContainer.innerHTML = '';
+            
+            const img = new Image();
+            img.src = item.data;
+            img.onload = function() {
+                console.log('✅ 画像読み込み完了');
+                let containerW = Math.min(window.innerWidth * 0.98, 480);
+                let containerH = 360;
             let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
             let displayW = Math.round(img.naturalWidth * ratio);
             let displayH = Math.round(img.naturalHeight * ratio);
@@ -2991,9 +3238,10 @@ function restoreContentFromHistory(item) {
         document.getElementById('imagePrintOptions').style.display = 'flex';
         updatePrintButtonState();
         
-        alert('画像とすべての設定を復元しました！\n再印刷が可能です。');
+        console.log('✅ 画像復元完了');
         
     } else if (item.type === 'text') {
+        console.log('テキストデータを復元中...');
         showSection('text');
         
         document.getElementById('textInput').value = item.data;
@@ -3010,9 +3258,10 @@ function restoreContentFromHistory(item) {
         document.getElementById('textQrPrintCheckbox').checked = !!item.qrPrinted;
         updateTextPrintButtonState();
         
-        alert('テキストとすべての設定を復元しました！\n再印刷が可能です。');
+        console.log('✅ テキスト復元完了');
         
     } else if (item.type === 'signature') {
+        console.log('手書きサインデータを復元中...');
         showSection('signature');
         
         setTimeout(function() {
@@ -3029,8 +3278,16 @@ function restoreContentFromHistory(item) {
             document.getElementById('signatureQrPrintCheckbox').checked = !!item.qrPrinted;
             updateSignaturePrintButtonState();
             
-            alert('手書きサインとすべての設定を復元しました！\n再印刷が可能です。');
+            console.log('✅ 手書きサイン復元完了');
         }, 100);
+    } else {
+        console.warn('⚠️ 未対応のデータタイプ:', item.type);
+        throw new Error('未対応のデータタイプです: ' + item.type);
+    }
+    
+    } catch (error) {
+        console.error('❌ コンテンツ復元エラー:', error);
+        alert('データの復元中にエラーが発生しました: ' + error.message);
     }
 }
 
