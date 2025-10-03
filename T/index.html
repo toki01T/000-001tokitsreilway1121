@@ -2749,13 +2749,13 @@ function printText() {
             // QRコード印刷の有無で位置を調整
             let dateTimeX;
             // 現在のチェックボックス状態を直接確認
-            const currentQrEnabled = document.getElementById('textQrPrintCheckbox').checked;
+            const currentQrEnabled = document.getElementById('signatureQrPrintCheckbox').checked;
             if (currentQrEnabled) {
                 // QRコード印刷ありの場合：QRコードの右側に配置
                 dateTimeX = Math.round(canvasWidth / 2) + 20; // 中央より右に20px移動
             } else {
                 // QRコード印刷なしの場合：中央に配置
-                dateTimeX = Math.round(canvasWidth / 2); // 画面中央
+                dateTimeX = Math.round(canvasWidth / 2) - 40; // 画面中央
             }
             
             // 日付行
