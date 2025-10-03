@@ -1895,7 +1895,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     dateTime: selectedSignatureChip,
                     copies: selectedCopies,
                     created: Date.now(),
-                    qrPrinted: true
+                    qrPrinted: qrPrintEnabled // 確実にチェックボックスの状態を保存
                 };
                 
                 // 先に履歴を保存してからQRコード生成
@@ -1951,7 +1951,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
                 } else {
                     // QRコード印刷なしの場合：中央に配置
-                    dateTimeX = Math.round(canvasWidth / 2); // 画面中央
+                    dateTimeX = Math.round(canvasWidth / 2) - 40; // 画面中央
                 }
                 
                 let yPos = signatureY + signatureHeight + 5; // 縮小されたサインの下
@@ -2147,7 +2147,7 @@ function sendToPrintAssist(event) {
                             dateTime: selectedChip,
                             copies: selectedCopies,
                             created: Date.now(),
-                            qrPrinted: true
+                            qrPrinted: qrPrintEnabled // 確実にチェックボックスの状態を保存
                         };
                         
                         // 先に履歴を保存してからQRコード生成
@@ -2660,7 +2660,7 @@ function printText() {
         }
         
         // QRコード用スペースを追加
-        const qrSpaceMargin = qrPrintEnabled ? 100 : 0;
+        const qrSpaceMargin = qrPrintEnabled ? 140 : 0;
         
         const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
         canvas.width = canvasWidth;
@@ -2698,7 +2698,7 @@ function printText() {
                 dateTime: selectedTextChip,
                 copies: selectedTextCopies,
                 created: Date.now(),
-                qrPrinted: true
+                qrPrinted: qrPrintEnabled // 確実にチェックボックスの状態を保存
             };
             
             // 先に履歴を保存してからQRコード生成
@@ -2749,7 +2749,7 @@ function printText() {
             // QRコード印刷の有無で位置を調整
             let dateTimeX;
             // 現在のチェックボックス状態を直接確認
-            const currentQrEnabled = document.getElementById('signatureQrPrintCheckbox').checked;
+            const currentQrEnabled = document.getElementById('textQrPrintCheckbox').checked;
             if (currentQrEnabled) {
                 // QRコード印刷ありの場合：QRコードの右側に配置
                 dateTimeX = Math.round(canvasWidth / 2) + 20; // 中央より右に20px移動
