@@ -1538,7 +1538,7 @@ window.onload = function() {
     // QRライブラリの初期化チェック
     setTimeout(() => {
         if (typeof QrScanner === 'undefined' && typeof ZXing === 'undefined') {
-            console.error('❌ QRスキャナーライブラリが読み込まれていません');
+            console.error('⚠️ QRスキャナーライブラリが読み込まれていません');
         }
     }, 2000);
     
@@ -2938,6 +2938,8 @@ function initQRReader() {
 
 // QRリーダー開始（フォールバック機能付き）
 async function startQRReader() {
+    console.log('=== QRスキャナー開始処理 ===');
+    
     const qrReaderModal = document.getElementById('qrReaderModal');
     const videoElement = document.getElementById('qrReader');
     const statusElement = document.getElementById('qrReaderStatus');
@@ -2948,11 +2950,12 @@ async function startQRReader() {
     
     // 既存のスキャナーがあれば停止
     if (window.qrScanner) {
+        console.log('既存のスキャナーを停止中...');
         try {
             await window.qrScanner.stop();
             window.qrScanner.destroy();
         } catch (e) {
-            console.warn('❌ 既存スキャナー停止時のエラー:', e);
+            console.warn('既存スキャナー停止時のエラー:', e);
         }
         window.qrScanner = null;
     }
@@ -2968,7 +2971,6 @@ async function startQRReader() {
     }
     
     // 全て失敗した場合
-    console.error('❌ 全てのQRスキャナーライブラリが失敗しました');
     statusElement.textContent = 'QRスキャナーの初期化に失敗しました';
     setTimeout(() => {
         qrReaderModal.style.display = 'none';
@@ -2979,6 +2981,8 @@ async function startQRReader() {
 // QrScannerライブラリを使用
 async function tryQrScannerLibrary(videoElement, statusElement) {
     try {
+        console.log('QrScannerライブラリを試行中...');
+        
         // ライブラリの確認（少し待機）
         if (typeof QrScanner === 'undefined') {
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -3021,7 +3025,7 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
         return true;
         
     } catch (error) {
-        console.warn('❌ QrScannerライブラリ失敗:', error);
+        console.error('❌ QrScannerライブラリ失敗:', error);
         return false;
     }
 }
@@ -3095,7 +3099,7 @@ async function tryZXingLibrary(videoElement, statusElement) {
         return true;
         
     } catch (error) {
-        console.warn('❌ ZXingライブラリ失敗:', error);
+        console.error('❌ ZXingライブラリ失敗:', error);
         return false;
     }
 }
@@ -3124,23 +3128,25 @@ function handleQRScanResult(result) {
         stopQRReader();
         
         if (!result || typeof result !== 'string') {
-            throw new Error('無効なQRコードデータです');
+            console.error('❌ 無効なQRコードデータ:', result);
+            alert('無効なQRコードデータです');
+            return;
         }
         
         // 管理番号かチェック（TOKIで始まる16桁）
         if (!result.startsWith('TOKI')) {
-            console.log('❌ TOKIで始まらないQRコード:', result);
+            console.error('❌ このアプリで生成されたQRコードではありません:', result);
             alert('このアプリで生成されたQRコードではありません\n読み取った内容: ' + result);
             return;
         }
         
         if (result.length !== 16) {
-            console.log('❌ 長さが16桁でないQRコード:', result, 'length:', result.length);
+            console.error('❌ 無効な管理番号の長さ:', result, 'length:', result.length);
             alert('無効な管理番号です\n読み取った内容: ' + result + '\n長さ: ' + result.length + '桁（16桁である必要があります）');
             return;
         }
         
-        // 成功時は管理番号で履歴を検索（ログ最小限）
+        // 成功時は静かに履歴を検索（ログもポップアップもなし）
         restoreFromManagementId(result);
         
     } catch (error) {
@@ -3175,15 +3181,12 @@ async function restoreFromManagementId(managementId) {
                 return;
             }
             
-            // 復元実行（成功時はログなし）
+            // 復元実行（静かに処理、ポップアップなし）
             restoreContentFromHistory(targetItem);
-            
-            // 成功メッセージ
-            alert(`✅ データを復元しました！\n\n管理番号: ${managementId}\n種類: ${targetItem.type}\n作成日時: ${new Date(targetItem.created).toLocaleString()}`);
             
         } else {
             console.error('❌ 履歴検索失敗 - 管理番号:', managementId);
-            console.error('❌ 履歴の管理番号一覧:', historyList.map(item => item.managementId).filter(id => id));
+            console.error('履歴の管理番号一覧:', historyList.map(item => item.managementId).filter(id => id));
             
             // より詳細なエラー情報
             const tokiItems = historyList.filter(item => 
@@ -3284,9 +3287,10 @@ function restoreContentFromHistory(item) {
             document.getElementById('signatureCopiesSelect').value = item.copies;
             document.getElementById('signatureQrPrintCheckbox').checked = !!item.qrPrinted;
             updateSignaturePrintButtonState();
+            
         }, 100);
     } else {
-        console.error('❌ 未対応のデータタイプ:', item.type);
+        console.error('⚠️ 未対応のデータタイプ:', item.type);
         throw new Error('未対応のデータタイプです: ' + item.type);
     }
     
