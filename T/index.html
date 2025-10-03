@@ -1150,15 +1150,54 @@ const DB_VERSION = 1;
 const STORE_NAME = 'history';
 function openDB() {
     return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, DB_VERSION);
-        req.onupgradeneeded = function(e) {
-            const db = e.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+        try {
+            if (!window.indexedDB) {
+                reject(new Error('IndexedDBがサポートされていません'));
+                return;
             }
-        };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+            
+            const req = indexedDB.open(DB_NAME, DB_VERSION);
+            
+            req.onupgradeneeded = function(e) {
+                try {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                } catch (error) {
+                    console.error('DB アップグレードエラー:', error);
+                    reject(error);
+                }
+            };
+            
+            req.onsuccess = () => {
+                try {
+                    resolve(req.result);
+                } catch (error) {
+                    console.error('DB オープン成功時エラー:', error);
+                    reject(error);
+                }
+            };
+            
+            req.onerror = () => {
+                console.error('DB オープンエラー:', req.error);
+                reject(req.error || new Error('IndexedDB接続エラー'));
+            };
+            
+            req.onblocked = () => {
+                console.warn('DB オープンがブロックされました');
+                reject(new Error('データベースアクセスがブロックされました'));
+            };
+            
+            // タイムアウト処理
+            setTimeout(() => {
+                reject(new Error('データベース接続タイムアウト'));
+            }, 10000);
+            
+        } catch (error) {
+            console.error('DB オープン処理エラー:', error);
+            reject(error);
+        }
     });
 }
 function addHistory(item) {
@@ -1297,16 +1336,18 @@ historyDrawerBg.onclick = (e) => {
     }
 };
 function loadHistoryList() {
-    getAllHistory(currentHistoryType).then(list => {
-        historyList.innerHTML = '';
-        if (!list.length) {
-            historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴がありません</div>';
-            let spacer = document.createElement('div');
-            spacer.className = 'historyListSpacer';
-            historyList.appendChild(spacer);
-            return;
-        }
-        let swipedId = null;
+    try {
+        getAllHistory(currentHistoryType).then(list => {
+            try {
+                historyList.innerHTML = '';
+                if (!list.length) {
+                    historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴がありません</div>';
+                    let spacer = document.createElement('div');
+                    spacer.className = 'historyListSpacer';
+                    historyList.appendChild(spacer);
+                    return;
+                }
+                let swipedId = null;
         for (const item of list) {
             const div = document.createElement('div');
             div.className = 'historyItem';
@@ -1522,7 +1563,20 @@ function loadHistoryList() {
         let spacer = document.createElement('div');
         spacer.className = 'historyListSpacer';
         historyList.appendChild(spacer);
-    });
+            } catch (error) {
+                console.error('履歴表示処理エラー:', error);
+                historyList.innerHTML = '<div style="color:#f44; text-align:center;">履歴の読み込みに失敗しました</div>';
+            }
+        }).catch(error => {
+            console.error('履歴取得エラー:', error);
+            historyList.innerHTML = '<div style="color:#f44; text-align:center;">履歴の取得に失敗しました</div>';
+        });
+    } catch (error) {
+        console.error('履歴読み込み関数エラー:', error);
+        if (historyList) {
+            historyList.innerHTML = '<div style="color:#f44; text-align:center;">履歴の読み込みでエラーが発生しました</div>';
+        }
+    }
 }
 function displayDate() {
     const today = new Date();
@@ -1876,7 +1930,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             // 全体の高さを計算（手書き用の余白設定、サイズ縮小）
             const signatureTopMargin = 8; // 手書き用上余白
             const signatureBottomMargin = 25; // 手書き用下余白
-            const qrSpaceMargin = qrPrintEnabled ? (selectedSignatureChip === 'with' ? 70 : 80) : 0; // 日付ありは70px、なしは80px
+            const qrSpaceMargin = qrPrintEnabled ? (selectedSignatureChip === 'with' ? 70 : 100) : 0; // 日付ありは70px、なしは100px
             
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
             const signatureScale = 0.92; // 92%にスケール（85%から修正）
@@ -2126,7 +2180,7 @@ function sendToPrintAssist(event) {
                     const imageTopMargin = -50; // 画像用上余白
                     const imageBottomMargin = 13; // 画像用下余白
                     const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
-                    const qrSpaceMargin = qrPrintEnabled ? (selectedChip === 'with' ? 70 : 80) : 0; // QRコード用余白（日付ありは70px、なしは80px）
+                    const qrSpaceMargin = qrPrintEnabled ? (selectedChip === 'with' ? 70 : 100) : 0; // QRコード用余白（日付ありは70px、なしは100px）
                     const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrSpaceMargin;
                     
                     compositeCanvas.width = canvasWidth;
@@ -2675,7 +2729,7 @@ function printText() {
         }
         
         // QRコード用スペースを追加
-        const qrSpaceMargin = qrPrintEnabled ? (selectedTextChip === 'with' ? 70 : 80) : 0; // 日付ありは70px、なしは80px
+        const qrSpaceMargin = qrPrintEnabled ? (selectedTextChip === 'with' ? 70 : 100) : 0; // 日付ありは70px、なしは100px
         
         const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
         canvas.width = canvasWidth;
@@ -2881,11 +2935,25 @@ function autoWrap(textarea) {
 }
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-        navigator.serviceWorker.register('service-worker.js').then(function(registration) {
-            console.log('Service Worker登録成功:', registration);
-        }).catch(function(error) {
-            console.log('Service Worker登録失敗:', error);
-        });
+        try {
+            navigator.serviceWorker.register('service-worker.js').then(function(registration) {
+                console.log('Service Worker登録成功:', registration);
+            }).catch(function(error) {
+                console.log('Service Worker登録失敗:', error);
+            });
+        } catch (error) {
+            console.error('Service Worker登録処理エラー:', error);
+        }
+    });
+    
+    // ページ読み込みエラーハンドリング
+    window.addEventListener('error', function(event) {
+        console.error('ページエラー:', event.error);
+    });
+    
+    window.addEventListener('unhandledrejection', function(event) {
+        console.error('未処理のPromise拒否:', event.reason);
+        event.preventDefault();
     });
 }
 
@@ -2982,42 +3050,64 @@ function initQRReader() {
 async function startQRReader() {
     console.log('=== QRスキャナー開始処理 ===');
     
-    const qrReaderModal = document.getElementById('qrReaderModal');
-    const videoElement = document.getElementById('qrReader');
-    const statusElement = document.getElementById('qrReaderStatus');
-    
-    // モーダルを表示
-    qrReaderModal.style.display = 'flex';
-    statusElement.textContent = 'カメラを起動中...';
-    
-    // 既存のスキャナーがあれば停止
-    if (window.qrScanner) {
-        console.log('既存のスキャナーを停止中...');
-        try {
-            await window.qrScanner.stop();
-            window.qrScanner.destroy();
-        } catch (e) {
-            console.warn('既存スキャナー停止時のエラー:', e);
+    try {
+        const qrReaderModal = document.getElementById('qrReaderModal');
+        const videoElement = document.getElementById('qrReader');
+        const statusElement = document.getElementById('qrReaderStatus');
+        
+        // モーダルを表示
+        qrReaderModal.style.display = 'flex';
+        statusElement.textContent = 'カメラを起動中...';
+        
+        // 既存のスキャナーがあれば停止
+        if (window.qrScanner) {
+            console.log('既存のスキャナーを停止中...');
+            try {
+                await Promise.race([
+                    window.qrScanner.stop(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('停止タイムアウト')), 5000))
+                ]);
+                window.qrScanner.destroy();
+            } catch (e) {
+                console.warn('既存スキャナー停止時のエラー:', e);
+            }
+            window.qrScanner = null;
         }
-        window.qrScanner = null;
+        
+        // タイムアウト付きでQrScannerライブラリを試す
+        const scannerPromise = tryQrScannerLibrary(videoElement, statusElement);
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('QRスキャナー初期化タイムアウト')), 10000)
+        );
+        
+        if (await Promise.race([scannerPromise, timeoutPromise])) {
+            return;
+        }
+        
+        // フォールバック: ZXingライブラリを試す
+        if (await tryZXingLibrary(videoElement, statusElement)) {
+            return;
+        }
+        
+        // 全て失敗した場合
+        throw new Error('QRスキャナーの初期化に失敗');
+        
+    } catch (error) {
+        console.error('QRスキャナー起動エラー:', error);
+        const statusElement = document.getElementById('qrReaderStatus');
+        const qrReaderModal = document.getElementById('qrReaderModal');
+        
+        if (statusElement) {
+            statusElement.textContent = 'QRスキャナーの初期化に失敗しました';
+        }
+        
+        setTimeout(() => {
+            if (qrReaderModal) {
+                qrReaderModal.style.display = 'none';
+            }
+            alert('QRコードリーダーが利用できません\nページを再読み込みしてお試しください');
+        }, 3000);
     }
-    
-    // まずQrScannerライブラリを試す
-    if (await tryQrScannerLibrary(videoElement, statusElement)) {
-        return;
-    }
-    
-    // フォールバック: ZXingライブラリを試す
-    if (await tryZXingLibrary(videoElement, statusElement)) {
-        return;
-    }
-    
-    // 全て失敗した場合
-    statusElement.textContent = 'QRスキャナーの初期化に失敗しました';
-    setTimeout(() => {
-        qrReaderModal.style.display = 'none';
-        alert('QRコードリーダーが利用できません\nブラウザまたはデバイスがサポートしていない可能性があります');
-    }, 3000);
 }
 
 // QrScannerライブラリを使用
@@ -3296,8 +3386,18 @@ function restoreContentFromHistory(item) {
         console.log('画像復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
         const qrCheckbox = document.getElementById('qrPrintCheckbox');
         if (qrCheckbox) {
-            qrCheckbox.checked = Boolean(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1);
-            console.log('画像復元 - チェックボックス設定後:', qrCheckbox.checked);
+            // より確実な真偽値判定
+            const shouldCheck = Boolean(
+                item.qrPrinted === true || 
+                item.qrPrinted === 'true' || 
+                item.qrPrinted === 1 || 
+                item.qrPrinted === '1'
+            );
+            qrCheckbox.checked = shouldCheck;
+            console.log('画像復元 - チェックボックス設定後:', qrCheckbox.checked, '判定値:', shouldCheck);
+            
+            // チェックボックス変更イベントを発火
+            qrCheckbox.dispatchEvent(new Event('change'));
         } else {
             console.error('❌ QRチェックボックスが見つかりません');
         }
@@ -3322,8 +3422,18 @@ function restoreContentFromHistory(item) {
         console.log('テキスト復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
         const textQrCheckbox = document.getElementById('textQrPrintCheckbox');
         if (textQrCheckbox) {
-            textQrCheckbox.checked = Boolean(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1);
-            console.log('テキスト復元 - チェックボックス設定後:', textQrCheckbox.checked);
+            // より確実な真偽値判定
+            const shouldCheck = Boolean(
+                item.qrPrinted === true || 
+                item.qrPrinted === 'true' || 
+                item.qrPrinted === 1 || 
+                item.qrPrinted === '1'
+            );
+            textQrCheckbox.checked = shouldCheck;
+            console.log('テキスト復元 - チェックボックス設定後:', textQrCheckbox.checked, '判定値:', shouldCheck);
+            
+            // チェックボックス変更イベントを発火
+            textQrCheckbox.dispatchEvent(new Event('change'));
         } else {
             console.error('❌ テキストQRチェックボックスが見つかりません');
         }
@@ -3347,8 +3457,18 @@ function restoreContentFromHistory(item) {
             console.log('手書き復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
             const signatureQrCheckbox = document.getElementById('signatureQrPrintCheckbox');
             if (signatureQrCheckbox) {
-                signatureQrCheckbox.checked = Boolean(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1);
-                console.log('手書き復元 - チェックボックス設定後:', signatureQrCheckbox.checked);
+                // より確実な真偽値判定
+                const shouldCheck = Boolean(
+                    item.qrPrinted === true || 
+                    item.qrPrinted === 'true' || 
+                    item.qrPrinted === 1 || 
+                    item.qrPrinted === '1'
+                );
+                signatureQrCheckbox.checked = shouldCheck;
+                console.log('手書き復元 - チェックボックス設定後:', signatureQrCheckbox.checked, '判定値:', shouldCheck);
+                
+                // チェックボックス変更イベントを発火
+                signatureQrCheckbox.dispatchEvent(new Event('change'));
             } else {
                 console.error('❌ 手書きQRチェックボックスが見つかりません');
             }
