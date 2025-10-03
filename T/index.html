@@ -3059,9 +3059,9 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
     try {
         console.log('QrScannerライブラリを試行中...');
         
-        // ライブラリの確認（待機時間短縮）
+        // ライブラリの確認（少し待機）
         if (typeof QrScanner === 'undefined') {
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise(resolve => setTimeout(resolve, 1000));
             if (typeof QrScanner === 'undefined') {
                 throw new Error('QrScannerライブラリが読み込まれていません');
             }
@@ -3073,7 +3073,7 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
             throw new Error('カメラが見つかりません');
         }
         
-        // QRスキャナーを作成（最高速設定）
+        // QRスキャナーを作成（高速読み取り設定）
         window.qrScanner = new QrScanner(
             videoElement,
             (result) => {
@@ -3086,7 +3086,7 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
                 highlightScanRegion: false,
                 highlightCodeOutline: false,
                 preferredCamera: 'environment',
-                maxScansPerSecond: 60,
+                maxScansPerSecond: 30, // 10→30に向上
                 calculateScanRegion: (video) => ({
                     x: 0,
                     y: 0,
@@ -3095,16 +3095,6 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
                 })
             }
         );
-        
-        // カメラ解像度を高速化のため低めに設定
-        await window.qrScanner.setCamera('environment');
-        window.qrScanner._qrEnginePromise = window.qrScanner._qrEnginePromise.then(qrEngine => {
-            qrEngine.setOptions({
-                inversionMode: 'both',
-                tryHarder: false
-            });
-            return qrEngine;
-        });
         
         await window.qrScanner.start();
         statusElement.textContent = '';
@@ -3120,18 +3110,18 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
 async function tryZXingLibrary(videoElement, statusElement) {
     try {
         if (typeof ZXing === 'undefined') {
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise(resolve => setTimeout(resolve, 1000));
             if (typeof ZXing === 'undefined') {
                 throw new Error('ZXingライブラリが読み込まれていません');
             }
         }
         
-        // MediaStreamを取得（高速化のため解像度を下げる）
+        // MediaStreamを取得
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { 
                 facingMode: 'environment',
-                width: { ideal: 640 },
-                height: { ideal: 480 }
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
             }
         });
         
@@ -3160,15 +3150,11 @@ async function tryZXingLibrary(videoElement, statusElement) {
             try {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                ctx.drawImage(videoElement, 0, 0);
                 
-                // 高速化のため画質を下げる
-                const width = Math.min(videoElement.videoWidth, 640);
-                const height = Math.min(videoElement.videoHeight, 480);
-                canvas.width = width;
-                canvas.height = height;
-                
-                ctx.drawImage(videoElement, 0, 0, width, height);
-                const imageData = ctx.getImageData(0, 0, width, height);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const code = await codeReader.decodeFromImageData(imageData);
                 
                 if (code && code.text) {
@@ -3180,8 +3166,8 @@ async function tryZXingLibrary(videoElement, statusElement) {
                 // QRコードが見つからない場合は正常
             }
             
-            // 20ms後に再スキャン（超高速）
-            setTimeout(scanLoop, 20);
+            // 50ms後に再スキャン（100ms→50msに高速化）
+            setTimeout(scanLoop, 50);
         };
         
         scanLoop();
@@ -3364,24 +3350,18 @@ function restoreContentFromHistory(item) {
         console.log('画像復元 - item:', item);
         console.log('画像復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
         
-        // QRチェックボックスの確実な復元
+        // QRチェックボックスの復元を少し遅延して確実に処理
         setTimeout(() => {
             const qrCheckbox = document.getElementById('qrPrintCheckbox');
             if (qrCheckbox) {
                 // より確実な復元処理
                 const qrValue = item.qrPrinted;
-                const shouldBeChecked = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
-                qrCheckbox.checked = shouldBeChecked;
-                console.log('画像復元 - チェックボックス設定:', shouldBeChecked, '実際:', qrCheckbox.checked);
-                
-                // 複数回の設定を試す
-                if (qrCheckbox.checked !== shouldBeChecked) {
-                    qrCheckbox.checked = shouldBeChecked;
-                    console.log('画像復元 - 再設定後:', qrCheckbox.checked);
-                }
-                
-                // 強制的にチェンジイベントを発火
+                const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
+                qrCheckbox.checked = shouldCheck;
+                console.log('画像復元 - チェックボックス設定後:', qrCheckbox.checked);
+                // 強制的にチェンジイベントとクリックイベントを発火
                 qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                qrCheckbox.dispatchEvent(new Event('click', { bubbles: true }));
                 qrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
             } else {
                 console.error('❌ QRチェックボックスが見つかりません');
@@ -3407,24 +3387,18 @@ function restoreContentFromHistory(item) {
         console.log('テキスト復元 - item:', item);
         console.log('テキスト復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
         
-        // QRチェックボックスの確実な復元
+        // QRチェックボックスの復元を少し遅延して確実に処理
         setTimeout(() => {
             const textQrCheckbox = document.getElementById('textQrPrintCheckbox');
             if (textQrCheckbox) {
                 // より確実な復元処理
                 const qrValue = item.qrPrinted;
-                const shouldBeChecked = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
-                textQrCheckbox.checked = shouldBeChecked;
-                console.log('テキスト復元 - チェックボックス設定:', shouldBeChecked, '実際:', textQrCheckbox.checked);
-                
-                // 複数回の設定を試す
-                if (textQrCheckbox.checked !== shouldBeChecked) {
-                    textQrCheckbox.checked = shouldBeChecked;
-                    console.log('テキスト復元 - 再設定後:', textQrCheckbox.checked);
-                }
-                
-                // 強制的にチェンジイベントを発火
+                const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
+                textQrCheckbox.checked = shouldCheck;
+                console.log('テキスト復元 - チェックボックス設定後:', textQrCheckbox.checked);
+                // 強制的にチェンジイベントとクリックイベントを発火
                 textQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                textQrCheckbox.dispatchEvent(new Event('click', { bubbles: true }));
                 textQrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
             } else {
                 console.error('❌ テキストQRチェックボックスが見つかりません');
@@ -3449,30 +3423,24 @@ function restoreContentFromHistory(item) {
             console.log('手書き復元 - item:', item);
             console.log('手書き復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
             
-            // QRチェックボックスの確実な復元
+            // QRチェックボックスの復元を少し遅延して確実に処理
             setTimeout(() => {
                 const signatureQrCheckbox = document.getElementById('signatureQrPrintCheckbox');
                 if (signatureQrCheckbox) {
                     // より確実な復元処理
                     const qrValue = item.qrPrinted;
-                    const shouldBeChecked = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
-                    signatureQrCheckbox.checked = shouldBeChecked;
-                    console.log('手書き復元 - チェックボックス設定:', shouldBeChecked, '実際:', signatureQrCheckbox.checked);
-                    
-                    // 複数回の設定を試す
-                    if (signatureQrCheckbox.checked !== shouldBeChecked) {
-                        signatureQrCheckbox.checked = shouldBeChecked;
-                        console.log('手書き復元 - 再設定後:', signatureQrCheckbox.checked);
-                    }
-                    
-                    // 強制的にチェンジイベントを発火
+                    const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
+                    signatureQrCheckbox.checked = shouldCheck;
+                    console.log('手書き復元 - チェックボックス設定後:', signatureQrCheckbox.checked);
+                    // 強制的にチェンジイベントとクリックイベントを発火
                     signatureQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    signatureQrCheckbox.dispatchEvent(new Event('click', { bubbles: true }));
                     signatureQrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
                 } else {
                     console.error('❌ 手書きQRチェックボックスが見つかりません');
                 }
-            }, 150);
-            updateSignaturePrintButtonState();
+                updateSignaturePrintButtonState();
+            }, 200); // 手書きは初期化に時間がかかるので200msに設定
             
         }, 100);
     } else {
