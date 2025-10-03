@@ -411,6 +411,8 @@ main {
     background: var(--background-color);
     color: var(--text-color);
     box-sizing: border-box;
+    position: relative;
+    z-index: 10; /* フッターより上に表示 */
 }
 @media (max-width: 600px) {
     main {
@@ -441,6 +443,8 @@ main {
     margin-top: 1rem;
     gap: 0.5rem;
     width: 100%;
+    position: relative;
+    z-index: 20; /* フッターより確実に上に表示 */
 }
 .print-options select,
 #printButton, #textPrintButton, #signaturePrintButton {
@@ -774,11 +778,14 @@ footer {
     padding: 10px 0;
     background-color: var(--footer-bg);
     text-align: center;
+    z-index: 1; /* 他の要素より下に表示 */
+    pointer-events: none; /* マウスイベントを透過 */
 }
 footer p {
     margin: 0;
     color: var(--primary-color);
     font-size: 14px;
+    pointer-events: auto; /* テキスト選択は可能にする */
 }
 
 /* QRコード関連のスタイル */
@@ -3277,7 +3284,9 @@ function restoreContentFromHistory(item) {
         selectedChip = item.dateTime;
         
         document.getElementById('copiesSelect').value = item.copies;
-        document.getElementById('qrPrintCheckbox').checked = !!item.qrPrinted;
+        const qrCheckbox = document.getElementById('qrPrintCheckbox');
+        qrCheckbox.checked = !!item.qrPrinted;
+        console.log('画像履歴復元 - QR状態:', item.qrPrinted, 'チェックボックス:', qrCheckbox.checked);
         document.getElementById('imagePrintOptions').style.display = 'flex';
         updatePrintButtonState();
         
@@ -3295,7 +3304,9 @@ function restoreContentFromHistory(item) {
         selectedTextChip = item.dateTime;
         
         document.getElementById('textCopiesSelect').value = item.copies;
-        document.getElementById('textQrPrintCheckbox').checked = !!item.qrPrinted;
+        const textQrCheckbox = document.getElementById('textQrPrintCheckbox');
+        textQrCheckbox.checked = !!item.qrPrinted;
+        console.log('テキスト履歴復元 - QR状態:', item.qrPrinted, 'チェックボックス:', textQrCheckbox.checked);
         updateTextPrintButtonState();
         
     } else if (item.type === 'signature') {
@@ -3312,7 +3323,9 @@ function restoreContentFromHistory(item) {
             selectedSignatureChip = item.dateTime;
             
             document.getElementById('signatureCopiesSelect').value = item.copies;
-            document.getElementById('signatureQrPrintCheckbox').checked = !!item.qrPrinted;
+            const signatureQrCheckbox = document.getElementById('signatureQrPrintCheckbox');
+            signatureQrCheckbox.checked = !!item.qrPrinted;
+            console.log('手書き履歴復元 - QR状態:', item.qrPrinted, 'チェックボックス:', signatureQrCheckbox.checked);
             updateSignaturePrintButtonState();
             
         }, 100);
