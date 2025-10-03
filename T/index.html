@@ -823,7 +823,7 @@ footer p {
 
 #qrReader {
     width: 100%;
-    height: calc(100% - 140px);
+    height: calc(100% - 90px);
     background: #000;
     object-fit: cover;
 }
@@ -853,8 +853,8 @@ footer p {
 #qrReaderStatus {
     background: white;
     text-align: center;
-    padding: 15px;
-    font-size: 14px;
+    padding: 8px;
+    font-size: 12px;
     color: var(--text-color);
     border-top: 1px solid #e0e0e0;
     position: absolute;
@@ -862,11 +862,12 @@ footer p {
     left: 0;
     right: 0;
     z-index: 1;
+    min-height: 20px;
 }
 
 .qr-instructions {
     background: rgba(255,255,255,0.95);
-    padding: 10px 15px;
+    padding: 8px 15px;
     font-size: 13px;
     color: var(--text-color);
     line-height: 1.4;
@@ -1020,7 +1021,7 @@ footer p {
             <button id="closeQrReader">×</button>
         </div>
         <div class="qr-instructions">
-            印刷物のQRコードをカメラに向けてください
+            QRコードを読み取ってください
         </div>
         <div class="qr-scan-frame">
             <video id="qrReader"></video>
@@ -3096,7 +3097,7 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
         );
         
         await window.qrScanner.start();
-        statusElement.textContent = 'QRコードを画面に向けてください';
+        statusElement.textContent = '';
         return true;
         
     } catch (error) {
@@ -3170,7 +3171,7 @@ async function tryZXingLibrary(videoElement, statusElement) {
         };
         
         scanLoop();
-        statusElement.textContent = 'QRコードを画面に向けてください (ZXing)';
+        statusElement.textContent = '';
         return true;
         
     } catch (error) {
