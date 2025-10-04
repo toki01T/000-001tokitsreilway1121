@@ -1508,7 +1508,7 @@ function loadHistoryList() {
                 } else {
                     showSection('text');
                     document.getElementById('textInput').value = item.data;
-                    autoWrap(document.getElementById('textInput'));
+                    // autoWrap(document.getElementById('textInput')); // 自動改行を無効化
                     const chips = document.querySelectorAll('#textDateTimeChoice .chip');
                     chips.forEach(chip => chip.classList.remove('selected'));
                     if (item.dateTime === 'with') chips[0].classList.add('selected');
@@ -1543,22 +1543,8 @@ window.onload = function() {
     document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
     document.getElementById('textInput').addEventListener('input', toggleClearButton);
     document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
-    
-    // autoWrapを入力完了後に実行（デバウンス処理）
-    let autoWrapTimeout;
     document.getElementById('textInput').addEventListener('input', function() {
-        clearTimeout(autoWrapTimeout);
-        autoWrapTimeout = setTimeout(() => {
-            // カーソル位置を保存
-            const cursorPosition = this.selectionStart;
-            const oldValue = this.value;
-            autoWrap(this);
-            // カーソル位置を復元（可能な限り）
-            const newValue = this.value;
-            if (oldValue !== newValue) {
-                this.setSelectionRange(cursorPosition, cursorPosition);
-            }
-        }, 500); // 500ms後に実行
+        // autoWrap(this); // 自動改行を無効化
     });
     setTextChipsEnabled(false);
     loadHistoryList();
@@ -2890,22 +2876,9 @@ function handleClearButtonClick() {
     }
 }
 function autoWrap(textarea) {
-    const cursorPosition = textarea.selectionStart;
-    const cursorEnd = textarea.selectionEnd;
     const text = textarea.value;
     const wrappedLines = wrapText(text);
-    const newValue = wrappedLines.join('\n');
-    
-    if (text !== newValue) {
-        textarea.value = newValue;
-        // カーソル位置を可能な限り復元
-        try {
-            textarea.setSelectionRange(Math.min(cursorPosition, newValue.length), Math.min(cursorEnd, newValue.length));
-        } catch (e) {
-            // カーソル位置復元に失敗した場合は末尾に設定
-            textarea.setSelectionRange(newValue.length, newValue.length);
-        }
-    }
+    textarea.value = wrappedLines.join('\n');
 }
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
@@ -3011,6 +2984,8 @@ async function closeQRReader() {
 
 // QRリーダー開始（フォールバック機能付き）
 async function startQRReader() {
+    console.log('=== QRスキャナー開始処理 ===');
+    
     const qrReaderModal = document.getElementById('qrReaderModal');
     const videoElement = document.getElementById('qrReader');
     const statusElement = document.getElementById('qrReaderStatus');
@@ -3021,11 +2996,12 @@ async function startQRReader() {
     
     // 既存のスキャナーがあれば確実に停止
     if (window.qrScanner) {
+        console.log('既存のスキャナーを停止中...');
         try {
             await window.qrScanner.stop();
             window.qrScanner.destroy();
         } catch (e) {
-            // エラーは無視
+            console.warn('既存スキャナー停止時のエラー:', e);
         }
         window.qrScanner = null;
     }
@@ -3035,15 +3011,17 @@ async function startQRReader() {
         try {
             videoElement.srcObject.getTracks().forEach(track => {
                 track.stop();
+                console.log('ビデオトラック停止:', track.kind);
             });
             videoElement.srcObject = null;
         } catch (e) {
-            // エラーは無視
+            console.warn('ビデオストリーム停止エラー:', e);
         }
     }
     
     // タイムアウト設定（30秒）
     const timeoutId = setTimeout(() => {
+        console.warn('QRスキャナータイムアウト');
         closeQRReader();
         alert('カメラの起動に時間がかかっています。再度お試しください。');
     }, 30000);
@@ -3079,6 +3057,8 @@ async function startQRReader() {
 // QrScannerライブラリを使用
 async function tryQrScannerLibrary(videoElement, statusElement) {
     try {
+        console.log('QrScannerライブラリを試行中...');
+        
         // ライブラリの確認（少し待機）
         if (typeof QrScanner === 'undefined') {
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -3106,12 +3086,12 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
                 highlightScanRegion: false,
                 highlightCodeOutline: false,
                 preferredCamera: 'environment',
-                maxScansPerSecond: 60, // 30→60に向上（最大速度）
+                maxScansPerSecond: 60, // 30→60に大幅向上
                 calculateScanRegion: (video) => ({
-                    x: Math.floor(video.videoWidth * 0.1),
-                    y: Math.floor(video.videoHeight * 0.1),
-                    width: Math.floor(video.videoWidth * 0.8),
-                    height: Math.floor(video.videoHeight * 0.8)
+                    x: 0,
+                    y: 0,
+                    width: video.videoWidth,
+                    height: video.videoHeight
                 })
             }
         );
@@ -3202,12 +3182,15 @@ async function tryZXingLibrary(videoElement, statusElement) {
 
 // QRリーダー停止
 async function stopQRReader() {
+    console.log('QRスキャナー停止開始...');
+    
     // スキャナーの停止
     if (window.qrScanner) {
         try {
             await window.qrScanner.stop();
             window.qrScanner.destroy();
             window.qrScanner = null;
+            console.log('QrScannerライブラリ停止完了');
         } catch (error) {
             console.error('❌ QRスキャナー停止エラー:', error);
         }
@@ -3219,8 +3202,10 @@ async function stopQRReader() {
         try {
             videoElement.srcObject.getTracks().forEach(track => {
                 track.stop();
+                console.log('ビデオトラック停止:', track.kind);
             });
             videoElement.srcObject = null;
+            console.log('ビデオストリーム完全停止');
         } catch (error) {
             console.error('❌ ビデオストリーム停止エラー:', error);
         }
@@ -3229,6 +3214,8 @@ async function stopQRReader() {
     // モーダルを閉じる
     const qrReaderModal = document.getElementById('qrReaderModal');
     qrReaderModal.style.display = 'none';
+    
+    console.log('QRスキャナー停止完了');
 }
 
 // QRコード読み取り結果の処理
@@ -3360,8 +3347,8 @@ function restoreContentFromHistory(item) {
         selectedChip = item.dateTime;
         
         document.getElementById('copiesSelect').value = item.copies;
-        console.log('画像復元 - item:', item);
-        console.log('画像復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
+        // console.log('画像復元 - item:', item); // ログ削除で軽量化
+        // console.log('画像復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted); // ログ削除
         
         // QRチェックボックスの復元を少し遅延して確実に処理
         setTimeout(() => {
@@ -3371,15 +3358,22 @@ function restoreContentFromHistory(item) {
                 const qrValue = item.qrPrinted;
                 const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
                 qrCheckbox.checked = shouldCheck;
-                console.log('画像復元 - チェックボックス設定後:', qrCheckbox.checked);
                 // 強制的にチェンジイベントとクリックイベントを発火
                 qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
                 qrCheckbox.dispatchEvent(new Event('click', { bubbles: true }));
                 qrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                // さらに確実にするため、プロパティも直接設定
+                qrCheckbox.setAttribute('checked', shouldCheck);
+                if (shouldCheck) {
+                    qrCheckbox.setAttribute('checked', 'checked');
+                } else {
+                    qrCheckbox.removeAttribute('checked');
+                }
             } else {
                 console.error('❌ QRチェックボックスが見つかりません');
             }
-        }, 100);
+        }, 50); // 100ms→50msに高速化
         document.getElementById('imagePrintOptions').style.display = 'flex';
         updatePrintButtonState();
         
@@ -3387,7 +3381,7 @@ function restoreContentFromHistory(item) {
         showSection('text');
         
         document.getElementById('textInput').value = item.data;
-        autoWrap(document.getElementById('textInput'));
+        // autoWrap(document.getElementById('textInput')); // 自動改行を無効化
         
         // 設定を復元
         const chips = document.querySelectorAll('#textDateTimeChoice .chip');
@@ -3397,8 +3391,8 @@ function restoreContentFromHistory(item) {
         selectedTextChip = item.dateTime;
         
         document.getElementById('textCopiesSelect').value = item.copies;
-        console.log('テキスト復元 - item:', item);
-        console.log('テキスト復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
+        // console.log('テキスト復元 - item:', item); // ログ削除で軽量化
+        // console.log('テキスト復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted); // ログ削除
         
         // QRチェックボックスの復元を少し遅延して確実に処理
         setTimeout(() => {
@@ -3408,15 +3402,22 @@ function restoreContentFromHistory(item) {
                 const qrValue = item.qrPrinted;
                 const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
                 textQrCheckbox.checked = shouldCheck;
-                console.log('テキスト復元 - チェックボックス設定後:', textQrCheckbox.checked);
                 // 強制的にチェンジイベントとクリックイベントを発火
                 textQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
                 textQrCheckbox.dispatchEvent(new Event('click', { bubbles: true }));
                 textQrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                // さらに確実にするため、プロパティも直接設定
+                textQrCheckbox.setAttribute('checked', shouldCheck);
+                if (shouldCheck) {
+                    textQrCheckbox.setAttribute('checked', 'checked');
+                } else {
+                    textQrCheckbox.removeAttribute('checked');
+                }
             } else {
                 console.error('❌ テキストQRチェックボックスが見つかりません');
             }
-        }, 100);
+        }, 50); // 100ms→50msに高速化
         updateTextPrintButtonState();
         
     } else if (item.type === 'signature') {
@@ -3433,8 +3434,8 @@ function restoreContentFromHistory(item) {
             selectedSignatureChip = item.dateTime;
             
             document.getElementById('signatureCopiesSelect').value = item.copies;
-            console.log('手書き復元 - item:', item);
-            console.log('手書き復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
+            // console.log('手書き復元 - item:', item); // ログ削除で軽量化
+            // console.log('手書き復元 - QR状態:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted); // ログ削除
             
             // QRチェックボックスの復元を少し遅延して確実に処理
             setTimeout(() => {
@@ -3444,16 +3445,23 @@ function restoreContentFromHistory(item) {
                     const qrValue = item.qrPrinted;
                     const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
                     signatureQrCheckbox.checked = shouldCheck;
-                    console.log('手書き復元 - チェックボックス設定後:', signatureQrCheckbox.checked);
                     // 強制的にチェンジイベントとクリックイベントを発火
                     signatureQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
                     signatureQrCheckbox.dispatchEvent(new Event('click', { bubbles: true }));
                     signatureQrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
+                    
+                    // さらに確実にするため、プロパティも直接設定
+                    signatureQrCheckbox.setAttribute('checked', shouldCheck);
+                    if (shouldCheck) {
+                        signatureQrCheckbox.setAttribute('checked', 'checked');
+                    } else {
+                        signatureQrCheckbox.removeAttribute('checked');
+                    }
                 } else {
                     console.error('❌ 手書きQRチェックボックスが見つかりません');
                 }
                 updateSignaturePrintButtonState();
-            }, 200); // 手書きは初期化に時間がかかるので200msに設定
+            }, 100); // 手書きは初期化に時間がかかるので100msを維持
             
         }, 100);
     } else {
