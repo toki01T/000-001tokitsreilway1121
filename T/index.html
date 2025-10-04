@@ -1543,8 +1543,22 @@ window.onload = function() {
     document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
     document.getElementById('textInput').addEventListener('input', toggleClearButton);
     document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
+    
+    // autoWrapを入力完了後に実行（デバウンス処理）
+    let autoWrapTimeout;
     document.getElementById('textInput').addEventListener('input', function() {
-        autoWrap(this);
+        clearTimeout(autoWrapTimeout);
+        autoWrapTimeout = setTimeout(() => {
+            // カーソル位置を保存
+            const cursorPosition = this.selectionStart;
+            const oldValue = this.value;
+            autoWrap(this);
+            // カーソル位置を復元（可能な限り）
+            const newValue = this.value;
+            if (oldValue !== newValue) {
+                this.setSelectionRange(cursorPosition, cursorPosition);
+            }
+        }, 500); // 500ms後に実行
     });
     setTextChipsEnabled(false);
     loadHistoryList();
@@ -2876,9 +2890,22 @@ function handleClearButtonClick() {
     }
 }
 function autoWrap(textarea) {
+    const cursorPosition = textarea.selectionStart;
+    const cursorEnd = textarea.selectionEnd;
     const text = textarea.value;
     const wrappedLines = wrapText(text);
-    textarea.value = wrappedLines.join('\n');
+    const newValue = wrappedLines.join('\n');
+    
+    if (text !== newValue) {
+        textarea.value = newValue;
+        // カーソル位置を可能な限り復元
+        try {
+            textarea.setSelectionRange(Math.min(cursorPosition, newValue.length), Math.min(cursorEnd, newValue.length));
+        } catch (e) {
+            // カーソル位置復元に失敗した場合は末尾に設定
+            textarea.setSelectionRange(newValue.length, newValue.length);
+        }
+    }
 }
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
@@ -2984,8 +3011,6 @@ async function closeQRReader() {
 
 // QRリーダー開始（フォールバック機能付き）
 async function startQRReader() {
-    console.log('=== QRスキャナー開始処理 ===');
-    
     const qrReaderModal = document.getElementById('qrReaderModal');
     const videoElement = document.getElementById('qrReader');
     const statusElement = document.getElementById('qrReaderStatus');
@@ -2996,12 +3021,11 @@ async function startQRReader() {
     
     // 既存のスキャナーがあれば確実に停止
     if (window.qrScanner) {
-        console.log('既存のスキャナーを停止中...');
         try {
             await window.qrScanner.stop();
             window.qrScanner.destroy();
         } catch (e) {
-            console.warn('既存スキャナー停止時のエラー:', e);
+            // エラーは無視
         }
         window.qrScanner = null;
     }
@@ -3011,17 +3035,15 @@ async function startQRReader() {
         try {
             videoElement.srcObject.getTracks().forEach(track => {
                 track.stop();
-                console.log('ビデオトラック停止:', track.kind);
             });
             videoElement.srcObject = null;
         } catch (e) {
-            console.warn('ビデオストリーム停止エラー:', e);
+            // エラーは無視
         }
     }
     
     // タイムアウト設定（30秒）
     const timeoutId = setTimeout(() => {
-        console.warn('QRスキャナータイムアウト');
         closeQRReader();
         alert('カメラの起動に時間がかかっています。再度お試しください。');
     }, 30000);
@@ -3057,8 +3079,6 @@ async function startQRReader() {
 // QrScannerライブラリを使用
 async function tryQrScannerLibrary(videoElement, statusElement) {
     try {
-        console.log('QrScannerライブラリを試行中...');
-        
         // ライブラリの確認（少し待機）
         if (typeof QrScanner === 'undefined') {
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -3073,7 +3093,7 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
             throw new Error('カメラが見つかりません');
         }
         
-        // QRスキャナーを作成（高速読み取り設定）
+        // QRスキャナーを作成（超高速読み取り設定）
         window.qrScanner = new QrScanner(
             videoElement,
             (result) => {
@@ -3086,12 +3106,12 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
                 highlightScanRegion: false,
                 highlightCodeOutline: false,
                 preferredCamera: 'environment',
-                maxScansPerSecond: 30, // 10→30に向上
+                maxScansPerSecond: 60, // 30→60に向上（最大速度）
                 calculateScanRegion: (video) => ({
-                    x: 0,
-                    y: 0,
-                    width: video.videoWidth,
-                    height: video.videoHeight
+                    x: Math.floor(video.videoWidth * 0.1),
+                    y: Math.floor(video.videoHeight * 0.1),
+                    width: Math.floor(video.videoWidth * 0.8),
+                    height: Math.floor(video.videoHeight * 0.8)
                 })
             }
         );
@@ -3166,8 +3186,8 @@ async function tryZXingLibrary(videoElement, statusElement) {
                 // QRコードが見つからない場合は正常
             }
             
-            // 50ms後に再スキャン（100ms→50msに高速化）
-            setTimeout(scanLoop, 50);
+            // 30ms後に再スキャン（50ms→30msにさらに高速化）
+            setTimeout(scanLoop, 30);
         };
         
         scanLoop();
@@ -3182,15 +3202,12 @@ async function tryZXingLibrary(videoElement, statusElement) {
 
 // QRリーダー停止
 async function stopQRReader() {
-    console.log('QRスキャナー停止開始...');
-    
     // スキャナーの停止
     if (window.qrScanner) {
         try {
             await window.qrScanner.stop();
             window.qrScanner.destroy();
             window.qrScanner = null;
-            console.log('QrScannerライブラリ停止完了');
         } catch (error) {
             console.error('❌ QRスキャナー停止エラー:', error);
         }
@@ -3202,10 +3219,8 @@ async function stopQRReader() {
         try {
             videoElement.srcObject.getTracks().forEach(track => {
                 track.stop();
-                console.log('ビデオトラック停止:', track.kind);
             });
             videoElement.srcObject = null;
-            console.log('ビデオストリーム完全停止');
         } catch (error) {
             console.error('❌ ビデオストリーム停止エラー:', error);
         }
@@ -3214,8 +3229,6 @@ async function stopQRReader() {
     // モーダルを閉じる
     const qrReaderModal = document.getElementById('qrReaderModal');
     qrReaderModal.style.display = 'none';
-    
-    console.log('QRスキャナー停止完了');
 }
 
 // QRコード読み取り結果の処理
