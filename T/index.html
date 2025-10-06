@@ -2650,7 +2650,7 @@ function printText() {
     const dateTimeHeight = 16;
     const spaceBetweenTextAndDate = 4;
     const bottomMargin = isDateTimeEnabled ? 15 : 19;
-    const leftMargin = 1; // 2から1に変更（1mm左に移動）
+    const leftMargin = 5; // 2から5に変更（1mm左に移動）
     let totalHeight = topMargin + (wrappedLines.length * lineHeight);
     if (isDateTimeEnabled) {
         totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
@@ -3431,7 +3431,7 @@ function restoreContentFromHistory(item) {
         
         document.getElementById('copiesSelect').value = item.copies;
         
-        // QRチェックボックスの復元を履歴のQR表示に基づいて確実に処理
+        // QRチェックボックスの復元を段階的に確実に処理
         console.log('=== 画像QR復元開始 ===');
         console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
         console.log('item.managementId:', item.managementId);
@@ -3441,14 +3441,13 @@ function restoreContentFromHistory(item) {
             console.log('QRチェックボックス要素:', qrCheckbox);
             
             if (qrCheckbox) {
-                // 履歴のQR表示状態に基づいて判定
-                // 1. qrPrintedフィールドがtrueまたは'true'の場合
-                // 2. managementIdが存在する場合（QRコード付きで印刷された）
-                const qrValue = item.qrPrinted;
-                const hasManagementId = item.managementId && item.managementId.startsWith('TOKI');
-                const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1' || hasManagementId);
+                // QRアイコンの有無とqrPrintedフィールドの両方をチェック
+                const hasQrIcon = !!(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1 || item.qrPrinted === '1');
+                const hasManagementId = !!(item.managementId && item.managementId.startsWith('TOKI'));
                 
-                console.log('復元判定:', qrValue, 'managementId:', hasManagementId, '→', shouldCheck);
+                // QRアイコンが表示されている場合はチェックボックスをON、なければOFF
+                const shouldCheck = hasQrIcon && hasManagementId;
+                console.log('復元判定:', 'hasQrIcon:', hasQrIcon, 'hasManagementId:', hasManagementId, '→', shouldCheck);
                 
                 // 現在の状態を記録
                 console.log('復元前チェック状態:', qrCheckbox.checked);
@@ -3519,7 +3518,7 @@ function restoreContentFromHistory(item) {
         
         document.getElementById('textCopiesSelect').value = item.copies;
         
-        // QRチェックボックスの復元を履歴のQR表示に基づいて確実に処理
+        // QRチェックボックスの復元を段階的に確実に処理
         console.log('=== テキストQR復元開始 ===');
         console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
         console.log('item.managementId:', item.managementId);
@@ -3529,15 +3528,13 @@ function restoreContentFromHistory(item) {
             console.log('テキストQRチェックボックス要素:', textQrCheckbox);
             
             if (textQrCheckbox) {
-                // 履歴のQR表示状態に基づいて判定
-                const qrValue = item.qrPrinted;
-                const hasManagementId = item.managementId && item.managementId.startsWith('TOKI');
-                const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1' || hasManagementId);
+                // QRアイコンの有無とqrPrintedフィールドの両方をチェック
+                const hasQrIcon = !!(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1 || item.qrPrinted === '1');
+                const hasManagementId = !!(item.managementId && item.managementId.startsWith('TOKI'));
                 
-                console.log('復元判定:', qrValue, 'managementId:', hasManagementId, '→', shouldCheck);
-                
-                // 現在の状態を記録
-                console.log('復元前チェック状態:', textQrCheckbox.checked);
+                // QRアイコンが表示されている場合はチェックボックスをON、なければOFF
+                const shouldCheck = hasQrIcon && hasManagementId;
+                console.log('復元判定:', 'hasQrIcon:', hasQrIcon, 'hasManagementId:', hasManagementId, '→', shouldCheck);
                 
                 // 現在の状態を記録
                 console.log('復元前チェック状態:', textQrCheckbox.checked);
@@ -3617,34 +3614,13 @@ function restoreContentFromHistory(item) {
                 console.log('手書きQRチェックボックス要素:', signatureQrCheckbox);
                 
                 if (signatureQrCheckbox) {
-                    // managementIdベースでQR印刷状況を判定
-                    let shouldCheck = false;
-                    const managementId = item.managementId;
-                    console.log('手書きチェック用managementId:', managementId);
+                    // QRアイコンの有無とqrPrintedフィールドの両方をチェック
+                    const hasQrIcon = !!(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1 || item.qrPrinted === '1');
+                    const hasManagementId = !!(item.managementId && item.managementId.startsWith('TOKI'));
                     
-                    if (managementId) {
-                        // QRコードがあるかhistoryArea2から確認
-                        const historyContainers = document.querySelectorAll('#historyArea2 .history-item');
-                        console.log('検索対象履歴アイテム数:', historyContainers.length);
-                        
-                        for (const container of historyContainers) {
-                            const qrCodeImg = container.querySelector('.qr-code');
-                            if (qrCodeImg && qrCodeImg.getAttribute('data-management-id') === managementId) {
-                                shouldCheck = true;
-                                console.log('手書き用QRコード発見:', managementId);
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // フォールバック: qrPrintedフィールドも参照
-                    if (!shouldCheck) {
-                        const qrValue = item.qrPrinted;
-                        shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
-                        console.log('フォールバック判定:', qrValue, '→', shouldCheck);
-                    }
-                    
-                    console.log('手書き最終判定:', shouldCheck);
+                    // QRアイコンが表示されている場合はチェックボックスをON、なければOFF
+                    const shouldCheck = hasQrIcon && hasManagementId;
+                    console.log('復元判定:', 'hasQrIcon:', hasQrIcon, 'hasManagementId:', hasManagementId, '→', shouldCheck);
                     
                     // 現在の状態を記録
                     console.log('復元前チェック状態:', signatureQrCheckbox.checked);
@@ -3679,7 +3655,6 @@ function restoreContentFromHistory(item) {
                     setTimeout(() => {
                         console.log('最終チェック状態:', signatureQrCheckbox.checked);
                         console.log('=== 手書きQR復元完了 ===');
-                        updateSignaturePrintButtonState();
                     }, 50);
                     
                     return signatureQrCheckbox.checked === shouldCheck;
