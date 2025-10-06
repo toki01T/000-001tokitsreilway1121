@@ -1064,7 +1064,8 @@ footer p {
         <section id="textSection" style="display:none;">
             <div class="text-input-container">
                 <button id="clearTextButton" class="clear-button" style="display:none;">クリア</button>
-                <textarea id="textInput" rows="4" placeholder="テキストを入力してください"></textarea>
+                <textarea id="textInput" rows="4" placeholder="テキストを入力してください（全角15文字以内）"></textarea>
+                <div id="textCharCount" style="font-size: 12px; color: #666; text-align: right; margin-top: 2px;">0/15文字</div>
             </div>
             <div class="choice-chips" id="textDateTimeChoice" style="display:flex;">
                 <div class="chip" id="textChipWith" onclick="selectTextChip('with')">日付・時刻あり</div>
@@ -1547,6 +1548,9 @@ window.onload = function() {
     document.getElementById('textInput').addEventListener('input', function() {
         checkTextInputLimit(this);
     });
+    
+    // 初期化時に文字数カウンターを設定
+    updateTextCharCount(0);
     // autoWrap機能を無効化（テキスト入力の誤動作防止）
     // document.getElementById('textInput').addEventListener('input', function() {
     //     autoWrap(this);
@@ -2584,23 +2588,17 @@ function wrapText(text) {
         let remainingText = paragraph;
         while (remainingText.length > 0) {
             let currentLine = '';
-            let charCount = 0; // 文字数カウント（全角=1、半角=1）
-            let widthCount = 0; // 幅カウント（全角=2、半角=1）
+            let widthCount = 0; // 全角=2、半角=1でカウント
             
             for (let i = 0; i < remainingText.length; i++) {
                 const char = remainingText[i];
                 const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
-                const charWidth = isFullWidth ? 2 : 1; // 幅計算用
+                const charWidth = isFullWidth ? 2 : 1; // 幅計算
                 
-                // 文字数制限チェック：全角15文字、半角23文字
-                if (isFullWidth && charCount >= 15) break;
-                if (!isFullWidth && charCount >= 23) break;
-                
-                // 混在時の幅制限チェック
-                if (widthCount + charWidth > 30) break; // 最大幅30（全角15文字相当）
+                // 統一制限：全角15文字相当（幅30）まで
+                if (widthCount + charWidth > 30) break;
                 
                 currentLine += char;
-                charCount++;
                 widthCount += charWidth;
             }
             
@@ -2875,38 +2873,31 @@ function handleClearButtonClick() {
 function checkTextInputLimit(textarea) {
     const text = textarea.value;
     const lines = text.split('\n');
-    let totalCharCount = 0;
     let exceedsLimit = false;
+    let maxWidthInLine = 0;
     
     for (let line of lines) {
-        let lineCharCount = 0;
-        let lineWidthCount = 0;
+        let widthCount = 0; // 全角=2、半角=1でカウント
         
         for (let char of line) {
             const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
-            const charWidth = isFullWidth ? 2 : 1;
+            const charWidth = isFullWidth ? 2 : 1; // 幅計算
             
-            lineCharCount++;
-            lineWidthCount += charWidth;
+            widthCount += charWidth;
             
-            // 行の文字数制限チェック
-            if (isFullWidth && lineCharCount > 15) {
-                exceedsLimit = true;
-                break;
-            }
-            if (!isFullWidth && lineCharCount > 23) {
-                exceedsLimit = true;
-                break;
-            }
-            if (lineWidthCount > 30) {
+            // 統一制限：全角15文字相当（幅30）まで
+            if (widthCount > 30) {
                 exceedsLimit = true;
                 break;
             }
         }
         
-        totalCharCount += lineCharCount;
+        maxWidthInLine = Math.max(maxWidthInLine, widthCount);
         if (exceedsLimit) break;
     }
+    
+    // 文字数カウンター更新
+    updateTextCharCount(maxWidthInLine);
     
     // 制限を超えた場合の処理
     if (exceedsLimit) {
@@ -2914,6 +2905,26 @@ function checkTextInputLimit(textarea) {
         textarea.value = text.substring(0, text.length - 1);
         // カーソル位置を調整
         textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        // 再度カウンター更新
+        checkTextInputLimit(textarea);
+    }
+}
+
+// 文字数カウンター更新
+function updateTextCharCount(widthCount) {
+    const charCountElement = document.getElementById('textCharCount');
+    if (charCountElement) {
+        const displayCount = Math.floor(widthCount / 2); // 全角文字相当で表示
+        charCountElement.textContent = `${displayCount}/15文字`;
+        
+        // 制限に近づいたら色を変更
+        if (displayCount >= 14) {
+            charCountElement.style.color = '#ff6b6b'; // 赤色
+        } else if (displayCount >= 12) {
+            charCountElement.style.color = '#ffa726'; // オレンジ色
+        } else {
+            charCountElement.style.color = '#666'; // 通常のグレー
+        }
     }
 }
 
