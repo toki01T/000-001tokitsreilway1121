@@ -1547,16 +1547,6 @@ window.onload = function() {
     document.getElementById('textInput').addEventListener('input', function() {
         checkTextInputLimit(this);
     });
-    // キー入力後にも自動改行チェック
-    document.getElementById('textInput').addEventListener('keyup', function() {
-        checkTextInputLimit(this);
-    });
-    // ペースト時にも自動改行チェック
-    document.getElementById('textInput').addEventListener('paste', function() {
-        setTimeout(() => {
-            checkTextInputLimit(this);
-        }, 10);
-    });
     // autoWrap機能を無効化（テキスト入力の誤動作防止）
     // document.getElementById('textInput').addEventListener('input', function() {
     //     autoWrap(this);
@@ -2602,20 +2592,19 @@ function wrapText(text) {
                 const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
                 const charWidth = isFullWidth ? 2 : 1;
                 
-                // 改行判定（テキストボックスと同じロジック）
+                // 改行判定（統一ルール）
                 let shouldBreak = false;
+                
                 if (isFullWidth) {
-                    // 全角文字：15文字で改行
+                    // 全角文字の場合：15文字で改行
                     if (charCount >= 15) shouldBreak = true;
                 } else {
-                    // 半角文字：23文字または幅30で改行
+                    // 半角文字の場合：23文字で改行、または全角15文字相当の幅で改行
                     if (charCount >= 23 || widthCount + charWidth > 30) shouldBreak = true;
                 }
                 
-                // 混在時：15文字または幅30で改行
-                if (charCount >= 15 || widthCount + charWidth > 30) {
-                    shouldBreak = true;
-                }
+                // 混在の場合：15文字または全角15文字相当の幅で改行
+                if (charCount >= 15 || widthCount + charWidth > 30) shouldBreak = true;
                 
                 if (shouldBreak) break;
                 
@@ -2653,7 +2642,7 @@ function printText() {
     const dateTimeHeight = 16;
     const spaceBetweenTextAndDate = 4;
     const bottomMargin = isDateTimeEnabled ? 15 : 19;
-    const leftMargin = 7; // 2から7に変更（1.3mm約5px分調整）
+    const leftMargin = 7.3; // 2 + 5.3(1.4mm相当)に調整
     let totalHeight = topMargin + (wrappedLines.length * lineHeight);
     if (isDateTimeEnabled) {
         totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
@@ -2707,8 +2696,8 @@ function printText() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         
-        // 真ん中の位置を正確に計算（左側に1.3mm約5px調整）
-        const exactCenterX = Math.round(canvasWidth / 2)-55;// -55 テキストの左右調整（-50から-55に変更）
+        // 真ん中の位置を正確に計算
+        const exactCenterX = Math.round(canvasWidth / 2)-44.7;// -44.7 テキストの左右調整（1.4mm左にシフト）
         
         // テキストを描画（上部余白を小さく）
         let yPos = 30; // 上余白を30pxに調整
@@ -2785,8 +2774,8 @@ function printText() {
                 // QRコード印刷ありの場合：QRコードの右側に配置
                 dateTimeX = Math.round(canvasWidth / 2) + 20; // 中央より右に20px移動
             } else {
-                // QRコード印刷なしの場合：中央に配置
-                dateTimeX = Math.round(canvasWidth / 2) - 40; // 画面中央
+                // QRコード印刷なしの場合：中央に配置（1.4mm左にシフト）
+                dateTimeX = Math.round(canvasWidth / 2) - 45.3; // 画面中央から1.4mm左
             }
             
             // 日付行
@@ -2891,51 +2880,45 @@ function handleClearButtonClick() {
     }
 }
 
-// テキスト入力の自動改行機能
+// テキスト入力の文字数制限チェック（自動改行対応）
 function checkTextInputLimit(textarea) {
-    const text = textarea.value;
     const cursorPosition = textarea.selectionStart;
+    const text = textarea.value;
     const lines = text.split('\n');
     let newText = '';
-    let newCursorPosition = cursorPosition;
+    let needsUpdate = false;
     
-    for (let i = 0; i < lines.length; i++) {
-        let line = lines[i];
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+        const line = lines[lineIndex];
         let processedLine = '';
         let charCount = 0;
         let widthCount = 0;
         
-        for (let j = 0; j < line.length; j++) {
-            const char = line[j];
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
             const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
             const charWidth = isFullWidth ? 2 : 1;
             
-            // 文字数・幅チェック
+            // 改行判定
             let shouldBreak = false;
+            
             if (isFullWidth) {
                 // 全角文字の場合：15文字で改行
                 if (charCount >= 15) shouldBreak = true;
             } else {
-                // 半角文字の場合
-                if (widthCount + charWidth > 30) shouldBreak = true; // 全角15文字相当の幅
-                if (charCount >= 23) shouldBreak = true; // 半角23文字
+                // 半角文字の場合：23文字で改行、または全角15文字相当の幅で改行
+                if (charCount >= 23 || widthCount + charWidth > 30) shouldBreak = true;
             }
             
-            // 混在時：15文字または幅30で改行
-            if (charCount >= 15 || widthCount + charWidth > 30) {
-                shouldBreak = true;
-            }
+            // 混在の場合：15文字または全角15文字相当の幅で改行
+            if (charCount >= 15 || widthCount + charWidth > 30) shouldBreak = true;
             
             if (shouldBreak) {
                 // 改行を挿入
                 processedLine += '\n' + char;
                 charCount = 1;
                 widthCount = charWidth;
-                
-                // カーソル位置調整
-                if (newText.length + processedLine.length - 1 <= cursorPosition) {
-                    newCursorPosition++;
-                }
+                needsUpdate = true;
             } else {
                 processedLine += char;
                 charCount++;
@@ -2943,13 +2926,14 @@ function checkTextInputLimit(textarea) {
             }
         }
         
-        if (i > 0) newText += '\n';
+        if (lineIndex > 0) newText += '\n';
         newText += processedLine;
     }
     
-    // テキストが変更された場合のみ更新
-    if (newText !== text) {
+    if (needsUpdate) {
         textarea.value = newText;
+        // カーソル位置を適切に調整
+        const newCursorPosition = Math.min(cursorPosition, newText.length);
         textarea.setSelectionRange(newCursorPosition, newCursorPosition);
     }
 }
