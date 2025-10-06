@@ -1543,6 +1543,10 @@ window.onload = function() {
     document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
     document.getElementById('textInput').addEventListener('input', toggleClearButton);
     document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
+    // テキスト入力時の文字数制限チェック
+    document.getElementById('textInput').addEventListener('input', function() {
+        checkTextInputLimit(this);
+    });
     // autoWrap機能を無効化（テキスト入力の誤動作防止）
     // document.getElementById('textInput').addEventListener('input', function() {
     //     autoWrap(this);
@@ -2570,46 +2574,36 @@ function wrapText(text) {
     text = toZenkaku(text);
     const lines = [];
     const paragraphs = text.split('\n');
+    
     for (let paragraph of paragraphs) {
         if (paragraph.length === 0) {
             lines.push('');
             continue;
         }
+        
         let remainingText = paragraph;
         while (remainingText.length > 0) {
-            let lineLength = 0;
             let currentLine = '';
-            let hasFullWidth = false;
-            let hasHalfWidth = false;
+            let charCount = 0; // 文字数カウント（全角=1、半角=1）
+            let widthCount = 0; // 幅カウント（全角=2、半角=1）
+            
             for (let i = 0; i < remainingText.length; i++) {
                 const char = remainingText[i];
                 const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
-                const charWidth = isFullWidth ? 2 : 1;
-                if (isFullWidth) hasFullWidth = true;
-                else hasHalfWidth = true;
-                let maxLen;
-                if (hasFullWidth && hasHalfWidth) {
-                    maxLen = 14;
-                } else if (hasFullWidth) {
-                    maxLen = 15;
-                } else {
-                    maxLen = 23;
-                }
-                if ((hasFullWidth && hasHalfWidth && currentLine.length >= maxLen) ||
-                    (!hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen) ||
-                    (hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen) ||
-                    (!hasFullWidth && hasHalfWidth && currentLine.length >= maxLen)) {
-                    break;
-                }
-                if ((hasFullWidth && hasHalfWidth && lineLength + charWidth > maxLen * 2) ||
-                    (!hasFullWidth && !hasHalfWidth && lineLength + charWidth > maxLen) ||
-                    (hasFullWidth && !hasHalfWidth && lineLength + charWidth > maxLen * 2) ||
-                    (!hasFullWidth && hasHalfWidth && lineLength + charWidth > maxLen)) {
-                    break;
-                }
+                const charWidth = isFullWidth ? 2 : 1; // 幅計算用
+                
+                // 文字数制限チェック：全角15文字、半角23文字
+                if (isFullWidth && charCount >= 15) break;
+                if (!isFullWidth && charCount >= 23) break;
+                
+                // 混在時の幅制限チェック
+                if (widthCount + charWidth > 30) break; // 最大幅30（全角15文字相当）
+                
                 currentLine += char;
-                lineLength += charWidth;
+                charCount++;
+                widthCount += charWidth;
             }
+            
             lines.push(currentLine);
             remainingText = remainingText.substring(currentLine.length);
         }
@@ -2876,6 +2870,53 @@ function handleClearButtonClick() {
         updateTextPrintButtonState();
     }
 }
+
+// テキスト入力の文字数制限チェック
+function checkTextInputLimit(textarea) {
+    const text = textarea.value;
+    const lines = text.split('\n');
+    let totalCharCount = 0;
+    let exceedsLimit = false;
+    
+    for (let line of lines) {
+        let lineCharCount = 0;
+        let lineWidthCount = 0;
+        
+        for (let char of line) {
+            const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
+            const charWidth = isFullWidth ? 2 : 1;
+            
+            lineCharCount++;
+            lineWidthCount += charWidth;
+            
+            // 行の文字数制限チェック
+            if (isFullWidth && lineCharCount > 15) {
+                exceedsLimit = true;
+                break;
+            }
+            if (!isFullWidth && lineCharCount > 23) {
+                exceedsLimit = true;
+                break;
+            }
+            if (lineWidthCount > 30) {
+                exceedsLimit = true;
+                break;
+            }
+        }
+        
+        totalCharCount += lineCharCount;
+        if (exceedsLimit) break;
+    }
+    
+    // 制限を超えた場合の処理
+    if (exceedsLimit) {
+        // 最後の文字を削除
+        textarea.value = text.substring(0, text.length - 1);
+        // カーソル位置を調整
+        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    }
+}
+
 function autoWrap(textarea) {
     const text = textarea.value;
     const wrappedLines = wrapText(text);
@@ -2942,8 +2983,8 @@ function generateQRCode(data) {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, size, size);
         
-        // QRコードを描画（濃度を下げて薄いグレーに）
-        ctx.fillStyle = '#666666'; // 黒(#000000)から濃度60%のグレーに変更
+        // QRコードを描画（濃度を70%に調整）
+        ctx.fillStyle = '#4D4D4D'; // 60%グレー(#666666)から70%グレー(#4D4D4D)に変更
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
