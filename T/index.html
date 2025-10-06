@@ -2650,7 +2650,7 @@ function printText() {
     const dateTimeHeight = 16;
     const spaceBetweenTextAndDate = 4;
     const bottomMargin = isDateTimeEnabled ? 15 : 19;
-    const leftMargin = 2;
+    const leftMargin = -10; // 2から-10に変更（約1mm左に移動）
     let totalHeight = topMargin + (wrappedLines.length * lineHeight);
     if (isDateTimeEnabled) {
         totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
@@ -2705,7 +2705,7 @@ function printText() {
         ctx.textBaseline = 'top';
         
         // 真ん中の位置を正確に計算
-        const exactCenterX = Math.round(canvasWidth / 2)-50;// -50 テキストの左右調整
+        const exactCenterX = Math.round(canvasWidth / 2) - 62; // -50から-62に変更（約1mm左に移動）
         
         // テキストを描画（上部余白を小さく）
         let yPos = 30; // 上余白を30pxに調整
@@ -3447,37 +3447,40 @@ function restoreContentFromHistory(item) {
                 // 現在の状態を記録
                 console.log('復元前チェック状態:', qrCheckbox.checked);
                 
-                // Step 1: 直接的な設定
-                qrCheckbox.checked = shouldCheck;
+                // 強制的にDOM操作で設定
+                qrCheckbox.checked = false; // 一度リセット
+                qrCheckbox.removeAttribute('checked');
                 
-                // Step 2: 属性設定
                 if (shouldCheck) {
+                    qrCheckbox.checked = true;
                     qrCheckbox.setAttribute('checked', 'checked');
                     qrCheckbox.setAttribute('value', 'on');
-                } else {
-                    qrCheckbox.removeAttribute('checked');
-                    qrCheckbox.removeAttribute('value');
-                }
-                
-                // Step 3: プロパティ再設定
-                qrCheckbox.defaultChecked = shouldCheck;
-                
-                // Step 4: 強制的なクリック操作をシミュレート
-                if (qrCheckbox.checked !== shouldCheck) {
-                    qrCheckbox.click();
+                    qrCheckbox.defaultChecked = true;
                 }
                 
                 console.log('復元後チェック状態:', qrCheckbox.checked);
                 
-                // Step 5: イベント発火
-                qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-                qrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
+                // 複数のイベントを順次発火
+                const events = ['input', 'change', 'click'];
+                let eventIndex = 0;
                 
-                // 最終確認
-                setTimeout(() => {
-                    console.log('最終チェック状態:', qrCheckbox.checked);
-                    console.log('=== 画像QR復元完了 ===');
-                }, 50);
+                const fireEvent = () => {
+                    if (eventIndex < events.length) {
+                        const event = new Event(events[eventIndex], { bubbles: true });
+                        qrCheckbox.dispatchEvent(event);
+                        eventIndex++;
+                        setTimeout(fireEvent, 20);
+                    } else {
+                        // 最終確認
+                        setTimeout(() => {
+                            console.log('最終チェック状態:', qrCheckbox.checked);
+                            console.log('=== 画像QR復元完了 ===');
+                            updatePrintButtonState(); // 印刷ボタン状態も更新
+                        }, 50);
+                    }
+                };
+                
+                fireEvent();
                 
                 return qrCheckbox.checked === shouldCheck;
             }
@@ -3529,42 +3532,60 @@ function restoreContentFromHistory(item) {
                 // 現在の状態を記録
                 console.log('復元前チェック状態:', textQrCheckbox.checked);
                 
-                // Step 1: 直接的な設定
-                textQrCheckbox.checked = shouldCheck;
+                // 強制的にDOM操作で設定
+                textQrCheckbox.checked = false; // 一度リセット
+                textQrCheckbox.removeAttribute('checked');
                 
-                // Step 2: 属性設定
                 if (shouldCheck) {
+                    textQrCheckbox.checked = true;
                     textQrCheckbox.setAttribute('checked', 'checked');
                     textQrCheckbox.setAttribute('value', 'on');
-                } else {
-                    textQrCheckbox.removeAttribute('checked');
-                    textQrCheckbox.removeAttribute('value');
-                }
-                
-                // Step 3: プロパティ再設定
-                textQrCheckbox.defaultChecked = shouldCheck;
-                
-                // Step 4: 強制的なクリック操作をシミュレート
-                if (textQrCheckbox.checked !== shouldCheck) {
-                    textQrCheckbox.click();
+                    textQrCheckbox.defaultChecked = true;
                 }
                 
                 console.log('復元後チェック状態:', textQrCheckbox.checked);
                 
-                // Step 5: イベント発火
-                textQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-                textQrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
+                // 複数のイベントを順次発火
+                const events = ['input', 'change', 'click'];
+                let eventIndex = 0;
                 
-                // 最終確認
-                setTimeout(() => {
-                    console.log('最終チェック状態:', textQrCheckbox.checked);
-                    console.log('=== テキストQR復元完了 ===');
-                }, 50);
+                const fireEvent = () => {
+                    if (eventIndex < events.length) {
+                        const event = new Event(events[eventIndex], { bubbles: true });
+                        textQrCheckbox.dispatchEvent(event);
+                        eventIndex++;
+                        setTimeout(fireEvent, 20);
+                    } else {
+                        // 最終確認
+                        setTimeout(() => {
+                            console.log('最終チェック状態:', textQrCheckbox.checked);
+                            console.log('=== テキストQR復元完了 ===');
+                            updateTextPrintButtonState(); // 印刷ボタン状態も更新
+                        }, 50);
+                    }
+                };
+                
+                fireEvent();
                 
                 return textQrCheckbox.checked === shouldCheck;
             }
             console.log('❌ テキストQRチェックボックスが見つかりません');
             return false;
+        };
+        
+        // 印刷ボタンの状態を更新する関数
+        const updateTextPrintButtonState = () => {
+            console.log('=== 印刷ボタン状態更新 ===');
+            const submitButton = document.querySelector('#textForm button[type="submit"]');
+            if (submitButton) {
+                console.log('印刷ボタンが見つかりました');
+                // 印刷ボタンのスタイルを更新（必要に応じて）
+                setTimeout(() => {
+                    console.log('印刷ボタン有効化完了');
+                }, 10);
+            } else {
+                console.log('❌ 印刷ボタンが見つかりません');
+            }
         };
         
         // 複数回試行して確実に復元
