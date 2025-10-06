@@ -1547,6 +1547,16 @@ window.onload = function() {
     document.getElementById('textInput').addEventListener('input', function() {
         checkTextInputLimit(this);
     });
+    // キー入力後にも自動改行チェック
+    document.getElementById('textInput').addEventListener('keyup', function() {
+        checkTextInputLimit(this);
+    });
+    // ペースト時にも自動改行チェック
+    document.getElementById('textInput').addEventListener('paste', function() {
+        setTimeout(() => {
+            checkTextInputLimit(this);
+        }, 10);
+    });
     // autoWrap機能を無効化（テキスト入力の誤動作防止）
     // document.getElementById('textInput').addEventListener('input', function() {
     //     autoWrap(this);
@@ -2586,31 +2596,25 @@ function wrapText(text) {
             let currentLine = '';
             let charCount = 0;
             let widthCount = 0;
-            let hasFullWidth = false;
-            let hasHalfWidth = false;
             
             for (let i = 0; i < remainingText.length; i++) {
                 const char = remainingText[i];
                 const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
                 const charWidth = isFullWidth ? 2 : 1;
                 
-                if (isFullWidth) hasFullWidth = true;
-                else hasHalfWidth = true;
-                
-                // 文字数制限チェック
+                // 改行判定（テキストボックスと同じロジック）
                 let shouldBreak = false;
-                
-                if (hasFullWidth && !hasHalfWidth) {
-                    // 全角のみの場合：15文字制限
+                if (isFullWidth) {
+                    // 全角文字：15文字で改行
                     if (charCount >= 15) shouldBreak = true;
-                } else if (!hasFullWidth && hasHalfWidth) {
-                    // 半角のみの場合：23文字制限
-                    if (charCount >= 23) shouldBreak = true;
                 } else {
-                    // 混在の場合：15文字制限
-                    if (charCount >= 15) shouldBreak = true;
-                    // または幅30制限
-                    if (widthCount + charWidth > 30) shouldBreak = true;
+                    // 半角文字：23文字または幅30で改行
+                    if (charCount >= 23 || widthCount + charWidth > 30) shouldBreak = true;
+                }
+                
+                // 混在時：15文字または幅30で改行
+                if (charCount >= 15 || widthCount + charWidth > 30) {
+                    shouldBreak = true;
                 }
                 
                 if (shouldBreak) break;
@@ -2649,7 +2653,7 @@ function printText() {
     const dateTimeHeight = 16;
     const spaceBetweenTextAndDate = 4;
     const bottomMargin = isDateTimeEnabled ? 15 : 19;
-    const leftMargin = 6; // 2から6に変更（約1mm右に調整）
+    const leftMargin = 7; // 2から7に変更（1.3mm約5px分調整）
     let totalHeight = topMargin + (wrappedLines.length * lineHeight);
     if (isDateTimeEnabled) {
         totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
@@ -2703,8 +2707,8 @@ function printText() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         
-        // 真ん中の位置を正確に計算
-        const exactCenterX = Math.round(canvasWidth / 2) - 46; // -50から-46に変更（約1mm左に調整）
+        // 真ん中の位置を正確に計算（左側に1.3mm約5px調整）
+        const exactCenterX = Math.round(canvasWidth / 2)-55;// -55 テキストの左右調整（-50から-55に変更）
         
         // テキストを描画（上部余白を小さく）
         let yPos = 30; // 上余白を30pxに調整
@@ -2779,10 +2783,10 @@ function printText() {
             const currentQrEnabled = document.getElementById('textQrPrintCheckbox').checked;
             if (currentQrEnabled) {
                 // QRコード印刷ありの場合：QRコードの右側に配置
-                dateTimeX = Math.round(canvasWidth / 2) + 24; // 20から24に変更（約1mm左に調整）
+                dateTimeX = Math.round(canvasWidth / 2) + 20; // 中央より右に20px移動
             } else {
                 // QRコード印刷なしの場合：中央に配置
-                dateTimeX = Math.round(canvasWidth / 2) - 36; // -40から-36に変更（約1mm左に調整）
+                dateTimeX = Math.round(canvasWidth / 2) - 40; // 画面中央
             }
             
             // 日付行
@@ -2887,15 +2891,16 @@ function handleClearButtonClick() {
     }
 }
 
-// テキスト入力の文字数制限チェックと自動改行
+// テキスト入力の自動改行機能
 function checkTextInputLimit(textarea) {
     const text = textarea.value;
+    const cursorPosition = textarea.selectionStart;
     const lines = text.split('\n');
     let newText = '';
-    let needUpdate = false;
+    let newCursorPosition = cursorPosition;
     
     for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
+        let line = lines[i];
         let processedLine = '';
         let charCount = 0;
         let widthCount = 0;
@@ -2905,40 +2910,32 @@ function checkTextInputLimit(textarea) {
             const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
             const charWidth = isFullWidth ? 2 : 1;
             
-            // 文字数制限チェック
+            // 文字数・幅チェック
             let shouldBreak = false;
-            
             if (isFullWidth) {
-                // 全角文字の場合：15文字制限
-                if (charCount >= 15) {
-                    shouldBreak = true;
-                }
+                // 全角文字の場合：15文字で改行
+                if (charCount >= 15) shouldBreak = true;
             } else {
                 // 半角文字の場合
-                if (widthCount === 0) {
-                    // 行の最初が半角の場合：23文字制限
-                    if (charCount >= 23) {
-                        shouldBreak = true;
-                    }
-                } else {
-                    // 混在の場合：全角15文字相当の幅制限
-                    if (widthCount + charWidth > 30) {
-                        shouldBreak = true;
-                    }
-                }
+                if (widthCount + charWidth > 30) shouldBreak = true; // 全角15文字相当の幅
+                if (charCount >= 23) shouldBreak = true; // 半角23文字
             }
             
-            // 混在時の15文字制限
-            if (charCount >= 15) {
+            // 混在時：15文字または幅30で改行
+            if (charCount >= 15 || widthCount + charWidth > 30) {
                 shouldBreak = true;
             }
             
             if (shouldBreak) {
-                // 自動改行を挿入
+                // 改行を挿入
                 processedLine += '\n' + char;
                 charCount = 1;
                 widthCount = charWidth;
-                needUpdate = true;
+                
+                // カーソル位置調整
+                if (newText.length + processedLine.length - 1 <= cursorPosition) {
+                    newCursorPosition++;
+                }
             } else {
                 processedLine += char;
                 charCount++;
@@ -2946,16 +2943,14 @@ function checkTextInputLimit(textarea) {
             }
         }
         
-        newText += (i > 0 ? '\n' : '') + processedLine;
+        if (i > 0) newText += '\n';
+        newText += processedLine;
     }
     
     // テキストが変更された場合のみ更新
-    if (needUpdate && newText !== text) {
-        const cursorPos = textarea.selectionStart;
+    if (newText !== text) {
         textarea.value = newText;
-        // カーソル位置を調整（改行が挿入された場合を考慮）
-        const newCursorPos = Math.min(cursorPos + (newText.length - text.length), newText.length);
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        textarea.setSelectionRange(newCursorPosition, newCursorPosition);
     }
 }
 
