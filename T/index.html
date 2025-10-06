@@ -2650,7 +2650,7 @@ function printText() {
     const dateTimeHeight = 16;
     const spaceBetweenTextAndDate = 4;
     const bottomMargin = isDateTimeEnabled ? 15 : 19;
-    const leftMargin = -1; // 2から-1に変更（約1mm左に移動）
+    const leftMargin = 20; // 2px + 18px(1.5mm分)増加
     let totalHeight = topMargin + (wrappedLines.length * lineHeight);
     if (isDateTimeEnabled) {
         totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
@@ -2701,16 +2701,16 @@ function printText() {
         // テキスト描画設定
         ctx.fillStyle = '#000000';
         ctx.font = `${textFontSize}px Arial, sans-serif`;
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left'; // 左揃えに変更
         ctx.textBaseline = 'top';
         
-        // 真ん中の位置を正確に計算
-        const exactCenterX = Math.round(canvasWidth / 2) - 53; // -50から-53に変更（約1mm左に移動）
+        // 左余白を正確に適用
+        const textStartX = leftMargin;
         
         // テキストを描画（上部余白を小さく）
         let yPos = 30; // 上余白を30pxに調整
         for (let i = 0; i < lines.length; i++) {
-            ctx.fillText(lines[i], exactCenterX, yPos); // 真ん中に配置
+            ctx.fillText(lines[i], textStartX, yPos); // 左余白から開始
             yPos += lineHeight;
         }
         
@@ -2783,7 +2783,7 @@ function printText() {
                 dateTimeX = Math.round(canvasWidth / 2) + 20; // 中央より右に20px移動
             } else {
                 // QRコード印刷なしの場合：中央に配置
-                dateTimeX = Math.round(canvasWidth / 2) - 43; // -40から-43に変更（約1mm左に移動）
+                dateTimeX = Math.round(canvasWidth / 2) - 40; // 画面中央
             }
             
             // 日付行
