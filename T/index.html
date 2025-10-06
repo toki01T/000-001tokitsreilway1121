@@ -1508,7 +1508,7 @@ function loadHistoryList() {
                 } else {
                     showSection('text');
                     document.getElementById('textInput').value = item.data;
-                    autoWrap(document.getElementById('textInput')); // 自動改行を適用
+                    autoWrap(document.getElementById('textInput'));
                     const chips = document.querySelectorAll('#textDateTimeChoice .chip');
                     chips.forEach(chip => chip.classList.remove('selected'));
                     if (item.dateTime === 'with') chips[0].classList.add('selected');
@@ -2584,41 +2584,27 @@ function wrapText(text) {
         let remainingText = paragraph;
         while (remainingText.length > 0) {
             let currentLine = '';
-            let charCount = 0;
-            let fullWidthCharCount = 0;
-            let halfWidthCharCount = 0;
+            let currentLineLength = 0; // 文字数カウント
+            let currentLineWidth = 0;  // 幅カウント（全角=2、半角=1）
             
             for (let i = 0; i < remainingText.length; i++) {
                 const char = remainingText[i];
                 const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
+                const charWidth = isFullWidth ? 2 : 1;
                 
-                if (isFullWidth) {
-                    fullWidthCharCount++;
-                    charCount++;
-                } else {
-                    halfWidthCharCount++;
-                    charCount++;
+                // 改行判定：15文字または全角15文字分の幅で改行
+                if (currentLineLength >= 15 || currentLineWidth + charWidth > 30) {
+                    break;
                 }
                 
-                // 改行判定ロジック（入力時と同じルール）
-                let shouldBreak = false;
-                
-                if (fullWidthCharCount > 0 && halfWidthCharCount > 0) {
-                    // 全角・半角混在：15文字で改行
-                    if (charCount >= 15) shouldBreak = true;
-                } else if (fullWidthCharCount > 0) {
-                    // 全角のみ：15文字で改行
-                    if (fullWidthCharCount >= 15) shouldBreak = true;
-                } else {
-                    // 半角のみ：23文字で改行
-                    if (halfWidthCharCount >= 23) shouldBreak = true;
+                // 半角文字の場合の追加制限：23文字まで
+                if (!isFullWidth && currentLineLength >= 23) {
+                    break;
                 }
                 
                 currentLine += char;
-                
-                if (shouldBreak) {
-                    break;
-                }
+                currentLineLength++;
+                currentLineWidth += charWidth;
             }
             
             lines.push(currentLine);
@@ -2650,7 +2636,7 @@ function printText() {
     const dateTimeHeight = 16;
     const spaceBetweenTextAndDate = 4;
     const bottomMargin = isDateTimeEnabled ? 15 : 19;
-    const leftMargin = 20; // 2px + 18px(1.5mm分)増加
+    const leftMargin = 7; // 2→7に変更（1.5mm≈5px追加）
     let totalHeight = topMargin + (wrappedLines.length * lineHeight);
     if (isDateTimeEnabled) {
         totalHeight += spaceBetweenTextAndDate + dateTimeHeight;
@@ -2701,16 +2687,16 @@ function printText() {
         // テキスト描画設定
         ctx.fillStyle = '#000000';
         ctx.font = `${textFontSize}px Arial, sans-serif`;
-        ctx.textAlign = 'left'; // 左揃えに変更
+        ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
         
-        // 左余白を正確に適用
-        const textStartX = leftMargin;
+        // 真ん中の位置を正確に計算（左側マージン調整）
+        const exactCenterX = Math.round(canvasWidth / 2) - 50 + leftMargin; // leftMargin追加で左側に1.5mm調整
         
         // テキストを描画（上部余白を小さく）
         let yPos = 30; // 上余白を30pxに調整
         for (let i = 0; i < lines.length; i++) {
-            ctx.fillText(lines[i], textStartX, yPos); // 左余白から開始
+            ctx.fillText(lines[i], exactCenterX, yPos); // 真ん中に配置
             yPos += lineHeight;
         }
         
@@ -2890,63 +2876,59 @@ function handleClearButtonClick() {
 
 // テキスト入力の自動改行機能
 function checkTextInputLimit(textarea) {
-    const cursorPosition = textarea.selectionStart;
     const text = textarea.value;
-    const lines = text.split('\n');
+    const cursorPos = textarea.selectionStart;
     let newText = '';
-    let newCursorPosition = cursorPosition;
+    let adjustedCursorPos = cursorPos;
     
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        let processedLine = '';
+    // 行ごとに処理
+    const lines = text.split('\n');
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+        let line = lines[lineIndex];
+        let currentLineText = '';
         let charCount = 0;
-        let fullWidthCharCount = 0;
-        let halfWidthCharCount = 0;
+        let width = 0;
         
-        for (let j = 0; j < line.length; j++) {
-            const char = line[j];
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
             const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
+            const charWidth = isFullWidth ? 2 : 1;
             
-            if (isFullWidth) {
-                fullWidthCharCount++;
-                charCount++;
-            } else {
-                halfWidthCharCount++;
-                charCount++;
-            }
-            
-            // 改行判定ロジック
+            // 改行判定
             let shouldBreak = false;
             
-            if (fullWidthCharCount > 0 && halfWidthCharCount > 0) {
-                // 全角・半角混在：15文字で改行
-                if (charCount >= 15) shouldBreak = true;
-            } else if (fullWidthCharCount > 0) {
-                // 全角のみ：15文字で改行
-                if (fullWidthCharCount >= 15) shouldBreak = true;
-            } else {
-                // 半角のみ：23文字で改行
-                if (halfWidthCharCount >= 23) shouldBreak = true;
+            // 1. 15文字に達した場合
+            if (charCount >= 15) {
+                shouldBreak = true;
+            }
+            // 2. 半角23文字に達した場合
+            else if (!isFullWidth && charCount >= 23) {
+                shouldBreak = true;
+            }
+            // 3. 全角15文字分の幅に達した場合
+            else if (width + charWidth > 30) {
+                shouldBreak = true;
             }
             
-            if (shouldBreak && j < line.length - 1) {
-                // 自動改行を挿入
-                processedLine += char + '\n';
+            if (shouldBreak) {
+                // 改行を挿入
+                newText += currentLineText + '\n';
                 // カーソル位置の調整
-                if (newText.length + processedLine.length <= cursorPosition) {
-                    newCursorPosition++;
+                if (i + getSumOfPreviousLines(lines, lineIndex) < cursorPos) {
+                    adjustedCursorPos++;
                 }
-                // 次の行のカウンターをリセット
+                currentLineText = '';
                 charCount = 0;
-                fullWidthCharCount = 0;
-                halfWidthCharCount = 0;
-            } else {
-                processedLine += char;
+                width = 0;
             }
+            
+            currentLineText += char;
+            charCount++;
+            width += charWidth;
         }
         
-        newText += processedLine;
-        if (i < lines.length - 1) {
+        newText += currentLineText;
+        if (lineIndex < lines.length - 1) {
             newText += '\n';
         }
     }
@@ -2954,13 +2936,23 @@ function checkTextInputLimit(textarea) {
     // テキストが変更された場合のみ更新
     if (newText !== text) {
         textarea.value = newText;
-        textarea.setSelectionRange(newCursorPosition, newCursorPosition);
+        textarea.setSelectionRange(adjustedCursorPos, adjustedCursorPos);
     }
 }
 
+// 前の行までの文字数合計を取得
+function getSumOfPreviousLines(lines, currentIndex) {
+    let sum = 0;
+    for (let i = 0; i < currentIndex; i++) {
+        sum += lines[i].length + 1; // +1は改行文字分
+    }
+    return sum;
+}
+
 function autoWrap(textarea) {
-    // 新しい自動改行機能を使用
-    checkTextInputLimit(textarea);
+    const text = textarea.value;
+    const wrappedLines = wrapText(text);
+    textarea.value = wrappedLines.join('\n');
 }
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
@@ -3502,7 +3494,7 @@ function restoreContentFromHistory(item) {
         showSection('text');
         
         document.getElementById('textInput').value = item.data;
-        autoWrap(document.getElementById('textInput')); // 自動改行を適用
+        // autoWrap(document.getElementById('textInput')); // 無効化
         
         // 設定を復元
         const chips = document.querySelectorAll('#textDateTimeChoice .chip');
@@ -3681,7 +3673,7 @@ function restoreContentFromQROnly(qrData) {
         showSection('text');
         
         document.getElementById('textInput').value = qrData.content;
-        autoWrap(document.getElementById('textInput')); // 自動改行を適用
+        autoWrap(document.getElementById('textInput'));
         
         // 設定を復元
         const chips = document.querySelectorAll('#textDateTimeChoice .chip');
