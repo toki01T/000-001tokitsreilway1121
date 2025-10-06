@@ -1064,8 +1064,7 @@ footer p {
         <section id="textSection" style="display:none;">
             <div class="text-input-container">
                 <button id="clearTextButton" class="clear-button" style="display:none;">クリア</button>
-                <textarea id="textInput" rows="4" placeholder="テキストを入力してください（全角15文字以内）"></textarea>
-                <div id="textCharCount" style="font-size: 12px; color: #666; text-align: right; margin-top: 2px;">0/15文字</div>
+                <textarea id="textInput" rows="4" placeholder="テキストを入力してください"></textarea>
             </div>
             <div class="choice-chips" id="textDateTimeChoice" style="display:flex;">
                 <div class="chip" id="textChipWith" onclick="selectTextChip('with')">日付・時刻あり</div>
@@ -1509,7 +1508,7 @@ function loadHistoryList() {
                 } else {
                     showSection('text');
                     document.getElementById('textInput').value = item.data;
-                    autoWrap(document.getElementById('textInput'));
+                    autoWrap(document.getElementById('textInput')); // 自動改行を適用
                     const chips = document.querySelectorAll('#textDateTimeChoice .chip');
                     chips.forEach(chip => chip.classList.remove('selected'));
                     if (item.dateTime === 'with') chips[0].classList.add('selected');
@@ -1548,9 +1547,6 @@ window.onload = function() {
     document.getElementById('textInput').addEventListener('input', function() {
         checkTextInputLimit(this);
     });
-    
-    // 初期化時に文字数カウンターを設定
-    updateTextCharCount(0);
     // autoWrap機能を無効化（テキスト入力の誤動作防止）
     // document.getElementById('textInput').addEventListener('input', function() {
     //     autoWrap(this);
@@ -2588,18 +2584,41 @@ function wrapText(text) {
         let remainingText = paragraph;
         while (remainingText.length > 0) {
             let currentLine = '';
-            let widthCount = 0; // 全角=2、半角=1でカウント
+            let charCount = 0;
+            let fullWidthCharCount = 0;
+            let halfWidthCharCount = 0;
             
             for (let i = 0; i < remainingText.length; i++) {
                 const char = remainingText[i];
                 const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
-                const charWidth = isFullWidth ? 2 : 1; // 幅計算
                 
-                // 統一制限：全角15文字相当（幅30）まで
-                if (widthCount + charWidth > 30) break;
+                if (isFullWidth) {
+                    fullWidthCharCount++;
+                    charCount++;
+                } else {
+                    halfWidthCharCount++;
+                    charCount++;
+                }
+                
+                // 改行判定ロジック（入力時と同じルール）
+                let shouldBreak = false;
+                
+                if (fullWidthCharCount > 0 && halfWidthCharCount > 0) {
+                    // 全角・半角混在：15文字で改行
+                    if (charCount >= 15) shouldBreak = true;
+                } else if (fullWidthCharCount > 0) {
+                    // 全角のみ：15文字で改行
+                    if (fullWidthCharCount >= 15) shouldBreak = true;
+                } else {
+                    // 半角のみ：23文字で改行
+                    if (halfWidthCharCount >= 23) shouldBreak = true;
+                }
                 
                 currentLine += char;
-                widthCount += charWidth;
+                
+                if (shouldBreak) {
+                    break;
+                }
             }
             
             lines.push(currentLine);
@@ -2869,69 +2888,79 @@ function handleClearButtonClick() {
     }
 }
 
-// テキスト入力の文字数制限チェック
+// テキスト入力の自動改行機能
 function checkTextInputLimit(textarea) {
+    const cursorPosition = textarea.selectionStart;
     const text = textarea.value;
     const lines = text.split('\n');
-    let exceedsLimit = false;
-    let maxWidthInLine = 0;
+    let newText = '';
+    let newCursorPosition = cursorPosition;
     
-    for (let line of lines) {
-        let widthCount = 0; // 全角=2、半角=1でカウント
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        let processedLine = '';
+        let charCount = 0;
+        let fullWidthCharCount = 0;
+        let halfWidthCharCount = 0;
         
-        for (let char of line) {
+        for (let j = 0; j < line.length; j++) {
+            const char = line[j];
             const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
-            const charWidth = isFullWidth ? 2 : 1; // 幅計算
             
-            widthCount += charWidth;
+            if (isFullWidth) {
+                fullWidthCharCount++;
+                charCount++;
+            } else {
+                halfWidthCharCount++;
+                charCount++;
+            }
             
-            // 統一制限：全角15文字相当（幅30）まで
-            if (widthCount > 30) {
-                exceedsLimit = true;
-                break;
+            // 改行判定ロジック
+            let shouldBreak = false;
+            
+            if (fullWidthCharCount > 0 && halfWidthCharCount > 0) {
+                // 全角・半角混在：15文字で改行
+                if (charCount >= 15) shouldBreak = true;
+            } else if (fullWidthCharCount > 0) {
+                // 全角のみ：15文字で改行
+                if (fullWidthCharCount >= 15) shouldBreak = true;
+            } else {
+                // 半角のみ：23文字で改行
+                if (halfWidthCharCount >= 23) shouldBreak = true;
+            }
+            
+            if (shouldBreak && j < line.length - 1) {
+                // 自動改行を挿入
+                processedLine += char + '\n';
+                // カーソル位置の調整
+                if (newText.length + processedLine.length <= cursorPosition) {
+                    newCursorPosition++;
+                }
+                // 次の行のカウンターをリセット
+                charCount = 0;
+                fullWidthCharCount = 0;
+                halfWidthCharCount = 0;
+            } else {
+                processedLine += char;
             }
         }
         
-        maxWidthInLine = Math.max(maxWidthInLine, widthCount);
-        if (exceedsLimit) break;
-    }
-    
-    // 文字数カウンター更新
-    updateTextCharCount(maxWidthInLine);
-    
-    // 制限を超えた場合の処理
-    if (exceedsLimit) {
-        // 最後の文字を削除
-        textarea.value = text.substring(0, text.length - 1);
-        // カーソル位置を調整
-        textarea.setSelectionRange(textarea.value.length, textarea.value.length);
-        // 再度カウンター更新
-        checkTextInputLimit(textarea);
-    }
-}
-
-// 文字数カウンター更新
-function updateTextCharCount(widthCount) {
-    const charCountElement = document.getElementById('textCharCount');
-    if (charCountElement) {
-        const displayCount = Math.floor(widthCount / 2); // 全角文字相当で表示
-        charCountElement.textContent = `${displayCount}/15文字`;
-        
-        // 制限に近づいたら色を変更
-        if (displayCount >= 14) {
-            charCountElement.style.color = '#ff6b6b'; // 赤色
-        } else if (displayCount >= 12) {
-            charCountElement.style.color = '#ffa726'; // オレンジ色
-        } else {
-            charCountElement.style.color = '#666'; // 通常のグレー
+        newText += processedLine;
+        if (i < lines.length - 1) {
+            newText += '\n';
         }
+    }
+    
+    // テキストが変更された場合のみ更新
+    if (newText !== text) {
+        textarea.value = newText;
+        textarea.setSelectionRange(newCursorPosition, newCursorPosition);
     }
 }
 
 function autoWrap(textarea) {
-    const text = textarea.value;
-    const wrappedLines = wrapText(text);
-    textarea.value = wrappedLines.join('\n');
+    // 新しい自動改行機能を使用
+    checkTextInputLimit(textarea);
 }
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
@@ -3473,7 +3502,7 @@ function restoreContentFromHistory(item) {
         showSection('text');
         
         document.getElementById('textInput').value = item.data;
-        // autoWrap(document.getElementById('textInput')); // 無効化
+        autoWrap(document.getElementById('textInput')); // 自動改行を適用
         
         // 設定を復元
         const chips = document.querySelectorAll('#textDateTimeChoice .chip');
@@ -3652,7 +3681,7 @@ function restoreContentFromQROnly(qrData) {
         showSection('text');
         
         document.getElementById('textInput').value = qrData.content;
-        autoWrap(document.getElementById('textInput'));
+        autoWrap(document.getElementById('textInput')); // 自動改行を適用
         
         // 設定を復元
         const chips = document.querySelectorAll('#textDateTimeChoice .chip');
