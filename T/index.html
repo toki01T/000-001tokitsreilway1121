@@ -2310,34 +2310,23 @@ function sendToPrintAssist(event) {
                         const isTextLike = isTextRegion(x, y, width, height, originalData);
                         
                         if (isTextLike) {
-                            // 文字部分は文字欠け防止強化処理（濃度大幅強化）
+                            // 文字部分は文字欠け防止強化処理
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            // 文字欠け防止：より広い範囲を文字として認識
+                            // 文字欠け防止：より強く濃くする
                             let enhanced;
-                            if (gray < 180) { // 160 → 180 に変更してより多くを文字として認識
-                                // 文字部分は確実に黒く（濃度強化）
+                            if (gray < 180) { // 160 → 180 に変更してより広い範囲を文字として
+                                // 文字部分は確実に黒く
                                 enhanced = Math.max(0, gray - 120); // 100 → 120 に変更してより黒く
                             } else {
                                 // 背景部分は確実に白く
-                                enhanced = Math.min(255, gray + 80); // 60 → 80 に変更してより白く
+                                enhanced = Math.min(255, gray + 60);
                             }
                             data[i] = enhanced;
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：ノイズレスサーマルプリンター用濃淡表現（濃度強化）
+                            // 非文字部分：ノイズレスサーマルプリンター用濃淡表現
                             const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            
-                            // 【濃度強化】ガンマ補正で暗部を強調
-                            const gammaValue = 0.5; // より濃く
-                            const gammaCorrected = 255 * Math.pow(originalGray / 255, gammaValue);
-                            
-                            // 【濃度強化】コントラスト増強
-                            const contrastFactor = 2.5;
-                            const contrasted = ((gammaCorrected - 128) * contrastFactor) + 128;
-                            
-                            // 【濃度強化】明度調整（より暗く）
-                            const adjustedGray = Math.max(0, Math.min(255, contrasted - 30));
                             
                             // 4x4ディザリングマトリックス（ノイズ軽減）
                             const pixelX = x % 4;
@@ -2351,14 +2340,14 @@ function sendToPrintAssist(event) {
                                 [15,  7, 13,  5]
                             ];
                             
-                            // 閾値を12倍にして0-180の範囲に（より濃く印刷）
-                            const threshold = bayerMatrix[pixelY][pixelX] * 12; // 15 → 12で濃度UP
+                            // 閾値を12倍にして0-180の範囲に（より濃く）
+                            const threshold = bayerMatrix[pixelY][pixelX] * 12; // 15 → 12 に変更
                             
-                            // サーマルプリンター用二値化（ノイズ軽減・濃度強化）
+                            // サーマルプリンター用二値化（より濃く）
                             let finalValue;
                             
-                            // 濃淡を密度パターンで表現（濃度強化）
-                            if (adjustedGray > threshold) {
+                            // 濃淡を密度パターンで表現（より濃く）
+                            if (originalGray > threshold + 50) { // +50 を追加してより濃く
                                 finalValue = 255; // 白
                             } else {
                                 finalValue = 0;   // 黒
@@ -2397,13 +2386,13 @@ function sendToPrintAssist(event) {
                         const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
                         const contrast = Math.abs(centerGray - avgNeighbor);
                         
-                        // 文字判定条件（文字欠け防止：より敏感な検出・濃度強化）
-                        return (maxDiff > 18 && contrast > 12) || // 20→18, 15→12で検出範囲拡大
-                               (centerGray < 130 && contrast > 12) || // 120→130で濃い部分拡大
-                               (centerGray > 150 && contrast > 12) || // 160→150で明るい部分も検出
-                               (maxDiff > 12 && (centerGray < 150 || centerGray > 150)) || // 15→12で検出強化
-                               (contrast > 18) || // 20→18でコントラスト検出強化
-                               (centerGray < 140); // 新規追加：濃いピクセルは文字として扱う
+                        // 文字判定条件（文字欠け防止：最大強化）
+                        return (maxDiff > 15 && contrast > 10) || // 閾値を下げて感度UP
+                               (centerGray < 140 && contrast > 10) || // より多くを文字として
+                               (centerGray > 140 && contrast > 10) ||
+                               (maxDiff > 10 && (centerGray < 160 || centerGray > 100)) ||
+                               (contrast > 15) || // コントラスト閾値を下げる
+                               (maxDiff > 12); // エッジがあればすべて文字として扱う
                     }
                     
                     // 調整されたピクセルデータを再描画
@@ -2421,8 +2410,8 @@ function sendToPrintAssist(event) {
                             // 現在の輝度値
                             const oldGray = Math.round(0.299 * finalPixels[i] + 0.587 * finalPixels[i + 1] + 0.114 * finalPixels[i + 2]);
                             
-                            // 2値化（閾値を110に下げて濃度UP）
-                            const newGray = oldGray > 110 ? 255 : 0; // 128 → 110で濃度強化
+                            // 2値化（閾値を160に上げて濃く印刷）
+                            const newGray = oldGray > 170 ? 255 : 0;
                             
                             // 誤差計算
                             const error = oldGray - newGray;
@@ -2478,8 +2467,8 @@ function sendToPrintAssist(event) {
                             const blur = sum / count;
                             const current = sharpPixels[i];
                             
-                            // アンシャープマスク適用（細部強調・強度UP）
-                            const sharpened = current + 0.9 * (current - blur); // 0.6 → 0.9で強度UP
+                            // アンシャープマスク適用（細部強調強化）
+                            const sharpened = current + 1.2 * (current - blur); // 0.6 → 1.2 に強化
                             const final = Math.max(0, Math.min(255, Math.round(sharpened)));
                             
                             sharpPixels[i] = final;
@@ -2490,6 +2479,29 @@ function sendToPrintAssist(event) {
                     
                     // 最終処理済みデータを描画
                     compositeCtx.putImageData(sharpData, imgX, imgY);
+                    
+                    // 【最終コントラスト強化】全体の濃度を向上
+                    const finalContrastData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const contrastPixels = finalContrastData.data;
+                    
+                    for (let i = 0; i < contrastPixels.length; i += 4) {
+                        const gray = contrastPixels[i]; // グレースケール値
+                        
+                        // コントラスト強化（S字カーブ）
+                        let enhanced;
+                        if (gray < 100) {
+                            enhanced = Math.max(0, gray - 30); // 暗い部分をより暗く
+                        } else if (gray > 180) {
+                            enhanced = Math.min(255, gray + 30); // 明るい部分をより明るく
+                        } else {
+                            enhanced = gray; // 中間調は維持
+                        }
+                        
+                        contrastPixels[i] = contrastPixels[i + 1] = contrastPixels[i + 2] = enhanced;
+                    }
+                    
+                    // 最終コントラスト強化を適用
+                    compositeCtx.putImageData(finalContrastData, imgX, imgY);
                     
                     // 日付・時刻を描画
                     if (isDateTimeEnabled) {
