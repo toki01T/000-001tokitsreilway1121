@@ -2310,63 +2310,63 @@ function sendToPrintAssist(event) {
                         const isTextLike = isTextRegion(x, y, width, height, originalData);
                         
                         if (isTextLike) {
-                            // 【文字強化処理】より積極的な文字保護
+                            // 文字部分は文字欠け防止強化処理（濃度大幅強化）
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            
-                            // 周辺のコントラストを再計算して文字の向きを判定
-                            let localSum = 0;
-                            let localCount = 0;
-                            for (let dy = -2; dy <= 2; dy++) {
-                                for (let dx = -2; dx <= 2; dx++) {
-                                    if (dx === 0 && dy === 0) continue;
-                                    const nx = x + dx;
-                                    const ny = y + dy;
-                                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                                        const nIndex = (ny * width + nx) * 4;
-                                        const nGray = Math.round(0.299 * originalData[nIndex] + 
-                                                               0.587 * originalData[nIndex + 1] + 
-                                                               0.114 * originalData[nIndex + 2]);
-                                        localSum += nGray;
-                                        localCount++;
-                                    }
-                                }
-                            }
-                            const localAvg = localSum / localCount;
-                            
+                            // 文字欠け防止：より広い範囲を文字として認識
                             let enhanced;
-                            if (gray < localAvg - 10) {
-                                // 周辺より暗い = 黒文字の可能性
-                                enhanced = Math.max(0, gray - 120); // より強く黒化
-                            } else if (gray > localAvg + 10) {
-                                // 周辺より明るい = 白文字の可能性  
-                                enhanced = Math.min(255, gray + 80); // より強く白化
+                            if (gray < 180) { // 160 → 180 に変更してより多くを文字として認識
+                                // 文字部分は確実に黒く（濃度強化）
+                                enhanced = Math.max(0, gray - 120); // 100 → 120 に変更してより黒く
                             } else {
-                                // エッジ部分：コントラストを強化
-                                if (gray < 128) {
-                                    enhanced = Math.max(0, gray - 80);
-                                } else {
-                                    enhanced = Math.min(255, gray + 60);
-                                }
+                                // 背景部分は確実に白く
+                                enhanced = Math.min(255, gray + 80); // 60 → 80 に変更してより白く
                             }
-                            
                             data[i] = enhanced;
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 【写真部分】階調を保持してディザリング処理に回す
-                            // 前処理として軽いコントラスト調整のみ
+                            // 非文字部分：ノイズレスサーマルプリンター用濃淡表現（濃度強化）
                             const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                             
-                            // 軽いコントラスト強化（階調は保持）
-                            const enhanced = Math.max(0, Math.min(255, 
-                                originalGray < 128 ? 
-                                    originalGray * 0.9 : // 暗部を少し暗く
-                                    originalGray * 1.1   // 明部を少し明るく
-                            ));
+                            // 【濃度強化】ガンマ補正で暗部を強調
+                            const gammaValue = 0.5; // より濃く
+                            const gammaCorrected = 255 * Math.pow(originalGray / 255, gammaValue);
                             
-                            data[i] = enhanced;
-                            data[i + 1] = enhanced;
-                            data[i + 2] = enhanced;
+                            // 【濃度強化】コントラスト増強
+                            const contrastFactor = 2.5;
+                            const contrasted = ((gammaCorrected - 128) * contrastFactor) + 128;
+                            
+                            // 【濃度強化】明度調整（より暗く）
+                            const adjustedGray = Math.max(0, Math.min(255, contrasted - 30));
+                            
+                            // 4x4ディザリングマトリックス（ノイズ軽減）
+                            const pixelX = x % 4;
+                            const pixelY = y % 4;
+                            
+                            // 4x4 Bayerディザリングマトリックス（スムーズ版）
+                            const bayerMatrix = [
+                                [ 0,  8,  2, 10],
+                                [12,  4, 14,  6],
+                                [ 3, 11,  1,  9],
+                                [15,  7, 13,  5]
+                            ];
+                            
+                            // 閾値を12倍にして0-180の範囲に（より濃く印刷）
+                            const threshold = bayerMatrix[pixelY][pixelX] * 12; // 15 → 12で濃度UP
+                            
+                            // サーマルプリンター用二値化（ノイズ軽減・濃度強化）
+                            let finalValue;
+                            
+                            // 濃淡を密度パターンで表現（濃度強化）
+                            if (adjustedGray > threshold) {
+                                finalValue = 255; // 白
+                            } else {
+                                finalValue = 0;   // 黒
+                            }
+                            
+                            data[i] = finalValue;
+                            data[i + 1] = finalValue;
+                            data[i + 2] = finalValue;
                         }
                     }
                     
@@ -2397,104 +2397,62 @@ function sendToPrintAssist(event) {
                         const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
                         const contrast = Math.abs(centerGray - avgNeighbor);
                         
-                        // 文字判定条件（強化版：文字をより確実に検出）
-                        const isSharpEdge = maxDiff > 25;  // エッジ検出閾値を上げる
-                        const hasContrast = contrast > 20; // コントラスト閾値を上げる
-                        const isDarkText = centerGray < 100 && contrast > 15; // 黒文字検出
-                        const isLightText = centerGray > 180 && contrast > 15; // 白文字検出
-                        const isTextEdge = (centerGray < 130 || centerGray > 150) && maxDiff > 20; // 文字エッジ
-                        
-                        return isSharpEdge || hasContrast || isDarkText || isLightText || isTextEdge;
+                        // 文字判定条件（文字欠け防止：より敏感な検出・濃度強化）
+                        return (maxDiff > 18 && contrast > 12) || // 20→18, 15→12で検出範囲拡大
+                               (centerGray < 130 && contrast > 12) || // 120→130で濃い部分拡大
+                               (centerGray > 150 && contrast > 12) || // 160→150で明るい部分も検出
+                               (maxDiff > 12 && (centerGray < 150 || centerGray > 150)) || // 15→12で検出強化
+                               (contrast > 18) || // 20→18でコントラスト検出強化
+                               (centerGray < 140); // 新規追加：濃いピクセルは文字として扱う
                     }
                     
-                    // 【重要】ディザリング前に元の階調データを取得
-                    const sourceData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
-                    const sourcePixels = sourceData.data;
+                    // 調整されたピクセルデータを再描画
+                    compositeCtx.putImageData(imageData, imgX, imgY);
                     
-                    // 【写真専用ディザリング】Floyd-Steinbergで細部を保持
-                    const ditherData = compositeCtx.createImageData(finalImgWidth, finalImgHeight);
-                    const ditherPixels = ditherData.data;
+                    // 【写真ディザリング】細かな階調を保持するFloyd-Steinbergディザリング
+                    const finalData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const finalPixels = finalData.data;
                     
-                    // 元の階調データをコピー
-                    for (let i = 0; i < sourcePixels.length; i++) {
-                        ditherPixels[i] = sourcePixels[i];
-                    }
-                    
-                    // 適応的閾値を使用したFloyd-Steinbergディザリング
+                    // Floyd-Steinbergディザリング実装
                     for (let y = 0; y < finalImgHeight; y++) {
                         for (let x = 0; x < finalImgWidth; x++) {
                             const i = (y * finalImgWidth + x) * 4;
                             
-                            // 現在の輝度値（元の階調から）
-                            const oldGray = Math.round(0.299 * ditherPixels[i] + 0.587 * ditherPixels[i + 1] + 0.114 * ditherPixels[i + 2]);
+                            // 現在の輝度値
+                            const oldGray = Math.round(0.299 * finalPixels[i] + 0.587 * finalPixels[i + 1] + 0.114 * finalPixels[i + 2]);
                             
-                            // 適応的閾値（局所平均を使用）
-                            let localSum = 0;
-                            let localCount = 0;
-                            const radius = 3; // 2 → 3 に拡大でより滑らかに
-                            
-                            for (let dy = -radius; dy <= radius; dy++) {
-                                for (let dx = -radius; dx <= radius; dx++) {
-                                    const nx = x + dx;
-                                    const ny = y + dy;
-                                    if (nx >= 0 && nx < finalImgWidth && ny >= 0 && ny < finalImgHeight) {
-                                        const ni = (ny * finalImgWidth + nx) * 4;
-                                        const localGray = Math.round(0.299 * ditherPixels[ni] + 0.587 * ditherPixels[ni + 1] + 0.114 * ditherPixels[ni + 2]);
-                                        localSum += localGray;
-                                        localCount++;
-                                    }
-                                }
-                            }
-                            
-                            const localAverage = localSum / localCount;
-                            // より細かい階調を表現するため閾値範囲を調整
-                            const adaptiveThreshold = Math.max(60, Math.min(200, localAverage * 0.95)); // より敏感に
-                            
-                            // 【文字保護】ディザリング前に文字領域かチェック
-                            const isTextArea = isTextRegion(x, y, finalImgWidth, finalImgHeight, ditherPixels);
-                            
-                            let newGray;
-                            if (isTextArea) {
-                                // 文字領域：より厳格な2値化（ディザリングを控えめに）
-                                newGray = oldGray > 120 ? 255 : 0; // 固定閾値で確実に2値化
-                            } else {
-                                // 写真領域：適応的閾値でディザリング
-                                newGray = oldGray > adaptiveThreshold ? 255 : 0;
-                            }
+                            // 2値化（閾値を110に下げて濃度UP）
+                            const newGray = oldGray > 110 ? 255 : 0; // 128 → 110で濃度強化
                             
                             // 誤差計算
                             const error = oldGray - newGray;
                             
                             // 新しい値を設定
-                            ditherPixels[i] = ditherPixels[i + 1] = ditherPixels[i + 2] = newGray;
+                            finalPixels[i] = finalPixels[i + 1] = finalPixels[i + 2] = newGray;
                             
-                            // Floyd-Steinberg誤差拡散（文字領域では控えめに）
+                            // Floyd-Steinberg誤差拡散
                             const distributeError = (dx, dy, factor) => {
                                 const nx = x + dx;
                                 const ny = y + dy;
                                 if (nx >= 0 && nx < finalImgWidth && ny >= 0 && ny < finalImgHeight) {
                                     const ni = (ny * finalImgWidth + nx) * 4;
-                                    
-                                    // 文字領域では誤差拡散を弱くして文字をクリアに保つ
-                                    const errorFactor = isTextArea ? factor * 0.3 : factor; // 文字領域は30%に抑制
-                                    const adjustment = Math.round(error * errorFactor);
-                                    
-                                    ditherPixels[ni] = Math.max(0, Math.min(255, ditherPixels[ni] + adjustment));
-                                    ditherPixels[ni + 1] = Math.max(0, Math.min(255, ditherPixels[ni + 1] + adjustment));
-                                    ditherPixels[ni + 2] = Math.max(0, Math.min(255, ditherPixels[ni + 2] + adjustment));
+                                    const adjustment = Math.round(error * factor);
+                                    finalPixels[ni] = Math.max(0, Math.min(255, finalPixels[ni] + adjustment));
+                                    finalPixels[ni + 1] = Math.max(0, Math.min(255, finalPixels[ni + 1] + adjustment));
+                                    finalPixels[ni + 2] = Math.max(0, Math.min(255, finalPixels[ni + 2] + adjustment));
                                 }
                             };
                             
-                            // 誤差拡散パターン（文字保護版）
-                            distributeError(1, 0, 7/16);   // 右
-                            distributeError(-1, 1, 3/16);  // 左下  
-                            distributeError(0, 1, 5/16);   // 下
-                            distributeError(1, 1, 1/16);   // 右下
+                            // 誤差拡散パターン（標準Floyd-Steinberg）
+                            distributeError(1, 0, 7/16);  // 右
+                            distributeError(-1, 1, 3/16); // 左下
+                            distributeError(0, 1, 5/16);  // 下
+                            distributeError(1, 1, 1/16);  // 右下
                         }
                     }
                     
                     // ディザリング後の画像を適用
-                    compositeCtx.putImageData(ditherData, imgX, imgY);
+                    compositeCtx.putImageData(finalData, imgX, imgY);
                     
                     // 【追加】最終シャープネス後処理で更に細かな濃淡を強化
                     const sharpData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
@@ -2520,8 +2478,8 @@ function sendToPrintAssist(event) {
                             const blur = sum / count;
                             const current = sharpPixels[i];
                             
-                            // アンシャープマスク適用（細部強調）
-                            const sharpened = current + 0.6 * (current - blur);
+                            // アンシャープマスク適用（細部強調・強度UP）
+                            const sharpened = current + 0.9 * (current - blur); // 0.6 → 0.9で強度UP
                             const final = Math.max(0, Math.min(255, Math.round(sharpened)));
                             
                             sharpPixels[i] = final;
