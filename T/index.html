@@ -1912,7 +1912,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 const historyItem = {
                     type: 'signature',
                     mode: 'signature',
-                    data: tmpCanvas.toDataURL("image/png"),
+                    data: tmpCanvas.toDataURL("image/png", 1.0), // 最高品質PNG
                     dateTime: selectedSignatureChip,
                     copies: selectedCopies,
                     created: Date.now(),
@@ -1988,9 +1988,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             }
             
             // 合成キャンバスをPNGデータURLに変換
-            const compositeDataUrl = compositeCanvas.toDataURL('image/png');
-            
-            // jsPDFを使用してPDFを生成
+                    const compositeDataUrl = compositeCanvas.toDataURL('image/png', 1.0); // 最高品質PNG            // jsPDFを使用してPDFを生成
             const { jsPDF } = window.jspdf;
             const pdfHeight = Math.round(totalHeight / mmToPx);
             
@@ -2044,7 +2042,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             window.location.href = printUrl;
         };
         
-        signatureImg.src = tmpCanvas.toDataURL("image/png");
+        signatureImg.src = tmpCanvas.toDataURL("image/png", 1.0); // 最高品質PNG
     }
     
     // 現在の1枚を印刷（シンプル実行）
@@ -2058,7 +2056,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
         addHistory({
             type: 'signature',
             mode: 'signature',
-            data: tmpCanvas.toDataURL("image/png"),
+            data: tmpCanvas.toDataURL("image/png", 1.0), // 最高品質PNG
             dateTime: selectedSignatureChip,
             copies: selectedCopies,
             qrPrinted: false,
@@ -2105,15 +2103,19 @@ function sendToPrintAssist(event) {
                     alpha: false,
                     willReadFrequently: false,
                     colorSpace: 'srgb',
-                    desynchronized: false
+                    desynchronized: false,
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high'
                 });
                 
-                const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
+                const mmToPx = 23.6; // 1mm = 23.6px（600DPI換算 - 高品質印刷用）
                 const canvasWidth = Math.round(58 * mmToPx); // 58mm
                 
                 // アップロードされた画像を読み込み
                 const uploadedImg = new Image();
-                uploadedImg.crossOrigin = 'anonymous'; // 画像品質向上
+                uploadedImg.crossOrigin = 'anonymous';
+                // 高品質な画像処理設定
+                uploadedImg.decoding = 'sync';
                 uploadedImg.onload = function() {
                     // 日付・時刻の高さを計算
                     let dateTimeHeight = 0;
@@ -2122,10 +2124,11 @@ function sendToPrintAssist(event) {
                         dateTimeHeight = fontSize * 2.5; // 2行 + 余白
                     }
                     
-                    // 画像のサイズを58mm幅に合わせて計算
-                    const maxImgWidth = canvasWidth - -35; // 左右余白を除く
+                    // 画像のサイズを58mm幅に合わせて計算（高解像度対応）
+                    const maxImgWidth = canvasWidth - 70; // 左右余白を適切に確保
                     const imgRatio = uploadedImg.naturalHeight / uploadedImg.naturalWidth;
-                    const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth);
+                    // 元画像の解像度を活用して最適なサイズを計算
+                    const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth * (maxImgWidth / uploadedImg.naturalWidth));
                     const finalImgHeight = finalImgWidth * imgRatio;
                     
                     // 全体の高さを計算（画像用の余白設定）
@@ -2142,14 +2145,14 @@ function sendToPrintAssist(event) {
                     compositeCtx.fillStyle = '#FFFFFF';
                     compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
                     
-                    // 画像の色濃淡を改善するための詳細設定（文字鮮明化）
-                    compositeCtx.imageSmoothingEnabled = false; // 文字の鮮明度を優先
-                    compositeCtx.imageSmoothingQuality = 'high';
+                    // 画像の高品質描画設定
+                    compositeCtx.imageSmoothingEnabled = true; // 高品質補間を有効化
+                    compositeCtx.imageSmoothingQuality = 'high'; // 最高品質設定
                     compositeCtx.globalCompositeOperation = 'source-over';
                     compositeCtx.globalAlpha = 1.0;
                     
-                    // 画像の色域とコントラストを保持するための設定
-                    compositeCtx.filter = 'none'; // フィルターを一旦無効化
+                    // 高解像度画像処理用フィルター
+                    compositeCtx.filter = 'contrast(1.1) brightness(1.0) saturate(1.05)'; // 微調整でコントラスト改善
                     
                     
                     // 画像を描画（中央配置）
@@ -2199,7 +2202,27 @@ function sendToPrintAssist(event) {
                         console.log('QRコードなしで印刷（画像）');
                     }
                     
-                    compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
+                    // 高解像度で画像を描画（2倍解像度で一度描画してからリサイズ）
+                    const highResCanvas = document.createElement('canvas');
+                    const highResCtx = highResCanvas.getContext('2d', {
+                        imageSmoothingEnabled: true,
+                        imageSmoothingQuality: 'high'
+                    });
+                    
+                    // 2倍解像度で描画
+                    const scaleFactor = 2;
+                    highResCanvas.width = finalImgWidth * scaleFactor;
+                    highResCanvas.height = finalImgHeight * scaleFactor;
+                    
+                    // 高解像度で画像を描画
+                    highResCtx.imageSmoothingEnabled = true;
+                    highResCtx.imageSmoothingQuality = 'high';
+                    highResCtx.drawImage(uploadedImg, 0, 0, finalImgWidth * scaleFactor, finalImgHeight * scaleFactor);
+                    
+                    // 最終キャンバスに高品質でリサイズして描画
+                    compositeCtx.imageSmoothingEnabled = true;
+                    compositeCtx.imageSmoothingQuality = 'high';
+                    compositeCtx.drawImage(highResCanvas, imgX, imgY, finalImgWidth, finalImgHeight);
                     
                     // 画像描画後、濃淡を確実に印字させる最強処理
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
@@ -3418,24 +3441,19 @@ function restoreContentFromHistory(item) {
         
         document.getElementById('copiesSelect').value = item.copies;
         
-        // QRチェックボックスの復元を段階的に確実に処理
+        // QRチェックボックスの復元（シンプルで確実な方法）
         console.log('=== 画像QR復元開始 ===');
         console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
         
-        const restoreQRCheckbox = () => {
+        setTimeout(() => {
             const qrCheckbox = document.getElementById('qrPrintCheckbox');
-            console.log('QRチェックボックス要素:', qrCheckbox);
-            
             if (qrCheckbox) {
-                const qrValue = item.qrPrinted;
-                // より確実な判定（undefinedやnullも考慮）
-                const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
-                console.log('復元判定:', qrValue, '→', shouldCheck);
+                // QRの有無を判定（true, 'true', 1, '1'のいずれか）
+                const shouldCheck = !!(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1 || item.qrPrinted === '1');
                 
-                // 現在の状態を記録
-                console.log('復元前チェック状態:', qrCheckbox.checked);
+                console.log('QR復元判定:', item.qrPrinted, '→', shouldCheck);
                 
-                // 既存の状態をクリア
+                // 現在の状態をリセット
                 qrCheckbox.checked = false;
                 qrCheckbox.removeAttribute('checked');
                 
@@ -3445,36 +3463,17 @@ function restoreContentFromHistory(item) {
                     qrCheckbox.setAttribute('checked', 'checked');
                 } else {
                     qrCheckbox.checked = false;
-                    qrCheckbox.removeAttribute('checked');
                 }
                 
-                console.log('復元後チェック状態:', qrCheckbox.checked);
-                
-                // イベント発火で他の機能に通知
+                // イベント発火で更新を通知
                 qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
                 
-                // 最終確認
-                setTimeout(() => {
-                    console.log('最終チェック状態:', qrCheckbox.checked);
-                    console.log('=== 画像QR復元完了 ===');
-                }, 50);
-                
-                return qrCheckbox.checked === shouldCheck;
+                console.log('画像QR復元完了:', qrCheckbox.checked);
+            } else {
+                console.error('❌ QRチェックボックスが見つかりません');
             }
-            console.log('❌ QRチェックボックスが見つかりません');
-            return false;
-        };
-        
-        // 複数回試行して確実に復元
-        setTimeout(() => {
-            if (!restoreQRCheckbox()) {
-                setTimeout(() => {
-                    if (!restoreQRCheckbox()) {
-                        setTimeout(restoreQRCheckbox, 100);
-                    }
-                }, 50);
-            }
-        }, 50);
+            updatePrintButtonState();
+        }, 100);
         document.getElementById('imagePrintOptions').style.display = 'flex';
         updatePrintButtonState();
         
@@ -3493,24 +3492,19 @@ function restoreContentFromHistory(item) {
         
         document.getElementById('textCopiesSelect').value = item.copies;
         
-        // QRチェックボックスの復元を段階的に確実に処理
+        // QRチェックボックスの復元（シンプルで確実な方法）
         console.log('=== テキストQR復元開始 ===');
         console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
         
-        const restoreTextQRCheckbox = () => {
+        setTimeout(() => {
             const textQrCheckbox = document.getElementById('textQrPrintCheckbox');
-            console.log('テキストQRチェックボックス要素:', textQrCheckbox);
-            
             if (textQrCheckbox) {
-                const qrValue = item.qrPrinted;
-                // より確実な判定（undefinedやnullも考慮）
-                const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
-                console.log('復元判定:', qrValue, '→', shouldCheck);
+                // QRの有無を判定
+                const shouldCheck = !!(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1 || item.qrPrinted === '1');
                 
-                // 現在の状態を記録
-                console.log('復元前チェック状態:', textQrCheckbox.checked);
+                console.log('テキストQR復元判定:', item.qrPrinted, '→', shouldCheck);
                 
-                // 既存の状態をクリア
+                // 現在の状態をリセット
                 textQrCheckbox.checked = false;
                 textQrCheckbox.removeAttribute('checked');
                 
@@ -3520,36 +3514,17 @@ function restoreContentFromHistory(item) {
                     textQrCheckbox.setAttribute('checked', 'checked');
                 } else {
                     textQrCheckbox.checked = false;
-                    textQrCheckbox.removeAttribute('checked');
                 }
                 
-                console.log('復元後チェック状態:', textQrCheckbox.checked);
-                
-                // イベント発火で他の機能に通知
+                // イベント発火で更新を通知
                 textQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
                 
-                // 最終確認
-                setTimeout(() => {
-                    console.log('最終チェック状態:', textQrCheckbox.checked);
-                    console.log('=== テキストQR復元完了 ===');
-                }, 50);
-                
-                return textQrCheckbox.checked === shouldCheck;
+                console.log('テキストQR復元完了:', textQrCheckbox.checked);
+            } else {
+                console.error('❌ テキストQRチェックボックスが見つかりません');
             }
-            console.log('❌ テキストQRチェックボックスが見つかりません');
-            return false;
-        };
-        
-        // 複数回試行して確実に復元
-        setTimeout(() => {
-            if (!restoreTextQRCheckbox()) {
-                setTimeout(() => {
-                    if (!restoreTextQRCheckbox()) {
-                        setTimeout(restoreTextQRCheckbox, 100);
-                    }
-                }, 50);
-            }
-        }, 50);
+            updateTextPrintButtonState();
+        }, 100);
         updateTextPrintButtonState();
         
     } else if (item.type === 'signature') {
@@ -3567,24 +3542,19 @@ function restoreContentFromHistory(item) {
             
             document.getElementById('signatureCopiesSelect').value = item.copies;
             
-            // QRチェックボックスの復元を段階的に確実に処理
+            // QRチェックボックスの復元（シンプルで確実な方法）
             console.log('=== 手書きQR復元開始 ===');
             console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
             
-            const restoreSignatureQRCheckbox = () => {
+            setTimeout(() => {
                 const signatureQrCheckbox = document.getElementById('signatureQrPrintCheckbox');
-                console.log('手書きQRチェックボックス要素:', signatureQrCheckbox);
-                
                 if (signatureQrCheckbox) {
-                    const qrValue = item.qrPrinted;
-                    // より確実な判定（undefinedやnullも考慮）
-                    const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
-                    console.log('復元判定:', qrValue, '→', shouldCheck);
+                    // QRの有無を判定
+                    const shouldCheck = !!(item.qrPrinted === true || item.qrPrinted === 'true' || item.qrPrinted === 1 || item.qrPrinted === '1');
                     
-                    // 現在の状態を記録
-                    console.log('復元前チェック状態:', signatureQrCheckbox.checked);
+                    console.log('手書きQR復元判定:', item.qrPrinted, '→', shouldCheck);
                     
-                    // 既存の状態をクリア
+                    // 現在の状態をリセット
                     signatureQrCheckbox.checked = false;
                     signatureQrCheckbox.removeAttribute('checked');
                     
@@ -3594,40 +3564,17 @@ function restoreContentFromHistory(item) {
                         signatureQrCheckbox.setAttribute('checked', 'checked');
                     } else {
                         signatureQrCheckbox.checked = false;
-                        signatureQrCheckbox.removeAttribute('checked');
                     }
                     
-                    console.log('復元後チェック状態:', signatureQrCheckbox.checked);
-                    
-                    // イベント発火で他の機能に通知
+                    // イベント発火で更新を通知
                     signatureQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
                     
-                    // 最終確認
-                    setTimeout(() => {
-                        console.log('最終チェック状態:', signatureQrCheckbox.checked);
-                        console.log('=== 手書きQR復元完了 ===');
-                        updateSignaturePrintButtonState();
-                    }, 50);
-                    
-                    return signatureQrCheckbox.checked === shouldCheck;
+                    console.log('手書きQR復元完了:', signatureQrCheckbox.checked);
+                    updateSignaturePrintButtonState();
+                } else {
+                    console.error('❌ 手書きQRチェックボックスが見つかりません');
                 }
-                console.log('❌ 手書きQRチェックボックスが見つかりません');
-                return false;
-            };
-            
-            // 複数回試行して確実に復元
-            setTimeout(() => {
-                if (!restoreSignatureQRCheckbox()) {
-                    setTimeout(() => {
-                        if (!restoreSignatureQRCheckbox()) {
-                            setTimeout(() => {
-                                restoreSignatureQRCheckbox();
-                                updateSignaturePrintButtonState();
-                            }, 100);
-                        }
-                    }, 50);
-                }
-            }, 100); // 手書きは初期化に時間がかかるので100ms開始
+            }, 150); // 手書きは初期化に時間がかかるので150msに設定
             
         }, 100);
     } else {
