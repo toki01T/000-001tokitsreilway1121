@@ -2310,17 +2310,45 @@ function sendToPrintAssist(event) {
                         const isTextLike = isTextRegion(x, y, width, height, originalData);
                         
                         if (isTextLike) {
-                            // 文字部分は文字欠け防止強化処理
+                            // 【文字強化処理】より積極的な文字保護
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            // 文字欠け防止：より広い範囲を文字として認識
-                            let enhanced;
-                            if (gray < 160) { // 140 → 160 に変更してより多くを文字として認識
-                                // 文字部分は確実に黒く
-                                enhanced = Math.max(0, gray - 100); // 80 → 100 に変更してより黒く
-                            } else {
-                                // 背景部分は確実に白く
-                                enhanced = Math.min(255, gray + 60); // 50 → 60 に変更してより白く
+                            
+                            // 周辺のコントラストを再計算して文字の向きを判定
+                            let localSum = 0;
+                            let localCount = 0;
+                            for (let dy = -2; dy <= 2; dy++) {
+                                for (let dx = -2; dx <= 2; dx++) {
+                                    if (dx === 0 && dy === 0) continue;
+                                    const nx = x + dx;
+                                    const ny = y + dy;
+                                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                                        const nIndex = (ny * width + nx) * 4;
+                                        const nGray = Math.round(0.299 * originalData[nIndex] + 
+                                                               0.587 * originalData[nIndex + 1] + 
+                                                               0.114 * originalData[nIndex + 2]);
+                                        localSum += nGray;
+                                        localCount++;
+                                    }
+                                }
                             }
+                            const localAvg = localSum / localCount;
+                            
+                            let enhanced;
+                            if (gray < localAvg - 10) {
+                                // 周辺より暗い = 黒文字の可能性
+                                enhanced = Math.max(0, gray - 120); // より強く黒化
+                            } else if (gray > localAvg + 10) {
+                                // 周辺より明るい = 白文字の可能性  
+                                enhanced = Math.min(255, gray + 80); // より強く白化
+                            } else {
+                                // エッジ部分：コントラストを強化
+                                if (gray < 128) {
+                                    enhanced = Math.max(0, gray - 80);
+                                } else {
+                                    enhanced = Math.min(255, gray + 60);
+                                }
+                            }
+                            
                             data[i] = enhanced;
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
@@ -2369,12 +2397,14 @@ function sendToPrintAssist(event) {
                         const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
                         const contrast = Math.abs(centerGray - avgNeighbor);
                         
-                        // 文字判定条件（文字欠け防止：より敏感な検出）
-                        return (maxDiff > 20 && contrast > 15) || 
-                               (centerGray < 120 && contrast > 15) || 
-                               (centerGray > 160 && contrast > 15) ||
-                               (maxDiff > 15 && (centerGray < 140 || centerGray > 140)) ||
-                               (contrast > 20); // 追加：コントラストがある箇所はすべて文字として扱う
+                        // 文字判定条件（強化版：文字をより確実に検出）
+                        const isSharpEdge = maxDiff > 25;  // エッジ検出閾値を上げる
+                        const hasContrast = contrast > 20; // コントラスト閾値を上げる
+                        const isDarkText = centerGray < 100 && contrast > 15; // 黒文字検出
+                        const isLightText = centerGray > 180 && contrast > 15; // 白文字検出
+                        const isTextEdge = (centerGray < 130 || centerGray > 150) && maxDiff > 20; // 文字エッジ
+                        
+                        return isSharpEdge || hasContrast || isDarkText || isLightText || isTextEdge;
                     }
                     
                     // 【重要】ディザリング前に元の階調データを取得
@@ -2420,8 +2450,17 @@ function sendToPrintAssist(event) {
                             // より細かい階調を表現するため閾値範囲を調整
                             const adaptiveThreshold = Math.max(60, Math.min(200, localAverage * 0.95)); // より敏感に
                             
-                            // 2値化（適応的閾値使用）
-                            const newGray = oldGray > adaptiveThreshold ? 255 : 0;
+                            // 【文字保護】ディザリング前に文字領域かチェック
+                            const isTextArea = isTextRegion(x, y, finalImgWidth, finalImgHeight, ditherPixels);
+                            
+                            let newGray;
+                            if (isTextArea) {
+                                // 文字領域：より厳格な2値化（ディザリングを控えめに）
+                                newGray = oldGray > 120 ? 255 : 0; // 固定閾値で確実に2値化
+                            } else {
+                                // 写真領域：適応的閾値でディザリング
+                                newGray = oldGray > adaptiveThreshold ? 255 : 0;
+                            }
                             
                             // 誤差計算
                             const error = oldGray - newGray;
@@ -2429,20 +2468,24 @@ function sendToPrintAssist(event) {
                             // 新しい値を設定
                             ditherPixels[i] = ditherPixels[i + 1] = ditherPixels[i + 2] = newGray;
                             
-                            // Floyd-Steinberg誤差拡散（強化版）
+                            // Floyd-Steinberg誤差拡散（文字領域では控えめに）
                             const distributeError = (dx, dy, factor) => {
                                 const nx = x + dx;
                                 const ny = y + dy;
                                 if (nx >= 0 && nx < finalImgWidth && ny >= 0 && ny < finalImgHeight) {
                                     const ni = (ny * finalImgWidth + nx) * 4;
-                                    const adjustment = Math.round(error * factor);
+                                    
+                                    // 文字領域では誤差拡散を弱くして文字をクリアに保つ
+                                    const errorFactor = isTextArea ? factor * 0.3 : factor; // 文字領域は30%に抑制
+                                    const adjustment = Math.round(error * errorFactor);
+                                    
                                     ditherPixels[ni] = Math.max(0, Math.min(255, ditherPixels[ni] + adjustment));
                                     ditherPixels[ni + 1] = Math.max(0, Math.min(255, ditherPixels[ni + 1] + adjustment));
                                     ditherPixels[ni + 2] = Math.max(0, Math.min(255, ditherPixels[ni + 2] + adjustment));
                                 }
                             };
                             
-                            // 誤差拡散パターン（強化版）
+                            // 誤差拡散パターン（文字保護版）
                             distributeError(1, 0, 7/16);   // 右
                             distributeError(-1, 1, 3/16);  // 左下  
                             distributeError(0, 1, 5/16);   // 下
