@@ -3428,37 +3428,30 @@ function restoreContentFromHistory(item) {
             
             if (qrCheckbox) {
                 const qrValue = item.qrPrinted;
-                const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
+                // より確実な判定（undefinedやnullも考慮）
+                const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
                 console.log('復元判定:', qrValue, '→', shouldCheck);
                 
                 // 現在の状態を記録
                 console.log('復元前チェック状態:', qrCheckbox.checked);
                 
-                // Step 1: 直接的な設定
-                qrCheckbox.checked = shouldCheck;
+                // 既存の状態をクリア
+                qrCheckbox.checked = false;
+                qrCheckbox.removeAttribute('checked');
                 
-                // Step 2: 属性設定
+                // 新しい状態を設定
                 if (shouldCheck) {
+                    qrCheckbox.checked = true;
                     qrCheckbox.setAttribute('checked', 'checked');
-                    qrCheckbox.setAttribute('value', 'on');
                 } else {
+                    qrCheckbox.checked = false;
                     qrCheckbox.removeAttribute('checked');
-                    qrCheckbox.removeAttribute('value');
-                }
-                
-                // Step 3: プロパティ再設定
-                qrCheckbox.defaultChecked = shouldCheck;
-                
-                // Step 4: 強制的なクリック操作をシミュレート
-                if (qrCheckbox.checked !== shouldCheck) {
-                    qrCheckbox.click();
                 }
                 
                 console.log('復元後チェック状態:', qrCheckbox.checked);
                 
-                // Step 5: イベント発火
+                // イベント発火で他の機能に通知
                 qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-                qrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
                 
                 // 最終確認
                 setTimeout(() => {
@@ -3510,37 +3503,30 @@ function restoreContentFromHistory(item) {
             
             if (textQrCheckbox) {
                 const qrValue = item.qrPrinted;
-                const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
+                // より確実な判定（undefinedやnullも考慮）
+                const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
                 console.log('復元判定:', qrValue, '→', shouldCheck);
                 
                 // 現在の状態を記録
                 console.log('復元前チェック状態:', textQrCheckbox.checked);
                 
-                // Step 1: 直接的な設定
-                textQrCheckbox.checked = shouldCheck;
+                // 既存の状態をクリア
+                textQrCheckbox.checked = false;
+                textQrCheckbox.removeAttribute('checked');
                 
-                // Step 2: 属性設定
+                // 新しい状態を設定
                 if (shouldCheck) {
+                    textQrCheckbox.checked = true;
                     textQrCheckbox.setAttribute('checked', 'checked');
-                    textQrCheckbox.setAttribute('value', 'on');
                 } else {
+                    textQrCheckbox.checked = false;
                     textQrCheckbox.removeAttribute('checked');
-                    textQrCheckbox.removeAttribute('value');
-                }
-                
-                // Step 3: プロパティ再設定
-                textQrCheckbox.defaultChecked = shouldCheck;
-                
-                // Step 4: 強制的なクリック操作をシミュレート
-                if (textQrCheckbox.checked !== shouldCheck) {
-                    textQrCheckbox.click();
                 }
                 
                 console.log('復元後チェック状態:', textQrCheckbox.checked);
                 
-                // Step 5: イベント発火
+                // イベント発火で他の機能に通知
                 textQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-                textQrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
                 
                 // 最終確認
                 setTimeout(() => {
@@ -3591,37 +3577,30 @@ function restoreContentFromHistory(item) {
                 
                 if (signatureQrCheckbox) {
                     const qrValue = item.qrPrinted;
-                    const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
+                    // より確実な判定（undefinedやnullも考慮）
+                    const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
                     console.log('復元判定:', qrValue, '→', shouldCheck);
                     
                     // 現在の状態を記録
                     console.log('復元前チェック状態:', signatureQrCheckbox.checked);
                     
-                    // Step 1: 直接的な設定
-                    signatureQrCheckbox.checked = shouldCheck;
+                    // 既存の状態をクリア
+                    signatureQrCheckbox.checked = false;
+                    signatureQrCheckbox.removeAttribute('checked');
                     
-                    // Step 2: 属性設定
+                    // 新しい状態を設定
                     if (shouldCheck) {
+                        signatureQrCheckbox.checked = true;
                         signatureQrCheckbox.setAttribute('checked', 'checked');
-                        signatureQrCheckbox.setAttribute('value', 'on');
                     } else {
+                        signatureQrCheckbox.checked = false;
                         signatureQrCheckbox.removeAttribute('checked');
-                        signatureQrCheckbox.removeAttribute('value');
-                    }
-                    
-                    // Step 3: プロパティ再設定
-                    signatureQrCheckbox.defaultChecked = shouldCheck;
-                    
-                    // Step 4: 強制的なクリック操作をシミュレート
-                    if (signatureQrCheckbox.checked !== shouldCheck) {
-                        signatureQrCheckbox.click();
                     }
                     
                     console.log('復元後チェック状態:', signatureQrCheckbox.checked);
                     
-                    // Step 5: イベント発火
+                    // イベント発火で他の機能に通知
                     signatureQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-                    signatureQrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
                     
                     // 最終確認
                     setTimeout(() => {
@@ -3688,5 +3667,3 @@ function restoreContentFromQROnly(qrData) {
 </script>
 </body>
 </html>
-
-
