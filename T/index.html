@@ -3010,8 +3010,8 @@ function generateQRCode(data) {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, size, size);
         
-        // QRコードを描画（濃度を70%に調整）
-        ctx.fillStyle = '#4D4D4D'; // 60%グレー(#666666)から70%グレー(#4D4D4D)に変更
+        // QRコードを描画（濃度を50%に調整して読み込みやすく）
+        ctx.fillStyle = '#808080'; // 70%グレー(#4D4D4D)から50%グレー(#808080)に変更
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
