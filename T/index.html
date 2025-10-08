@@ -2201,41 +2201,202 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // QRコード描画前に画像処理を実行（QRコードに影響しないように）
+                    // 【最強画像処理】QRコード位置を除き高品質ディザ処理を適用
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
+                    const width = finalImgWidth;
+                    const height = finalImgHeight;
                     
-                    // サーマルプリンター用画像最適化処理
+                    // QRコード領域を特定（QRコード印刷時のみ）
+                    let qrStartX = 0, qrEndX = 0, qrStartY = 0, qrEndY = 0;
+                    if (qrPrintEnabled) {
+                        // QRコードサイズと位置を計算
+                        const qrSize = Math.round(canvasWidth * 0.25); // 25%
+                        qrStartX = Math.round(canvasWidth * 0.75) - imgX; // 右端から25%の位置
+                        qrEndX = qrStartX + qrSize;
+                        qrStartY = 0;
+                        qrEndY = qrSize;
+                        
+                        // 範囲チェック
+                        qrStartX = Math.max(0, Math.min(qrStartX, width));
+                        qrEndX = Math.max(0, Math.min(qrEndX, width));
+                        qrStartY = Math.max(0, Math.min(qrStartY, height));
+                        qrEndY = Math.max(0, Math.min(qrEndY, height));
+                    }
+                    
+                    // オリジナル画像データを保持
+                    const originalData = new Uint8Array(data.length);
+                    for (let i = 0; i < data.length; i++) {
+                        originalData[i] = data[i];
+                    }
+                    
+                    // 1. 全色対応高精度グレースケール変換
+                    const grayData = new Uint8Array(width * height);
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
                         const b = data[i + 2];
                         
-                        // 1. グレースケール変換（高精度）
-                        const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                        // 薄い色対応カラー→グレー変換
+                        let gray;
                         
-                        // 2. サーマルプリンター用三値処理（黒・グレー・白）
-                        let enhanced;
-                        if (gray < 60) {
-                            // 暗い部分：完全に黒
-                            enhanced = 0;
-                        } else if (gray < 120) {
-                            // 中暗部分：濃いグレー  
-                            enhanced = 80;
-                        } else if (gray < 180) {
-                            // 中明部分：薄いグレー
-                            enhanced = 160;
+                        // 薄い色の検出と保護
+                        const maxColor = Math.max(r, g, b);
+                        const minColor = Math.min(r, g, b);
+                        const colorRange = maxColor - minColor;
+                        
+                        // 薄い色（高明度・低彩度）の特別処理
+                        if (maxColor >= 200 && colorRange <= 50) {
+                            // 薄い色は明度を保持しつつグレー化
+                            gray = Math.round((r + g + b) / 3);
                         } else {
-                            // 明るい部分：完全に白
-                            enhanced = 255;
+                            // 通常の色は標準的な輝度計算
+                            gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         }
                         
-                        data[i] = enhanced;     // R
-                        data[i + 1] = enhanced; // G
-                        data[i + 2] = enhanced; // B
+                        // 薄い色の濃淡保護（コントラスト強化を控えめに）
+                        if (gray > 220) {
+                            gray = Math.min(255, gray + 10); // 薄い色は控えめに強化
+                        } else if (gray > 180) {
+                            // 中間薄色はそのまま保持
+                        } else if (gray < 50) {
+                            gray = Math.max(0, gray - 20);   // 暗い部分のみ強化
+                        }
+                        grayData[i / 4] = gray;
                     }
                     
-                    // 処理済み画像をcanvasに反映
+                    // 2. サーマルプリンター用ディザリング処理（Floyd-Steinbergディザリング）
+                    const ditheredData = new Uint8Array(width * height);
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const index = y * width + x;
+                            const oldPixel = grayData[index];
+                            
+                            // QRコード領域は特別処理
+                            if (qrPrintEnabled && x >= qrStartX && x < qrEndX && y >= qrStartY && y < qrEndY) {
+                                // QRコード領域：シンプルな閾値処理でコントラスト維持
+                                ditheredData[index] = oldPixel < 180 ? 77 : 255; // #4D4D4D(77) または白
+                                continue;
+                            }
+                            
+                            // サーマルプリンター用濃淡階調マッピング（9段階）
+                            let newPixel;
+                            
+                            if (oldPixel >= 220) newPixel = 255;      // 純白
+                            else if (oldPixel >= 190) newPixel = 200; // 極薄
+                            else if (oldPixel >= 160) newPixel = 170; // 薄
+                            else if (oldPixel >= 130) newPixel = 140; // 中薄
+                            else if (oldPixel >= 100) newPixel = 110; // 中間
+                            else if (oldPixel >= 70) newPixel = 80;   // 中濃
+                            else if (oldPixel >= 40) newPixel = 50;   // 濃
+                            else if (oldPixel >= 15) newPixel = 25;   // 極濃
+                            else newPixel = 0;                        // 純黒
+                            
+                            ditheredData[index] = newPixel;
+                            const quantError = oldPixel - newPixel;
+                            
+                            // 薄い色に最適化された誤差拡散
+                            const errorWeight = oldPixel > 150 ? 1.2 : 1.0; // 薄い色は誤差拡散を強化
+                            
+                            // Floyd-Steinbergディザリングで誤差拡散（薄い色強化）
+                            if (x + 1 < width) {
+                                grayData[index + 1] = Math.max(0, Math.min(255, 
+                                    grayData[index + 1] + quantError * 7 / 16 * errorWeight));
+                            }
+                            if (y + 1 < height) {
+                                if (x - 1 >= 0) {
+                                    grayData[(y + 1) * width + (x - 1)] = Math.max(0, Math.min(255,
+                                        grayData[(y + 1) * width + (x - 1)] + quantError * 3 / 16 * errorWeight));
+                                }
+                                grayData[(y + 1) * width + x] = Math.max(0, Math.min(255,
+                                    grayData[(y + 1) * width + x] + quantError * 5 / 16 * errorWeight));
+                                if (x + 1 < width) {
+                                    grayData[(y + 1) * width + (x + 1)] = Math.max(0, Math.min(255,
+                                        grayData[(y + 1) * width + (x + 1)] + quantError * 1 / 16 * errorWeight));
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 3. 文字部分の検出と保護
+                    for (let i = 0; i < data.length; i += 4) {
+                        const pixelIndex = i / 4;
+                        const x = pixelIndex % width;
+                        const y = Math.floor(pixelIndex / width);
+                        
+                        // QRコード領域は処理済みなのでスキップ
+                        if (qrPrintEnabled && x >= qrStartX && x < qrEndX && y >= qrStartY && y < qrEndY) {
+                            const finalGray = ditheredData[pixelIndex];
+                            data[i] = finalGray;
+                            data[i + 1] = finalGray;
+                            data[i + 2] = finalGray;
+                            continue;
+                        }
+                        
+                        const r = originalData[i];
+                        const g = originalData[i + 1];
+                        const b = originalData[i + 2];
+                        
+                        // 文字判定（高コントラスト + エッジ検出）
+                        const isTextLike = isTextRegion(x, y, width, height, originalData);
+                        
+                        if (isTextLike) {
+                            // 文字部分は文字欠け防止強化処理
+                            const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                            let enhanced;
+                            if (gray < 160) {
+                                enhanced = Math.max(0, gray - 100);
+                            } else {
+                                enhanced = Math.min(255, gray + 60);
+                            }
+                            data[i] = enhanced;
+                            data[i + 1] = enhanced;
+                            data[i + 2] = enhanced;
+                        } else {
+                            // 非文字部分：ディザ結果を適用
+                            const finalGray = ditheredData[pixelIndex];
+                            data[i] = finalGray;
+                            data[i + 1] = finalGray;
+                            data[i + 2] = finalGray;
+                        }
+                    }
+                    
+                    // 文字判定関数
+                    function isTextRegion(x, y, width, height, imgData) {
+                        if (x < 3 || x >= width - 3 || y < 3 || y >= height - 3) return false;
+                        
+                        const centerIndex = (y * width + x) * 4;
+                        const centerGray = Math.round(0.299 * imgData[centerIndex] + 
+                                                     0.587 * imgData[centerIndex + 1] + 
+                                                     0.114 * imgData[centerIndex + 2]);
+                        
+                        // 周辺のグレー値を取得
+                        const neighbors = [];
+                        for (let dy = -3; dy <= 3; dy++) {
+                            for (let dx = -3; dx <= 3; dx++) {
+                                if (dx === 0 && dy === 0) continue;
+                                const nIndex = ((y + dy) * width + (x + dx)) * 4;
+                                const nGray = Math.round(0.299 * imgData[nIndex] + 
+                                                        0.587 * imgData[nIndex + 1] + 
+                                                        0.114 * imgData[nIndex + 2]);
+                                neighbors.push(nGray);
+                            }
+                        }
+                        
+                        // エッジ強度計算
+                        const maxDiff = Math.max(...neighbors.map(n => Math.abs(centerGray - n)));
+                        const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
+                        const contrast = Math.abs(centerGray - avgNeighbor);
+                        
+                        // 文字判定条件
+                        return (maxDiff > 20 && contrast > 15) || 
+                               (centerGray < 120 && contrast > 15) || 
+                               (centerGray > 160 && contrast > 15) ||
+                               (maxDiff > 15 && (centerGray < 140 || centerGray > 140)) ||
+                               (contrast > 20);
+                    }
+                    
+                    // 結果をcanvasに反映
                     compositeCtx.putImageData(imageData, imgX, imgY);
                     
                     // 日付・時刻を描画
@@ -2812,8 +2973,8 @@ function generateQRCode(data) {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, size, size);
         
-        // QRコードを描画（読み取り性向上のため濃度を強化）
-        ctx.fillStyle = '#000000'; // 完全な黒に変更して読み取り性を最大化
+        // QRコードを描画（濃度を70%に調整）
+        ctx.fillStyle = '#4D4D4D'; // 60%グレー(#666666)から70%グレー(#4D4D4D)に変更
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
