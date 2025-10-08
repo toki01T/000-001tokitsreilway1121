@@ -2201,13 +2201,16 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // QRコード印刷時は画像処理をスキップ（QRコード読み取り性能維持）
+                    // 高品質ディザ処理（スクリーンショット画像対応）
+                    // QRコード印刷なしの場合は必ず適用、QRありの場合は軽量処理
+                    const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const data = imageData.data;
+                    const width = finalImgWidth;
+                    const height = finalImgHeight;
+                    
                     if (!qrPrintEnabled) {
-                        // 高品質ディザ処理（スクリーンショット画像対応）
-                        const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
-                        const data = imageData.data;
-                        const width = finalImgWidth;
-                        const height = finalImgHeight;
+                        // QRなし：高品質Floyd-Steinbergディザリング
+                        console.log("高品質ディザ処理開始");
                         
                         // 1. グレースケール変換（高精度）
                         const grayData = new Float32Array(width * height);
@@ -2227,8 +2230,8 @@ function sendToPrintAssist(event) {
                                 const index = y * width + x;
                                 const oldPixel = grayData[index];
                                 
-                                // 128を閾値として白黒判定
-                                const newPixel = oldPixel < 128 ? 0 : 255;
+                                // 120を閾値として白黒判定（細かい文字に最適化）
+                                const newPixel = oldPixel < 120 ? 0 : 255;
                                 grayData[index] = newPixel;
                                 
                                 // 誤差計算
@@ -2260,9 +2263,32 @@ function sendToPrintAssist(event) {
                             data[i + 2] = finalGray; // B
                         }
                         
-                        // 結果をcanvasに反映
-                        compositeCtx.putImageData(imageData, imgX, imgY);
+                        console.log("高品質ディザ処理完了");
+                    } else {
+                        // QRあり：軽量処理でQRコード保護
+                        console.log("QR保護軽量処理開始");
+                        
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+                            
+                            // 軽量グレースケール変換
+                            const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                            
+                            // シンプル二値化（QRコード読み取り優先）
+                            const bw = gray < 140 ? 0 : 255;
+                            
+                            data[i] = bw;
+                            data[i + 1] = bw;
+                            data[i + 2] = bw;
+                        }
+                        
+                        console.log("QR保護軽量処理完了");
                     }
+                    
+                    // 結果をcanvasに反映
+                    compositeCtx.putImageData(imageData, imgX, imgY);
                     
                     // 日付・時刻を描画
                     if (isDateTimeEnabled) {
