@@ -1163,14 +1163,13 @@ function openDB() {
     });
 }
 function addHistory(item) {
-    // 履歴追加処理（軽量化のためログ削除）
     // console.log('=== 履歴追加処理開始 ===');
     // console.log('追加データ:', item);
     
     // 管理番号が未設定の場合は生成
     if (!item.managementId) {
         item.managementId = generateQRData(item);
-        // console.log('管理番号を生成:', item.managementId); // 軽量化のためログ削除
+        // console.log('管理番号を生成:', item.managementId);
     }
     
     // 必須データの確認
@@ -1187,7 +1186,6 @@ function addHistory(item) {
         item.created = Date.now();
     }
     
-    // 軽量化のためログ削除
     // console.log('✅ 履歴データ準備完了:', {
     //     id: item.id,
     //     type: item.type,
@@ -1205,7 +1203,7 @@ function addHistory(item) {
             const addReq = store.add(item);
             
             addReq.onsuccess = () => {
-                console.log('✅ 履歴をデータベースに保存完了');
+                // console.log('✅ 履歴をデータベースに保存完了');
                 resolve();
             };
             
@@ -1215,7 +1213,7 @@ function addHistory(item) {
             };
             
             tx.oncomplete = () => {
-                console.log('✅ トランザクション完了');
+                // console.log('✅ トランザクション完了');
             };
             
             tx.onerror = (event) => {
@@ -1585,7 +1583,7 @@ function checkAndContinuePrinting() {
             job.currentCopy++;
             job.timestamp = Date.now();
             
-            console.log(`${job.type}印刷続行: ${job.currentCopy}/${job.totalCopies}枚目実行`);
+            // console.log(`${job.type}印刷続行: ${job.currentCopy}/${job.totalCopies}枚目実行`);
             
             // 次の印刷を実行
             const nextPrintUrl = 'siiprintagent://1.0/print?' +
@@ -1605,19 +1603,19 @@ function checkAndContinuePrinting() {
             } else {
                 // 全て完了した場合は削除
                 sessionStorage.removeItem('printJob');
-                console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
+                // console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
             }
             
             window.location.href = nextPrintUrl;
         } else {
             // 全印刷完了
             sessionStorage.removeItem('printJob');
-            console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
+            // console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
         }
     } else {
         // まだ10秒経過していない場合は待機
         const remainingTime = 10000 - timeSinceLastPrint;
-        console.log(`印刷待機中: あと${Math.ceil(remainingTime/1000)}秒`);
+        // console.log(`印刷待機中: あと${Math.ceil(remainingTime/1000)}秒`);
         setTimeout(checkAndContinuePrinting, remainingTime);
     }
 }
@@ -1908,9 +1906,9 @@ document.getElementById('signaturePrintButton').onclick = function() {
             
             // QRコードを生成して左側に配置（チェックボックス確認）
             let qrCodeCanvas = null;
-            console.log('手書き印刷 - QRチェックボックス状態:', qrPrintEnabled);
+            // console.log('手書き印刷 - QRチェックボックス状態:', qrPrintEnabled);
             if (qrPrintEnabled) {
-                console.log('QRコード生成開始（手書き）');
+                // console.log('QRコード生成開始（手書き）');
                 const historyItem = {
                     type: 'signature',
                     mode: 'signature',
@@ -1926,7 +1924,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                 if (qrData) {
                     // 履歴を即座に保存
                     addHistory(historyItem).then(() => {
-                        console.log('履歴保存完了:', historyItem.managementId);
+                        // console.log('履歴保存完了:', historyItem.managementId);
                     });
                     
                     qrCodeCanvas = generateQRCode(qrData);
@@ -1941,12 +1939,12 @@ document.getElementById('signaturePrintButton').onclick = function() {
                             // 日付・時刻なしの場合：手書きの下部左側（印刷範囲内に調整）
                             qrY = Math.max(signatureY + signatureHeight - qrSize + 10, signatureY + signatureHeight + 10);
                         }
-                        console.log('QRコード描画位置:', qrX, qrY, qrSize);
+                        // console.log('QRコード描画位置:', qrX, qrY, qrSize);
                         compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
                     }
                 }
             } else {
-                console.log('QRコードなしで印刷（手書き）');
+                // console.log('QRコードなしで印刷（手書き）');
             }
             
             // 日付・時刻を描画
@@ -2026,7 +2024,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             
             // 【革新的枚数印刷システム】sessionStorageによる永続化方式
             
-            console.log(`署名印刷開始: 総枚数=${selectedCopies}枚`);
+            // console.log(`署名印刷開始: 総枚数=${selectedCopies}枚`);
             
             // 枚数印刷情報をsessionStorageに保存
             if (selectedCopies > 1) {
@@ -2039,7 +2037,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     timestamp: Date.now()
                 };
                 sessionStorage.setItem('printJob', JSON.stringify(printJob));
-                console.log(`署名印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
+                // console.log(`署名印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
             }
             
             // 1枚目を印刷
@@ -2160,9 +2158,9 @@ function sendToPrintAssist(event) {
                     
                     // QRコードを生成して左側に配置（チェックボックス確認）
                     let qrCodeCanvas = null;
-                    console.log('画像印刷 - QRチェックボックス状態:', qrPrintEnabled);
+                    // console.log('画像印刷 - QRチェックボックス状態:', qrPrintEnabled);
                     if (qrPrintEnabled) {
-                        console.log('QRコード生成開始（画像）');
+                        // console.log('QRコード生成開始（画像）');
                         const historyItem = {
                             type: 'image',
                             mode: 'image',
@@ -2178,7 +2176,7 @@ function sendToPrintAssist(event) {
                         if (qrData) {
                             // 履歴を即座に保存
                             addHistory(historyItem).then(() => {
-                                console.log('履歴保存完了:', historyItem.managementId);
+                                // console.log('履歴保存完了:', historyItem.managementId);
                             });
                             
                             qrCodeCanvas = generateQRCode(qrData);
@@ -2193,12 +2191,12 @@ function sendToPrintAssist(event) {
                                     // 日付・時刻なしの場合：画像の下部左側（印刷範囲内に調整）
                                     qrY = Math.max(imgY + finalImgHeight - qrSize + 10, imgY + finalImgHeight + 10);
                                 }
-                                console.log('QRコード描画位置:', qrX, qrY, qrSize);
+                                // console.log('QRコード描画位置:', qrX, qrY, qrSize);
                                 compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
                             }
                         }
                     } else {
-                        console.log('QRコードなしで印刷（画像）');
+                        // console.log('QRコードなしで印刷（画像）');
                     }
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
@@ -3001,38 +2999,35 @@ function generateQRCode(data) {
         
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        const size = 140; // QRコードのサイズ
+        const size = 140; // QRコードのセルサイズを大きく設定
         const moduleCount = qr.getModuleCount();
-        const cellSize = Math.floor(size / moduleCount); // 整数値に丸める
-        const actualSize = cellSize * moduleCount; // 実際のサイズを再計算
+        const cellSize = size / moduleCount;
         
-        canvas.width = actualSize;
-        canvas.height = actualSize;
-        
-        // 高品質描画設定
-        ctx.imageSmoothingEnabled = false; // アンチエイリアス無効化
-        ctx.webkitImageSmoothingEnabled = false;
-        ctx.mozImageSmoothingEnabled = false;
-        ctx.msImageSmoothingEnabled = false;
+        canvas.width = size;
+        canvas.height = size;
         
         // 背景を白で塗りつぶし
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, actualSize, actualSize);
+        ctx.fillRect(0, 0, size, size);
         
-        // QRコードを描画（掠れ防止のため少し濃く調整）
-        ctx.fillStyle = '#555555'; // 60%グレー(#666666)から65%グレー(#555555)に調整
+        // QRコードを描画（濃度60%、かすれ防止対応）
+        ctx.fillStyle = '#666666'; // 60%グレーで統一
+        ctx.imageSmoothingEnabled = false; // アンチエイリアシング無効でシャープに
+        
+        // セルサイズを整数に調整してかすれを防止
+        const adjustedCellSize = Math.floor(cellSize);
+        
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
-                    // ピクセル境界に合わせて描画（掠れ防止）
                     const x = Math.floor(col * cellSize);
                     const y = Math.floor(row * cellSize);
-                    ctx.fillRect(x, y, cellSize, cellSize);
+                    ctx.fillRect(x, y, adjustedCellSize, adjustedCellSize);
                 }
             }
         }
         
-        console.log('QRコード生成成功:', data.substring(0, 50) + '...');
+        console.log('QRコード生成成功');
         return canvas;
     } catch (error) {
         console.error('QRコード生成エラー:', error);
@@ -3167,7 +3162,7 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
                 highlightScanRegion: false,
                 highlightCodeOutline: false,
                 preferredCamera: 'environment',
-                maxScansPerSecond: 120, // 60→120に大幅向上
+                maxScansPerSecond: 30, // 120→30に調整（軽量化と高速化のバランス）
                 calculateScanRegion: (video) => ({
                     x: 0,
                     y: 0,
@@ -3248,8 +3243,8 @@ async function tryZXingLibrary(videoElement, statusElement) {
                 // QRコードが見つからない場合は正常
             }
             
-            // 16ms後に再スキャン（30ms→16ms、約60fps相当）
-            setTimeout(scanLoop, 16);
+            // 33ms後に再スキャン（約30fps、軽量化）
+            setTimeout(scanLoop, 33);
         };
         
         scanLoop();
@@ -3431,8 +3426,8 @@ function restoreContentFromHistory(item) {
         document.getElementById('copiesSelect').value = item.copies;
         
         // QRチェックボックスの復元を段階的に確実に処理
-        console.log('=== 画像QR復元開始 ===');
-        console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
+        // console.log('=== 画像QR復元開始 ===');
+        // console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
         
         const restoreQRCheckbox = () => {
             const qrCheckbox = document.getElementById('qrPrintCheckbox');
