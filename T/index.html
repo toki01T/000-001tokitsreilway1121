@@ -51,6 +51,26 @@ html, body {
     -webkit-user-select: none;
     user-select: none;
 }
+
+/* タッチデバイス用の改善 */
+button, input[type="button"], input[type="submit"], .chip, .history-item {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    -webkit-touch-callout: none;
+    cursor: pointer;
+}
+
+/* 反応性向上のため、最小タッチサイズ確保 */
+button:not(.close-btn), .chip {
+    min-height: 40px; /* iOS推奨最小タッチサイズ */
+    min-width: 40px;
+}
+
+/* タップ時の視覚フィードバック */
+button:active, .chip:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease-out;
+}
 body {
     display: flex;
     flex-direction: column;
@@ -243,14 +263,22 @@ header {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: background 0.2s, transform 0.1s;
     background: none;
     position: relative;
     user-select: none;
     overflow: hidden;
+    /* タッチ最適化 */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    min-height: 50px; /* 十分なタッチエリア */
 }
 .historyItem:last-child { border-bottom: none; }
 .historyItem:hover {
+    background: var(--chip-bg);
+}
+.historyItem:active {
+    transform: scale(0.99);
     background: var(--chip-bg);
 }
 .historyContentBlock {
@@ -490,6 +518,12 @@ main {
     margin-left: 0.5rem;
     margin-right: 0.5rem;
     text-align: center;
+    /* タッチ反応性改善 */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 #printButton.disabled, #textPrintButton.disabled, #signaturePrintButton.disabled {
     background-color: #aaa;
@@ -519,6 +553,10 @@ main {
     pointer-events: auto;
     user-select: none;
     margin: 0 0.2em;
+    /* タッチ最適化 */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    min-height: 44px; /* タッチしやすいサイズ */
 }
 .chip.selected {
     background-color: var(--primary-color);
@@ -1078,7 +1116,7 @@ footer p {
                     <option value="4">4枚</option>
                     <option value="5">5枚</option>
                 </select>
-                <button id="textPrintButton" class="disabled" onclick="setTimeout(() => printText(), 0)">発行</button>
+                <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
                 <label class="qr-print-checkbox" id="textQrPrintCheckboxLabel" style="margin-left:0.5em;">
                     <input type="checkbox" id="textQrPrintCheckbox" title="QRコード印刷" />
                     <span class="qr-checkmark"></span>
@@ -1317,27 +1355,24 @@ function loadHistoryList() {
                 startX = e.touches[0].clientX;
                 currentX = startX;
                 swiped = false;
-            }, { passive: true });
+            });
             div.addEventListener('touchmove', function(e) {
                 if (swiped) return;
                 currentX = e.touches[0].clientX;
                 let dx = currentX - startX;
                 if (dx < -60) {
-                    // 重い処理を setTimeout で非同期化
-                    setTimeout(() => {
-                        document.querySelectorAll('.historyItem.swiped').forEach(el => el.classList.remove('swiped'));
-                        div.classList.add('swiped');
-                    }, 0);
+                    document.querySelectorAll('.historyItem.swiped').forEach(el => el.classList.remove('swiped'));
+                    div.classList.add('swiped');
                     swiped = true;
                     swipedId = item.id;
                 } else if (dx > 30) {
                     div.classList.remove('swiped');
                     swipedId = null;
                 }
-            }, { passive: true });
+            });
             div.addEventListener('touchend', function(e) {
                 setTimeout(() => { div.classList.remove('swiping'); }, 200);
-            }, { passive: true });
+            });
             let mouseDown = false, mouseStartX = 0;
             div.addEventListener('mousedown', function(e) {
                 mouseDown = true;
@@ -1543,23 +1578,13 @@ window.onload = function() {
     displayDate();
     updateTime();
     setModeToggle(currentHistoryType);
-    
-    // テキスト入力の処理を統合してパフォーマンス向上
-    let textInputTimeout;
-    const debouncedTextInput = (element) => {
-        clearTimeout(textInputTimeout);
-        textInputTimeout = setTimeout(() => {
-            updateTextPrintButtonState();
-            toggleClearButton();
-            checkTextInputLimit(element);
-        }, 150); // 150ms遅延でUI応答性向上
-    };
-    
-    document.getElementById('textInput').addEventListener('input', function() {
-        debouncedTextInput(this);
-    }, { passive: true });
-    
+    document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
+    document.getElementById('textInput').addEventListener('input', toggleClearButton);
     document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
+    // テキスト入力時の文字数制限チェック
+    document.getElementById('textInput').addEventListener('input', function() {
+        checkTextInputLimit(this);
+    });
     // autoWrap機能を無効化（テキスト入力の誤動作防止）
     // document.getElementById('textInput').addEventListener('input', function() {
     //     autoWrap(this);
@@ -1806,16 +1831,9 @@ function initSignaturePad(imageDataUrl, fromHistory) {
         signaturePad.clear();
         updateSignaturePrintButtonState();
     };
-    // パフォーマンス最適化：debounce機能付きイベント
-    let updateTimeout;
-    const debouncedUpdate = () => {
-        clearTimeout(updateTimeout);
-        updateTimeout = setTimeout(updateSignaturePrintButtonState, 100);
-    };
-    
-    canvas.onmouseup = debouncedUpdate;
-    canvas.ontouchend = debouncedUpdate;
-    canvas.onmouseout = debouncedUpdate;
+    canvas.onmouseup = updateSignaturePrintButtonState;
+    canvas.ontouchend = updateSignaturePrintButtonState;
+    canvas.onmouseout = updateSignaturePrintButtonState;
     canvas.addEventListener('touchstart', function(e) {
         if (e.touches.length === 1) e.preventDefault();
     }, { passive: false });
@@ -1853,9 +1871,7 @@ function updateSignaturePrintButtonState() {
     }
 }
 document.getElementById('signaturePrintButton').onclick = function() {
-    // 即座にボタンの応答を示すため非同期処理
-    setTimeout(() => {
-        if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
+    if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
     const qrPrintEnabled = document.getElementById('signatureQrPrintCheckbox').checked; // 最初に取得
     const canvas = document.getElementById('signaturePad');
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -2087,8 +2103,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             created: Date.now()
         });
     }
-    }, 0); // setTimeoutのクロージャ
-}; // onclick関数のクロージャ
+};
 // --- 画像印刷 ---
 function sendToPrintAssist(event) {
     event.preventDefault();
@@ -2224,54 +2239,102 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // 画像描画後、適切な濃淡調整処理
+                    // 画像処理：黒つぶれを防ぐ明度調整
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 【改善版】自然な濃淡調整システム
-                    const width = finalImgWidth;
-                    const height = finalImgHeight;
-                    
-                    // 1. 穏やかなグレースケール変換
+                    // サーマルプリンター用の明度・コントラスト調整
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
                         const b = data[i + 2];
+                        const alpha = data[i + 3];
                         
-                        // 標準的な輝度計算
+                        // グレースケール変換
                         let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // 穏やかなコントラスト調整（暗部の過度な強調を防止）
+                        // 黒つぶれ防止：暗すぎる部分を明るく調整
                         if (gray < 30) {
-                            // 極暗部はやや明るく（真っ黒を防止）
-                            gray = Math.min(50, gray + 15);
+                            gray = 30; // 最低明度を保証
                         } else if (gray < 80) {
-                            // 暗部は軽微な調整のみ
-                            gray = Math.min(100, gray + 5);
+                            gray = gray + 20; // 暗い部分を少し明るく
                         } else if (gray > 200) {
-                            // 明部の保持
-                            gray = Math.max(180, gray - 10);
+                            gray = Math.min(255, gray + 10); // 明るい部分をより明るく
                         }
                         
-                        // RGB値を更新
+                        // RGB値を調整後の明度に合わせて設定
                         data[i] = gray;     // R
-                        data[i + 1] = gray; // G 
+                        data[i + 1] = gray; // G
                         data[i + 2] = gray; // B
-                        // data[i + 3] はアルファ値（不変）
+                        data[i + 3] = alpha; // Aはそのまま
                     }
                     
-                    // 調整後のデータを画像に適用
+                    // 調整後の画像データを再描画
                     compositeCtx.putImageData(imageData, imgX, imgY);
-                                grayData[index + 1] = Math.max(0, Math.min(255, 
-                                    grayData[index + 1] + quantError * 7 / 16 * errorWeight));
+                        const pixelIndex = i / 4;
+                        const x = pixelIndex % width;
+                        const y = Math.floor(pixelIndex / width);
+                        
+                        const r = originalData[i];
+                        const g = originalData[i + 1];
+                        const b = originalData[i + 2];
+                        
+                        // 文字判定（高コントラスト + エッジ検出）
+                        const isTextLike = isTextRegion(x, y, width, height, originalData);
+                        
+                        if (isTextLike) {
+                            // 文字部分は文字欠け防止強化処理
+                            const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                            // 文字欠け防止：より広い範囲を文字として認識
+                            let enhanced;
+                            if (gray < 160) { // 140 → 160 に変更してより多くを文字として認識
+                                // 文字部分は確実に黒く
+                                enhanced = Math.max(0, gray - 100); // 80 → 100 に変更してより黒く
+                            } else {
+                                // 背景部分は確実に白く
+                                enhanced = Math.min(255, gray + 60); // 50 → 60 に変更してより白く
                             }
-                            if (y + 1 < height) {
-                                if (x - 1 >= 0) {
-                                    grayData[(y + 1) * width + (x - 1)] = Math.max(0, Math.min(255,
-                                        grayData[(y + 1) * width + (x - 1)] + quantError * 3 / 16 * errorWeight));
-                                }
-                    // 調整後のデータを画像に適用
-                    compositeCtx.putImageData(imageData, imgX, imgY);
+                            data[i] = enhanced;
+                            data[i + 1] = enhanced;
+                            data[i + 2] = enhanced;
+                        } else {
+                            // 非文字部分：ノイズレスサーマルプリンター用濃淡表現
+                            const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                            
+                            // 4x4ディザリングマトリックス（ノイズ軽減）
+                            const pixelX = x % 4;
+                            const pixelY = y % 4;
+                            
+                            // 4x4 Bayerディザリングマトリックス（スムーズ版）
+                            const bayerMatrix = [
+                                [ 0,  8,  2, 10],
+                                [12,  4, 14,  6],
+                                [ 3, 11,  1,  9],
+                                [15,  7, 13,  5]
+                            ];
+                            
+                            // 閾値を15倍にして0-225の範囲に（よりスムーズに）
+                            const threshold = bayerMatrix[pixelY][pixelX] * 15;
+                            
+                            // サーマルプリンター用二値化（ノイズ軽減）
+                            let finalValue;
+                            
+                            // 濃淡を密度パターンで表現（スムーズ化）
+                            if (originalGray > threshold) {
+                                finalValue = 255; // 白
+                            } else {
+                                finalValue = 0;   // 黒
+                            }
+                            
+                            data[i] = finalValue;
+                            data[i + 1] = finalValue;
+                            data[i + 2] = finalValue;
+                        }
+                    }
+                    
+                    // 文字判定関数
+                    function isTextRegion(x, y, width, height, imgData) {
+                        if (x < 3 || x >= width - 3 || y < 3 || y >= height - 3) return false; // 2 → 3 に拡張
                     
                     // 日付・時刻を描画
                     if (isDateTimeEnabled) {
@@ -2858,8 +2921,8 @@ function generateQRCode(data) {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, size, size);
         
-        // QRコードを描画（濃度40%に変更、画像印刷での濃度問題対応）
-        ctx.fillStyle = '#999999'; // 40%グレーに変更（より薄く）
+        // QRコードを描画（画像印刷時は少し薄く、掠れ防止）
+        ctx.fillStyle = '#888888'; // 画像印刷では少し薄めの70%グレー
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
@@ -3270,32 +3333,49 @@ function restoreContentFromHistory(item) {
         document.getElementById('copiesSelect').value = item.copies;
         
         // QRチェックボックスの復元を段階的に確実に処理
-        console.log('=== 画像QR復元開始 ===', 'qrPrinted:', item.qrPrinted);
+        console.log('=== 画像QR復元開始 ===', item.qrPrinted);
         
         const restoreQRCheckbox = () => {
             const qrCheckbox = document.getElementById('qrPrintCheckbox');
+            console.log('QRチェックボックス要素:', qrCheckbox);
             
             if (qrCheckbox) {
                 const qrValue = item.qrPrinted;
                 // より確実な判定（undefinedやnullも考慮）
                 const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
+                console.log('復元判定:', qrValue, '→', shouldCheck);
                 
-                // 強制的に状態をリセット
+                // 強制的にチェック状態をリセット
                 qrCheckbox.checked = false;
                 qrCheckbox.removeAttribute('checked');
                 
-                // 状態を適用（遅延を入れて確実に）
+                // 少し待ってから設定（DOM更新を待つ）
                 setTimeout(() => {
                     if (shouldCheck) {
                         qrCheckbox.checked = true;
                         qrCheckbox.setAttribute('checked', 'checked');
                     }
                     
-                    // 変更イベントを発火
+                    // イベント発火で他の機能に通知
                     qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
                     qrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
                     
-                    console.log('✅ 画像QR復元完了:', qrCheckbox.checked, '期待値:', shouldCheck);
+                    console.log('復元後チェック状態:', qrCheckbox.checked);
+                    
+                    // 最終確認
+                    setTimeout(() => {
+                        console.log('最終チェック状態:', qrCheckbox.checked);
+                        if (qrCheckbox.checked !== shouldCheck) {
+                            console.warn('⚠️ チェック状態が期待値と異なります。再試行...');
+                            qrCheckbox.checked = shouldCheck;
+                            if (shouldCheck) {
+                                qrCheckbox.setAttribute('checked', 'checked');
+                            } else {
+                                qrCheckbox.removeAttribute('checked');
+                            }
+                        }
+                        console.log('=== 画像QR復元完了 ===');
+                    }, 100);
                 }, 10);
                 
                 return true;
@@ -3304,12 +3384,16 @@ function restoreContentFromHistory(item) {
             return false;
         };
         
-        // 即座に実行し、さらに確認のため遅延実行も追加
-        restoreQRCheckbox();
+        // 複数回試行して確実に復元
         setTimeout(() => {
-            restoreQRCheckbox();
-        }, 100);
-        
+            if (!restoreQRCheckbox()) {
+                setTimeout(() => {
+                    if (!restoreQRCheckbox()) {
+                        setTimeout(restoreQRCheckbox, 100);
+                    }
+                }, 50);
+            }
+        }, 50);
         document.getElementById('imagePrintOptions').style.display = 'flex';
         updatePrintButtonState();
         
@@ -3329,32 +3413,49 @@ function restoreContentFromHistory(item) {
         document.getElementById('textCopiesSelect').value = item.copies;
         
         // QRチェックボックスの復元を段階的に確実に処理
-        console.log('=== テキストQR復元開始 ===', 'qrPrinted:', item.qrPrinted);
+        console.log('=== テキストQR復元開始 ===', item.qrPrinted);
         
         const restoreTextQRCheckbox = () => {
             const textQrCheckbox = document.getElementById('textQrPrintCheckbox');
+            console.log('テキストQRチェックボックス要素:', textQrCheckbox);
             
             if (textQrCheckbox) {
                 const qrValue = item.qrPrinted;
                 // より確実な判定（undefinedやnullも考慮）
                 const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
+                console.log('復元判定:', qrValue, '→', shouldCheck);
                 
-                // 強制的に状態をリセット
+                // 強制的にチェック状態をリセット
                 textQrCheckbox.checked = false;
                 textQrCheckbox.removeAttribute('checked');
                 
-                // 状態を適用（遅延を入れて確実に）
+                // 少し待ってから設定（DOM更新を待つ）
                 setTimeout(() => {
                     if (shouldCheck) {
                         textQrCheckbox.checked = true;
                         textQrCheckbox.setAttribute('checked', 'checked');
                     }
                     
-                    // 変更イベントを発火
+                    // イベント発火で他の機能に通知
                     textQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
                     textQrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
                     
-                    console.log('✅ テキストQR復元完了:', textQrCheckbox.checked, '期待値:', shouldCheck);
+                    console.log('復元後チェック状態:', textQrCheckbox.checked);
+                    
+                    // 最終確認
+                    setTimeout(() => {
+                        console.log('最終チェック状態:', textQrCheckbox.checked);
+                        if (textQrCheckbox.checked !== shouldCheck) {
+                            console.warn('⚠️ テキストQRチェック状態が期待値と異なります。再試行...');
+                            textQrCheckbox.checked = shouldCheck;
+                            if (shouldCheck) {
+                                textQrCheckbox.setAttribute('checked', 'checked');
+                            } else {
+                                textQrCheckbox.removeAttribute('checked');
+                            }
+                        }
+                        console.log('=== テキストQR復元完了 ===');
+                    }, 100);
                 }, 10);
                 
                 return true;
@@ -3363,12 +3464,16 @@ function restoreContentFromHistory(item) {
             return false;
         };
         
-        // 即座に実行し、さらに確認のため遅延実行も追加
-        restoreTextQRCheckbox();
+        // 複数回試行して確実に復元
         setTimeout(() => {
-            restoreTextQRCheckbox();
-        }, 100);
-        
+            if (!restoreTextQRCheckbox()) {
+                setTimeout(() => {
+                    if (!restoreTextQRCheckbox()) {
+                        setTimeout(restoreTextQRCheckbox, 100);
+                    }
+                }, 50);
+            }
+        }, 50);
         updateTextPrintButtonState();
         
     } else if (item.type === 'signature') {
@@ -3387,33 +3492,50 @@ function restoreContentFromHistory(item) {
             document.getElementById('signatureCopiesSelect').value = item.copies;
             
             // QRチェックボックスの復元を段階的に確実に処理
-            console.log('=== 手書きQR復元開始 ===', 'qrPrinted:', item.qrPrinted);
+            console.log('=== 手書きQR復元開始 ===', item.qrPrinted);
             
             const restoreSignatureQRCheckbox = () => {
                 const signatureQrCheckbox = document.getElementById('signatureQrPrintCheckbox');
+                console.log('手書きQRチェックボックス要素:', signatureQrCheckbox);
                 
                 if (signatureQrCheckbox) {
                     const qrValue = item.qrPrinted;
                     // より確実な判定（undefinedやnullも考慮）
                     const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
+                    console.log('復元判定:', qrValue, '→', shouldCheck);
                     
-                    // 強制的に状態をリセット
+                    // 強制的にチェック状態をリセット
                     signatureQrCheckbox.checked = false;
                     signatureQrCheckbox.removeAttribute('checked');
                     
-                    // 状態を適用（遅延を入れて確実に）
+                    // 少し待ってから設定（DOM更新を待つ）
                     setTimeout(() => {
                         if (shouldCheck) {
                             signatureQrCheckbox.checked = true;
                             signatureQrCheckbox.setAttribute('checked', 'checked');
                         }
                         
-                        // 変更イベントを発火
+                        // イベント発火で他の機能に通知
                         signatureQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
                         signatureQrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
                         
-                        updateSignaturePrintButtonState();
-                        console.log('✅ 手書きQR復元完了:', signatureQrCheckbox.checked, '期待値:', shouldCheck);
+                        console.log('復元後チェック状態:', signatureQrCheckbox.checked);
+                        
+                        // 最終確認
+                        setTimeout(() => {
+                            console.log('最終チェック状態:', signatureQrCheckbox.checked);
+                            if (signatureQrCheckbox.checked !== shouldCheck) {
+                                console.warn('⚠️ 手書きQRチェック状態が期待値と異なります。再試行...');
+                                signatureQrCheckbox.checked = shouldCheck;
+                                if (shouldCheck) {
+                                    signatureQrCheckbox.setAttribute('checked', 'checked');
+                                } else {
+                                    signatureQrCheckbox.removeAttribute('checked');
+                                }
+                            }
+                            console.log('=== 手書きQR復元完了 ===');
+                            updateSignaturePrintButtonState();
+                        }, 100);
                     }, 10);
                     
                     return true;
@@ -3422,11 +3544,19 @@ function restoreContentFromHistory(item) {
                 return false;
             };
             
-            // 即座に実行し、さらに確認のため遅延実行も追加
-            restoreSignatureQRCheckbox();
+            // 複数回試行して確実に復元
             setTimeout(() => {
-                restoreSignatureQRCheckbox();
-            }, 100);
+                if (!restoreSignatureQRCheckbox()) {
+                    setTimeout(() => {
+                        if (!restoreSignatureQRCheckbox()) {
+                            setTimeout(() => {
+                                restoreSignatureQRCheckbox();
+                                updateSignaturePrintButtonState();
+                            }, 100);
+                        }
+                    }, 50);
+                }
+            }, 100); // 手書きは初期化に時間がかかるので100ms開始
             
         }, 100);
     } else {
