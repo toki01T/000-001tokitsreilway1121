@@ -2192,38 +2192,17 @@ function sendToPrintAssist(event) {
                                     qrY = Math.max(imgY + finalImgHeight - qrSize + 10, imgY + finalImgHeight + 10);
                                 }
                                 console.log('QRコード描画位置:', qrX, qrY, qrSize);
-                                compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
+                                // QRコードは後で描画するためここではcanvas変数のみ保存
                             }
                         }
                     } else {
                         console.log('QRコードなしで印刷（画像）');
                     }
                     
+                    // 先に画像を描画してディザ処理を適用
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // QRコード保護付き高品質ディザ処理
-                    const imageData = compositeCtx.getImageData(0, 0, canvasWidth, totalHeight);
-                    const data = imageData.data;
-                    
-                    // QRコード領域を保護するため、QRコードの位置を取得
-                    let qrProtectionArea = null;
-                    if (qrPrintEnabled) {
-                        // QRコードの位置を計算（上記のQRコード描画部分と同じロジック）
-                        const qrSize = Math.round(120 * mmToPx);
-                        let qrX, qrY;
-                        
-                        if (isDateTimeEnabled) {
-                            qrX = Math.round(canvasWidth / 2) - Math.round(qrSize / 2) - 120;
-                            qrY = imgY + finalImgHeight + 10;
-                        } else {
-                            qrX = Math.round(canvasWidth / 2) - Math.round(qrSize / 2) - 120;
-                            qrY = Math.max(imgY + finalImgHeight - qrSize + 10, imgY + finalImgHeight + 10);
-                        }
-                        
-                        qrProtectionArea = { x: qrX, y: qrY, width: qrSize, height: qrSize };
-                    }
-                    
-                    // 画像部分のみに高品質ディザ処理を適用
+                    // 高品質ディザ処理（画像部分のみ）
                     const imgData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const imgPixels = imgData.data;
                     
@@ -2302,7 +2281,7 @@ function sendToPrintAssist(event) {
                         }
                     }
                     
-                    // 4. 処理結果を画像部分にのみ適用
+                    // 4. 処理結果を画像部分に適用
                     for (let i = 0; i < imgPixels.length; i += 4) {
                         const idx = i / 4;
                         const finalGray = Math.round(grayData[idx]);
@@ -2312,8 +2291,24 @@ function sendToPrintAssist(event) {
                         imgPixels[i + 2] = finalGray; // B
                     }
                     
-                    // 5. 処理済み画像データを元の位置に描画（QRコードは保護される）
+                    // 5. 処理済み画像データを元の位置に描画
                     compositeCtx.putImageData(imgData, imgX, imgY);
+                    
+                    // 画像ディザ処理完了後にQRコードを描画（最後に描画してディザ処理の影響を受けないようにする）
+                    if (qrPrintEnabled && qrCodeCanvas) {
+                        const qrSize = 120; // QRコードのサイズを大きく設定
+                        const qrX = 30; // 左端から30pxの位置
+                        let qrY;
+                        if (isDateTimeEnabled) {
+                            // 日付・時刻ありの場合：日付・時刻の左側に配置
+                            qrY = imgY + finalImgHeight + 20; // 画像の下、日付の横
+                        } else {
+                            // 日付・時刻なしの場合：画像の下部左側（印刷範囲内に調整）
+                            qrY = Math.max(imgY + finalImgHeight - qrSize + 10, imgY + finalImgHeight + 10);
+                        }
+                        console.log('QRコード最終描画位置:', qrX, qrY, qrSize);
+                        compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
+                    }
                     
                     // 日付・時刻を描画
                     if (isDateTimeEnabled) {
