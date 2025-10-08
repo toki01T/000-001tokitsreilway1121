@@ -2201,150 +2201,68 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // QRコード保護 + 写真高画質ディザ処理
-                    const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
-                    const data = imageData.data;
-                    const width = finalImgWidth;
-                    const height = finalImgHeight;
-                    
-                    // 1. QRコード領域の検出と保護
-                    const qrRegions = [];
-                    if (qrPrintEnabled) {
-                        // QRコード領域を特定（左上の位置から計算）
-                        const qrStartX = 10; // QRコードのX開始位置
-                        const qrStartY = 10; // QRコードのY開始位置
-                        const qrSize = 200;  // QRコードのサイズ
+                    // QRコード印刷時は画像処理をスキップ（QRコード読み取り性能維持）
+                    if (!qrPrintEnabled) {
+                        // 高品質ディザ処理（スクリーンショット画像対応）
+                        const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                        const data = imageData.data;
+                        const width = finalImgWidth;
+                        const height = finalImgHeight;
                         
-                        qrRegions.push({
-                            x: qrStartX,
-                            y: qrStartY,
-                            width: qrSize,
-                            height: qrSize
-                        });
-                    }
-                    
-                    // 2. 領域判定関数
-                    function isQRRegion(x, y) {
-                        return qrRegions.some(region => 
-                            x >= region.x && x < region.x + region.width &&
-                            y >= region.y && y < region.y + region.height
-                        );
-                    }
-                    
-                    function isTextRegion(x, y) {
-                        if (x < 2 || x >= width - 2 || y < 2 || y >= height - 2) return false;
-                        
-                        const centerIndex = (y * width + x) * 4;
-                        const centerGray = 0.299 * data[centerIndex] + 0.587 * data[centerIndex + 1] + 0.114 * data[centerIndex + 2];
-                        
-                        // 周囲のピクセルとの差分でエッジ検出
-                        let maxDiff = 0;
-                        for (let dy = -1; dy <= 1; dy++) {
-                            for (let dx = -1; dx <= 1; dx++) {
-                                if (dx === 0 && dy === 0) continue;
-                                const nIndex = ((y + dy) * width + (x + dx)) * 4;
-                                const nGray = 0.299 * data[nIndex] + 0.587 * data[nIndex + 1] + 0.114 * data[nIndex + 2];
-                                maxDiff = Math.max(maxDiff, Math.abs(centerGray - nGray));
-                            }
+                        // 1. グレースケール変換（高精度）
+                        const grayData = new Float32Array(width * height);
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+                            
+                            // 標準的な輝度計算
+                            const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                            grayData[i / 4] = gray;
                         }
                         
-                        // 高コントラスト部分を文字として判定
-                        return maxDiff > 40 && (centerGray < 120 || centerGray > 160);
-                    }
-                    
-                    // 3. グレースケール変換
-                    const grayData = new Float32Array(width * height);
-                    for (let i = 0; i < data.length; i += 4) {
-                        const pixelIndex = i / 4;
-                        const x = pixelIndex % width;
-                        const y = Math.floor(pixelIndex / width);
-                        
-                        const r = data[i];
-                        const g = data[i + 1];
-                        const b = data[i + 2];
-                        
-                        let gray = 0.299 * r + 0.587 * g + 0.114 * b;
-                        
-                        // QRコード領域は特別処理（読み取り性能保持）
-                        if (isQRRegion(x, y)) {
-                            // QRコードは#4D4D4Dグレー（77）を基準に調整
-                            if (gray < 120) {
-                                gray = Math.max(0, gray - 30);  // 黒部分をより黒く
-                            } else {
-                                gray = Math.min(255, gray + 50); // 白部分をより白く
-                            }
-                        }
-                        // 文字領域は強いコントラスト
-                        else if (isTextRegion(x, y)) {
-                            if (gray < 140) {
-                                gray = Math.max(0, gray - 60);  // 文字を確実に黒く
-                            } else {
-                                gray = Math.min(255, gray + 60); // 背景を確実に白く
-                            }
-                        }
-                        
-                        grayData[pixelIndex] = gray;
-                    }
-                    
-                    // 4. 高品質Floyd-Steinbergディザリング
-                    for (let y = 0; y < height; y++) {
-                        for (let x = 0; x < width; x++) {
-                            const index = y * width + x;
-                            const oldPixel = grayData[index];
-                            
-                            // 領域別の閾値設定
-                            let threshold = 128;
-                            if (isQRRegion(x, y)) {
-                                threshold = 120; // QRコードは少し低い閾値で読み取り性能向上
-                            } else if (isTextRegion(x, y)) {
-                                threshold = 140; // 文字は高い閾値でくっきり
-                            } else {
-                                threshold = 128; // 写真部分は標準閾値で細かい濃淡表現
-                            }
-                            
-                            const newPixel = oldPixel < threshold ? 0 : 255;
-                            grayData[index] = newPixel;
-                            
-                            const quantError = oldPixel - newPixel;
-                            
-                            // 誤差拡散の重みも領域別に調整
-                            let errorScale = 1.0;
-                            if (isQRRegion(x, y)) {
-                                errorScale = 0.8; // QRコードは誤差拡散を控えめに
-                            } else if (isTextRegion(x, y)) {
-                                errorScale = 0.6; // 文字も誤差拡散を控えめに
-                            } else {
-                                errorScale = 1.2; // 写真部分は誤差拡散を強めて細かい表現
-                            }
-                            
-                            // Floyd-Steinberg誤差拡散
-                            if (x + 1 < width) {
-                                grayData[index + 1] += quantError * 7 / 16 * errorScale;
-                            }
-                            if (y + 1 < height) {
-                                if (x - 1 >= 0) {
-                                    grayData[(y + 1) * width + (x - 1)] += quantError * 3 / 16 * errorScale;
-                                }
-                                grayData[(y + 1) * width + x] += quantError * 5 / 16 * errorScale;
+                        // 2. Floyd-Steinbergディザリング（高品質）
+                        for (let y = 0; y < height; y++) {
+                            for (let x = 0; x < width; x++) {
+                                const index = y * width + x;
+                                const oldPixel = grayData[index];
+                                
+                                // 128を閾値として白黒判定
+                                const newPixel = oldPixel < 128 ? 0 : 255;
+                                grayData[index] = newPixel;
+                                
+                                // 誤差計算
+                                const quantError = oldPixel - newPixel;
+                                
+                                // 誤差拡散（Floyd-Steinbergパターン）
                                 if (x + 1 < width) {
-                                    grayData[(y + 1) * width + (x + 1)] += quantError * 1 / 16 * errorScale;
+                                    grayData[index + 1] += quantError * 7 / 16;
+                                }
+                                if (y + 1 < height) {
+                                    if (x - 1 >= 0) {
+                                        grayData[(y + 1) * width + (x - 1)] += quantError * 3 / 16;
+                                    }
+                                    grayData[(y + 1) * width + x] += quantError * 5 / 16;
+                                    if (x + 1 < width) {
+                                        grayData[(y + 1) * width + (x + 1)] += quantError * 1 / 16;
+                                    }
                                 }
                             }
                         }
-                    }
-                    
-                    // 5. 結果をcanvasに適用
-                    for (let i = 0; i < data.length; i += 4) {
-                        const idx = i / 4;
-                        const finalGray = Math.max(0, Math.min(255, Math.round(grayData[idx])));
                         
-                        data[i] = finalGray;     // R
-                        data[i + 1] = finalGray; // G
-                        data[i + 2] = finalGray; // B
+                        // 3. 結果をcanvasに適用
+                        for (let i = 0; i < data.length; i += 4) {
+                            const idx = i / 4;
+                            const finalGray = Math.round(grayData[idx]);
+                            
+                            data[i] = finalGray;     // R
+                            data[i + 1] = finalGray; // G
+                            data[i + 2] = finalGray; // B
+                        }
+                        
+                        // 結果をcanvasに反映
+                        compositeCtx.putImageData(imageData, imgX, imgY);
                     }
-                    
-                    // 結果をcanvasに反映
-                    compositeCtx.putImageData(imageData, imgX, imgY);
                     
                     // 日付・時刻を描画
                     if (isDateTimeEnabled) {
