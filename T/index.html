@@ -6,6 +6,10 @@
 <title>toki01Ⓣ 発券</title>
 <link rel="icon" href="favicon.png" type="image/png">
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -61,7 +65,7 @@ header {
     top: 0;
     left: 0;
     z-index: 100;
-    height: 48px;
+    height: 40px;
     display: flex;
     align-items: center;
 }
@@ -71,7 +75,7 @@ header {
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    height: 48px;
+    height: 40px;
     padding: 0 1rem;
     box-sizing: border-box;
     position: relative;
@@ -101,8 +105,27 @@ header {
     cursor: pointer;
     z-index: 12;
     padding: 0;
+    width: auto;
+    height: auto;
 }
-#historyMenuBtn:focus { outline: none; }
+#qrCodeBtn {
+    position: absolute;
+    right: 4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--primary-color);
+    border: 2px solid #fff;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 12;
+    padding: 4px 8px;
+    width: auto;
+    height: auto;
+    border-radius: 4px;
+}
+#qrCodeBtn:focus, #historyMenuBtn:focus { outline: none; }
 #historyDrawer {
     position: fixed;
     top: 0;
@@ -385,15 +408,15 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-top: 70px;
-    padding-bottom: 80px;
+    padding-top: 60px;
+    padding-bottom: 50px; /* フッターとの重なりを避けるため調整 */
     background: var(--background-color);
     color: var(--text-color);
     box-sizing: border-box;
 }
 @media (max-width: 600px) {
     main {
-        padding-top: 60px;
+        padding-top: 50px;
         padding-bottom: 80px;
     }
     #historyDrawer { width: 95vw; }
@@ -420,6 +443,8 @@ main {
     margin-top: 1rem;
     gap: 0.5rem;
     width: 100%;
+    position: relative;
+    z-index: 200; /* フッターより上に表示 */
 }
 .print-options select,
 #printButton, #textPrintButton, #signaturePrintButton {
@@ -750,14 +775,218 @@ footer {
     bottom: 0;
     left: 0;
     width: 100%;
-    padding: 10px 0;
+    padding: 8px 0;
     background-color: var(--footer-bg);
     text-align: center;
+    z-index: 100; /* 他の要素との重なりを制御 */
+    pointer-events: none; /* フッター自体はクリックを通す */
 }
 footer p {
     margin: 0;
     color: var(--primary-color);
+    font-size: 12px;
+    pointer-events: auto; /* テキスト部分のみクリック可能 */
     font-size: 14px;
+}
+
+/* QRコード関連のスタイル */
+#qrReaderModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #f8f9fa;
+    z-index: 10000;
+    display: none;
+    flex-direction: column;
+}
+
+#qrReaderContainer {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#qrReaderTitle {
+    background: var(--primary-color);
+    color: white;
+    font-size: 1.1rem;
+    font-weight: bold;
+    padding: 12px;
+    margin: 0;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#qrReader {
+    width: 100%;
+    height: calc(100% - 65px);
+    background: #000;
+    object-fit: cover;
+}
+
+#closeQrReader {
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+#closeQrReader:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+#qrReaderStatus {
+    background: white;
+    text-align: center;
+    padding: 5px;
+    font-size: 11px;
+    color: var(--text-color);
+    border-top: 1px solid #e0e0e0;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
+    min-height: 15px;
+}
+
+.qr-instructions {
+    background: rgba(255,255,255,0.95);
+    padding: 6px 15px;
+    font-size: 12px;
+    color: var(--text-color);
+    line-height: 1.3;
+    text-align: center;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+/* QRスキャン関連の装飾を削除 */
+.qr-scan-frame {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.qr-scan-overlay,
+.qr-scan-corners {
+    display: none;
+}
+
+.qr-scan-corners::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: -260px;
+    width: 20px;
+    height: 20px;
+    border-bottom: 3px solid #00ff00;
+    border-right: 3px solid #00ff00;
+}
+
+.qr-code-container {
+    text-align: left;
+    margin: 10px 0;
+}
+
+.qr-code {
+    display: inline-block;
+    margin: 0;
+    vertical-align: top;
+}
+
+/* QRコード印刷チェックボックス */
+.qr-print-checkbox {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    margin: 0 0.4em;
+    height: 24px;
+}
+
+.qr-print-checkbox input[type="checkbox"] {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.qr-print-checkbox .qr-checkmark {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    border-radius: 6px;
+    background: var(--check-bg);
+    border: 2.5px solid var(--check-color);
+    box-sizing: border-box;
+    position: relative;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.qr-print-checkbox input[type="checkbox"]:checked + .qr-checkmark {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.qr-print-checkbox .qr-checkmark::after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.qr-print-checkbox input[type="checkbox"]:checked + .qr-checkmark::after {
+    display: block;
+}
+
+.qr-print-checkbox .qr-checkmark::after {
+    left: 6px;
+    top: 2.5px;
+    width: 8px;
+    height: 14px;
+    border: solid #fff;
+    border-width: 0 3px 3px 0;
+    border-radius: 2px;
+    transform: rotate(45deg);
+    content: "";
+}
+
+.qr-checkbox-label {
+    font-size: 0.85rem;
+    color: var(--text-color);
+    margin-left: 0.3rem;
+    white-space: nowrap;
+}
+
+/* QRアイコン（履歴表示用） */
+.historyQrIcon {
+    background: var(--primary-color);
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-right: 8px;
+    display: inline-block;
+    cursor: default;
 }
 </style>
 </head>
@@ -765,6 +994,7 @@ footer p {
 <header>
     <div class="navbar">
         <a class="navbar-brand" href="#">toki01Ⓣ</a>
+        <button id="qrCodeBtn" title="QRコード読み取り">QR</button>
         <button id="historyMenuBtn" title="履歴"><span>&#9776;</span></button>
     </div>
 </header>
@@ -782,6 +1012,23 @@ footer p {
     <div id="historyList"></div>
 </div>
 <div id="historyDrawerBg"></div>
+
+<!-- QRコードリーダーモーダル -->
+<div id="qrReaderModal">
+    <div id="qrReaderContainer">
+        <div id="qrReaderTitle">
+            QRコード読み取り
+            <button id="closeQrReader">×</button>
+        </div>
+        <div class="qr-instructions">
+            QRコードを読み取ってください
+        </div>
+        <div class="qr-scan-frame">
+            <video id="qrReader"></video>
+        </div>
+        <div id="qrReaderStatus">カメラを起動中...</div>
+    </div>
+</div>
 <main>
     <div class="section-content">
         <section id="imageSection" class="image-selection">
@@ -806,9 +1053,10 @@ footer p {
                         <option value="5">5枚</option>
                     </select>
                     <button type="submit" id="printButton" class="disabled">発行</button>
-                    <label class="custom-checkbox" id="shrinkCheckboxLabel" style="margin-left:0.5em;margin-right:0.5em;">
-                        <input type="checkbox" id="shrinkCheckbox" title="縮小印刷" />
-                        <span class="checkmark"></span>
+                    <label class="qr-print-checkbox" id="qrPrintCheckboxLabel" style="margin-left:0.5em;">
+                        <input type="checkbox" id="qrPrintCheckbox" title="QRコード印刷" />
+                        <span class="qr-checkmark"></span>
+                        <span class="qr-checkbox-label">QR</span>
                     </label>
                 </div>
             </form>
@@ -831,6 +1079,11 @@ footer p {
                     <option value="5">5枚</option>
                 </select>
                 <button id="textPrintButton" class="disabled" onclick="printText()">発行</button>
+                <label class="qr-print-checkbox" id="textQrPrintCheckboxLabel" style="margin-left:0.5em;">
+                    <input type="checkbox" id="textQrPrintCheckbox" title="QRコード印刷" />
+                    <span class="qr-checkmark"></span>
+                    <span class="qr-checkbox-label">QR</span>
+                </label>
             </div>
         </section>
         <section id="signatureSection" style="display:none;">
@@ -856,6 +1109,11 @@ footer p {
                     <option value="5">5枚</option>
                 </select>
                 <button id="signaturePrintButton" class="disabled" type="button">発行</button>
+                <label class="qr-print-checkbox" id="signatureQrPrintCheckboxLabel" style="margin-left:0.5em;">
+                    <input type="checkbox" id="signatureQrPrintCheckbox" title="QRコード印刷" />
+                    <span class="qr-checkmark"></span>
+                    <span class="qr-checkbox-label">QR</span>
+                </label>
             </div>
         </section>
         <div id="dateDisplay"></div>
@@ -881,6 +1139,13 @@ let selectedTextChip = '';
 let selectedSignatureChip = '';
 let lastPreviewImageNaturalWidth = 0;
 let lastPreviewImageNaturalHeight = 0;
+
+// QRコード関連の変数
+let qrScanner = null;
+
+// 独自QRコード生成用の変数
+const QR_PREFIX = 'TOKI01_';
+const QR_VERSION = 'v1.0';
 const DB_NAME = 'toki01_history';
 const DB_VERSION = 1;
 const STORE_NAME = 'history';
@@ -898,13 +1163,67 @@ function openDB() {
     });
 }
 function addHistory(item) {
+    console.log('=== 履歴追加処理開始 ===');
+    console.log('追加データ:', item);
+    
+    // 管理番号が未設定の場合は生成
+    if (!item.managementId) {
+        item.managementId = generateQRData(item);
+        console.log('管理番号を生成:', item.managementId);
+    }
+    
+    // 必須データの確認
+    if (!item.type || !item.data) {
+        console.error('❌ 必須データが不足:', {
+            type: !!item.type,
+            data: !!item.data
+        });
+        return Promise.reject(new Error('必須データが不足しています'));
+    }
+    
+    // 作成日時の設定
+    if (!item.created) {
+        item.created = Date.now();
+    }
+    
+    console.log('✅ 履歴データ準備完了:', {
+        id: item.id,
+        type: item.type,
+        managementId: item.managementId,
+        hasData: !!item.data,
+        qrPrinted: item.qrPrinted,
+        qrPrintedType: typeof item.qrPrinted,
+        created: new Date(item.created).toLocaleString()
+    });
+    
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
-            tx.objectStore(STORE_NAME).add(item);
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
+            const store = tx.objectStore(STORE_NAME);
+            const addReq = store.add(item);
+            
+            addReq.onsuccess = () => {
+                console.log('✅ 履歴をデータベースに保存完了');
+                resolve();
+            };
+            
+            addReq.onerror = (event) => {
+                console.error('❌ 履歴保存エラー:', event.target.error);
+                reject(event.target.error);
+            };
+            
+            tx.oncomplete = () => {
+                console.log('✅ トランザクション完了');
+            };
+            
+            tx.onerror = (event) => {
+                console.error('❌ トランザクションエラー:', event.target.error);
+                reject(event.target.error);
+            };
         });
+    }).catch(error => {
+        console.error('❌ addHistory全体エラー:', error);
+        throw error;
     });
 }
 function getAllHistory(typeFilter = null) {
@@ -944,6 +1263,7 @@ function formatDateTime(dt) {
     );
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
+const qrCodeBtn = document.getElementById('qrCodeBtn');
 const historyDrawer = document.getElementById('historyDrawer');
 const historyDrawerClose = document.getElementById('historyDrawerClose');
 const historyList = document.getElementById('historyList');
@@ -969,6 +1289,7 @@ modeToggleUnified.onclick = () => {
     toggleMode(currentHistoryType);
 };
 historyMenuBtn.onclick = () => { historyDrawer.classList.add('open'); historyDrawerBg.style.display = 'block'; loadHistoryList(); };
+qrCodeBtn.onclick = () => { startQRReader(); };
 historyDrawerClose.onclick = () => { historyDrawer.classList.remove('open'); historyDrawerBg.style.display = 'none'; };
 historyDrawerBg.onclick = (e) => {
     if (historyDrawer.classList.contains('open')) {
@@ -1062,11 +1383,12 @@ function loadHistoryList() {
                 contentBlock.appendChild(imgRow);
                 const metaRow = document.createElement('div');
                 metaRow.className = 'historyMetaRow';
-                if (item.shrink) {
-                    const shrinkIcon = document.createElement('span');
-                    shrinkIcon.className = 'historyShrinkIcon';
-                    shrinkIcon.innerHTML = `<svg viewBox="0 0 20 20"><polyline points="4,11 9,16 16,5" stroke="var(--check-color)" stroke-width="2.5" fill="none"/></svg>`;
-                    metaRow.appendChild(shrinkIcon);
+                if (item.qrPrinted) {
+                    const qrIcon = document.createElement('span');
+                    qrIcon.className = 'historyQrIcon';
+                    qrIcon.innerHTML = 'QR';
+                    qrIcon.title = 'QRコード付き';
+                    metaRow.appendChild(qrIcon);
                 }
                 const metaText = document.createElement('span');
                 metaText.className = 'historyMetaText';
@@ -1093,6 +1415,13 @@ function loadHistoryList() {
                 contentBlock.appendChild(imgRow);
                 const metaRow = document.createElement('div');
                 metaRow.className = 'historyMetaRow';
+                if (item.qrPrinted) {
+                    const qrIcon = document.createElement('span');
+                    qrIcon.className = 'historyQrIcon';
+                    qrIcon.innerHTML = 'QR';
+                    qrIcon.title = 'QRコード付き';
+                    metaRow.appendChild(qrIcon);
+                }
                 const metaText = document.createElement('span');
                 metaText.className = 'historyMetaText';
                 metaText.textContent = (item.dateTime === 'with' ? '日付・時刻あり' : '日付・時刻なし');
@@ -1109,6 +1438,13 @@ function loadHistoryList() {
                 contentBlock.appendChild(text);
                 const metaRow = document.createElement('div');
                 metaRow.className = 'historyMetaRow';
+                if (item.qrPrinted) {
+                    const qrIcon = document.createElement('span');
+                    qrIcon.className = 'historyQrIcon';
+                    qrIcon.innerHTML = 'QR';
+                    qrIcon.title = 'QRコード付き';
+                    metaRow.appendChild(qrIcon);
+                }
                 const metaText = document.createElement('span');
                 metaText.className = 'historyMetaText';
                 metaText.textContent = (item.dateTime === 'with' ? '日付・時刻あり' : '日付・時刻なし');
@@ -1155,7 +1491,6 @@ function loadHistoryList() {
                     else chips[1].classList.add('selected');
                     selectedChip = item.dateTime;
                     document.getElementById('copiesSelect').value = item.copies;
-                    document.getElementById('shrinkCheckbox').checked = !!item.shrink;
                     document.getElementById('imagePrintOptions').style.display = 'flex';
                     updatePrintButtonState();
                 } else if (item.type === 'signature') {
@@ -1208,13 +1543,82 @@ window.onload = function() {
     document.getElementById('textInput').addEventListener('input', updateTextPrintButtonState);
     document.getElementById('textInput').addEventListener('input', toggleClearButton);
     document.getElementById('clearTextButton').addEventListener('click', handleClearButtonClick);
+    // テキスト入力時の文字数制限チェック
     document.getElementById('textInput').addEventListener('input', function() {
-        autoWrap(this);
+        checkTextInputLimit(this);
     });
+    // autoWrap機能を無効化（テキスト入力の誤動作防止）
+    // document.getElementById('textInput').addEventListener('input', function() {
+    //     autoWrap(this);
+    // });
     setTextChipsEnabled(false);
     loadHistoryList();
     initSignaturePad();
+    initQRReader();
+    
+    // QRライブラリの初期化チェック
+    setTimeout(() => {
+        if (typeof QrScanner === 'undefined' && typeof ZXing === 'undefined') {
+            console.error('⚠️ QRスキャナーライブラリが読み込まれていません');
+        }
+    }, 2000);
+    
+    // 【枚数印刷の自動続行システム】
+    checkAndContinuePrinting();
 };
+
+// 枚数印刷の続行をチェックする関数
+function checkAndContinuePrinting() {
+    const printJob = sessionStorage.getItem('printJob');
+    if (!printJob) {
+        return; // 印刷ジョブなし
+    }
+    
+    const job = JSON.parse(printJob);
+    const timeSinceLastPrint = Date.now() - job.timestamp;
+    
+    // 10秒経過後に次の印刷を実行
+    if (timeSinceLastPrint >= 10000) {
+        if (job.currentCopy < job.totalCopies) {
+            job.currentCopy++;
+            job.timestamp = Date.now();
+            
+            console.log(`${job.type}印刷続行: ${job.currentCopy}/${job.totalCopies}枚目実行`);
+            
+            // 次の印刷を実行
+            const nextPrintUrl = 'siiprintagent://1.0/print?' +
+                                'CallbackSuccess='  + encodeURIComponent(job.thisPage) + '&' +
+                                'CallbackFail='     + encodeURIComponent(job.thisPage) + '&' +
+                                'Format='           + 'pdf' + '&' +
+                                'Data='             + encodeURIComponent(job.pdfData) + '&' +
+                                'SelectOnError='    + 'yes' + '&' +
+                                'CutType='          + 'full' + '&' +
+                                'CutFeed='          + 'yes' + '&' +
+                                'FitToWidth='       + 'no' + '&' +
+                                'PaperWidth='       + '58';
+            
+            if (job.currentCopy < job.totalCopies) {
+                // まだ残りがある場合は情報を更新して保存
+                sessionStorage.setItem('printJob', JSON.stringify(job));
+            } else {
+                // 全て完了した場合は削除
+                sessionStorage.removeItem('printJob');
+                console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
+            }
+            
+            window.location.href = nextPrintUrl;
+        } else {
+            // 全印刷完了
+            sessionStorage.removeItem('printJob');
+            console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
+        }
+    } else {
+        // まだ10秒経過していない場合は待機
+        const remainingTime = 10000 - timeSinceLastPrint;
+        console.log(`印刷待機中: あと${Math.ceil(remainingTime/1000)}秒`);
+        setTimeout(checkAndContinuePrinting, remainingTime);
+    }
+}
 function showSection(mode) {
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
@@ -1267,9 +1671,6 @@ function previewImage(event) {
         updatePrintButtonState();
     }
 }
-document.getElementById('shrinkCheckbox').addEventListener('change', function() {
-    // プレビューは常に最大
-});
 function selectChip(type) {
     selectedChip = type;
     const chips = document.querySelectorAll('#dateTimeChoice .chip');
@@ -1433,6 +1834,7 @@ function updateSignaturePrintButtonState() {
 }
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
+    const qrPrintEnabled = document.getElementById('signatureQrPrintCheckbox').checked; // 最初に取得
     const canvas = document.getElementById('signaturePad');
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
     const srcW = canvas.width / ratio;
@@ -1458,36 +1860,211 @@ document.getElementById('signaturePrintButton').onclick = function() {
     const bottomMargin = isDateTimeEnabled ? 16 : 18;
     const totalHeight = marginY + imgH + (isDateTimeEnabled ? dateTimeHeight : 0) + bottomMargin;
     const selectedCopies = parseInt(document.getElementById('signatureCopiesSelect').value);
-    let currentCopy = 1;
-    function printSignatureCopy(copyIndex) {
-        let dataUrl = tmpCanvas.toDataURL("image/png");
-        let printUrl = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=4&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${marginX},${marginY},${imgW},${imgH},${dataUrl.split(',')[1]}`;
-        if (isDateTimeEnabled) {
-            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-            printUrl += `&2=${safeEncodeURIComponent(dateTimeString)},0,${marginY + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-        }
-        if (copyIndex === selectedCopies) {
-            printUrl += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-        }
-        let siiUrl = `sii://print?url=${encodeURIComponent(printUrl)}`;
-        window.location.href = siiUrl;
+    
+    function printSignatureCopy() {
+        // 新しいキャンバスで全体を合成
+        const compositeCanvas = document.createElement('canvas');
+        const compositeCtx = compositeCanvas.getContext('2d');
+        
+        const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
+        const canvasWidth = Math.round(58 * mmToPx); // 58mm
+        
+        // サイン画像のサイズを取得
+        const signatureImg = new Image();
+        signatureImg.onload = function() {
+            // 日付・時刻の高さを計算
+            let dateTimeHeight = 0;
+            if (isDateTimeEnabled) {
+                const fontSize = 40; // 40px
+                dateTimeHeight = fontSize * 2.5; // 2行 + 余白
+            }
+            
+            // 全体の高さを計算（手書き用の余白設定、サイズ縮小）
+            const signatureTopMargin = 8; // 手書き用上余白
+            const signatureBottomMargin = 25; // 手書き用下余白
+            const qrSpaceMargin = qrPrintEnabled ? (selectedSignatureChip === 'with' ? 65 : 110) : 0; // 日付ありは65px、なしは110px
+
+            // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
+            const signatureScale = 0.92; // 92%にスケール（85%から修正）
+            const signatureWidth = Math.round((outW / pxPerMm * mmToPx) * signatureScale);
+            const signatureHeight = Math.round((outH / pxPerMm * mmToPx) * signatureScale);
+            const totalHeight = signatureTopMargin + signatureHeight + dateTimeHeight + signatureBottomMargin + qrSpaceMargin;
+            
+            compositeCanvas.width = canvasWidth;
+            compositeCanvas.height = totalHeight;
+            
+            // 背景を白にする
+            compositeCtx.fillStyle = '#FFFFFF';
+            compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
+            
+            // サインを描画（中央配置、縮小サイズ）
+            const signatureXOffset = -45; // 左右調整値（プラスで右に、マイナスで左に移動）
+            const signatureX = Math.round((canvasWidth - signatureWidth) / 2) + signatureXOffset;
+            const signatureY = signatureTopMargin; // 手書き用上余白
+            
+            compositeCtx.drawImage(tmpCanvas, signatureX, signatureY, signatureWidth, signatureHeight);
+            
+            // QRコードを生成して左側に配置（チェックボックス確認）
+            let qrCodeCanvas = null;
+            console.log('手書き印刷 - QRチェックボックス状態:', qrPrintEnabled);
+            if (qrPrintEnabled) {
+                console.log('QRコード生成開始（手書き）');
+                const historyItem = {
+                    type: 'signature',
+                    mode: 'signature',
+                    data: tmpCanvas.toDataURL("image/png"),
+                    dateTime: selectedSignatureChip,
+                    copies: selectedCopies,
+                    created: Date.now(),
+                    qrPrinted: qrPrintEnabled // 確実にチェックボックスの状態を保存
+                };
+                
+                // 先に履歴を保存してからQRコード生成
+                const qrData = generateQRData(historyItem);
+                if (qrData) {
+                    // 履歴を即座に保存
+                    addHistory(historyItem).then(() => {
+                        console.log('履歴保存完了:', historyItem.managementId);
+                    });
+                    
+                    qrCodeCanvas = generateQRCode(qrData);
+                    if (qrCodeCanvas) {
+                        const qrSize = 120; // QRコードのサイズを大きく設定
+                        const qrX = 30; // 左端から30pxの位置
+                        let qrY;
+                        if (isDateTimeEnabled) {
+                            // 日付・時刻ありの場合：日付・時刻の左側に配置
+                            qrY = signatureY + signatureHeight + 20; // サインの下、日付の横
+                        } else {
+                            // 日付・時刻なしの場合：手書きの下部左側（印刷範囲内に調整）
+                            qrY = Math.max(signatureY + signatureHeight - qrSize + 10, signatureY + signatureHeight + 10);
+                        }
+                        console.log('QRコード描画位置:', qrX, qrY, qrSize);
+                        compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
+                    }
+                }
+            } else {
+                console.log('QRコードなしで印刷（手書き）');
+            }
+            
+            // 日付・時刻を描画
+            if (isDateTimeEnabled) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth() + 1;
+                const day = now.getDate();
+                const hour = now.getHours();
+                const minute = now.getMinutes();
+                const second = now.getSeconds();
+                
+                const fontSize = 50; // 50px
+                compositeCtx.fillStyle = '#000000';
+                compositeCtx.font = `${fontSize}px Arial, sans-serif`;
+                compositeCtx.textAlign = 'center';
+                compositeCtx.textBaseline = 'top';
+                
+                // QRコード印刷の有無で位置を調整
+                let dateTimeX;
+                // 現在のチェックボックス状態を直接確認
+                const currentQrEnabled = document.getElementById('signatureQrPrintCheckbox').checked;
+                if (currentQrEnabled) {
+                    // QRコード印刷ありの場合：QRコードの右側に配置
+                    dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
+                } else {
+                    // QRコード印刷なしの場合：中央に配置
+                    dateTimeX = Math.round(canvasWidth / 2) - 40; // 画面中央
+                }
+                
+                let yPos = signatureY + signatureHeight + 5; // 縮小されたサインの下
+                
+                // 日付行
+                const dateText = `${year}年 ${month}月${day}日`;
+                compositeCtx.fillText(dateText, dateTimeX, yPos);
+                yPos += fontSize * 1.2;
+                
+                // 時刻行
+                const timeText = `${hour}時${minute}分${second}秒`;
+                compositeCtx.fillText(timeText, dateTimeX, yPos);
+            }
+            
+            // 合成キャンバスをPNGデータURLに変換
+            const compositeDataUrl = compositeCanvas.toDataURL('image/png');
+            
+            // jsPDFを使用してPDFを生成
+            const { jsPDF } = window.jspdf;
+            const pdfHeight = Math.round(totalHeight / mmToPx);
+            
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: [58, pdfHeight]
+            });
+            
+            // PDFの設定を直接操作
+            pdf.internal.pageSize.width = 58;
+            pdf.internal.pageSize.height = pdfHeight;
+            
+            // 合成画像をPDFに追加
+            pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+            
+            // PDFをBase64形式で取得
+            const pdfBase64 = pdf.output('datauristring').split(',')[1];
+            
+            let thisPage = window.location.href;
+            let printUrl = 'siiprintagent://1.0/print?' +
+                          'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                          'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                          'Format='           + 'pdf' + '&' +
+                          'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                          'SelectOnError='    + 'yes' + '&' +
+                          'CutType='          + 'full' + '&' +
+                          'CutFeed='          + 'yes' + '&' +
+                          'FitToWidth='       + 'no' + '&' +
+                          'PaperWidth='       + '58';
+            
+            // 【革新的枚数印刷システム】sessionStorageによる永続化方式
+            
+            console.log(`署名印刷開始: 総枚数=${selectedCopies}枚`);
+            
+            // 枚数印刷情報をsessionStorageに保存
+            if (selectedCopies > 1) {
+                const printJob = {
+                    type: 'signature',
+                    totalCopies: selectedCopies,
+                    currentCopy: 1,
+                    pdfData: pdfBase64,
+                    thisPage: thisPage,
+                    timestamp: Date.now()
+                };
+                sessionStorage.setItem('printJob', JSON.stringify(printJob));
+                console.log(`署名印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
+            }
+            
+            // 1枚目を印刷
+            window.location.href = printUrl;
+        };
+        
+        signatureImg.src = tmpCanvas.toDataURL("image/png");
     }
-    function printNext() {
-        if (currentCopy < selectedCopies) {
-            setTimeout(printNext, 10000);
-        }
-        printSignatureCopy(currentCopy);
-        currentCopy++;
+    
+    // 現在の1枚を印刷（シンプル実行）
+    printSignatureCopy();
+    
+    // 現在の1枚を印刷（シンプル実行）
+    printSignatureCopy();
+    
+    // QRコードなしの場合のみ履歴保存
+    if (!qrPrintEnabled) {
+        addHistory({
+            type: 'signature',
+            mode: 'signature',
+            data: tmpCanvas.toDataURL("image/png"),
+            dateTime: selectedSignatureChip,
+            copies: selectedCopies,
+            qrPrinted: false,
+            created: Date.now()
+        });
     }
-    printNext();
-    addHistory({
-        type: 'signature',
-        mode: 'signature',
-        data: tmpCanvas.toDataURL("image/png"),
-        dateTime: selectedSignatureChip,
-        copies: selectedCopies,
-        created: Date.now()
-    });
 };
 // --- 画像印刷 ---
 function sendToPrintAssist(event) {
@@ -1496,13 +2073,14 @@ function sendToPrintAssist(event) {
     let file = fileInput.files[0];
     let base64Image = null;
     let usePreview = false;
+    const qrPrintEnabled = document.getElementById('qrPrintCheckbox').checked; // 最初に取得
     if (!file && document.getElementById('imagePreviewContainer').firstChild && document.getElementById('imagePreviewContainer').firstChild.tagName === 'IMG') {
         let img = document.getElementById('imagePreviewContainer').firstChild;
         base64Image = img.src.split(',')[1];
         usePreview = true;
     }
     if ((!file && !usePreview) || selectedChip === '') return;
-    const shrinkChecked = document.getElementById('shrinkCheckbox').checked;
+    
     function doPrint(base64Image) {
         const paperWidth = 58;
         let img = new window.Image();
@@ -1510,7 +2088,6 @@ function sendToPrintAssist(event) {
             let origW = img.naturalWidth;
             let origH = img.naturalHeight;
             let ratio = Math.min(paperWidth / origW, 1);
-            if (shrinkChecked) ratio *= 0.6;
             let imgW = Math.round(origW * ratio);
             let imgH = Math.round(origH * ratio);
             let x = Math.round((paperWidth - imgW) / 2);
@@ -1520,36 +2097,464 @@ function sendToPrintAssist(event) {
             const bottomMargin = isDateTimeEnabled ? 16 : 18;
             const totalHeight = topMargin + imgH + (isDateTimeEnabled ? 16 : 0) + bottomMargin;
             const selectedCopies = parseInt(document.getElementById('copiesSelect').value);
-            let currentCopy = 1;
-            function printImageCopy(copyIndex) {
-                let printUrlImage = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=4&monochrome=0&pages=1&1=%3C%3C%3CObject%3E%3E%3E,${x},${y},${imgW},${imgH},${base64Image}`;
-                if (isDateTimeEnabled) {
-                    const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-                    printUrlImage += `&2=${safeEncodeURIComponent(dateTimeString)},0,${topMargin + imgH},${paperWidth},16,機械彫刻用標準書体 M,4,0,0,1`;
-                }
-                if (copyIndex === selectedCopies) {
-                    printUrlImage += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
-                }
-                let siiUrl = `sii://print?url=${encodeURIComponent(printUrlImage)}`;
-                window.location.href = siiUrl;
+            
+            function printImageCopy() {
+                // 新しいキャンバスで全体を合成
+                const compositeCanvas = document.createElement('canvas');
+                const compositeCtx = compositeCanvas.getContext('2d', { 
+                    alpha: false,
+                    willReadFrequently: false,
+                    colorSpace: 'srgb',
+                    desynchronized: false
+                });
+                
+                const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
+                const canvasWidth = Math.round(58 * mmToPx); // 58mm
+                
+                // アップロードされた画像を読み込み
+                const uploadedImg = new Image();
+                uploadedImg.crossOrigin = 'anonymous'; // 画像品質向上
+                uploadedImg.onload = function() {
+                    // 日付・時刻の高さを計算
+                    let dateTimeHeight = 0;
+                    if (isDateTimeEnabled) {
+                        const fontSize = 50; // 50px
+                        dateTimeHeight = fontSize * 2.5; // 2行 + 余白
+                    }
+                    
+                    // 画像のサイズを58mm幅に合わせて計算
+                    const maxImgWidth = canvasWidth - -35; // 左右余白を除く
+                    const imgRatio = uploadedImg.naturalHeight / uploadedImg.naturalWidth;
+                    const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth);
+                    const finalImgHeight = finalImgWidth * imgRatio;
+                    
+                    // 全体の高さを計算（画像用の余白設定）
+                    const imageTopMargin = -50; // 画像用上余白
+                    const imageBottomMargin = 13; // 画像用下余白
+                    const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
+                    const qrSpaceMargin = qrPrintEnabled ? (selectedChip === 'with' ? 65 : 110) : 0; // QRコード用余白（日付ありは65px、なしは110px）
+                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrSpaceMargin;
+                    
+                    compositeCanvas.width = canvasWidth;
+                    compositeCanvas.height = totalHeight;
+                    
+                    // 背景を白にする
+                    compositeCtx.fillStyle = '#FFFFFF';
+                    compositeCtx.fillRect(0, 0, canvasWidth, totalHeight);
+                    
+                    // 画像の色濃淡を改善するための詳細設定（文字鮮明化）
+                    compositeCtx.imageSmoothingEnabled = false; // 文字の鮮明度を優先
+                    compositeCtx.imageSmoothingQuality = 'high';
+                    compositeCtx.globalCompositeOperation = 'source-over';
+                    compositeCtx.globalAlpha = 1.0;
+                    
+                    // 画像の色域とコントラストを保持するための設定
+                    compositeCtx.filter = 'none'; // フィルターを一旦無効化
+                    
+                    
+                    // 画像を描画（中央配置）
+                    const imgX = -59; // 左余白
+                    const imgY = imageTopMargin; // 画像用上余白
+                    
+                    // QRコードを生成して左側に配置（チェックボックス確認）
+                    let qrCodeCanvas = null;
+                    console.log('画像印刷 - QRチェックボックス状態:', qrPrintEnabled);
+                    if (qrPrintEnabled) {
+                        console.log('QRコード生成開始（画像）');
+                        const historyItem = {
+                            type: 'image',
+                            mode: 'image',
+                            data: 'data:image/png;base64,' + base64Image,
+                            dateTime: selectedChip,
+                            copies: selectedCopies,
+                            created: Date.now(),
+                            qrPrinted: qrPrintEnabled // 確実にチェックボックスの状態を保存
+                        };
+                        
+                        // 先に履歴を保存してからQRコード生成
+                        const qrData = generateQRData(historyItem);
+                        if (qrData) {
+                            // 履歴を即座に保存
+                            addHistory(historyItem).then(() => {
+                                console.log('履歴保存完了:', historyItem.managementId);
+                            });
+                            
+                            qrCodeCanvas = generateQRCode(qrData);
+                            if (qrCodeCanvas) {
+                                const qrSize = 120; // QRコードのサイズを大きく設定
+                                const qrX = 30; // 左端から30pxの位置
+                                let qrY;
+                                if (isDateTimeEnabled) {
+                                    // 日付・時刻ありの場合：日付・時刻の左側に配置
+                                    qrY = imgY + finalImgHeight + 20; // 画像の下、日付の横
+                                } else {
+                                    // 日付・時刻なしの場合：画像の下部左側（印刷範囲内に調整）
+                                    qrY = Math.max(imgY + finalImgHeight - qrSize + 10, imgY + finalImgHeight + 10);
+                                }
+                                console.log('QRコード描画位置:', qrX, qrY, qrSize);
+                                compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
+                            }
+                        }
+                    } else {
+                        console.log('QRコードなしで印刷（画像）');
+                    }
+                    
+                    compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
+                    
+                    // 画像描画後、濃淡を確実に印字させる最強処理
+                    const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const data = imageData.data;
+                    
+                    // 【サーマルプリンター特化】濃淡確実印字システム
+                    const width = finalImgWidth;
+                    const height = finalImgHeight;
+                    
+                    // オリジナル画像データを保持
+                    const originalData = new Uint8Array(data.length);
+                    for (let i = 0; i < data.length; i++) {
+                        originalData[i] = data[i];
+                    }
+                    
+                    // 1. 全色対応高精度グレースケール変換
+                    const grayData = new Uint8Array(width * height);
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+                        
+                        // 薄い色対応カラー→グレー変換
+                        let gray;
+                        
+                        // 薄い色の検出と保護
+                        const maxColor = Math.max(r, g, b);
+                        const minColor = Math.min(r, g, b);
+                        const colorRange = maxColor - minColor;
+                        
+                        // 薄い色（高明度・低彩度）の特別処理
+                        if (maxColor >= 200 && colorRange <= 50) {
+                            // 薄い色は明度を保持しつつグレー化
+                            gray = Math.round((r + g + b) / 3);
+                        } else {
+                            // 通常の色は標準的な輝度計算
+                            gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                        }
+                        
+                        // 薄い色の濃淡保護（コントラスト強化を控えめに）
+                        if (gray > 220) {
+                            gray = Math.min(255, gray + 10); // 薄い色は控えめに強化
+                        } else if (gray > 180) {
+                            // 中間薄色はそのまま保持
+                        } else if (gray < 50) {
+                            gray = Math.max(0, gray - 20);   // 暗い部分のみ強化
+                        }
+                        grayData[i / 4] = gray;
+                    }
+                    
+                    // 2. サーマルプリンター用ディザリング処理（Floyd-Steinbergディザリング）
+                    const ditheredData = new Uint8Array(width * height);
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const index = y * width + x;
+                            const oldPixel = grayData[index];
+                            
+                            // サーマルプリンター用濃淡階調マッピング（9段階）
+                            let newPixel;
+                            
+                            if (oldPixel >= 220) newPixel = 255;      // 純白
+                            else if (oldPixel >= 190) newPixel = 200; // 極薄
+                            else if (oldPixel >= 160) newPixel = 170; // 薄
+                            else if (oldPixel >= 130) newPixel = 140; // 中薄
+                            else if (oldPixel >= 100) newPixel = 110; // 中間
+                            else if (oldPixel >= 70) newPixel = 80;   // 中濃
+                            else if (oldPixel >= 40) newPixel = 50;   // 濃
+                            else if (oldPixel >= 15) newPixel = 25;   // 極濃
+                            else newPixel = 0;                        // 純黒
+                            
+                            ditheredData[index] = newPixel;
+                            const quantError = oldPixel - newPixel;
+                            
+                            // 薄い色に最適化された誤差拡散
+                            const errorWeight = oldPixel > 150 ? 1.2 : 1.0; // 薄い色は誤差拡散を強化
+                            
+                            // Floyd-Steinbergディザリングで誤差拡散（薄い色強化）
+                            if (x + 1 < width) {
+                                grayData[index + 1] = Math.max(0, Math.min(255, 
+                                    grayData[index + 1] + quantError * 7 / 16 * errorWeight));
+                            }
+                            if (y + 1 < height) {
+                                if (x - 1 >= 0) {
+                                    grayData[(y + 1) * width + (x - 1)] = Math.max(0, Math.min(255,
+                                        grayData[(y + 1) * width + (x - 1)] + quantError * 3 / 16 * errorWeight));
+                                }
+                                grayData[(y + 1) * width + x] = Math.max(0, Math.min(255,
+                                    grayData[(y + 1) * width + x] + quantError * 5 / 16 * errorWeight));
+                                if (x + 1 < width) {
+                                    grayData[(y + 1) * width + (x + 1)] = Math.max(0, Math.min(255,
+                                        grayData[(y + 1) * width + (x + 1)] + quantError * 1 / 16 * errorWeight));
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 3. 文字部分の検出と保護（文字は除く）
+                    for (let i = 0; i < data.length; i += 4) {
+                        const pixelIndex = i / 4;
+                        const x = pixelIndex % width;
+                        const y = Math.floor(pixelIndex / width);
+                        
+                        const r = originalData[i];
+                        const g = originalData[i + 1];
+                        const b = originalData[i + 2];
+                        
+                        // 文字判定（高コントラスト + エッジ検出）
+                        const isTextLike = isTextRegion(x, y, width, height, originalData);
+                        
+                        if (isTextLike) {
+                            // 文字部分は文字欠け防止強化処理
+                            const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                            // 文字欠け防止：より広い範囲を文字として認識
+                            let enhanced;
+                            if (gray < 160) { // 140 → 160 に変更してより多くを文字として認識
+                                // 文字部分は確実に黒く
+                                enhanced = Math.max(0, gray - 100); // 80 → 100 に変更してより黒く
+                            } else {
+                                // 背景部分は確実に白く
+                                enhanced = Math.min(255, gray + 60); // 50 → 60 に変更してより白く
+                            }
+                            data[i] = enhanced;
+                            data[i + 1] = enhanced;
+                            data[i + 2] = enhanced;
+                        } else {
+                            // 非文字部分：ノイズレスサーマルプリンター用濃淡表現
+                            const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                            
+                            // 4x4ディザリングマトリックス（ノイズ軽減）
+                            const pixelX = x % 4;
+                            const pixelY = y % 4;
+                            
+                            // 4x4 Bayerディザリングマトリックス（スムーズ版）
+                            const bayerMatrix = [
+                                [ 0,  8,  2, 10],
+                                [12,  4, 14,  6],
+                                [ 3, 11,  1,  9],
+                                [15,  7, 13,  5]
+                            ];
+                            
+                            // 閾値を15倍にして0-225の範囲に（よりスムーズに）
+                            const threshold = bayerMatrix[pixelY][pixelX] * 15;
+                            
+                            // サーマルプリンター用二値化（ノイズ軽減）
+                            let finalValue;
+                            
+                            // 濃淡を密度パターンで表現（スムーズ化）
+                            if (originalGray > threshold) {
+                                finalValue = 255; // 白
+                            } else {
+                                finalValue = 0;   // 黒
+                            }
+                            
+                            data[i] = finalValue;
+                            data[i + 1] = finalValue;
+                            data[i + 2] = finalValue;
+                        }
+                    }
+                    
+                    // 文字判定関数
+                    function isTextRegion(x, y, width, height, imgData) {
+                        if (x < 3 || x >= width - 3 || y < 3 || y >= height - 3) return false; // 2 → 3 に拡張
+                        
+                        const centerIndex = (y * width + x) * 4;
+                        const centerGray = Math.round(0.299 * imgData[centerIndex] + 
+                                                     0.587 * imgData[centerIndex + 1] + 
+                                                     0.114 * imgData[centerIndex + 2]);
+                        
+                        // 周辺のグレー値を取得（範囲を拡張）
+                        const neighbors = [];
+                        for (let dy = -3; dy <= 3; dy++) { // -2 → -3 に拡張
+                            for (let dx = -3; dx <= 3; dx++) { // -2 → -3 に拡張
+                                if (dx === 0 && dy === 0) continue;
+                                const nIndex = ((y + dy) * width + (x + dx)) * 4;
+                                const nGray = Math.round(0.299 * imgData[nIndex] + 
+                                                        0.587 * imgData[nIndex + 1] + 
+                                                        0.114 * imgData[nIndex + 2]);
+                                neighbors.push(nGray);
+                            }
+                        }
+                        
+                        // エッジ強度計算
+                        const maxDiff = Math.max(...neighbors.map(n => Math.abs(centerGray - n)));
+                        const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
+                        const contrast = Math.abs(centerGray - avgNeighbor);
+                        
+                        // 文字判定条件（文字欠け防止：より敏感な検出）
+                        return (maxDiff > 20 && contrast > 15) || 
+                               (centerGray < 120 && contrast > 15) || 
+                               (centerGray > 160 && contrast > 15) ||
+                               (maxDiff > 15 && (centerGray < 140 || centerGray > 140)) ||
+                               (contrast > 20); // 追加：コントラストがある箇所はすべて文字として扱う
+                    }
+                    
+                    // 調整されたピクセルデータを再描画
+                    compositeCtx.putImageData(imageData, imgX, imgY);
+                    
+                    // 【追加】最終シャープネス後処理で更に細かな濃淡を強化
+                    const finalData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const finalPixels = finalData.data;
+                    
+                    // UnsharpMask効果で細部を強調
+                    for (let i = 0; i < finalPixels.length; i += 4) {
+                        const pixelIndex = i / 4;
+                        const x = pixelIndex % finalImgWidth;
+                        const y = Math.floor(pixelIndex / finalImgWidth);
+                        
+                        if (x > 1 && x < finalImgWidth - 2 && y > 1 && y < finalImgHeight - 2) {
+                            // 現在のピクセル値
+                            const current = finalPixels[i];
+                            
+                            // 3x3カーネルで周辺平均を計算
+                            let sum = 0;
+                            let count = 0;
+                            for (let dy = -1; dy <= 1; dy++) {
+                                for (let dx = -1; dx <= 1; dx++) {
+                                    const idx = ((y + dy) * finalImgWidth + (x + dx)) * 4;
+                                    sum += finalPixels[idx];
+                                    count++;
+                                }
+                            }
+                            const blur = sum / count;
+                            
+                            // アンシャープマスク適用（細部強調）
+                            const sharpened = current + 0.6 * (current - blur);
+                            const final = Math.max(0, Math.min(255, Math.round(sharpened)));
+                            
+                            finalPixels[i] = final;
+                            finalPixels[i + 1] = final;
+                            finalPixels[i + 2] = final;
+                        }
+                    }
+                    
+                    // 最終処理済みデータを描画
+                    compositeCtx.putImageData(finalData, imgX, imgY);
+                    
+                    // 日付・時刻を描画
+                    if (isDateTimeEnabled) {
+                        const now = new Date();
+                        const year = now.getFullYear();
+                        const month = now.getMonth() + 1;
+                        const day = now.getDate();
+                        const hour = now.getHours();
+                        const minute = now.getMinutes();
+                        const second = now.getSeconds();
+                        
+                        const fontSize = 50;// 50px
+                        compositeCtx.fillStyle = '#000000';
+                        compositeCtx.font = `${fontSize}px Arial, sans-serif`;
+                        compositeCtx.textAlign = 'center';
+                        compositeCtx.textBaseline = 'top';
+                        
+                        // QRコード印刷の有無で位置を調整
+                        let dateTimeX;
+                        // 現在のチェックボックス状態を直接確認
+                        const currentQrEnabled = document.getElementById('qrPrintCheckbox').checked;
+                        if (currentQrEnabled) {
+                            // QRコード印刷ありの場合：QRコードの右側に配置
+                            dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
+                        } else {
+                            // QRコード印刷なしの場合：中央に配置
+                            dateTimeX = Math.round(canvasWidth / 2) - 40; // 画面中央
+                        }
+                        
+                        let yPos = imgY + finalImgHeight + 10; // 画像の下
+                        
+                        // 日付行
+                        const dateText = `${year}年 ${month}月${day}日`;
+                        compositeCtx.fillText(dateText, dateTimeX, yPos);
+                        yPos += fontSize * 1.2;
+                        
+                        // 時刻行
+                        const timeText = `${hour}時${minute}分${second}秒`;
+                        compositeCtx.fillText(timeText, dateTimeX, yPos);
+                        yPos += 50; // 日付有り印刷の下部余白を50px追加
+                    }
+                    
+                    // 合成キャンバスを高品質PNGデータURLに変換
+                    const compositeDataUrl = compositeCanvas.toDataURL('image/png', 1.0);
+                    
+                    // さらに画質を向上させるため、中間的にJPEGでも作成
+                    const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.95);
+                    
+                    // jsPDFを使用してPDFを生成
+                    const { jsPDF } = window.jspdf;
+                    const pdfHeight = Math.round(totalHeight / mmToPx);
+                    
+                    const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: [58, pdfHeight]
+                    });
+                    
+                    // PDFの設定を直接操作
+                    pdf.internal.pageSize.width = 58;
+                    pdf.internal.pageSize.height = pdfHeight;
+                    
+                    // 合成画像をPDFに追加
+                    pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+                    
+                    // PDFをBase64形式で取得
+                    const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                    
+                    let thisPage = window.location.href;
+                    let printUrlImage = 'siiprintagent://1.0/print?' +
+                                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                      'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                                      'Format='           + 'pdf' + '&' +
+                                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                      'SelectOnError='    + 'yes' + '&' +
+                                      'CutType='          + 'full' + '&' +
+                                      'CutFeed='          + 'yes' + '&' +
+                                      'FitToWidth='       + 'no' + '&' +
+                                      'PaperWidth='       + '58';
+                    
+                    // 【革新的枚数印刷システム】sessionStorageによる永続化方式
+                    
+                    console.log(`画像印刷開始: 総枚数=${selectedCopies}枚`);
+                    
+                    // 枚数印刷情報をsessionStorageに保存
+                    if (selectedCopies > 1) {
+                        const printJob = {
+                            type: 'image',
+                            totalCopies: selectedCopies,
+                            currentCopy: 1,
+                            pdfData: pdfBase64,
+                            thisPage: thisPage,
+                            timestamp: Date.now()
+                        };
+                        sessionStorage.setItem('printJob', JSON.stringify(printJob));
+                        console.log(`印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
+                    }
+                    
+                    // 1枚目を印刷
+                    window.location.href = printUrlImage;
+                };
+                
+                uploadedImg.src = 'data:image/png;base64,' + base64Image;
             }
-            function printNext() {
-                if (currentCopy < selectedCopies) {
-                    setTimeout(printNext, 10000);
-                }
-                printImageCopy(currentCopy);
-                currentCopy++;
+            
+            // 現在の1枚を印刷（シンプル実行）
+            printImageCopy();
+            
+            // QRコードなしの場合のみ履歴保存
+            if (!qrPrintEnabled) {
+                addHistory({
+                    type: 'image',
+                    mode: 'image',
+                    data: 'data:image/png;base64,' + base64Image,
+                    dateTime: selectedChip,
+                    copies: selectedCopies,
+                    qrPrinted: false,
+                    created: Date.now()
+                });
             }
-            printNext();
-            addHistory({
-                type: 'image',
-                mode: 'image',
-                data: 'data:image/png;base64,' + base64Image,
-                dateTime: selectedChip,
-                copies: selectedCopies,
-                shrink: shrinkChecked,
-                created: Date.now()
-            });
         };
         img.src = 'data:image/png;base64,' + base64Image;
     }
@@ -1569,48 +2574,50 @@ function wrapText(text) {
     text = toZenkaku(text);
     const lines = [];
     const paragraphs = text.split('\n');
+    
     for (let paragraph of paragraphs) {
         if (paragraph.length === 0) {
             lines.push('');
             continue;
         }
+        
         let remainingText = paragraph;
         while (remainingText.length > 0) {
-            let lineLength = 0;
             let currentLine = '';
-            let hasFullWidth = false;
-            let hasHalfWidth = false;
+            let charCount = 0;
+            let widthCount = 0;
+            
             for (let i = 0; i < remainingText.length; i++) {
                 const char = remainingText[i];
                 const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
                 const charWidth = isFullWidth ? 2 : 1;
-                if (isFullWidth) hasFullWidth = true;
-                else hasHalfWidth = true;
-                let maxLen;
-                if (hasFullWidth && hasHalfWidth) {
-                    maxLen = 14;
-                } else if (hasFullWidth) {
-                    maxLen = 16;
-                } else {
-                    maxLen = 23;
+                
+                // 文字数制限の判定（テキストボックスと同じルール）
+                let shouldBreak = false;
+                if (isFullWidth && charCount >= 15) {
+                    shouldBreak = true;
+                } else if (!isFullWidth && charCount >= 23) {
+                    shouldBreak = true;
+                } else if (widthCount + charWidth > 30) { // 混在時は全角15文字相当
+                    shouldBreak = true;
                 }
-                if ((hasFullWidth && hasHalfWidth && currentLine.length >= maxLen) ||
-                    (!hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen) ||
-                    (hasFullWidth && !hasHalfWidth && currentLine.length >= maxLen) ||
-                    (!hasFullWidth && hasHalfWidth && currentLine.length >= maxLen)) {
-                    break;
-                }
-                if ((hasFullWidth && hasHalfWidth && lineLength + charWidth > maxLen * 2) ||
-                    (!hasFullWidth && !hasHalfWidth && lineLength + charWidth > maxLen) ||
-                    (hasFullWidth && !hasHalfWidth && lineLength + charWidth > maxLen * 2) ||
-                    (!hasFullWidth && hasHalfWidth && lineLength + charWidth > maxLen)) {
-                    break;
-                }
+                
+                if (shouldBreak) break;
+                
                 currentLine += char;
-                lineLength += charWidth;
+                charCount++;
+                widthCount += charWidth;
             }
-            lines.push(currentLine);
-            remainingText = remainingText.substring(currentLine.length);
+            
+            // 空行でない場合のみ追加
+            if (currentLine.length > 0) {
+                lines.push(currentLine);
+                remainingText = remainingText.substring(currentLine.length);
+            } else {
+                // 1文字も入らない場合は強制的に1文字追加（無限ループ防止）
+                lines.push(remainingText[0]);
+                remainingText = remainingText.substring(1);
+            }
         }
     }
     return lines;
@@ -1628,6 +2635,7 @@ function printText() {
     const textInput = document.getElementById('textInput');
     let text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
+    const qrPrintEnabled = document.getElementById('textQrPrintCheckbox').checked; // 最初に取得
     text = toZenkaku(text);
     const paperWidth = 58;
     const isDateTimeEnabled = selectedTextChip === 'with';
@@ -1644,40 +2652,217 @@ function printText() {
     }
     totalHeight += bottomMargin;
     const selectedTextCopies = parseInt(document.getElementById('textCopiesSelect').value);
-    let currentCopy = 1;
-    function printTextCopy(copyIndex) {
-        let printUrlText = `printassist-x-callback-url://x-callback-url/open?orientation=0&unit=0&width=${paperWidth}&height=${totalHeight}&paper=10010&copies=1&quality=4&monochrome=0&pages=1`;
-        wrappedLines.forEach((line, index) => {
-            const encodedLine = safeEncodeURIComponent(line);
-            printUrlText += `&${index + 1}=${encodedLine},${leftMargin},${topMargin + (index * lineHeight)},${paperWidth - 4},${lineHeight},機械彫刻用標準書体 M,3.2,0,0,1`;
-        });
+    
+    function printTextCopy() {
+        let printText = wrappedLines.join("\n");
+        
+        // キャンバスでテキストを画像として生成
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // キャンバスサイズ設定（58mm × 適切な高さ）
+        const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
+        const canvasWidth = Math.round(58 * mmToPx); // 58mm
+        
+        // フォントサイズ設定
+        const textFontSize = 37;  // テキスト用のフォントサイズ 38px
+        const dateFontSize = 50;  // 日付・時刻用のフォントサイズ 50px
+        
+        ctx.font = `${textFontSize}px Arial, sans-serif`;
+        ctx.fillStyle = '#000000';
+        
+        // テキストの行数から高さを計算
+        const lines = printText.split('\n');
+        const lineHeight = textFontSize * 1.2;
+        let textHeight = lines.length * lineHeight;
+        
+        // 日付・時刻のスペースを追加
         if (isDateTimeEnabled) {
-            const dateTimeString = toZenkaku(`${formattedDate}\n${formattedTime}`);
-            const encodedDateTime = safeEncodeURIComponent(dateTimeString);
-            printUrlText += `&${wrappedLines.length + 1}=${encodedDateTime},${leftMargin},${topMargin + (wrappedLines.length * lineHeight) + spaceBetweenTextAndDate},${paperWidth - 4},${dateTimeHeight},機械彫刻用標準書体 M,4,0,0,1`;
+            const dateLineHeight = dateFontSize * 1.2;
+            textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
         }
-        if (copyIndex === selectedTextCopies) {
-            printUrlText += `&x-success=https://toki01t.github.io/000-001tokitsreilway1121/T/`;
+        
+        // QRコード用スペースを追加
+        const qrSpaceMargin = qrPrintEnabled ? (selectedTextChip === 'with' ? 65 : 110) : 0; // 日付ありは65px、なしは110px
+        
+        const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        
+        // 背景を白にする
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        
+        // テキスト描画設定
+        ctx.fillStyle = '#000000';
+        ctx.font = `${textFontSize}px Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        
+        // 真ん中の位置を正確に計算
+        const exactCenterX = Math.round(canvasWidth / 2)-50;// -50 テキストの左右調整
+        
+        // テキストを描画（上部余白を小さく）
+        let yPos = 30; // 上余白を30pxに調整
+        for (let i = 0; i < lines.length; i++) {
+            ctx.fillText(lines[i], exactCenterX, yPos); // 真ん中に配置
+            yPos += lineHeight;
         }
-        let siiUrl = `sii://print?url=${encodeURIComponent(printUrlText)}`;
-        window.location.href = siiUrl;
+        
+        // QRコードを生成して左側に配置（チェックボックス確認）
+        let qrCodeCanvas = null;
+        console.log('テキスト印刷 - QRチェックボックス状態:', qrPrintEnabled);
+        if (qrPrintEnabled) {
+            console.log('QRコード生成開始（テキスト）');
+            const historyItem = {
+                type: 'text',
+                mode: 'text',
+                data: textInput.value,
+                dateTime: selectedTextChip,
+                copies: selectedTextCopies,
+                created: Date.now(),
+                qrPrinted: qrPrintEnabled // 確実にチェックボックスの状態を保存
+            };
+            
+            // 先に履歴を保存してからQRコード生成
+            const qrData = generateQRData(historyItem);
+            if (qrData) {
+                // 履歴を即座に保存
+                addHistory(historyItem).then(() => {
+                    console.log('履歴保存完了:', historyItem.managementId);
+                });
+                
+                qrCodeCanvas = generateQRCode(qrData);
+                if (qrCodeCanvas) {
+                    const qrSize = 120; // QRコードのサイズを大きく設定
+                    const qrX = 30; // 左端から30pxの位置
+                    const textEndY = yPos;
+                    let qrY;
+                    if (isDateTimeEnabled) {
+                        // 日付・時刻ありの場合：日付・時刻の左側に配置
+                        qrY = textEndY + 20; // テキストの下、日付の横
+                    } else {
+                        // 日付・時刻なしの場合：テキストの下部左側（印刷範囲内に調整）
+                        qrY = textEndY + 20; // テキストの下
+                    }
+                    console.log('QRコード描画位置:', qrX, qrY, qrSize);
+                    ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
+                }
+            }
+        } else {
+            console.log('QRコードなしで印刷（テキスト）');
+        }
+        
+        // 日付・時刻を描画
+        if (isDateTimeEnabled) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const day = now.getDate();
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            const second = now.getSeconds();
+            
+            yPos += lineHeight * 0.3; // 余白を小さく
+            
+            // 日付・時刻用のフォント設定
+            ctx.font = `${dateFontSize}px Arial, sans-serif`;
+            const dateLineHeight = dateFontSize * 1.2;
+            
+            // QRコード印刷の有無で位置を調整
+            let dateTimeX;
+            // 現在のチェックボックス状態を直接確認
+            const currentQrEnabled = document.getElementById('textQrPrintCheckbox').checked;
+            if (currentQrEnabled) {
+                // QRコード印刷ありの場合：QRコードの右側に配置
+                dateTimeX = Math.round(canvasWidth / 2) + 20; // 中央より右に20px移動
+            } else {
+                // QRコード印刷なしの場合：中央に配置
+                dateTimeX = Math.round(canvasWidth / 2) - 40; // 画面中央
+            }
+            
+            // 日付行
+            const dateText = `${year}年 ${month}月${day}日`;
+            ctx.fillText(dateText, dateTimeX, yPos);
+            yPos += dateLineHeight;
+            
+            // 時刻行
+            const timeText = `${hour}時${minute}分${second}秒`;
+            ctx.fillText(timeText, dateTimeX, yPos);
+        }
+        
+        // キャンバスをPNGデータURLに変換
+        const pngDataUrl = canvas.toDataURL('image/png');
+        
+        // jsPDFを使用してPDFを生成
+        const { jsPDF } = window.jspdf;
+        const pdfHeight = Math.round(canvasHeight / mmToPx);
+        
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: [58, pdfHeight]
+        });
+        
+        // PDFの設定を直接操作
+        pdf.internal.pageSize.width = 58;
+        pdf.internal.pageSize.height = pdfHeight;
+        
+        // PNG画像をPDFに追加（位置調整なし、フルサイズ）
+        pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+        
+        // PDFをBase64形式で取得
+        const pdfBase64 = pdf.output('datauristring').split(',')[1];
+        
+        let thisPage = window.location.href;
+        let printUrl = 'siiprintagent://1.0/print?' +
+                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                      'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                      'Format='           + 'pdf' + '&' +
+                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                      'SelectOnError='    + 'yes' + '&' +
+                      'CutType='          + 'full' + '&' +
+                      'CutFeed='          + 'yes' + '&' +
+                      'FitToWidth='       + 'no' + '&' +
+                      'PaperWidth='       + '58';
+        
+        // 【革新的枚数印刷システム】sessionStorageによる永続化方式
+        
+        console.log(`テキスト印刷開始: 総枚数=${selectedTextCopies}枚`);
+        
+        // 枚数印刷情報をsessionStorageに保存
+        if (selectedTextCopies > 1) {
+            const printJob = {
+                type: 'text',
+                totalCopies: selectedTextCopies,
+                currentCopy: 1,
+                pdfData: pdfBase64,
+                thisPage: thisPage,
+                timestamp: Date.now()
+            };
+            sessionStorage.setItem('printJob', JSON.stringify(printJob));
+            console.log(`テキスト印刷ジョブ保存: ${selectedTextCopies}枚中1枚目実行`);
+        }
+        
+        // 1枚目を印刷
+        window.location.href = printUrl;
     }
-    function printNext() {
-        if (currentCopy < selectedTextCopies) {
-            setTimeout(printNext, 10000);
-        }
-        printTextCopy(currentCopy);
-        currentCopy++;
+    
+    // 現在の1枚を印刷（シンプル実行）
+    printTextCopy();
+    
+    // QRコードなしの場合のみ履歴保存
+    if (!qrPrintEnabled) {
+        addHistory({
+            type: 'text',
+            mode: 'text',
+            data: textInput.value,
+            dateTime: selectedTextChip,
+            copies: selectedTextCopies,
+            qrPrinted: false,
+            created: Date.now()
+        });
     }
-    printNext();
-    addHistory({
-        type: 'text',
-        mode: 'text',
-        data: textInput.value,
-        dateTime: selectedTextChip,
-        copies: selectedTextCopies,
-        created: Date.now()
-    });
 }
 function toggleClearButton() {
     const textInput = document.getElementById('textInput');
@@ -1697,6 +2882,68 @@ function handleClearButtonClick() {
         updateTextPrintButtonState();
     }
 }
+
+// テキスト入力の自動改行機能
+function checkTextInputLimit(textarea) {
+    const text = textarea.value;
+    const cursorPosition = textarea.selectionStart;
+    const lines = text.split('\n');
+    let newText = '';
+    let newCursorPosition = cursorPosition;
+    let cursorAdjustment = 0;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        let processedLine = '';
+        let charCount = 0;
+        let widthCount = 0;
+        
+        for (let j = 0; j < line.length; j++) {
+            const char = line[j];
+            const isFullWidth = char.match(/[^\x01-\x7E]/) ? true : false;
+            const charWidth = isFullWidth ? 2 : 1;
+            
+            // 文字数制限の判定
+            let shouldBreak = false;
+            if (isFullWidth && charCount >= 15) {
+                shouldBreak = true;
+            } else if (!isFullWidth && charCount >= 23) {
+                shouldBreak = true;
+            } else if (widthCount + charWidth > 30) { // 混在時は全角15文字相当
+                shouldBreak = true;
+            }
+            
+            if (shouldBreak) {
+                // 自動改行を挿入
+                processedLine += '\n';
+                if (newText.length + processedLine.length <= cursorPosition) {
+                    cursorAdjustment += 1; // 改行文字分カーソル位置を調整
+                }
+                charCount = 1; // 新しい行の最初の文字
+                widthCount = charWidth;
+            } else {
+                charCount++;
+                widthCount += charWidth;
+            }
+            
+            processedLine += char;
+        }
+        
+        newText += processedLine;
+        if (i < lines.length - 1) {
+            newText += '\n';
+        }
+    }
+    
+    // テキストエリアの内容を更新
+    if (newText !== text) {
+        textarea.value = newText;
+        // カーソル位置を調整
+        const newPosition = cursorPosition + cursorAdjustment;
+        textarea.setSelectionRange(newPosition, newPosition);
+    }
+}
+
 function autoWrap(textarea) {
     const text = textarea.value;
     const wrappedLines = wrapText(text);
@@ -1710,6 +2957,718 @@ if ('serviceWorker' in navigator) {
             console.log('Service Worker登録失敗:', error);
         });
     });
+}
+
+// === QRコード機能 ===
+
+// QRコード用データの生成（管理番号方式）
+function generateQRData(item) {
+    // ユニークな管理番号を生成（日時 + ランダム要素）
+    const timestamp = Date.now();
+    const randomPart = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    const managementId = 'TOKI' + timestamp.toString().slice(-8) + randomPart.slice(-4);
+    
+    // 超シンプルなQRデータ（容量最小化）
+    const qrData = managementId; // 管理番号のみ
+    
+    // 履歴に管理番号を保存
+    item.managementId = managementId;
+    
+    console.log('QRデータ生成:', qrData, '履歴アイテムID:', managementId);
+    return qrData;
+}
+
+// QRコード画像の生成
+function generateQRCode(data) {
+    try {
+        // qrcodeライブラリの確認
+        if (typeof qrcode === 'undefined') {
+            console.error('QRコード生成ライブラリが読み込まれていません');
+            return null;
+        }
+        
+        // データの長さを制限（QRコードの容量制限対応）
+        if (data.length > 200) {
+            console.warn('QRコードデータが長すぎます:', data.length);
+            data = data.substring(0, 200);
+        }
+        
+        const qr = qrcode(0, 'L'); // エラー訂正レベルLに変更（より単純で読み取りやすく）
+        qr.addData(data);
+        qr.make();
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const size = 140; // QRコードのセルサイズを大きく設定
+        const moduleCount = qr.getModuleCount();
+        const cellSize = size / moduleCount;
+        
+        canvas.width = size;
+        canvas.height = size;
+        
+        // QRコード印刷品質向上のための設定
+        ctx.imageSmoothingEnabled = false; // アンチエイリアシング無効でシャープに
+        ctx.webkitImageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+        ctx.msImageSmoothingEnabled = false;
+        
+        // 背景を白で塗りつぶし
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, size, size);
+        
+        // QRコードを描画（濃度を50%に調整して読み取りやすく）
+        ctx.fillStyle = '#808080'; // 70%グレー(#4D4D4D)から50%グレー(#808080)に変更
+        for (let row = 0; row < moduleCount; row++) {
+            for (let col = 0; col < moduleCount; col++) {
+                if (qr.isDark(row, col)) {
+                    ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+                }
+            }
+        }
+        
+        console.log('QRコード生成成功:', data.substring(0, 50) + '...');
+        return canvas;
+    } catch (error) {
+        console.error('QRコード生成エラー:', error);
+        return null;
+    }
+}
+
+// QRリーダーの初期化
+function initQRReader() {
+    const qrReaderModal = document.getElementById('qrReaderModal');
+    const closeQrReader = document.getElementById('closeQrReader');
+    const qrReaderStatus = document.getElementById('qrReaderStatus');
+    
+    closeQrReader.onclick = () => {
+        closeQRReader();
+    };
+    
+    // モーダル背景クリックで閉じる
+    qrReaderModal.onclick = (e) => {
+        if (e.target === qrReaderModal) {
+            closeQRReader();
+        }
+    };
+}
+
+// QRリーダーを閉じる関数
+async function closeQRReader() {
+    await stopQRReader();
+}
+
+// QRリーダー開始（フォールバック機能付き）
+async function startQRReader() {
+    console.log('=== QRスキャナー開始処理 ===');
+    
+    const qrReaderModal = document.getElementById('qrReaderModal');
+    const videoElement = document.getElementById('qrReader');
+    const statusElement = document.getElementById('qrReaderStatus');
+    
+    // モーダルを表示
+    qrReaderModal.style.display = 'flex';
+    statusElement.textContent = 'カメラを起動中...';
+    
+    // 既存のスキャナーがあれば確実に停止
+    if (window.qrScanner) {
+        console.log('既存のスキャナーを停止中...');
+        try {
+            await window.qrScanner.stop();
+            window.qrScanner.destroy();
+        } catch (e) {
+            console.warn('既存スキャナー停止時のエラー:', e);
+        }
+        window.qrScanner = null;
+    }
+    
+    // 既存のストリームも停止
+    if (videoElement.srcObject) {
+        try {
+            videoElement.srcObject.getTracks().forEach(track => {
+                track.stop();
+                console.log('ビデオトラック停止:', track.kind);
+            });
+            videoElement.srcObject = null;
+        } catch (e) {
+            console.warn('ビデオストリーム停止エラー:', e);
+        }
+    }
+    
+    // タイムアウト設定（30秒）
+    const timeoutId = setTimeout(() => {
+        console.warn('QRスキャナータイムアウト');
+        closeQRReader();
+        alert('カメラの起動に時間がかかっています。再度お試しください。');
+    }, 30000);
+    
+    try {
+        // まずQrScannerライブラリを試す
+        if (await tryQrScannerLibrary(videoElement, statusElement)) {
+            clearTimeout(timeoutId);
+            return;
+        }
+        
+        // フォールバック: ZXingライブラリを試す
+        if (await tryZXingLibrary(videoElement, statusElement)) {
+            clearTimeout(timeoutId);
+            return;
+        }
+        
+        // 全て失敗した場合
+        clearTimeout(timeoutId);
+        statusElement.textContent = 'QRスキャナーの初期化に失敗しました';
+        setTimeout(() => {
+            closeQRReader();
+            alert('QRコードリーダーが利用できません\nブラウザまたはデバイスがサポートしていない可能性があります');
+        }, 3000);
+    } catch (error) {
+        clearTimeout(timeoutId);
+        console.error('QRスキャナー開始エラー:', error);
+        closeQRReader();
+        alert('QRコードリーダーの開始中にエラーが発生しました');
+    }
+}
+
+// QrScannerライブラリを使用
+async function tryQrScannerLibrary(videoElement, statusElement) {
+    try {
+        console.log('QrScannerライブラリを試行中...');
+        
+        // ライブラリの確認（少し待機）
+        if (typeof QrScanner === 'undefined') {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (typeof QrScanner === 'undefined') {
+                throw new Error('QrScannerライブラリが読み込まれていません');
+            }
+        }
+        
+        // カメラサポート確認
+        const hasCamera = await QrScanner.hasCamera();
+        if (!hasCamera) {
+            throw new Error('カメラが見つかりません');
+        }
+        
+        // QRスキャナーを作成（最大速度設定）
+        window.qrScanner = new QrScanner(
+            videoElement,
+            (result) => {
+                // 成功時は即座に処理
+                const qrData = (typeof result === 'object' && result.data) ? result.data : result;
+                handleQRScanResult(qrData);
+            },
+            {
+                returnDetailedScanResult: false,
+                highlightScanRegion: false,
+                highlightCodeOutline: false,
+                preferredCamera: 'environment',
+                maxScansPerSecond: 120, // 60→120に大幅向上
+                calculateScanRegion: (video) => ({
+                    x: 0,
+                    y: 0,
+                    width: video.videoWidth,
+                    height: video.videoHeight
+                })
+            }
+        );
+        
+        await window.qrScanner.start();
+        statusElement.textContent = '';
+        return true;
+        
+    } catch (error) {
+        console.error('❌ QrScannerライブラリ失敗:', error);
+        return false;
+    }
+}
+
+// ZXingライブラリをフォールバックとして使用
+async function tryZXingLibrary(videoElement, statusElement) {
+    try {
+        if (typeof ZXing === 'undefined') {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (typeof ZXing === 'undefined') {
+                throw new Error('ZXingライブラリが読み込まれていません');
+            }
+        }
+        
+        // MediaStreamを取得（高解像度・高フレームレート設定）
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { 
+                facingMode: 'environment',
+                width: { ideal: 1920, min: 1280 },
+                height: { ideal: 1080, min: 720 },
+                frameRate: { ideal: 60, min: 30 }
+            }
+        });
+        
+        videoElement.srcObject = stream;
+        await videoElement.play();
+        
+        // QRコードリーダーを作成
+        const codeReader = new ZXing.BrowserQRCodeReader();
+        
+        // 継続的にスキャン
+        window.qrScanner = {
+            scanning: true,
+            stop: () => {
+                window.qrScanner.scanning = false;
+                stream.getTracks().forEach(track => track.stop());
+            },
+            destroy: () => {
+                window.qrScanner.scanning = false;
+                stream.getTracks().forEach(track => track.stop());
+            }
+        };
+        
+        const scanLoop = async () => {
+            if (!window.qrScanner.scanning) return;
+            
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                ctx.drawImage(videoElement, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = await codeReader.decodeFromImageData(imageData);
+                
+                if (code && code.text) {
+                    // 成功時は静かに処理
+                    handleQRScanResult(code.text);
+                    return;
+                }
+            } catch (e) {
+                // QRコードが見つからない場合は正常
+            }
+            
+            // 16ms後に再スキャン（30ms→16ms、約60fps相当）
+            setTimeout(scanLoop, 16);
+        };
+        
+        scanLoop();
+        statusElement.textContent = '';
+        return true;
+        
+    } catch (error) {
+        console.error('❌ ZXingライブラリ失敗:', error);
+        return false;
+    }
+}
+
+// QRリーダー停止
+async function stopQRReader() {
+    console.log('QRスキャナー停止開始...');
+    
+    // スキャナーの停止
+    if (window.qrScanner) {
+        try {
+            await window.qrScanner.stop();
+            window.qrScanner.destroy();
+            window.qrScanner = null;
+            console.log('QrScannerライブラリ停止完了');
+        } catch (error) {
+            console.error('❌ QRスキャナー停止エラー:', error);
+        }
+    }
+    
+    // ビデオストリームの確実な停止
+    const videoElement = document.getElementById('qrReader');
+    if (videoElement && videoElement.srcObject) {
+        try {
+            videoElement.srcObject.getTracks().forEach(track => {
+                track.stop();
+                console.log('ビデオトラック停止:', track.kind);
+            });
+            videoElement.srcObject = null;
+            console.log('ビデオストリーム完全停止');
+        } catch (error) {
+            console.error('❌ ビデオストリーム停止エラー:', error);
+        }
+    }
+    
+    // モーダルを閉じる
+    const qrReaderModal = document.getElementById('qrReaderModal');
+    qrReaderModal.style.display = 'none';
+    
+    console.log('QRスキャナー停止完了');
+}
+
+// QRコード読み取り結果の処理
+function handleQRScanResult(result) {
+    try {
+        // まずスキャナーを停止
+        stopQRReader();
+        
+        if (!result || typeof result !== 'string') {
+            console.error('❌ 無効なQRコードデータ:', result);
+            alert('無効なQRコードデータです');
+            return;
+        }
+        
+        // 管理番号かチェック（TOKIで始まる16桁）
+        if (!result.startsWith('TOKI')) {
+            console.error('❌ このアプリで生成されたQRコードではありません:', result);
+            alert('このアプリで生成されたQRコードではありません\n読み取った内容: ' + result);
+            return;
+        }
+        
+        if (result.length !== 16) {
+            console.error('❌ 無効な管理番号の長さ:', result, 'length:', result.length);
+            alert('無効な管理番号です\n読み取った内容: ' + result + '\n長さ: ' + result.length + '桁（16桁である必要があります）');
+            return;
+        }
+        
+        // 成功時は静かに履歴を検索（ログもポップアップもなし）
+        restoreFromManagementId(result);
+        
+    } catch (error) {
+        console.error('❌ QRコード解析エラー:', error);
+        alert('QRコード解析に失敗しました: ' + error.message);
+        stopQRReader();
+    }
+}
+
+// 管理番号からコンテンツを復元
+async function restoreFromManagementId(managementId) {
+    try {
+        // 履歴から管理番号で対象アイテムを検索
+        const historyList = await getAllHistory();
+        
+        if (historyList.length === 0) {
+            console.error('❌ 履歴データがありません');
+            alert('履歴データがありません。\n印刷履歴を確認してください。');
+            return;
+        }
+        
+        // 完全一致検索
+        const targetItem = historyList.find(item => 
+            item.managementId === managementId
+        );
+        
+        if (targetItem) {
+            // データの存在確認
+            if (!targetItem.data) {
+                console.error('❌ 履歴データが不完全:', targetItem);
+                alert('履歴データが破損しています。\n管理番号: ' + managementId);
+                return;
+            }
+            
+            // 復元実行（静かに処理、ポップアップなし）
+            restoreContentFromHistory(targetItem);
+            
+        } else {
+            console.error('❌ 履歴検索失敗 - 管理番号:', managementId);
+            console.error('履歴の管理番号一覧:', historyList.map(item => item.managementId).filter(id => id));
+            
+            // より詳細なエラー情報
+            const tokiItems = historyList.filter(item => 
+                item.managementId && item.managementId.startsWith('TOKI')
+            );
+            
+            let errorMessage = `❌ この管理番号のデータは履歴にありません\n\n`;
+            errorMessage += `読み取った管理番号: ${managementId}\n`;
+            errorMessage += `総履歴件数: ${historyList.length}件\n`;
+            errorMessage += `管理番号付き履歴: ${tokiItems.length}件\n`;
+            
+            if (tokiItems.length > 0) {
+                errorMessage += `\n📋 履歴内の管理番号 (最新3件):\n`;
+                tokiItems.slice(-3).forEach((item, index) => {
+                    errorMessage += `${index + 1}. ${item.managementId} (${item.type})\n`;
+                });
+            } else {
+                errorMessage += `\n⚠️ QRコード付きの印刷履歴がありません`;
+            }
+            
+            alert(errorMessage);
+        }
+    } catch (error) {
+        console.error('❌ 履歴取得エラー:', error);
+        alert('❌ 履歴の取得に失敗しました: ' + error.message);
+    }
+}
+
+// 履歴から完全復元
+function restoreContentFromHistory(item) {
+    try {
+        if (item.type === 'image') {
+            showSection('image');
+            
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            previewContainer.innerHTML = '';
+            
+            const img = new Image();
+            img.src = item.data;
+            img.onload = function() {
+                let containerW = Math.min(window.innerWidth * 0.98, 480);
+                let containerH = 360;
+            let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
+            let displayW = Math.round(img.naturalWidth * ratio);
+            let displayH = Math.round(img.naturalHeight * ratio);
+            img.style.width = displayW + "px";
+            img.style.height = displayH + "px";
+            img.style.maxWidth = "100%";
+            img.style.maxHeight = "360px";
+            img.style.display = "block";
+            img.style.margin = "0 auto";
+        };
+        previewContainer.appendChild(img);
+        
+        // 設定を復元
+        document.getElementById('dateTimeChoice').style.display = 'flex';
+        const chips = document.querySelectorAll('#dateTimeChoice .chip');
+        chips.forEach(chip => chip.classList.remove('selected'));
+        if (item.dateTime === 'with') chips[0].classList.add('selected');
+        else chips[1].classList.add('selected');
+        selectedChip = item.dateTime;
+        
+        document.getElementById('copiesSelect').value = item.copies;
+        
+        // QRチェックボックスの復元を段階的に確実に処理
+        console.log('=== 画像QR復元開始 ===');
+        console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
+        
+        const restoreQRCheckbox = () => {
+            const qrCheckbox = document.getElementById('qrPrintCheckbox');
+            console.log('QRチェックボックス要素:', qrCheckbox);
+            
+            if (qrCheckbox) {
+                const qrValue = item.qrPrinted;
+                // より確実な判定（undefinedやnullも考慮）
+                const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
+                console.log('復元判定:', qrValue, '→', shouldCheck);
+                
+                // 現在の状態を記録
+                console.log('復元前チェック状態:', qrCheckbox.checked);
+                
+                // 既存の状態をクリア
+                qrCheckbox.checked = false;
+                qrCheckbox.removeAttribute('checked');
+                
+                // 新しい状態を設定
+                if (shouldCheck) {
+                    qrCheckbox.checked = true;
+                    qrCheckbox.setAttribute('checked', 'checked');
+                } else {
+                    qrCheckbox.checked = false;
+                    qrCheckbox.removeAttribute('checked');
+                }
+                
+                console.log('復元後チェック状態:', qrCheckbox.checked);
+                
+                // イベント発火で他の機能に通知
+                qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // 最終確認
+                setTimeout(() => {
+                    console.log('最終チェック状態:', qrCheckbox.checked);
+                    console.log('=== 画像QR復元完了 ===');
+                }, 50);
+                
+                return qrCheckbox.checked === shouldCheck;
+            }
+            console.log('❌ QRチェックボックスが見つかりません');
+            return false;
+        };
+        
+        // 複数回試行して確実に復元
+        setTimeout(() => {
+            if (!restoreQRCheckbox()) {
+                setTimeout(() => {
+                    if (!restoreQRCheckbox()) {
+                        setTimeout(restoreQRCheckbox, 100);
+                    }
+                }, 50);
+            }
+        }, 50);
+        document.getElementById('imagePrintOptions').style.display = 'flex';
+        updatePrintButtonState();
+        
+    } else if (item.type === 'text') {
+        showSection('text');
+        
+        document.getElementById('textInput').value = item.data;
+        // autoWrap(document.getElementById('textInput')); // 無効化
+        
+        // 設定を復元
+        const chips = document.querySelectorAll('#textDateTimeChoice .chip');
+        chips.forEach(chip => chip.classList.remove('selected'));
+        if (item.dateTime === 'with') chips[0].classList.add('selected');
+        else chips[1].classList.add('selected');
+        selectedTextChip = item.dateTime;
+        
+        document.getElementById('textCopiesSelect').value = item.copies;
+        
+        // QRチェックボックスの復元を段階的に確実に処理
+        console.log('=== テキストQR復元開始 ===');
+        console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
+        
+        const restoreTextQRCheckbox = () => {
+            const textQrCheckbox = document.getElementById('textQrPrintCheckbox');
+            console.log('テキストQRチェックボックス要素:', textQrCheckbox);
+            
+            if (textQrCheckbox) {
+                const qrValue = item.qrPrinted;
+                // より確実な判定（undefinedやnullも考慮）
+                const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
+                console.log('復元判定:', qrValue, '→', shouldCheck);
+                
+                // 現在の状態を記録
+                console.log('復元前チェック状態:', textQrCheckbox.checked);
+                
+                // 既存の状態をクリア
+                textQrCheckbox.checked = false;
+                textQrCheckbox.removeAttribute('checked');
+                
+                // 新しい状態を設定
+                if (shouldCheck) {
+                    textQrCheckbox.checked = true;
+                    textQrCheckbox.setAttribute('checked', 'checked');
+                } else {
+                    textQrCheckbox.checked = false;
+                    textQrCheckbox.removeAttribute('checked');
+                }
+                
+                console.log('復元後チェック状態:', textQrCheckbox.checked);
+                
+                // イベント発火で他の機能に通知
+                textQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                
+                // 最終確認
+                setTimeout(() => {
+                    console.log('最終チェック状態:', textQrCheckbox.checked);
+                    console.log('=== テキストQR復元完了 ===');
+                }, 50);
+                
+                return textQrCheckbox.checked === shouldCheck;
+            }
+            console.log('❌ テキストQRチェックボックスが見つかりません');
+            return false;
+        };
+        
+        // 複数回試行して確実に復元
+        setTimeout(() => {
+            if (!restoreTextQRCheckbox()) {
+                setTimeout(() => {
+                    if (!restoreTextQRCheckbox()) {
+                        setTimeout(restoreTextQRCheckbox, 100);
+                    }
+                }, 50);
+            }
+        }, 50);
+        updateTextPrintButtonState();
+        
+    } else if (item.type === 'signature') {
+        showSection('signature');
+        
+        setTimeout(function() {
+            initSignaturePad(item.data, true);
+            
+            // 設定を復元
+            const chips = document.querySelectorAll('#signatureDateTimeChoice .chip');
+            chips.forEach(chip => chip.classList.remove('selected'));
+            if (item.dateTime === 'with') chips[0].classList.add('selected');
+            else chips[1].classList.add('selected');
+            selectedSignatureChip = item.dateTime;
+            
+            document.getElementById('signatureCopiesSelect').value = item.copies;
+            
+            // QRチェックボックスの復元を段階的に確実に処理
+            console.log('=== 手書きQR復元開始 ===');
+            console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
+            
+            const restoreSignatureQRCheckbox = () => {
+                const signatureQrCheckbox = document.getElementById('signatureQrPrintCheckbox');
+                console.log('手書きQRチェックボックス要素:', signatureQrCheckbox);
+                
+                if (signatureQrCheckbox) {
+                    const qrValue = item.qrPrinted;
+                    // より確実な判定（undefinedやnullも考慮）
+                    const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
+                    console.log('復元判定:', qrValue, '→', shouldCheck);
+                    
+                    // 現在の状態を記録
+                    console.log('復元前チェック状態:', signatureQrCheckbox.checked);
+                    
+                    // 既存の状態をクリア
+                    signatureQrCheckbox.checked = false;
+                    signatureQrCheckbox.removeAttribute('checked');
+                    
+                    // 新しい状態を設定
+                    if (shouldCheck) {
+                        signatureQrCheckbox.checked = true;
+                        signatureQrCheckbox.setAttribute('checked', 'checked');
+                    } else {
+                        signatureQrCheckbox.checked = false;
+                        signatureQrCheckbox.removeAttribute('checked');
+                    }
+                    
+                    console.log('復元後チェック状態:', signatureQrCheckbox.checked);
+                    
+                    // イベント発火で他の機能に通知
+                    signatureQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    // 最終確認
+                    setTimeout(() => {
+                        console.log('最終チェック状態:', signatureQrCheckbox.checked);
+                        console.log('=== 手書きQR復元完了 ===');
+                        updateSignaturePrintButtonState();
+                    }, 50);
+                    
+                    return signatureQrCheckbox.checked === shouldCheck;
+                }
+                console.log('❌ 手書きQRチェックボックスが見つかりません');
+                return false;
+            };
+            
+            // 複数回試行して確実に復元
+            setTimeout(() => {
+                if (!restoreSignatureQRCheckbox()) {
+                    setTimeout(() => {
+                        if (!restoreSignatureQRCheckbox()) {
+                            setTimeout(() => {
+                                restoreSignatureQRCheckbox();
+                                updateSignaturePrintButtonState();
+                            }, 100);
+                        }
+                    }, 50);
+                }
+            }, 100); // 手書きは初期化に時間がかかるので100ms開始
+            
+        }, 100);
+    } else {
+        console.error('⚠️ 未対応のデータタイプ:', item.type);
+        throw new Error('未対応のデータタイプです: ' + item.type);
+    }
+    
+    } catch (error) {
+        console.error('❌ コンテンツ復元エラー:', error);
+        alert('データの復元中にエラーが発生しました: ' + error.message);
+    }
+}
+
+// QRデータのみから復元（履歴にない場合）
+function restoreContentFromQROnly(qrData) {
+    if (qrData.type === 'text' && qrData.content && qrData.content !== 'image_data') {
+        showSection('text');
+        
+        document.getElementById('textInput').value = qrData.content;
+        autoWrap(document.getElementById('textInput'));
+        
+        // 設定を復元
+        const chips = document.querySelectorAll('#textDateTimeChoice .chip');
+        chips.forEach(chip => chip.classList.remove('selected'));
+        if (qrData.dateTime === 'with') chips[0].classList.add('selected');
+        else chips[1].classList.add('selected');
+        selectedTextChip = qrData.dateTime;
+        
+        document.getElementById('textCopiesSelect').value = qrData.copies;
+        updateTextPrintButtonState();
+        
+        alert('QRコードからテキスト情報を復元しました！\n（※一部のテキストのみ復元されています）');
+    } else {
+        alert('このQRコードの完全なデータは履歴にありません。\n画像や手書きデータは履歴からのみ復元可能です。');
+    }
 }
 </script>
 </body>
