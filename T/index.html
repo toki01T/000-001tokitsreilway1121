@@ -2201,51 +2201,86 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // QRコード印刷時は画像処理をスキップ（QRコード読み取り性能維持）
+                    // 【サーマルプリンター特化】超高品質ディザ処理
+                    const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const data = imageData.data;
+                    const width = finalImgWidth;
+                    const height = finalImgHeight;
+                    
                     if (!qrPrintEnabled) {
-                        // 高品質ディザ処理（スクリーンショット画像対応）
-                        const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
-                        const data = imageData.data;
-                        const width = finalImgWidth;
-                        const height = finalImgHeight;
+                        console.log("超高品質ディザ処理開始");
                         
-                        // 1. グレースケール変換（高精度）
-                        const grayData = new Float32Array(width * height);
+                        // 1. コントラスト強化前処理
                         for (let i = 0; i < data.length; i += 4) {
                             const r = data[i];
                             const g = data[i + 1];
                             const b = data[i + 2];
                             
                             // 標準的な輝度計算
-                            const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-                            grayData[i / 4] = gray;
+                            let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                            
+                            // コントラスト強化（S字カーブ）
+                            gray = gray / 255.0;
+                            if (gray < 0.5) {
+                                gray = 2 * gray * gray;
+                            } else {
+                                gray = 1 - 2 * (1 - gray) * (1 - gray);
+                            }
+                            gray = gray * 255.0;
+                            
+                            data[i] = gray;
+                            data[i + 1] = gray;
+                            data[i + 2] = gray;
                         }
                         
-                        // 2. Floyd-Steinbergディザリング（高品質）
+                        // 2. Atkinson誤差拡散ディザリング（写真品質）
+                        const grayData = new Float32Array(width * height);
+                        for (let i = 0; i < data.length; i += 4) {
+                            grayData[i / 4] = data[i];
+                        }
+                        
                         for (let y = 0; y < height; y++) {
                             for (let x = 0; x < width; x++) {
                                 const index = y * width + x;
                                 const oldPixel = grayData[index];
                                 
-                                // 128を閾値として白黒判定
-                                const newPixel = oldPixel < 128 ? 0 : 255;
+                                // 適応的閾値（周辺の明度に基づく）
+                                let threshold = 128;
+                                if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
+                                    const neighbors = [
+                                        grayData[(y-1) * width + x],
+                                        grayData[y * width + (x-1)],
+                                        grayData[y * width + (x+1)],
+                                        grayData[(y+1) * width + x]
+                                    ];
+                                    const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / 4;
+                                    threshold = (avgNeighbor + 128) / 2; // 適応的閾値
+                                }
+                                
+                                const newPixel = oldPixel < threshold ? 0 : 255;
                                 grayData[index] = newPixel;
                                 
                                 // 誤差計算
                                 const quantError = oldPixel - newPixel;
                                 
-                                // 誤差拡散（Floyd-Steinbergパターン）
+                                // Atkinson誤差拡散（より細かい分散）
                                 if (x + 1 < width) {
-                                    grayData[index + 1] += quantError * 7 / 16;
+                                    grayData[index + 1] += quantError * 1 / 8;
+                                }
+                                if (x + 2 < width) {
+                                    grayData[index + 2] += quantError * 1 / 8;
                                 }
                                 if (y + 1 < height) {
                                     if (x - 1 >= 0) {
-                                        grayData[(y + 1) * width + (x - 1)] += quantError * 3 / 16;
+                                        grayData[(y + 1) * width + (x - 1)] += quantError * 1 / 8;
                                     }
-                                    grayData[(y + 1) * width + x] += quantError * 5 / 16;
+                                    grayData[(y + 1) * width + x] += quantError * 1 / 8;
                                     if (x + 1 < width) {
-                                        grayData[(y + 1) * width + (x + 1)] += quantError * 1 / 16;
+                                        grayData[(y + 1) * width + (x + 1)] += quantError * 1 / 8;
                                     }
+                                }
+                                if (y + 2 < height) {
+                                    grayData[(y + 2) * width + x] += quantError * 1 / 8;
                                 }
                             }
                         }
@@ -2253,16 +2288,38 @@ function sendToPrintAssist(event) {
                         // 3. 結果をcanvasに適用
                         for (let i = 0; i < data.length; i += 4) {
                             const idx = i / 4;
-                            const finalGray = Math.round(grayData[idx]);
+                            const finalGray = Math.round(Math.max(0, Math.min(255, grayData[idx])));
                             
-                            data[i] = finalGray;     // R
-                            data[i + 1] = finalGray; // G
-                            data[i + 2] = finalGray; // B
+                            data[i] = finalGray;
+                            data[i + 1] = finalGray;
+                            data[i + 2] = finalGray;
                         }
                         
-                        // 結果をcanvasに反映
-                        compositeCtx.putImageData(imageData, imgX, imgY);
+                        console.log("超高品質ディザ処理完了");
+                    } else {
+                        console.log("QR保護軽量処理開始");
+                        
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+                            
+                            // 軽量グレースケール変換
+                            const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                            
+                            // シンプル二値化（QRコード読み取り優先）
+                            const bw = gray < 140 ? 0 : 255;
+                            
+                            data[i] = bw;
+                            data[i + 1] = bw;
+                            data[i + 2] = bw;
+                        }
+                        
+                        console.log("QR保護軽量処理完了");
                     }
+                    
+                    // 結果をcanvasに反映
+                    compositeCtx.putImageData(imageData, imgX, imgY);
                     
                     // 日付・時刻を描画
                     if (isDateTimeEnabled) {
