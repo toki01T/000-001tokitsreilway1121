@@ -2201,162 +2201,68 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // 【高品質画像処理】QRコードと写真を分離処理
-                    const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
-                    const data = imageData.data;
-                    const width = finalImgWidth;
-                    const height = finalImgHeight;
-                    
-                    // QRコード領域の検出
-                    let qrRegions = [];
-                    if (qrPrintEnabled) {
-                        // QRコードの位置を特定（左下角に配置）
-                        const qrSize = Math.min(120, Math.min(finalImgWidth, finalImgHeight) * 0.4);
-                        qrRegions.push({
-                            x: 10,
-                            y: finalImgHeight - qrSize - 10,
-                            width: qrSize,
-                            height: qrSize
-                        });
-                    }
-                    
-                    // 1. 高精度グレースケール変換
-                    const grayData = new Float32Array(width * height);
-                    for (let i = 0; i < data.length; i += 4) {
-                        const r = data[i];
-                        const g = data[i + 1];
-                        const b = data[i + 2];
+                    // QRコード印刷時は画像処理をスキップ（QRコード読み取り性能維持）
+                    if (!qrPrintEnabled) {
+                        // 高品質ディザ処理（スクリーンショット画像対応）
+                        const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                        const data = imageData.data;
+                        const width = finalImgWidth;
+                        const height = finalImgHeight;
                         
-                        // 人間の視覚特性に合わせた輝度計算
-                        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-                        grayData[i / 4] = gray;
-                    }
-                    
-                    // 2. QRコード領域と写真領域を分離処理
-                    for (let y = 0; y < height; y++) {
-                        for (let x = 0; x < width; x++) {
-                            const index = y * width + x;
-                            const dataIndex = index * 4;
-                            let oldPixel = grayData[index];
+                        // 1. グレースケール変換（高精度）
+                        const grayData = new Float32Array(width * height);
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
                             
-                            // QRコード領域かどうかチェック
-                            let isQRRegion = false;
-                            for (const qr of qrRegions) {
-                                if (x >= qr.x && x < qr.x + qr.width && 
-                                    y >= qr.y && y < qr.y + qr.height) {
-                                    isQRRegion = true;
-                                    break;
-                                }
-                            }
-                            
-                            let newPixel;
-                            
-                            if (isQRRegion) {
-                                // QRコード領域：明確な白黒二値化（読み取り性重視）
-                                newPixel = oldPixel < 180 ? 0 : 255; // 閾値を180に上げてQRを鮮明に
-                            } else {
-                                // 写真領域：高品質ディザリング処理
+                            // 標準的な輝度計算
+                            const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                            grayData[i / 4] = gray;
+                        }
+                        
+                        // 2. Floyd-Steinbergディザリング（高品質）
+                        for (let y = 0; y < height; y++) {
+                            for (let x = 0; x < width; x++) {
+                                const index = y * width + x;
+                                const oldPixel = grayData[index];
                                 
-                                // エッジ検出による文字・線画の識別
-                                let isTextOrLine = false;
-                                if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
-                                    const neighbors = [
-                                        grayData[(y-1) * width + (x-1)], grayData[(y-1) * width + x], grayData[(y-1) * width + (x+1)],
-                                        grayData[y * width + (x-1)],     oldPixel,                      grayData[y * width + (x+1)],
-                                        grayData[(y+1) * width + (x-1)], grayData[(y+1) * width + x], grayData[(y+1) * width + (x+1)]
-                                    ];
-                                    
-                                    // Sobel演算子でエッジ強度計算
-                                    const sobelX = neighbors[2] + 2*neighbors[5] + neighbors[8] - 
-                                                  neighbors[0] - 2*neighbors[3] - neighbors[6];
-                                    const sobelY = neighbors[6] + 2*neighbors[7] + neighbors[8] - 
-                                                  neighbors[0] - 2*neighbors[1] - neighbors[2];
-                                    const edgeStrength = Math.sqrt(sobelX*sobelX + sobelY*sobelY);
-                                    
-                                    // 高コントラスト部分を文字・線画として判定
-                                    if (edgeStrength > 40) {
-                                        isTextOrLine = true;
+                                // 128を閾値として白黒判定
+                                const newPixel = oldPixel < 128 ? 0 : 255;
+                                grayData[index] = newPixel;
+                                
+                                // 誤差計算
+                                const quantError = oldPixel - newPixel;
+                                
+                                // 誤差拡散（Floyd-Steinbergパターン）
+                                if (x + 1 < width) {
+                                    grayData[index + 1] += quantError * 7 / 16;
+                                }
+                                if (y + 1 < height) {
+                                    if (x - 1 >= 0) {
+                                        grayData[(y + 1) * width + (x - 1)] += quantError * 3 / 16;
                                     }
-                                }
-                                
-                                if (isTextOrLine) {
-                                    // 文字・線画：シャープな二値化
-                                    newPixel = oldPixel < 140 ? 0 : 255;
-                                } else {
-                                    // 写真部分：階調ディザリング
-                                    const threshold = 128;
-                                    newPixel = oldPixel < threshold ? 0 : 255;
-                                    
-                                    // Floyd-Steinberg誤差拡散で階調表現
-                                    const quantError = oldPixel - newPixel;
-                                    
+                                    grayData[(y + 1) * width + x] += quantError * 5 / 16;
                                     if (x + 1 < width) {
-                                        grayData[index + 1] += quantError * 7 / 16;
-                                    }
-                                    if (y + 1 < height) {
-                                        if (x - 1 >= 0) {
-                                            grayData[(y + 1) * width + (x - 1)] += quantError * 3 / 16;
-                                        }
-                                        grayData[(y + 1) * width + x] += quantError * 5 / 16;
-                                        if (x + 1 < width) {
-                                            grayData[(y + 1) * width + (x + 1)] += quantError * 1 / 16;
-                                        }
+                                        grayData[(y + 1) * width + (x + 1)] += quantError * 1 / 16;
                                     }
                                 }
-                            }
-                            
-                            grayData[index] = newPixel;
-                            
-                            // ピクセルデータに適用
-                            data[dataIndex] = newPixel;     // R
-                            data[dataIndex + 1] = newPixel; // G
-                            data[dataIndex + 2] = newPixel; // B
-                        }
-                    }
-                    
-                    // 3. 最終的な細部強化処理（写真部分のみ）
-                    for (let y = 1; y < height - 1; y++) {
-                        for (let x = 1; x < width - 1; x++) {
-                            const index = (y * width + x) * 4;
-                            
-                            // QRコード領域をスキップ
-                            let isQRRegion = false;
-                            for (const qr of qrRegions) {
-                                if (x >= qr.x && x < qr.x + qr.width && 
-                                    y >= qr.y && y < qr.y + qr.height) {
-                                    isQRRegion = true;
-                                    break;
-                                }
-                            }
-                            
-                            if (!isQRRegion) {
-                                const current = data[index];
-                                
-                                // 3x3アンシャープマスクで細部強調
-                                const kernel = [
-                                    -1, -1, -1,
-                                    -1,  9, -1,
-                                    -1, -1, -1
-                                ];
-                                
-                                let sum = 0;
-                                for (let ky = -1; ky <= 1; ky++) {
-                                    for (let kx = -1; kx <= 1; kx++) {
-                                        const pixelIndex = ((y + ky) * width + (x + kx)) * 4;
-                                        sum += data[pixelIndex] * kernel[(ky + 1) * 3 + (kx + 1)];
-                                    }
-                                }
-                                
-                                const enhanced = Math.max(0, Math.min(255, sum));
-                                data[index] = enhanced;     // R
-                                data[index + 1] = enhanced; // G  
-                                data[index + 2] = enhanced; // B
                             }
                         }
+                        
+                        // 3. 結果をcanvasに適用
+                        for (let i = 0; i < data.length; i += 4) {
+                            const idx = i / 4;
+                            const finalGray = Math.round(grayData[idx]);
+                            
+                            data[i] = finalGray;     // R
+                            data[i + 1] = finalGray; // G
+                            data[i + 2] = finalGray; // B
+                        }
+                        
+                        // 結果をcanvasに反映
+                        compositeCtx.putImageData(imageData, imgX, imgY);
                     }
-                    
-                    // 結果をcanvasに反映
-                    compositeCtx.putImageData(imageData, imgX, imgY);
                     
                     // 日付・時刻を描画
                     if (isDateTimeEnabled) {
