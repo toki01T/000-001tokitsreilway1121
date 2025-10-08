@@ -2993,15 +2993,22 @@ function generateQRCode(data) {
             data = data.substring(0, 200);
         }
         
-        const qr = qrcode(0, 'M'); // エラー訂正レベルM
+        const qr = qrcode(0, 'H'); // エラー訂正レベルをHに変更（品質向上）
         qr.addData(data);
         qr.make();
         
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        const size = 140; // QRコードのセルサイズを大きく設定
+        
+        // 高品質描画設定
+        ctx.imageSmoothingEnabled = false; // アンチエイリアシング無効化
+        ctx.webkitImageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+        ctx.msImageSmoothingEnabled = false;
+        
+        const size = 160; // QRコードのセルサイズをさらに大きく設定（140→160）
         const moduleCount = qr.getModuleCount();
-        const cellSize = size / moduleCount;
+        const cellSize = Math.floor(size / moduleCount); // 整数値に調整
         
         canvas.width = size;
         canvas.height = size;
@@ -3010,8 +3017,8 @@ function generateQRCode(data) {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, size, size);
         
-        // QRコードを描画（濃度を70%に調整）
-        ctx.fillStyle = '#4D4D4D'; // 60%グレー(#666666)から70%グレー(#4D4D4D)に変更
+        // QRコードを描画（濃度を65%に調整、画質向上）
+        ctx.fillStyle = '#595959'; // 70%グレー(#4D4D4D)から65%グレー(#595959)に変更
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
