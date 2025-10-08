@@ -3001,21 +3001,31 @@ function generateQRCode(data) {
         const ctx = canvas.getContext('2d');
         const size = 140; // QRコードのセルサイズを大きく設定
         const moduleCount = qr.getModuleCount();
-        const cellSize = size / moduleCount;
+        const cellSize = Math.floor(size / moduleCount); // 整数値に調整して掠れを防止
+        const actualSize = cellSize * moduleCount; // 実際のサイズを計算
         
-        canvas.width = size;
-        canvas.height = size;
+        canvas.width = actualSize;
+        canvas.height = actualSize;
+        
+        // アンチエイリアシングを無効化して鮮明に描画
+        ctx.imageSmoothingEnabled = false;
+        ctx.webkitImageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+        ctx.msImageSmoothingEnabled = false;
         
         // 背景を白で塗りつぶし
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, actualSize, actualSize);
         
-        // QRコードを描画（濃度を60%に調整）
-        ctx.fillStyle = '#666666'; // 70%グレー(#4D4D4D)から60%グレー(#666666)に変更
+        // QRコードを描画（濃度を60%に調整、掠れ防止）
+        ctx.fillStyle = '#666666'; // 60%グレー
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
-                    ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+                    // 整数座標で描画して掠れを防止
+                    const x = Math.floor(col * cellSize);
+                    const y = Math.floor(row * cellSize);
+                    ctx.fillRect(x, y, cellSize, cellSize);
                 }
             }
         }
