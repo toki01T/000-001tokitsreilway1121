@@ -2201,122 +2201,42 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // QRコード印刷時は画像処理をスキップ（QRコード読み取り性能維持）
-                    if (!qrPrintEnabled) {
-                        // 【サーマルプリンター特化】細部再現高品質ディザ処理
-                        const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
-                        const data = imageData.data;
-                        const width = finalImgWidth;
-                        const height = finalImgHeight;
+                    // QRコード描画前に画像処理を実行（QRコードに影響しないように）
+                    const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
+                    const data = imageData.data;
+                    
+                    // サーマルプリンター用画像最適化処理
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
                         
-                        // 1. コントラスト強化付きグレースケール変換
-                        const grayData = new Float32Array(width * height);
-                        for (let i = 0; i < data.length; i += 4) {
-                            const r = data[i];
-                            const g = data[i + 1];
-                            const b = data[i + 2];
-                            
-                            // 輝度計算
-                            let gray = 0.299 * r + 0.587 * g + 0.114 * b;
-                            
-                            // サーマルプリンター用コントラスト強化
-                            gray = Math.pow(gray / 255, 0.8) * 255; // ガンマ補正で中間調強化
-                            
-                            grayData[i / 4] = gray;
+                        // 1. グレースケール変換（高精度）
+                        const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                        
+                        // 2. サーマルプリンター用三値処理（黒・グレー・白）
+                        let enhanced;
+                        if (gray < 60) {
+                            // 暗い部分：完全に黒
+                            enhanced = 0;
+                        } else if (gray < 120) {
+                            // 中暗部分：濃いグレー  
+                            enhanced = 80;
+                        } else if (gray < 180) {
+                            // 中明部分：薄いグレー
+                            enhanced = 160;
+                        } else {
+                            // 明るい部分：完全に白
+                            enhanced = 255;
                         }
                         
-                        // 2. Atkinson ディザリング（細部保護版）
-                        for (let y = 0; y < height; y++) {
-                            for (let x = 0; x < width; x++) {
-                                const index = y * width + x;
-                                const oldPixel = grayData[index];
-                                
-                                // 多階調化（8段階）- 細かい濃淡を保持
-                                let newPixel;
-                                if (oldPixel >= 224) newPixel = 255;      // 純白
-                                else if (oldPixel >= 192) newPixel = 224; // 極薄グレー
-                                else if (oldPixel >= 160) newPixel = 192; // 薄グレー
-                                else if (oldPixel >= 128) newPixel = 160; // 中薄グレー
-                                else if (oldPixel >= 96) newPixel = 128;  // 中間グレー
-                                else if (oldPixel >= 64) newPixel = 96;   // 中濃グレー
-                                else if (oldPixel >= 32) newPixel = 64;   // 濃グレー
-                                else newPixel = 0;                        // 純黒
-                                
-                                grayData[index] = newPixel;
-                                const quantError = oldPixel - newPixel;
-                                
-                                // Atkinson誤差拡散（細部保護）
-                                const errorFactor = 0.125; // 1/8
-                                
-                                if (x + 1 < width) {
-                                    grayData[index + 1] += quantError * errorFactor;
-                                }
-                                if (x + 2 < width) {
-                                    grayData[index + 2] += quantError * errorFactor;
-                                }
-                                if (y + 1 < height) {
-                                    if (x - 1 >= 0) {
-                                        grayData[(y + 1) * width + (x - 1)] += quantError * errorFactor;
-                                    }
-                                    grayData[(y + 1) * width + x] += quantError * errorFactor;
-                                    if (x + 1 < width) {
-                                        grayData[(y + 1) * width + (x + 1)] += quantError * errorFactor;
-                                    }
-                                }
-                                if (y + 2 < height) {
-                                    grayData[(y + 2) * width + x] += quantError * errorFactor;
-                                }
-                            }
-                        }
-                        
-                        // 3. エッジ強化処理（文字・線の鮮明化）
-                        const edgeData = new Float32Array(width * height);
-                        for (let y = 1; y < height - 1; y++) {
-                            for (let x = 1; x < width - 1; x++) {
-                                const index = y * width + x;
-                                
-                                // Sobelフィルタでエッジ検出
-                                const gx = 
-                                    -grayData[(y-1)*width+(x-1)] + grayData[(y-1)*width+(x+1)] +
-                                    -2*grayData[y*width+(x-1)] + 2*grayData[y*width+(x+1)] +
-                                    -grayData[(y+1)*width+(x-1)] + grayData[(y+1)*width+(x+1)];
-                                
-                                const gy =
-                                    -grayData[(y-1)*width+(x-1)] - 2*grayData[(y-1)*width+x] - grayData[(y-1)*width+(x+1)] +
-                                    grayData[(y+1)*width+(x-1)] + 2*grayData[(y+1)*width+x] + grayData[(y+1)*width+(x+1)];
-                                
-                                const edgeStrength = Math.sqrt(gx*gx + gy*gy);
-                                
-                                // エッジ部分を強化
-                                if (edgeStrength > 30 && grayData[index] < 180) {
-                                    edgeData[index] = Math.max(0, grayData[index] - 50); // エッジを濃く
-                                } else {
-                                    edgeData[index] = grayData[index];
-                                }
-                            }
-                        }
-                        
-                        // 4. 最終結果をcanvasに適用
-                        for (let i = 0; i < data.length; i += 4) {
-                            const idx = i / 4;
-                            const x = idx % width;
-                            const y = Math.floor(idx / width);
-                            
-                            let finalGray;
-                            if (x === 0 || x === width-1 || y === 0 || y === height-1) {
-                                finalGray = Math.round(grayData[idx]); // 境界は元の値
-                            } else {
-                                finalGray = Math.round(edgeData[idx]); // 内部はエッジ強化後
-                            }
-                            
-                            data[i] = finalGray;     // R
-                            data[i + 1] = finalGray; // G
-                            data[i + 2] = finalGray; // B
-                        }
-                        
-                        // 結果をcanvasに反映
-                        compositeCtx.putImageData(imageData, imgX, imgY);
+                        data[i] = enhanced;     // R
+                        data[i + 1] = enhanced; // G
+                        data[i + 2] = enhanced; // B
                     }
+                    
+                    // 処理済み画像をcanvasに反映
+                    compositeCtx.putImageData(imageData, imgX, imgY);
                     
                     // 日付・時刻を描画
                     if (isDateTimeEnabled) {
@@ -2892,8 +2812,8 @@ function generateQRCode(data) {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, size, size);
         
-        // QRコードを描画（濃度を70%に調整）
-        ctx.fillStyle = '#4D4D4D'; // 60%グレー(#666666)から70%グレー(#4D4D4D)に変更
+        // QRコードを描画（読み取り性向上のため濃度を強化）
+        ctx.fillStyle = '#000000'; // 完全な黒に変更して読み取り性を最大化
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
