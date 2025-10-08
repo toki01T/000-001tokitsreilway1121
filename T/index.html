@@ -1929,7 +1929,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     
                     qrCodeCanvas = generateQRCode(qrData);
                     if (qrCodeCanvas) {
-                        const qrSize = 120; // QRコードのサイズを大きく設定
+                        const qrSize = 100; // QRコードのサイズを最適化（手書き用）
                         const qrX = 30; // 左端から30pxの位置
                         let qrY;
                         if (isDateTimeEnabled) {
@@ -2181,7 +2181,7 @@ function sendToPrintAssist(event) {
                             
                             qrCodeCanvas = generateQRCode(qrData);
                             if (qrCodeCanvas) {
-                                const qrSize = 120; // QRコードのサイズを大きく設定
+                                const qrSize = 100; // QRコードのサイズを最適化（画像用）
                                 const qrX = 30; // 左端から30pxの位置
                                 let qrY;
                                 if (isDateTimeEnabled) {
@@ -2734,7 +2734,7 @@ function printText() {
                 
                 qrCodeCanvas = generateQRCode(qrData);
                 if (qrCodeCanvas) {
-                    const qrSize = 120; // QRコードのサイズを大きく設定
+                    const qrSize = 100; // QRコードのサイズを最適化（テキスト用）
                     const qrX = 30; // 左端から30pxの位置
                     const textEndY = yPos;
                     let qrY;
@@ -2993,7 +2993,7 @@ function generateQRCode(data) {
             data = data.substring(0, 200);
         }
         
-        const qr = qrcode(0, 'H'); // エラー訂正レベルをHに変更（品質向上）
+        const qr = qrcode(0, 'M'); // エラー訂正レベルMに戻す（読み取り性能重視）
         qr.addData(data);
         qr.make();
         
@@ -3006,25 +3006,26 @@ function generateQRCode(data) {
         ctx.mozImageSmoothingEnabled = false;
         ctx.msImageSmoothingEnabled = false;
         
-        const size = 160; // QRコードのセルサイズをさらに大きく設定（140→160）
+        const size = 200; // QRコードのサイズを大幅に拡大（160→200）
         const moduleCount = qr.getModuleCount();
         const cellSize = Math.floor(size / moduleCount); // 整数値に調整
+        const margin = 2; // マージンを追加
         
-        canvas.width = size;
-        canvas.height = size;
+        canvas.width = size + margin * 2;
+        canvas.height = size + margin * 2;
         
         // 背景を白で塗りつぶし
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // QRコードを描画（濃度を65%に調整、画質向上）
-        ctx.fillStyle = '#595959'; // 70%グレー(#4D4D4D)から65%グレー(#595959)に変更
+        // QRコードを描画（読み取り最適化）
+        ctx.fillStyle = '#333333'; // 80%濃度のグレー（読み取り性能重視）
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
-                    // 整数座標で描画してピクセルパーフェクトに
-                    const x = Math.floor(col * cellSize);
-                    const y = Math.floor(row * cellSize);
+                    // マージンを考慮して描画位置を調整
+                    const x = Math.floor(col * cellSize) + margin;
+                    const y = Math.floor(row * cellSize) + margin;
                     const w = Math.ceil(cellSize);
                     const h = Math.ceil(cellSize);
                     ctx.fillRect(x, y, w, h);
