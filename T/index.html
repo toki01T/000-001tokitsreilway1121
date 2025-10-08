@@ -2067,6 +2067,42 @@ document.getElementById('signaturePrintButton').onclick = function() {
     }
 };
 // --- 画像印刷 ---
+
+// 文字領域判定関数（ディザリング処理用）
+function isTextRegion(x, y, width, height, imgData) {
+    if (x < 3 || x >= width - 3 || y < 3 || y >= height - 3) return false;
+    
+    const centerIndex = (y * width + x) * 4;
+    const centerGray = Math.round(0.299 * imgData[centerIndex] + 
+                                 0.587 * imgData[centerIndex + 1] + 
+                                 0.114 * imgData[centerIndex + 2]);
+    
+    // 周辺のグレー値を取得
+    const neighbors = [];
+    for (let dy = -3; dy <= 3; dy++) {
+        for (let dx = -3; dx <= 3; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nIndex = ((y + dy) * width + (x + dx)) * 4;
+            const nGray = Math.round(0.299 * imgData[nIndex] + 
+                                    0.587 * imgData[nIndex + 1] + 
+                                    0.114 * imgData[nIndex + 2]);
+            neighbors.push(nGray);
+        }
+    }
+    
+    // エッジ強度計算
+    const maxDiff = Math.max(...neighbors.map(n => Math.abs(centerGray - n)));
+    const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
+    const contrast = Math.abs(centerGray - avgNeighbor);
+    
+    // 文字判定条件（細部保持重視）
+    return (maxDiff > 20 && contrast > 15) || 
+           (centerGray < 120 && contrast > 15) || 
+           (centerGray > 160 && contrast > 15) ||
+           (maxDiff > 15 && (centerGray < 140 || centerGray > 140)) ||
+           (contrast > 20);
+}
+
 function sendToPrintAssist(event) {
     event.preventDefault();
     let fileInput = document.getElementById('imageUpload');
@@ -2201,102 +2237,116 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // 画像描画後、濃淡を確実に印字させる最強処理
+                    // 画像描画後、高品質ディザリング処理で細かな表現を実現
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 【サーマルプリンター特化】濃淡確実印字システム
+                    // 【高品質サーマルプリンター用】アドバンスドディザリング処理
                     const width = finalImgWidth;
                     const height = finalImgHeight;
                     
-                    // オリジナル画像データを保持
-                    const originalData = new Uint8Array(data.length);
-                    for (let i = 0; i < data.length; i++) {
-                        originalData[i] = data[i];
-                    }
-                    
-                    // 1. 全色対応高精度グレースケール変換
-                    const grayData = new Uint8Array(width * height);
+                    // 1. 高精度グレースケール変換（細部保持重視）
+                    const grayData = new Float32Array(width * height);
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
                         const b = data[i + 2];
                         
-                        // 薄い色対応カラー→グレー変換
-                        let gray;
+                        // 人間の視覚特性に基づく高精度輝度計算
+                        let gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
                         
-                        // 薄い色の検出と保護
-                        const maxColor = Math.max(r, g, b);
-                        const minColor = Math.min(r, g, b);
-                        const colorRange = maxColor - minColor;
+                        // 細部情報を保持するためのエッジ強調
+                        const idx = i / 4;
+                        const x = idx % width;
+                        const y = Math.floor(idx / width);
                         
-                        // 薄い色（高明度・低彩度）の特別処理
-                        if (maxColor >= 200 && colorRange <= 50) {
-                            // 薄い色は明度を保持しつつグレー化
-                            gray = Math.round((r + g + b) / 3);
-                        } else {
-                            // 通常の色は標準的な輝度計算
-                            gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                        // 周辺ピクセルとの差分でエッジ検出
+                        if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
+                            const leftIdx = (y * width + x - 1) * 4;
+                            const rightIdx = (y * width + x + 1) * 4;
+                            const topIdx = ((y - 1) * width + x) * 4;
+                            const bottomIdx = ((y + 1) * width + x) * 4;
+                            
+                            const leftGray = 0.2126 * data[leftIdx] + 0.7152 * data[leftIdx + 1] + 0.0722 * data[leftIdx + 2];
+                            const rightGray = 0.2126 * data[rightIdx] + 0.7152 * data[rightIdx + 1] + 0.0722 * data[rightIdx + 2];
+                            const topGray = 0.2126 * data[topIdx] + 0.7152 * data[topIdx + 1] + 0.0722 * data[topIdx + 2];
+                            const bottomGray = 0.2126 * data[bottomIdx] + 0.7152 * data[bottomIdx + 1] + 0.0722 * data[bottomIdx + 2];
+                            
+                            // エッジ強度計算
+                            const edgeStrength = Math.abs(leftGray - rightGray) + Math.abs(topGray - bottomGray);
+                            
+                            // エッジ部分のコントラスト強化（細部表現向上）
+                            if (edgeStrength > 30) {
+                                if (gray < 128) {
+                                    gray = Math.max(0, gray - 15); // 暗い部分をより暗く
+                                } else {
+                                    gray = Math.min(255, gray + 15); // 明るい部分をより明るく
+                                }
+                            }
                         }
                         
-                        // 薄い色の濃淡保護（コントラスト強化を控えめに）
-                        if (gray > 220) {
-                            gray = Math.min(255, gray + 10); // 薄い色は控えめに強化
-                        } else if (gray > 180) {
-                            // 中間薄色はそのまま保持
-                        } else if (gray < 50) {
-                            gray = Math.max(0, gray - 20);   // 暗い部分のみ強化
-                        }
-                        grayData[i / 4] = gray;
+                        grayData[idx] = gray;
                     }
                     
-                    // 2. サーマルプリンター用ディザリング処理（Floyd-Steinbergディザリング）
-                    const ditheredData = new Uint8Array(width * height);
+                    // 2. 高品質Floyd-Steinbergディザリング（細部表現最適化）
+                    const ditheredData = new Float32Array(width * height);
+                    for (let i = 0; i < grayData.length; i++) {
+                        ditheredData[i] = grayData[i];
+                    }
+                    
                     for (let y = 0; y < height; y++) {
                         for (let x = 0; x < width; x++) {
                             const index = y * width + x;
-                            const oldPixel = grayData[index];
+                            const oldPixel = ditheredData[index];
                             
-                            // サーマルプリンター用濃淡階調マッピング（9段階）
+                            // 適応的2値化（細部保持重視）
                             let newPixel;
                             
-                            if (oldPixel >= 220) newPixel = 255;      // 純白
-                            else if (oldPixel >= 190) newPixel = 200; // 極薄
-                            else if (oldPixel >= 160) newPixel = 170; // 薄
-                            else if (oldPixel >= 130) newPixel = 140; // 中薄
-                            else if (oldPixel >= 100) newPixel = 110; // 中間
-                            else if (oldPixel >= 70) newPixel = 80;   // 中濃
-                            else if (oldPixel >= 40) newPixel = 50;   // 濃
-                            else if (oldPixel >= 15) newPixel = 25;   // 極濃
-                            else newPixel = 0;                        // 純黒
+                            // 局所的閾値適応（エッジ部分の細部保持）
+                            let threshold = 128;
+                            
+                            // 周辺ピクセルの分散を計算して適応的閾値を設定
+                            if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
+                                let sum = 0;
+                                let count = 0;
+                                for (let dy = -1; dy <= 1; dy++) {
+                                    for (let dx = -1; dx <= 1; dx++) {
+                                        const neighborIdx = (y + dy) * width + (x + dx);
+                                        sum += grayData[neighborIdx];
+                                        count++;
+                                    }
+                                }
+                                const localMean = sum / count;
+                                threshold = localMean;
+                            }
+                            
+                            // 文字やエッジ部分を濃く表現
+                            if (oldPixel < threshold) {
+                                newPixel = 0; // 黒
+                            } else {
+                                newPixel = 255; // 白
+                            }
                             
                             ditheredData[index] = newPixel;
                             const quantError = oldPixel - newPixel;
                             
-                            // 薄い色に最適化された誤差拡散
-                            const errorWeight = oldPixel > 150 ? 1.2 : 1.0; // 薄い色は誤差拡散を強化
-                            
-                            // Floyd-Steinbergディザリングで誤差拡散（薄い色強化）
-                            if (x + 1 < width) {
-                                grayData[index + 1] = Math.max(0, Math.min(255, 
-                                    grayData[index + 1] + quantError * 7 / 16 * errorWeight));
+                            // Floyd-Steinberg誤差拡散マトリックス
+                            if (x < width - 1) {
+                                ditheredData[index + 1] += quantError * 7 / 16;
                             }
-                            if (y + 1 < height) {
-                                if (x - 1 >= 0) {
-                                    grayData[(y + 1) * width + (x - 1)] = Math.max(0, Math.min(255,
-                                        grayData[(y + 1) * width + (x - 1)] + quantError * 3 / 16 * errorWeight));
+                            if (y < height - 1) {
+                                if (x > 0) {
+                                    ditheredData[index + width - 1] += quantError * 3 / 16;
                                 }
-                                grayData[(y + 1) * width + x] = Math.max(0, Math.min(255,
-                                    grayData[(y + 1) * width + x] + quantError * 5 / 16 * errorWeight));
-                                if (x + 1 < width) {
-                                    grayData[(y + 1) * width + (x + 1)] = Math.max(0, Math.min(255,
-                                        grayData[(y + 1) * width + (x + 1)] + quantError * 1 / 16 * errorWeight));
+                                ditheredData[index + width] += quantError * 5 / 16;
+                                if (x < width - 1) {
+                                    ditheredData[index + width + 1] += quantError * 1 / 16;
                                 }
                             }
                         }
                     }
                     
-                    // 3. 文字部分の検出と保護（文字は除く）
+                    // 3. ディザリング結果をキャンバスに適用（文字部分は別処理）
                     for (let i = 0; i < data.length; i += 4) {
                         const pixelIndex = i / 4;
                         const x = pixelIndex % width;
@@ -2312,87 +2362,30 @@ function sendToPrintAssist(event) {
                         if (isTextLike) {
                             // 文字部分は文字欠け防止強化処理
                             const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                            // 文字欠け防止：より広い範囲を文字として認識
                             let enhanced;
-                            if (gray < 160) { // 140 → 160 に変更してより多くを文字として認識
-                                // 文字部分は確実に黒く
-                                enhanced = Math.max(0, gray - 100); // 80 → 100 に変更してより黒く
+                            if (gray < 160) {
+                                enhanced = Math.max(0, gray - 100); // 文字部分は確実に黒く
                             } else {
-                                // 背景部分は確実に白く
-                                enhanced = Math.min(255, gray + 60); // 50 → 60 に変更してより白く
+                                enhanced = Math.min(255, gray + 60); // 背景部分は確実に白く
                             }
                             data[i] = enhanced;
                             data[i + 1] = enhanced;
                             data[i + 2] = enhanced;
                         } else {
-                            // 非文字部分：ノイズレスサーマルプリンター用濃淡表現
-                            const originalGray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                            // 非文字部分：ディザリング処理済みデータを適用
+                            const ditheredValue = Math.max(0, Math.min(255, Math.round(ditheredData[pixelIndex])));
                             
-                            // 4x4ディザリングマトリックス（ノイズ軽減）
-                            const pixelX = x % 4;
-                            const pixelY = y % 4;
-                            
-                            // 4x4 Bayerディザリングマトリックス（スムーズ版）
-                            const bayerMatrix = [
-                                [ 0,  8,  2, 10],
-                                [12,  4, 14,  6],
-                                [ 3, 11,  1,  9],
-                                [15,  7, 13,  5]
-                            ];
-                            
-                            // 閾値を15倍にして0-225の範囲に（よりスムーズに）
-                            const threshold = bayerMatrix[pixelY][pixelX] * 15;
-                            
-                            // サーマルプリンター用二値化（ノイズ軽減）
-                            let finalValue;
-                            
-                            // 濃淡を密度パターンで表現（スムーズ化）
-                            if (originalGray > threshold) {
-                                finalValue = 255; // 白
-                            } else {
-                                finalValue = 0;   // 黒
-                            }
-                            
-                            data[i] = finalValue;
-                            data[i + 1] = finalValue;
-                            data[i + 2] = finalValue;
+                            data[i] = ditheredValue;
+                            data[i + 1] = ditheredValue;
+                            data[i + 2] = ditheredValue;
                         }
+                        
+                        // アルファチャンネルは保持
+                        data[i + 3] = originalData[i + 3];
                     }
                     
-                    // 文字判定関数
-                    function isTextRegion(x, y, width, height, imgData) {
-                        if (x < 3 || x >= width - 3 || y < 3 || y >= height - 3) return false; // 2 → 3 に拡張
-                        
-                        const centerIndex = (y * width + x) * 4;
-                        const centerGray = Math.round(0.299 * imgData[centerIndex] + 
-                                                     0.587 * imgData[centerIndex + 1] + 
-                                                     0.114 * imgData[centerIndex + 2]);
-                        
-                        // 周辺のグレー値を取得（範囲を拡張）
-                        const neighbors = [];
-                        for (let dy = -3; dy <= 3; dy++) { // -2 → -3 に拡張
-                            for (let dx = -3; dx <= 3; dx++) { // -2 → -3 に拡張
-                                if (dx === 0 && dy === 0) continue;
-                                const nIndex = ((y + dy) * width + (x + dx)) * 4;
-                                const nGray = Math.round(0.299 * imgData[nIndex] + 
-                                                        0.587 * imgData[nIndex + 1] + 
-                                                        0.114 * imgData[nIndex + 2]);
-                                neighbors.push(nGray);
-                            }
-                        }
-                        
-                        // エッジ強度計算
-                        const maxDiff = Math.max(...neighbors.map(n => Math.abs(centerGray - n)));
-                        const avgNeighbor = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
-                        const contrast = Math.abs(centerGray - avgNeighbor);
-                        
-                        // 文字判定条件（文字欠け防止：より敏感な検出）
-                        return (maxDiff > 20 && contrast > 15) || 
-                               (centerGray < 120 && contrast > 15) || 
-                               (centerGray > 160 && contrast > 15) ||
-                               (maxDiff > 15 && (centerGray < 140 || centerGray > 140)) ||
-                               (contrast > 20); // 追加：コントラストがある箇所はすべて文字として扱う
-                    }
+                    // 処理完了
+                    ctx.putImageData(imageData, 0, 0);
                     
                     // 調整されたピクセルデータを再描画
                     compositeCtx.putImageData(imageData, imgX, imgY);
@@ -3418,44 +3411,39 @@ function restoreContentFromHistory(item) {
         
         document.getElementById('copiesSelect').value = item.copies;
         
-        // QRチェックボックスの復元を確実に処理
+        // QRチェックボックスの復元を段階的に確実に処理
         console.log('=== 画像QR復元開始 ===');
         console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
-        
-        // 履歴表示のQRアイコン表示条件と同じ判定を使用
-        const hasQRIcon = !!(item.qrPrinted);
-        console.log('履歴QRアイコン表示:', hasQRIcon);
         
         const restoreQRCheckbox = () => {
             const qrCheckbox = document.getElementById('qrPrintCheckbox');
             console.log('QRチェックボックス要素:', qrCheckbox);
             
             if (qrCheckbox) {
-                // 履歴でQRアイコンが表示されている場合はON、されていない場合はOFF
-                const shouldCheck = hasQRIcon;
-                console.log('復元判定:', item.qrPrinted, '→ QRアイコン表示:', hasQRIcon, '→ チェック:', shouldCheck);
+                const qrValue = item.qrPrinted;
+                const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
+                console.log('復元判定:', qrValue, '→', shouldCheck);
                 
                 // 現在の状態を記録
                 console.log('復元前チェック状態:', qrCheckbox.checked);
                 
-                // Step 1: チェック状態をリセット
-                qrCheckbox.checked = false;
-                qrCheckbox.removeAttribute('checked');
-                
-                // Step 2: 正しい状態を設定
+                // Step 1: 直接的な設定
                 qrCheckbox.checked = shouldCheck;
+                
+                // Step 2: 属性設定
                 if (shouldCheck) {
                     qrCheckbox.setAttribute('checked', 'checked');
+                    qrCheckbox.setAttribute('value', 'on');
                 } else {
                     qrCheckbox.removeAttribute('checked');
+                    qrCheckbox.removeAttribute('value');
                 }
                 
-                // Step 3: defaultChecked も設定
+                // Step 3: プロパティ再設定
                 qrCheckbox.defaultChecked = shouldCheck;
                 
-                // Step 4: 状態が一致しない場合は強制クリック
+                // Step 4: 強制的なクリック操作をシミュレート
                 if (qrCheckbox.checked !== shouldCheck) {
-                    console.log('状態不一致のため強制クリック実行');
                     qrCheckbox.click();
                 }
                 
@@ -3505,44 +3493,39 @@ function restoreContentFromHistory(item) {
         
         document.getElementById('textCopiesSelect').value = item.copies;
         
-        // QRチェックボックスの復元を確実に処理
+        // QRチェックボックスの復元を段階的に確実に処理
         console.log('=== テキストQR復元開始 ===');
         console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
-        
-        // 履歴表示のQRアイコン表示条件と同じ判定を使用
-        const hasQRIcon = !!(item.qrPrinted);
-        console.log('履歴QRアイコン表示:', hasQRIcon);
         
         const restoreTextQRCheckbox = () => {
             const textQrCheckbox = document.getElementById('textQrPrintCheckbox');
             console.log('テキストQRチェックボックス要素:', textQrCheckbox);
             
             if (textQrCheckbox) {
-                // 履歴でQRアイコンが表示されている場合はON、されていない場合はOFF
-                const shouldCheck = hasQRIcon;
-                console.log('復元判定:', item.qrPrinted, '→ QRアイコン表示:', hasQRIcon, '→ チェック:', shouldCheck);
+                const qrValue = item.qrPrinted;
+                const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
+                console.log('復元判定:', qrValue, '→', shouldCheck);
                 
                 // 現在の状態を記録
                 console.log('復元前チェック状態:', textQrCheckbox.checked);
                 
-                // Step 1: チェック状態をリセット
-                textQrCheckbox.checked = false;
-                textQrCheckbox.removeAttribute('checked');
-                
-                // Step 2: 正しい状態を設定
+                // Step 1: 直接的な設定
                 textQrCheckbox.checked = shouldCheck;
+                
+                // Step 2: 属性設定
                 if (shouldCheck) {
                     textQrCheckbox.setAttribute('checked', 'checked');
+                    textQrCheckbox.setAttribute('value', 'on');
                 } else {
                     textQrCheckbox.removeAttribute('checked');
+                    textQrCheckbox.removeAttribute('value');
                 }
                 
-                // Step 3: defaultChecked も設定
+                // Step 3: プロパティ再設定
                 textQrCheckbox.defaultChecked = shouldCheck;
                 
-                // Step 4: 状態が一致しない場合は強制クリック
+                // Step 4: 強制的なクリック操作をシミュレート
                 if (textQrCheckbox.checked !== shouldCheck) {
-                    console.log('状態不一致のため強制クリック実行');
                     textQrCheckbox.click();
                 }
                 
@@ -3591,44 +3574,39 @@ function restoreContentFromHistory(item) {
             
             document.getElementById('signatureCopiesSelect').value = item.copies;
             
-            // QRチェックボックスの復元を確実に処理
+            // QRチェックボックスの復元を段階的に確実に処理
             console.log('=== 手書きQR復元開始 ===');
             console.log('item.qrPrinted:', item.qrPrinted, 'タイプ:', typeof item.qrPrinted);
-            
-            // 履歴表示のQRアイコン表示条件と同じ判定を使用
-            const hasQRIcon = !!(item.qrPrinted);
-            console.log('履歴QRアイコン表示:', hasQRIcon);
             
             const restoreSignatureQRCheckbox = () => {
                 const signatureQrCheckbox = document.getElementById('signatureQrPrintCheckbox');
                 console.log('手書きQRチェックボックス要素:', signatureQrCheckbox);
                 
                 if (signatureQrCheckbox) {
-                    // 履歴でQRアイコンが表示されている場合はON、されていない場合はOFF
-                    const shouldCheck = hasQRIcon;
-                    console.log('復元判定:', item.qrPrinted, '→ QRアイコン表示:', hasQRIcon, '→ チェック:', shouldCheck);
+                    const qrValue = item.qrPrinted;
+                    const shouldCheck = !!(qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1');
+                    console.log('復元判定:', qrValue, '→', shouldCheck);
                     
                     // 現在の状態を記録
                     console.log('復元前チェック状態:', signatureQrCheckbox.checked);
                     
-                    // Step 1: チェック状態をリセット
-                    signatureQrCheckbox.checked = false;
-                    signatureQrCheckbox.removeAttribute('checked');
-                    
-                    // Step 2: 正しい状態を設定
+                    // Step 1: 直接的な設定
                     signatureQrCheckbox.checked = shouldCheck;
+                    
+                    // Step 2: 属性設定
                     if (shouldCheck) {
                         signatureQrCheckbox.setAttribute('checked', 'checked');
+                        signatureQrCheckbox.setAttribute('value', 'on');
                     } else {
                         signatureQrCheckbox.removeAttribute('checked');
+                        signatureQrCheckbox.removeAttribute('value');
                     }
                     
-                    // Step 3: defaultChecked も設定
+                    // Step 3: プロパティ再設定
                     signatureQrCheckbox.defaultChecked = shouldCheck;
                     
-                    // Step 4: 状態が一致しない場合は強制クリック
+                    // Step 4: 強制的なクリック操作をシミュレート
                     if (signatureQrCheckbox.checked !== shouldCheck) {
-                        console.log('状態不一致のため強制クリック実行');
                         signatureQrCheckbox.click();
                     }
                     
