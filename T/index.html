@@ -1951,6 +1951,22 @@ function updateSignaturePrintButtonState() {
         options.style.display = 'flex';
     }
 }
+
+// 手書き印刷のメイン関数
+function printSignature() {
+    if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') {
+        console.log('手書き印刷: 条件不足', {
+            signaturePad: !!signaturePad,
+            isEmpty: signaturePad ? signaturePad.isEmpty() : 'undefined',
+            selectedChip: selectedSignatureChip
+        });
+        return;
+    }
+    
+    // 既存のonclick処理を実行
+    document.getElementById('signaturePrintButton').onclick();
+}
+
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
     const qrPrintEnabled = document.getElementById('signatureQrPrintCheckbox').checked; // 最初に取得
@@ -2053,10 +2069,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
                         let qrY;
                         if (isDateTimeEnabled) {
                             // 日付・時刻ありの場合：日付・時刻の左側に配置
-                            qrY = signatureY + signatureHeight + 20; // サインの下、日付の横
+                            qrY = signatureY + signatureHeight + 30; // サインの下、QRコード下部余白を30pxに調整（20→30）
                         } else {
                             // 日付・時刻なしの場合：手書きの下部左側（印刷範囲内に調整）
-                            qrY = Math.max(signatureY + signatureHeight - qrSize + 10, signatureY + signatureHeight + 10);
+                            qrY = Math.max(signatureY + signatureHeight - qrSize + 10, signatureY + signatureHeight + 40); // QRコード下部余白を40pxに調整（10→40）
                         }
                         // console.log('QRコード描画位置:', qrX, qrY, qrSize);
                         compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
@@ -2662,10 +2678,10 @@ function printText() {
                     let qrY;
                     if (isDateTimeEnabled) {
                         // 日付・時刻ありの場合：日付・時刻の左側に配置
-                        qrY = textEndY + 20; // テキストの下、日付の横
+                        qrY = textEndY + 30; // テキストの下、QRコード下部余白を30pxに調整（20→30）
                     } else {
                         // 日付・時刻なしの場合：テキストの下部左側（印刷範囲内に調整）
-                        qrY = textEndY + 20; // テキストの下
+                        qrY = textEndY + 40; // テキストの下、QRコード下部余白を40pxに調整（20→40）
                     }
                     // console.log('QRコード描画位置:', qrX, qrY, qrSize);
                     ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
