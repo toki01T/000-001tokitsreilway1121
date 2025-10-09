@@ -3002,7 +3002,7 @@ async function closeQRReader() {
 
 // QRリーダー開始（フォールバック機能付き）
 async function startQRReader() {
-    console.log('🚀 QRスキャナー初期化開始');
+    // console.log('=== QRスキャナー開始処理 ===');
     
     const qrReaderModal = document.getElementById('qrReaderModal');
     const videoElement = document.getElementById('qrReader');
@@ -3010,24 +3010,11 @@ async function startQRReader() {
     
     // モーダルを表示
     qrReaderModal.style.display = 'flex';
-    statusElement.textContent = 'カメラを起動中...';
-    
-    // カメラ権限確認
-    try {
-        const permissions = await navigator.permissions.query({name: 'camera'});
-        console.log('📹 カメラ権限状態:', permissions.state);
-        if (permissions.state === 'denied') {
-            alert('カメラへのアクセスが拒否されています。ブラウザの設定でカメラを許可してください。');
-            closeQRReader();
-            return;
-        }
-    } catch (e) {
-        console.warn('権限確認エラー:', e);
-    }
+    statusElement.textContent = '📷 高感度QRスキャナーを起動中...';
     
     // 既存のスキャナーがあれば確実に停止
     if (window.qrScanner) {
-        console.log('🛑 既存のスキャナーを停止中...');
+        console.log('既存のスキャナーを停止中...');
         try {
             await window.qrScanner.stop();
             window.qrScanner.destroy();
@@ -3050,15 +3037,16 @@ async function startQRReader() {
         }
     }
     
-    // タイムアウト設定（30秒）
+    // タイムアウト設定（45秒に延長）
     const timeoutId = setTimeout(() => {
         console.warn('QRスキャナータイムアウト');
         closeQRReader();
-        alert('カメラの起動に時間がかかっています。再度お試しください。');
-    }, 30000);
+        alert('カメラの起動に時間がかかっています。\n・カメラの権限を許可してください\n・明るい場所でお試しください');
+    }, 45000);
     
     try {
-        // まずQrScannerライブラリを試す
+        console.log('🚀 QRスキャナー起動開始');
+        // まずQrScannerライブラリを試す（高感度版）
         if (await tryQrScannerLibrary(videoElement, statusElement)) {
             clearTimeout(timeoutId);
             return;
@@ -3085,10 +3073,10 @@ async function startQRReader() {
     }
 }
 
-// QrScannerライブラリを使用
+// QrScannerライブラリを使用（感度向上版）
 async function tryQrScannerLibrary(videoElement, statusElement) {
     try {
-        // console.log('QrScannerライブラリを試行中...');
+        console.log('🔍 高感度QrScannerライブラリを起動中...');
         
         // ライブラリの確認（少し待機）
         if (typeof QrScanner === 'undefined') {
@@ -3104,41 +3092,40 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
             throw new Error('カメラが見つかりません');
         }
         
-        // QRスキャナーを作成（最高精度設定）
+        // 【改善版】QRスキャナーを作成（最高感度設定）
         window.qrScanner = new QrScanner(
             videoElement,
             (result) => {
                 // 成功時は即座に処理
                 const qrData = (typeof result === 'object' && result.data) ? result.data : result;
-                console.log('🎯 QRコード読み取り成功:', qrData.substring(0, 50));
+                console.log('✅ QR読み取り成功:', qrData.substring(0, 30) + '...');
                 handleQRScanResult(qrData);
             },
             {
-                returnDetailedScanResult: true, // 詳細な結果を取得
+                returnDetailedScanResult: true, // 詳細結果を取得
                 highlightScanRegion: true, // スキャン領域をハイライト
                 highlightCodeOutline: true, // QRコードの輪郭をハイライト
-                preferredCamera: 'environment',
-                maxScansPerSecond: 60, // 安定性重視で60fpsに調整
+                preferredCamera: 'environment', // 背面カメラ優先
+                maxScansPerSecond: 60, // 適度な頻度に調整（120→60、安定性重視）
+                // 【重要】スキャン領域を中央部分に集中
                 calculateScanRegion: (video) => {
-                    // 中央領域に集中してスキャン精度向上
-                    const smallerSize = Math.min(video.videoWidth, video.videoHeight) * 0.8;
+                    const centerX = video.videoWidth * 0.2;
+                    const centerY = video.videoHeight * 0.2;
+                    const regionWidth = video.videoWidth * 0.6;
+                    const regionHeight = video.videoHeight * 0.6;
                     return {
-                        x: Math.max(0, (video.videoWidth - smallerSize) / 2),
-                        y: Math.max(0, (video.videoHeight - smallerSize) / 2),
-                        width: smallerSize,
-                        height: smallerSize
+                        x: Math.floor(centerX),
+                        y: Math.floor(centerY),
+                        width: Math.floor(regionWidth),
+                        height: Math.floor(regionHeight)
                     };
-                },
-                // 追加の高精度設定
-                overlay: true,
-                scanRegion: {
-                    x: 0.1, y: 0.1, width: 0.8, height: 0.8
                 }
             }
         );
         
         await window.qrScanner.start();
-        statusElement.textContent = '';
+        statusElement.textContent = '📱 QRコードを画面中央に合わせてください';
+        console.log('✅ QrScannerライブラリ開始成功');
         return true;
         
     } catch (error) {
@@ -3147,9 +3134,10 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
     }
 }
 
-// ZXingライブラリをフォールバックとして使用
+// ZXingライブラリをフォールバックとして使用（高感度版）
 async function tryZXingLibrary(videoElement, statusElement) {
     try {
+        console.log('🔄 ZXingライブラリにフォールバック中...');
         if (typeof ZXing === 'undefined') {
             await new Promise(resolve => setTimeout(resolve, 1000));
             if (typeof ZXing === 'undefined') {
@@ -3157,31 +3145,27 @@ async function tryZXingLibrary(videoElement, statusElement) {
             }
         }
         
-        // MediaStreamを取得（最高品質設定）
+        // 【改善版】MediaStreamを取得（最高画質・高感度設定）
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { 
                 facingMode: 'environment',
-                width: { ideal: 1920, min: 1280 },
-                height: { ideal: 1080, min: 720 },
-                frameRate: { ideal: 30, min: 15 }, // 安定性重視
-                focusMode: 'continuous',
-                exposureMode: 'continuous',
-                whiteBalanceMode: 'continuous'
+                width: { ideal: 1920, min: 640 }, // 最低解像度を下げて互換性向上
+                height: { ideal: 1080, min: 480 },
+                frameRate: { ideal: 30, min: 15 }, // フレームレートを安定性重視に調整
+                focusMode: 'continuous', // 連続オートフォーカス
+                exposureMode: 'continuous' // 連続露出調整
             }
         });
         
         videoElement.srcObject = stream;
         await videoElement.play();
         
-        console.log('📹 カメラ解像度:', videoElement.videoWidth, 'x', videoElement.videoHeight);
-        
-        // QRコードリーダーを作成（高精度設定）
+        // 【改善版】QRコードリーダーを作成（多形式対応・高感度）
         const codeReader = new ZXing.BrowserQRCodeReader();
         
         // 継続的にスキャン
         window.qrScanner = {
             scanning: true,
-            scanCount: 0,
             stop: () => {
                 window.qrScanner.scanning = false;
                 stream.getTracks().forEach(track => track.stop());
@@ -3196,54 +3180,51 @@ async function tryZXingLibrary(videoElement, statusElement) {
             if (!window.qrScanner.scanning) return;
             
             try {
-                window.qrScanner.scanCount++;
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                
-                // 高解像度でキャプチャ
                 canvas.width = videoElement.videoWidth;
                 canvas.height = videoElement.videoHeight;
                 
-                // 画質向上設定
+                // 【改善版】画像品質向上処理
                 ctx.imageSmoothingEnabled = false;
                 ctx.drawImage(videoElement, 0, 0);
                 
-                // 中央領域に集中してスキャン
-                const centerX = Math.floor(canvas.width * 0.2);
-                const centerY = Math.floor(canvas.height * 0.2);
-                const centerWidth = Math.floor(canvas.width * 0.6);
-                const centerHeight = Math.floor(canvas.height * 0.6);
-                
-                const imageData = ctx.getImageData(centerX, centerY, centerWidth, centerHeight);
-                const code = await codeReader.decodeFromImageData(imageData);
+                // 【改善版】全画面スキャン
+                let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                let code = await codeReader.decodeFromImageData(imageData);
                 
                 if (code && code.text) {
-                    console.log('🎯 ZXing QRコード読み取り成功:', code.text.substring(0, 50), `(${window.qrScanner.scanCount}回目)`);
+                    console.log('✅ ZXing QR読み取り成功:', code.text.substring(0, 30) + '...');
                     handleQRScanResult(code.text);
                     return;
                 }
                 
-                // 全画面もスキャンを試行
-                if (window.qrScanner.scanCount % 3 === 0) {
-                    const fullImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const fullCode = await codeReader.decodeFromImageData(fullImageData);
-                    if (fullCode && fullCode.text) {
-                        console.log('🎯 ZXing 全画面QRコード読み取り成功:', fullCode.text.substring(0, 50));
-                        handleQRScanResult(fullCode.text);
-                        return;
-                    }
+                // 【追加】中央部分重点スキャン（フォールバック）
+                const centerX = Math.floor(canvas.width * 0.25);
+                const centerY = Math.floor(canvas.height * 0.25);
+                const centerWidth = Math.floor(canvas.width * 0.5);
+                const centerHeight = Math.floor(canvas.height * 0.5);
+                
+                imageData = ctx.getImageData(centerX, centerY, centerWidth, centerHeight);
+                code = await codeReader.decodeFromImageData(imageData);
+                
+                if (code && code.text) {
+                    console.log('✅ ZXing QR読み取り成功（中央）:', code.text.substring(0, 30) + '...');
+                    handleQRScanResult(code.text);
+                    return;
                 }
                 
             } catch (e) {
-                // QRコードが見つからない場合は正常（エラーログを抑制）
+                // QRコードが見つからない場合は正常（ログ出力なし）
             }
             
-            // 33ms後に再スキャン（約30fps、安定性重視）
-            setTimeout(scanLoop, 33);
+            // 30ms後に再スキャン（安定性重視、16ms→30ms）
+            setTimeout(scanLoop, 30);
         };
         
         scanLoop();
-        statusElement.textContent = '';
+        statusElement.textContent = '🔍 ZXingライブラリでスキャン中...';
+        console.log('✅ ZXingライブラリ開始成功');
         return true;
         
     } catch (error) {
@@ -3293,45 +3274,48 @@ async function stopQRReader() {
 // QRコード読み取り結果の処理
 function handleQRScanResult(result) {
     try {
-        console.log('📱 QRコードスキャン結果受信:', result);
+        console.log('🔍 QRスキャン結果受信:', result);
         
         // まずスキャナーを停止
         stopQRReader();
         
         if (!result || typeof result !== 'string') {
-            console.error('❌ 無効なQRコードデータ:', result, 'type:', typeof result);
-            alert('無効なQRコードデータです\n受信データ: ' + JSON.stringify(result));
+            console.error('❌ 無効なQRコードデータ:', result);
+            alert('❌ 無効なQRコードデータです\n読み取り結果: ' + String(result));
             return;
         }
         
-        // データの前後の空白を除去
-        const cleanResult = result.trim();
-        console.log('🧹 クリーンアップ後:', cleanResult);
+        // データの前後の空白をトリム
+        result = result.trim();
+        console.log('📋 処理対象データ:', result, '（長さ:' + result.length + '桁）');
         
         // 管理番号かチェック（TOKIで始まる16桁）
-        if (!cleanResult.startsWith('TOKI')) {
-            console.warn('⚠️ このアプリで生成されたQRコードではありません:', cleanResult);
-            const userChoice = confirm('このアプリで生成されたQRコードではありません。\n読み取った内容: ' + cleanResult + '\n\n内容を表示しますか？');
-            if (userChoice) {
-                alert('QRコード内容:\n' + cleanResult);
-            }
+        if (!result.startsWith('TOKI')) {
+            console.warn('⚠️ 外部QRコード検出:', result);
+            alert('⚠️ このアプリで生成されたQRコードではありません\n\n読み取った内容:\n' + result + '\n\nアプリ内で印刷したQRコードをスキャンしてください。');
             return;
         }
         
-        if (cleanResult.length !== 16) {
-            console.error('❌ 無効な管理番号の長さ:', cleanResult, 'length:', cleanResult.length);
-            alert('無効な管理番号です\n読み取った内容: ' + cleanResult + '\n長さ: ' + cleanResult.length + '桁（16桁である必要があります）');
+        if (result.length !== 16) {
+            console.error('❌ 無効な管理番号の長さ:', result, 'length:', result.length);
+            alert('❌ 無効な管理番号です\n\n読み取った内容:\n' + result + '\n\n長さ: ' + result.length + '桁\n（正しくは16桁である必要があります）');
             return;
         }
         
-        console.log('✅ 有効な管理番号を検出:', cleanResult);
+        console.log('✅ 有効な管理番号を検出:', result);
         
-        // 成功時の復元処理
-        restoreFromManagementId(cleanResult);
+        // 成功時に視覚的フィードバックを提供
+        const statusElement = document.getElementById('qrReaderStatus');
+        if (statusElement) {
+            statusElement.textContent = '✅ QRコード読み取り成功！復元中...';
+        }
+        
+        // 履歴から復元
+        restoreFromManagementId(result);
         
     } catch (error) {
         console.error('❌ QRコード解析エラー:', error);
-        alert('QRコード解析に失敗しました: ' + error.message);
+        alert('❌ QRコード解析に失敗しました\n\nエラー詳細:\n' + error.message + '\n\n再度お試しください。');
         stopQRReader();
     }
 }
