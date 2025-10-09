@@ -2048,17 +2048,17 @@ document.getElementById('signaturePrintButton').onclick = function() {
                     
                     qrCodeCanvas = generateQRCode(qrData);
                     if (qrCodeCanvas) {
-                        const qrSize = 180; // QRコードのサイズを160→180にさらに拡大
-                        const qrX = 20; // 左端から20pxの位置（さらに左に）
+                        const qrSize = 150; // QRコードのサイズをさらに大きく設定（120→150）
+                        const qrX = 30; // 左端から30pxの位置
                         let qrY;
                         if (isDateTimeEnabled) {
                             // 日付・時刻ありの場合：日付・時刻の左側に配置
-                            qrY = signatureY + signatureHeight + 15; // サインの下、日付の横
+                            qrY = signatureY + signatureHeight + 20; // サインの下、日付の横
                         } else {
                             // 日付・時刻なしの場合：手書きの下部左側（印刷範囲内に調整）
-                            qrY = Math.max(signatureY + signatureHeight - qrSize + 15, signatureY + signatureHeight + 15);
+                            qrY = Math.max(signatureY + signatureHeight - qrSize + 10, signatureY + signatureHeight + 10);
                         }
-                        console.log('QRコード描画位置（手書き）:', qrX, qrY, qrSize);
+                        // console.log('QRコード描画位置:', qrX, qrY, qrSize);
                         compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
                     }
                 }
@@ -2300,17 +2300,17 @@ function sendToPrintAssist(event) {
                             
                             qrCodeCanvas = generateQRCode(qrData);
                             if (qrCodeCanvas) {
-                                const qrSize = 180; // QRコードのサイズを160→180にさらに拡大
-                                const qrX = 20; // 左端から20pxの位置（さらに左に）
+                                const qrSize = 150; // QRコードのサイズをさらに大きく設定（120→150）
+                                const qrX = 30; // 左端から30pxの位置
                                 let qrY;
                                 if (isDateTimeEnabled) {
                                     // 日付・時刻ありの場合：日付・時刻の左側に配置
-                                    qrY = imgY + finalImgHeight + 15; // 画像の下、日付の横
+                                    qrY = imgY + finalImgHeight + 20; // 画像の下、日付の横
                                 } else {
                                     // 日付・時刻なしの場合：画像の下部左側（印刷範囲内に調整）
-                                    qrY = Math.max(imgY + finalImgHeight - qrSize + 15, imgY + finalImgHeight + 15);
+                                    qrY = Math.max(imgY + finalImgHeight - qrSize + 10, imgY + finalImgHeight + 10);
                                 }
-                                console.log('QRコード描画位置（画像）:', qrX, qrY, qrSize);
+                                // console.log('QRコード描画位置:', qrX, qrY, qrSize);
                                 compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
                             }
                         }
@@ -2656,18 +2656,18 @@ function printText() {
                 
                 qrCodeCanvas = generateQRCode(qrData);
                 if (qrCodeCanvas) {
-                    const qrSize = 180; // QRコードのサイズを160→180にさらに拡大
-                    const qrX = 20; // 左端から20pxの位置（さらに左に）
+                    const qrSize = 150; // QRコードのサイズをさらに大きく設定（120→150）
+                    const qrX = 30; // 左端から30pxの位置
                     const textEndY = yPos;
                     let qrY;
                     if (isDateTimeEnabled) {
                         // 日付・時刻ありの場合：日付・時刻の左側に配置
-                        qrY = textEndY + 15; // テキストの下、日付の横
+                        qrY = textEndY + 20; // テキストの下、日付の横
                     } else {
                         // 日付・時刻なしの場合：テキストの下部左側（印刷範囲内に調整）
-                        qrY = textEndY + 15; // テキストの下
+                        qrY = textEndY + 20; // テキストの下
                     }
-                    console.log('QRコード描画位置（テキスト）:', qrX, qrY, qrSize);
+                    // console.log('QRコード描画位置:', qrX, qrY, qrSize);
                     ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
                 }
             }
@@ -2915,54 +2915,61 @@ function generateQRCode(data) {
             data = data.substring(0, 200);
         }
         
-        const qr = qrcode(0, 'L'); // エラー訂正レベルをLに変更（より高密度）
+        const qr = qrcode(0, 'H'); // エラー訂正レベルをHに変更（より高品質）
         qr.addData(data);
         qr.make();
         
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        const size = 240; // QRコードサイズを200→240にさらに拡大
+        const size = 180; // QRコードサイズを140→180に拡大
         const moduleCount = qr.getModuleCount();
         
-        // セルサイズを正確に計算（小数点も使用）
-        const cellSize = size / moduleCount;
+        // セルサイズを大きくして鮮明度向上
+        let cellSize = Math.floor(size / moduleCount);
+        // 最小セルサイズを保証
+        if (cellSize < 3) {
+            cellSize = 3;
+            const newSize = cellSize * moduleCount;
+            canvas.width = newSize;
+            canvas.height = newSize;
+            canvas.style.width = newSize + 'px';
+            canvas.style.height = newSize + 'px';
+        } else {
+            // 高解像度化でより鮮明な描画
+            const pixelRatio = Math.max(window.devicePixelRatio || 1, 2); // 最低2倍解像度
+            canvas.width = size * pixelRatio;
+            canvas.height = size * pixelRatio;
+            canvas.style.width = size + 'px';
+            canvas.style.height = size + 'px';
+            ctx.scale(pixelRatio, pixelRatio);
+        }
         
-        // 最高解像度化でシャープな描画
-        const pixelRatio = Math.max(window.devicePixelRatio || 2, 3); // 最低3倍に設定
-        canvas.width = size * pixelRatio;
-        canvas.height = size * pixelRatio;
-        canvas.style.width = size + 'px';
-        canvas.style.height = size + 'px';
-        ctx.scale(pixelRatio, pixelRatio);
-        
-        // アンチエイリアスを完全無効化してシャープな描画
+        // 最高画質設定
         ctx.imageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
         ctx.msImageSmoothingEnabled = false;
-        ctx.imageSmoothingQuality = 'high';
         
-        // 背景を純白で塗りつぶし
+        // 背景を完全な白で塗りつぶし
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, size, size);
         
-        // QRコードを最高品質で描画（透明度は維持、シャープネス向上）
-        ctx.fillStyle = '#444444'; // #555555から#444444にさらに濃く
+        // QRコードを鮮明に描画（60%グレー、より大きなセル）
+        ctx.fillStyle = '#666666'; // 60%グレー維持
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
-                    // 高精度座標で隙間なく描画
-                    const x = col * cellSize;
-                    const y = row * cellSize;
-                    
-                    // セルを少しオーバーラップさせて隙間を完全除去
-                    const expandedCellSize = cellSize + 0.1;
-                    ctx.fillRect(x, y, expandedCellSize, expandedCellSize);
+                    // 整数座標で鮮明描画
+                    const x = Math.round(col * cellSize);
+                    const y = Math.round(row * cellSize);
+                    // セルサイズも整数に丸めて境界をくっきり
+                    const actualCellSize = Math.round(cellSize);
+                    ctx.fillRect(x, y, actualCellSize, actualCellSize);
                 }
             }
         }
         
-        console.log('QRコード生成成功 (最高品質版):', 'サイズ:', size, 'モジュール:', moduleCount, 'セルサイズ:', cellSize.toFixed(2));
+        console.log('🔥 高品質QRコード生成完了:', 'サイズ=' + size + 'px', 'セルサイズ=' + cellSize + 'px');
         return canvas;
     } catch (error) {
         console.error('QRコード生成エラー:', error);
