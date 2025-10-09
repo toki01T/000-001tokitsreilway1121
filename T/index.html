@@ -2038,7 +2038,10 @@ function executeSignaturePrint() {
             // 全体の高さを計算（手書き用の余白設定、サイズ縮小）
             const signatureTopMargin = 8; // 手書き用上余白
             const signatureBottomMargin = 25; // 手書き用下余白
-            const qrSpaceMargin = qrPrintEnabled ? 200 : 0; // QRコード有り：200px余白、なし：0px
+            // QRコード用スペースを調整（画像印刷に合わせて最適化）
+            const qrSpaceMargin = qrPrintEnabled ? 
+                (isDateTimeEnabled ? 70 : 90) : // 日付あり：70px、なし：90px
+                (isDateTimeEnabled ? 50 : 30);  // QRなし日付あり：50px、なし：30px
 
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
             const signatureScale = 0.92; // 92%にスケール（85%から修正）
@@ -2638,8 +2641,10 @@ function printText() {
             textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
         }
         
-        // QRコード用スペースを追加（十分な余白を確保）
-        const qrSpaceMargin = qrPrintEnabled ? 200 : 0; // QRコード有り：200px余白、なし：0px
+        // QRコード用スペースを調整（画像印刷に合わせて最適化）
+        const qrSpaceMargin = qrPrintEnabled ? 
+            (isDateTimeEnabled ? 70 : 90) : // 日付あり：70px、なし：90px
+            (isDateTimeEnabled ? 50 : 30);  // QRなし日付あり：50px、なし：30px
         
         const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
         canvas.width = canvasWidth;
