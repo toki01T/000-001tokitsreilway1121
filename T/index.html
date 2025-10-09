@@ -3010,7 +3010,7 @@ async function startQRReader() {
     
     // モーダルを表示
     qrReaderModal.style.display = 'flex';
-    statusElement.textContent = '📷 高感度QRスキャナーを起動中...';
+    statusElement.textContent = ''; // 起動時の案内文字も削除
     
     // 既存のスキャナーがあれば確実に停止
     if (window.qrScanner) {
@@ -3103,11 +3103,11 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
             },
             {
                 returnDetailedScanResult: true, // 詳細結果を取得
-                highlightScanRegion: true, // スキャン領域をハイライト
-                highlightCodeOutline: true, // QRコードの輪郭をハイライト
+                highlightScanRegion: false, // スキャン領域ハイライトを無効化
+                highlightCodeOutline: false, // QRコード輪郭ハイライトを無効化
                 preferredCamera: 'environment', // 背面カメラ優先
                 maxScansPerSecond: 60, // 適度な頻度に調整（120→60、安定性重視）
-                // 【重要】スキャン領域を中央部分に集中
+                // 【重要】スキャン領域を中央部分に集中（枠表示なし）
                 calculateScanRegion: (video) => {
                     const centerX = video.videoWidth * 0.2;
                     const centerY = video.videoHeight * 0.2;
@@ -3124,7 +3124,7 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
         );
         
         await window.qrScanner.start();
-        statusElement.textContent = '📱 QRコードを画面中央に合わせてください';
+        statusElement.textContent = ''; // 案内文字を削除
         console.log('✅ QrScannerライブラリ開始成功');
         return true;
         
@@ -3223,7 +3223,7 @@ async function tryZXingLibrary(videoElement, statusElement) {
         };
         
         scanLoop();
-        statusElement.textContent = '🔍 ZXingライブラリでスキャン中...';
+        statusElement.textContent = ''; // 案内文字を削除
         console.log('✅ ZXingライブラリ開始成功');
         return true;
         
@@ -3304,13 +3304,7 @@ function handleQRScanResult(result) {
         
         console.log('✅ 有効な管理番号を検出:', result);
         
-        // 成功時に視覚的フィードバックを提供
-        const statusElement = document.getElementById('qrReaderStatus');
-        if (statusElement) {
-            statusElement.textContent = '✅ QRコード読み取り成功！復元中...';
-        }
-        
-        // 履歴から復元
+        // 履歴から復元（表示メッセージなし）
         restoreFromManagementId(result);
         
     } catch (error) {
