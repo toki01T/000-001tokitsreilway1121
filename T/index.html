@@ -1369,7 +1369,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (signaturePrintButton) {
         signaturePrintButton.onclick = preventDoubleTouch(() => {
             if (!signaturePrintButton.classList.contains('disabled')) {
-                printSignature();
+                executeSignaturePrint(); // 新しい関数名を使用
             }
         });
         if ('ontouchstart' in window) {
@@ -1409,6 +1409,20 @@ document.addEventListener('DOMContentLoaded', function() {
         signatureChipWithout.onclick = preventDoubleTouch(() => selectSignatureChip('without'));
         if ('ontouchstart' in window) signatureChipWithout.ontouchstart = signatureChipWithout.onclick;
     }
+    
+    // 手書きボタンの再確認（保険）
+    setTimeout(() => {
+        const signatureBtn = document.getElementById('signaturePrintButton');
+        if (signatureBtn && !signatureBtn.onclick) {
+            console.log('🔧 手書きボタンのイベントを再設定');
+            signatureBtn.onclick = preventDoubleTouch(() => {
+                if (!signatureBtn.classList.contains('disabled')) {
+                    executeSignaturePrint();
+                }
+            });
+        }
+        updateSignaturePrintButtonState();
+    }, 1000);
 });
 historyDrawerBg.onclick = (e) => {
     if (historyDrawer.classList.contains('open')) {
@@ -1943,16 +1957,39 @@ function selectSignatureChip(type) {
 function updateSignaturePrintButtonState() {
     const btn = document.getElementById('signaturePrintButton');
     const options = document.getElementById('signaturePrintOptions');
-    if (signaturePad && (!signaturePad.isEmpty() || signaturePad._data && signaturePad._data.length > 0) && selectedSignatureChip !== '') {
+    
+    // デバッグ情報
+    const hasSignature = signaturePad && (!signaturePad.isEmpty() || signaturePad._data && signaturePad._data.length > 0);
+    const hasChipSelected = selectedSignatureChip !== '';
+    
+    console.log('🖋️ 手書きボタン状態確認:', {
+        signaturePad: !!signaturePad,
+        isEmpty: signaturePad ? signaturePad.isEmpty() : 'N/A',
+        hasData: signaturePad && signaturePad._data ? signaturePad._data.length : 'N/A',
+        selectedChip: selectedSignatureChip,
+        hasSignature: hasSignature,
+        hasChipSelected: hasChipSelected
+    });
+    
+    if (hasSignature && hasChipSelected) {
         btn.classList.remove('disabled');
         options.style.display = 'flex';
+        console.log('✅ 手書きボタンを有効化');
     } else {
         btn.classList.add('disabled');
         options.style.display = 'flex';
+        console.log('❌ 手書きボタンを無効化');
     }
 }
-document.getElementById('signaturePrintButton').onclick = function() {
-    if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
+// 手書き印刷の実行関数
+function executeSignaturePrint() {
+    if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') {
+        console.log('❌ 手書き印刷の条件が満たされていません');
+        return;
+    }
+    
+    console.log('🖋️ 手書き印刷を開始します');
+    
     const qrPrintEnabled = document.getElementById('signatureQrPrintCheckbox').checked; // 最初に取得
     const canvas = document.getElementById('signaturePad');
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -2165,9 +2202,6 @@ document.getElementById('signaturePrintButton').onclick = function() {
         
         signatureImg.src = tmpCanvas.toDataURL("image/png");
     }
-    
-    // 現在の1枚を印刷（シンプル実行）
-    printSignatureCopy();
     
     // 現在の1枚を印刷（シンプル実行）
     printSignatureCopy();
