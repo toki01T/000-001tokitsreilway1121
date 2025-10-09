@@ -1951,22 +1951,6 @@ function updateSignaturePrintButtonState() {
         options.style.display = 'flex';
     }
 }
-
-// 手書き印刷のメイン関数
-function printSignature() {
-    if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') {
-        console.log('手書き印刷: 条件不足', {
-            signaturePad: !!signaturePad,
-            isEmpty: signaturePad ? signaturePad.isEmpty() : 'undefined',
-            selectedChip: selectedSignatureChip
-        });
-        return;
-    }
-    
-    // 既存のonclick処理を実行
-    document.getElementById('signaturePrintButton').onclick();
-}
-
 document.getElementById('signaturePrintButton').onclick = function() {
     if (!signaturePad || (signaturePad.isEmpty() && (!signaturePad._data || signaturePad._data.length === 0)) || selectedSignatureChip === '') return;
     const qrPrintEnabled = document.getElementById('signatureQrPrintCheckbox').checked; // 最初に取得
@@ -2017,7 +2001,7 @@ document.getElementById('signaturePrintButton').onclick = function() {
             // 全体の高さを計算（手書き用の余白設定、サイズ縮小）
             const signatureTopMargin = 8; // 手書き用上余白
             const signatureBottomMargin = 25; // 手書き用下余白
-            const qrSpaceMargin = qrPrintEnabled ? (selectedSignatureChip === 'with' ? 65 : 110) : 0; // 日付ありは65px、なしは110px
+            const qrSpaceMargin = qrPrintEnabled ? 200 : 0; // QRコード有り：200px余白、なし：0px
 
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
             const signatureScale = 0.92; // 92%にスケール（85%から修正）
@@ -2069,10 +2053,10 @@ document.getElementById('signaturePrintButton').onclick = function() {
                         let qrY;
                         if (isDateTimeEnabled) {
                             // 日付・時刻ありの場合：日付・時刻の左側に配置
-                            qrY = signatureY + signatureHeight + 30; // サインの下、QRコード下部余白を30pxに調整（20→30）
+                            qrY = signatureY + signatureHeight + 20; // サインの下、日付の横
                         } else {
                             // 日付・時刻なしの場合：手書きの下部左側（印刷範囲内に調整）
-                            qrY = Math.max(signatureY + signatureHeight - qrSize + 10, signatureY + signatureHeight + 40); // QRコード下部余白を40pxに調整（10→40）
+                            qrY = Math.max(signatureY + signatureHeight - qrSize + 10, signatureY + signatureHeight + 10);
                         }
                         // console.log('QRコード描画位置:', qrX, qrY, qrSize);
                         compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
@@ -2620,8 +2604,8 @@ function printText() {
             textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
         }
         
-        // QRコード用スペースを追加
-        const qrSpaceMargin = qrPrintEnabled ? (selectedTextChip === 'with' ? 65 : 110) : 0; // 日付ありは65px、なしは110px
+        // QRコード用スペースを追加（十分な余白を確保）
+        const qrSpaceMargin = qrPrintEnabled ? 200 : 0; // QRコード有り：200px余白、なし：0px
         
         const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
         canvas.width = canvasWidth;
@@ -2678,10 +2662,10 @@ function printText() {
                     let qrY;
                     if (isDateTimeEnabled) {
                         // 日付・時刻ありの場合：日付・時刻の左側に配置
-                        qrY = textEndY + 30; // テキストの下、QRコード下部余白を30pxに調整（20→30）
+                        qrY = textEndY + 20; // テキストの下、日付の横
                     } else {
                         // 日付・時刻なしの場合：テキストの下部左側（印刷範囲内に調整）
-                        qrY = textEndY + 40; // テキストの下、QRコード下部余白を40pxに調整（20→40）
+                        qrY = textEndY + 20; // テキストの下
                     }
                     // console.log('QRコード描画位置:', qrX, qrY, qrSize);
                     ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
@@ -3026,7 +3010,7 @@ async function startQRReader() {
     
     // モーダルを表示
     qrReaderModal.style.display = 'flex';
-    statusElement.textContent = ''; // 起動時の案内文字も削除
+    statusElement.textContent = ''; // メッセージ非表示
     
     // 既存のスキャナーがあれば確実に停止
     if (window.qrScanner) {
@@ -3108,7 +3092,7 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
             throw new Error('カメラが見つかりません');
         }
         
-        // 【改善版】QRスキャナーを作成（最高感度設定）
+        // 【改善版】QRスキャナーを作成（シンプル版）
         window.qrScanner = new QrScanner(
             videoElement,
             (result) => {
@@ -3118,29 +3102,23 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
                 handleQRScanResult(qrData);
             },
             {
-                returnDetailedScanResult: true, // 詳細結果を取得
-                highlightScanRegion: false, // スキャン領域ハイライトを無効化
-                highlightCodeOutline: false, // QRコード輪郭ハイライトを無効化
+                returnDetailedScanResult: false, // シンプルな結果取得
+                highlightScanRegion: false, // スキャン領域ハイライト無効
+                highlightCodeOutline: false, // QRコード輪郭ハイライト無効
                 preferredCamera: 'environment', // 背面カメラ優先
-                maxScansPerSecond: 60, // 適度な頻度に調整（120→60、安定性重視）
-                // 【重要】スキャン領域を中央部分に集中（枠表示なし）
-                calculateScanRegion: (video) => {
-                    const centerX = video.videoWidth * 0.2;
-                    const centerY = video.videoHeight * 0.2;
-                    const regionWidth = video.videoWidth * 0.6;
-                    const regionHeight = video.videoHeight * 0.6;
-                    return {
-                        x: Math.floor(centerX),
-                        y: Math.floor(centerY),
-                        width: Math.floor(regionWidth),
-                        height: Math.floor(regionHeight)
-                    };
-                }
+                maxScansPerSecond: 60, // 適度な頻度
+                // 全画面スキャンに戻す
+                calculateScanRegion: (video) => ({
+                    x: 0,
+                    y: 0,
+                    width: video.videoWidth,
+                    height: video.videoHeight
+                })
             }
         );
         
         await window.qrScanner.start();
-        statusElement.textContent = ''; // 案内文字を削除
+        statusElement.textContent = ''; // メッセージ非表示
         console.log('✅ QrScannerライブラリ開始成功');
         return true;
         
@@ -3239,7 +3217,7 @@ async function tryZXingLibrary(videoElement, statusElement) {
         };
         
         scanLoop();
-        statusElement.textContent = ''; // 案内文字を削除
+        statusElement.textContent = ''; // メッセージ非表示
         console.log('✅ ZXingライブラリ開始成功');
         return true;
         
@@ -3320,7 +3298,7 @@ function handleQRScanResult(result) {
         
         console.log('✅ 有効な管理番号を検出:', result);
         
-        // 履歴から復元（表示メッセージなし）
+        // 履歴から復元（視覚的フィードバックなしでシンプルに）
         restoreFromManagementId(result);
         
     } catch (error) {
