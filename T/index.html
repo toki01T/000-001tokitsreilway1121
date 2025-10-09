@@ -2361,7 +2361,7 @@ function sendToPrintAssist(event) {
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // シンプルで確実な濃淡調整（過度な処理を避ける）
+                    // シンプルで確実な濃淡調整（影を薄くして真っ黒を防ぐ）
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
@@ -2370,19 +2370,22 @@ function sendToPrintAssist(event) {
                         // 標準的なグレースケール変換
                         let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // 軽微なコントラスト調整のみ（影が真っ黒にならないよう制御）
-                        if (gray < 30) {
-                            // 非常に暗い部分は少しだけ明るく（真っ黒を防ぐ）
-                            gray = Math.min(50, gray + 20);
-                        } else if (gray > 220) {
+                        // 影部分の改善（真っ黒を防ぐ調整）
+                        if (gray < 50) {
+                            // 非常に暗い部分（影）を大幅に明るく（真っ黒を防ぐ）
+                            gray = Math.min(80, gray + 40);
+                        } else if (gray < 100) {
+                            // 暗い部分を適度に明るく
+                            gray = Math.min(120, gray + 25);
+                        } else if (gray > 200) {
                             // 非常に明るい部分はそのまま保持
                             gray = Math.min(255, gray);
                         } else {
-                            // 中間調はほぼそのまま（微調整のみ）
+                            // 中間調は軽微な調整のみ
                             if (gray < 128) {
-                                gray = Math.max(30, gray - 10); // 暗部をわずかに強化
+                                gray = Math.max(60, gray + 5); // 暗部をわずかに明るく
                             } else {
-                                gray = Math.min(225, gray + 10); // 明部をわずかに強化
+                                gray = Math.min(220, gray + 5); // 明部をわずかに強化
                             }
                         }
                         
@@ -2993,8 +2996,8 @@ function generateQRCode(data) {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, size, size);
         
-        // QRコードを鮮明に描画（60%グレー、より大きなセル）
-        ctx.fillStyle = '#666666'; // 60%グレー維持
+        // QRコードを鮮明に描画（55%グレー、より大きなセル）
+        ctx.fillStyle = '#737373'; // 55%グレー（濃度を下げて読み込み改善）
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 if (qr.isDark(row, col)) {
