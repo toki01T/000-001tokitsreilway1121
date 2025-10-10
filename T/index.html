@@ -2700,7 +2700,7 @@ function printText() {
         
         // QRコード用スペースを調整（画像印刷に合わせて最適化）
         const qrSpaceMargin = qrPrintEnabled ? 
-            (isDateTimeEnabled ? 70 : 90) : // 日付あり：70px、なし：90px
+            (isDateTimeEnabled ? 70 : 110) : // 日付あり：70px、なし：110px（画像印刷と同じ）
             (isDateTimeEnabled ? 50 : 30);  // QRなし日付あり：50px、なし：30px
         
         const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
@@ -2760,8 +2760,8 @@ function printText() {
                         // 日付・時刻ありの場合：日付・時刻の左側に配置
                         qrY = textEndY + 20; // テキストの下、日付の横
                     } else {
-                        // 日付・時刻なしの場合：テキストの下部左側（印刷範囲内に調整）
-                        qrY = textEndY + 20; // テキストの下
+                        // 日付・時刻なしの場合：画像印刷と同じ配置方式を適用
+                        qrY = Math.max(textEndY - qrSize + 10, textEndY + 10);
                     }
                     // console.log('QRコード描画位置:', qrX, qrY, qrSize);
                     ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
