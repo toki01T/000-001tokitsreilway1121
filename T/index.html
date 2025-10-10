@@ -2415,7 +2415,7 @@ function sendToPrintAssist(event) {
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 【文字鮮明化重視】細かな文字も確実に印刷されるよう最適化
+                    // 【文字鮮明化最優先】細かな文字もくっきり印刷される調整
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
@@ -2424,20 +2424,29 @@ function sendToPrintAssist(event) {
                         // 標準的なグレースケール変換
                         let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // サーマルプリンター向けシンプル最適化（文字欠け完全防止）
-                        if (gray < 40) {
-                            // 暗い部分（文字など）を確実に印刷されるよう調整
-                            gray = Math.max(20, Math.min(50, gray + 15));
-                        } else if (gray < 100) {
-                            // 中暗部：文字の輪郭を保持
-                            gray = Math.max(35, Math.min(85, gray));
-                        } else if (gray < 180) {
-                            // 中間調：自然な濃淡を維持
-                            gray = Math.max(80, Math.min(200, gray));
+                        // 文字鮮明化のためのシンプルな2値化寄りの処理
+                        if (gray < 140) {
+                            // 暗い部分（文字など）：適度に濃くして鮮明に
+                            if (gray < 50) {
+                                gray = Math.max(20, gray - 5); // 非常に暗い部分は少し濃く
+                            } else if (gray < 100) {
+                                gray = Math.max(25, gray - 10); // 暗い部分は濃く
+                            } else {
+                                gray = Math.max(30, gray - 15); // 中暗部も濃く（文字の境界を明確に）
+                            }
                         } else {
-                            // 明るい部分：背景の白を強調
-                            gray = Math.max(160, Math.min(255, gray + 20));
+                            // 明るい部分（背景など）：明るくして文字との対比を強化
+                            if (gray < 180) {
+                                gray = Math.min(220, gray + 25); // 中明部を明るく
+                            } else if (gray < 220) {
+                                gray = Math.min(240, gray + 20); // 明部をより明るく
+                            } else {
+                                gray = Math.min(255, gray + 15); // 非常に明るい部分は完全な白に
+                            }
                         }
+                        
+                        // 最終的な範囲制限
+                        gray = Math.max(15, Math.min(250, gray));
                         
                         // RGBに同じ値を設定してグレースケールに
                         data[i] = gray;
