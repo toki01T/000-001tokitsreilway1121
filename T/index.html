@@ -2738,8 +2738,8 @@ function printText() {
             // 現在のチェックボックス状態を直接確認
             const currentQrEnabled = document.getElementById('textQrPrintCheckbox').checked;
             if (currentQrEnabled) {
-                // QRコード印刷ありの場合：QRコードの右側に配置
-                dateTimeX = Math.round(canvasWidth / 2) + 20; // 中央より右に20px移動
+                // QRコード印刷ありの場合：QRコードの右側に配置（画像・手書きと同じ位置）
+                dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
             } else {
                 // QRコード印刷なしの場合：中央に配置
                 dateTimeX = Math.round(canvasWidth / 2) - 40; // 画面中央
