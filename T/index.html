@@ -2415,7 +2415,7 @@ function sendToPrintAssist(event) {
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 【サーマルプリンター最適化】細かな濃淡を保持しつつコントラスト強化
+                    // 【サーマルプリンター最適化】自然な濃淡表現と文字鮮明化
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
@@ -2424,26 +2424,34 @@ function sendToPrintAssist(event) {
                         // 標準的なグレースケール変換
                         let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // サーマルプリンター向けの階調強化処理
-                        if (gray < 30) {
-                            // 非常に暗い部分：若干明るくして印刷可能に
-                            gray = Math.min(45, gray + 15);
-                        } else if (gray < 80) {
-                            // 暗い部分：コントラストを強化
-                            gray = Math.max(25, gray - 5);
-                        } else if (gray < 180) {
-                            // 中間調：細かな階調を強化
-                            if (gray < 128) {
-                                gray = Math.max(35, gray - 8); // 暗寄り中間調を少し濃く
+                        // 最小限の調整でサーマルプリンター向けに最適化
+                        if (gray < 25) {
+                            // 完全な黒は少しだけ明るく（文字欠け防止）
+                            gray = Math.min(35, gray + 10);
+                        } else if (gray < 60) {
+                            // 濃い部分は適度に保持（文字の輪郭保持）
+                            gray = Math.max(30, gray);
+                        } else if (gray > 230) {
+                            // 非常に明るい部分は完全な白に近づける
+                            gray = Math.min(255, gray + 15);
+                        }
+                        // その他の中間調（60-230）は原則として調整せず自然な濃淡を保持
+                        
+                        // 軽微なコントラスト向上（階調を保持しつつ）
+                        if (gray >= 60 && gray <= 230) {
+                            // S字カーブによる自然なコントラスト向上
+                            const normalized = gray / 255.0;
+                            let enhanced = normalized;
+                            
+                            // 軽微なS字カーブ適用
+                            if (normalized < 0.5) {
+                                enhanced = Math.pow(normalized * 2, 0.9) * 0.5;
                             } else {
-                                gray = Math.min(200, gray + 8); // 明寄り中間調を少し明るく
+                                enhanced = 1 - Math.pow((1 - normalized) * 2, 0.9) * 0.5;
                             }
-                        } else if (gray < 220) {
-                            // 明るい部分：適度に強化
-                            gray = Math.min(235, gray + 10);
-                        } else {
-                            // 非常に明るい部分：そのまま保持
-                            gray = Math.min(255, gray);
+                            
+                            gray = Math.round(enhanced * 255);
+                            gray = Math.max(30, Math.min(240, gray)); // 範囲制限
                         }
                         
                         // RGBに同じ値を設定してグレースケールに
