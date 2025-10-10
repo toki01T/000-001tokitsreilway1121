@@ -2415,7 +2415,7 @@ function sendToPrintAssist(event) {
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 【サーマルプリンター最適化】自然な濃淡表現と文字鮮明化
+                    // 【シンプル最適化】文字鮮明化と自然な濃淡表現を両立
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
@@ -2424,34 +2424,25 @@ function sendToPrintAssist(event) {
                         // 標準的なグレースケール変換
                         let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // 最小限の調整でサーマルプリンター向けに最適化
-                        if (gray < 25) {
-                            // 完全な黒は少しだけ明るく（文字欠け防止）
-                            gray = Math.min(35, gray + 10);
-                        } else if (gray < 60) {
-                            // 濃い部分は適度に保持（文字の輪郭保持）
-                            gray = Math.max(30, gray);
-                        } else if (gray > 230) {
-                            // 非常に明るい部分は完全な白に近づける
-                            gray = Math.min(255, gray + 15);
-                        }
-                        // その他の中間調（60-230）は原則として調整せず自然な濃淡を保持
-                        
-                        // 軽微なコントラスト向上（階調を保持しつつ）
-                        if (gray >= 60 && gray <= 230) {
-                            // S字カーブによる自然なコントラスト向上
-                            const normalized = gray / 255.0;
-                            let enhanced = normalized;
-                            
-                            // 軽微なS字カーブ適用
-                            if (normalized < 0.5) {
-                                enhanced = Math.pow(normalized * 2, 0.9) * 0.5;
+                        // サーマルプリンター向けシンプル最適化
+                        if (gray < 20) {
+                            // 完全な黒：文字欠け防止のため明るく
+                            gray = 40;
+                        } else if (gray < 50) {
+                            // 濃い部分：文字の輪郭を確実に印刷
+                            gray = Math.max(45, gray + 5);
+                        } else if (gray < 200) {
+                            // 中間調：自然なコントラスト強化
+                            if (gray < 128) {
+                                // 暗寄り：やや濃く
+                                gray = Math.max(50, Math.round(gray * 0.85));
                             } else {
-                                enhanced = 1 - Math.pow((1 - normalized) * 2, 0.9) * 0.5;
+                                // 明寄り：やや明るく
+                                gray = Math.min(210, Math.round(gray * 1.15));
                             }
-                            
-                            gray = Math.round(enhanced * 255);
-                            gray = Math.max(30, Math.min(240, gray)); // 範囲制限
+                        } else {
+                            // 明るい部分：そのまま保持
+                            gray = Math.min(255, gray);
                         }
                         
                         // RGBに同じ値を設定してグレースケールに
