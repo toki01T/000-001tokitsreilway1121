@@ -2700,7 +2700,7 @@ function printText() {
         
         // QRコード用スペースを調整（画像印刷に合わせて最適化）
         const qrSpaceMargin = qrPrintEnabled ? 
-            (isDateTimeEnabled ? 70 : 110) : // 日付あり：70px、なし：110px（画像印刷と同じ）
+            (isDateTimeEnabled ? 70 : 115) : // 日付あり：70px、なし：115px（5px増加）
             (isDateTimeEnabled ? 50 : 30);  // QRなし日付あり：50px、なし：30px
         
         const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
