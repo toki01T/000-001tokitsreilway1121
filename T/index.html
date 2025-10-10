@@ -2415,7 +2415,7 @@ function sendToPrintAssist(event) {
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // シンプルで確実な濃淡調整（影を大幅に薄くして真っ黒を完全に防ぐ）
+                    // シンプルで確実な濃淡調整（影を大幅に明るくして真っ黒を完全に防ぐ）
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
@@ -2424,25 +2424,25 @@ function sendToPrintAssist(event) {
                         // 標準的なグレースケール変換
                         let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // 影部分の大幅な改善（真っ黒を完全に防ぐ）
-                        if (gray < 30) {
-                            // 極端に暗い部分（深い影）を大幅に明るく
-                            gray = Math.min(100, gray + 70);
-                        } else if (gray < 60) {
-                            // 非常に暗い部分（影）を大幅に明るく
-                            gray = Math.min(120, gray + 50);
-                        } else if (gray < 100) {
-                            // 暗い部分を適度に明るく
-                            gray = Math.min(140, gray + 30);
+                        // 強力な影部分の改善（真っ黒を完全に防ぐ）
+                        if (gray < 40) {
+                            // 極度に暗い部分（影）を大幅に明るく
+                            gray = Math.min(100, gray + 60);
+                        } else if (gray < 80) {
+                            // 暗い部分を大幅に明るく
+                            gray = Math.min(130, gray + 50);
+                        } else if (gray < 120) {
+                            // やや暗い部分を適度に明るく
+                            gray = Math.min(150, gray + 30);
                         } else if (gray > 200) {
-                            // 非常に明るい部分はそのまま保持
-                            gray = Math.min(255, gray);
+                            // 非常に明るい部分は少し抑制
+                            gray = Math.min(240, gray - 5);
                         } else {
-                            // 中間調は軽微な調整のみ
-                            if (gray < 128) {
-                                gray = Math.max(80, gray + 10); // 暗部をわずかに明るく
+                            // 中間調は軽微な調整
+                            if (gray < 150) {
+                                gray = Math.max(80, gray + 10); // 暗めの中間調を明るく
                             } else {
-                                gray = Math.min(220, gray + 5); // 明部をわずかに強化
+                                gray = Math.min(210, gray); // 明るい中間調はそのまま
                             }
                         }
                         
