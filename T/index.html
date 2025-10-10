@@ -988,158 +988,6 @@ footer p {
     display: inline-block;
     cursor: default;
 }
-
-/* ナビゲーションボタン */
-.nav-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-}
-
-.nav-btn {
-    padding: 0.75rem 1rem;
-    border: 2px solid var(--primary-color);
-    background: white;
-    color: var(--primary-color);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s;
-    min-width: 80px;
-}
-
-.nav-btn:hover {
-    background: var(--primary-color);
-    color: white;
-}
-
-.nav-btn.active {
-    background: var(--primary-color);
-    color: white;
-}
-
-/* 領収書セクション */
-.receipt-container {
-    padding: 1rem;
-    max-width: 500px;
-    margin: 0 auto;
-}
-
-.receipt-title {
-    text-align: center;
-    margin-bottom: 1.5rem;
-    font-size: 1.4rem;
-    font-weight: bold;
-    color: var(--primary-color);
-}
-
-.receipt-form {
-    margin-bottom: 1.5rem;
-}
-
-.receipt-field {
-    margin-bottom: 1rem;
-}
-
-.receipt-field label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: bold;
-    color: var(--text-color);
-}
-
-.receipt-field input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: border-color 0.3s;
-}
-
-.receipt-field input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-}
-
-.receipt-preview-container {
-    margin: 1.5rem 0;
-    padding: 1rem;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    border: 2px solid var(--border-color);
-}
-
-.receipt-template {
-    background: white;
-    padding: 2rem 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    font-family: 'MS Mincho', '游明朝', serif;
-}
-
-.receipt-header {
-    text-align: center;
-    font-size: 2rem;
-    font-weight: bold;
-    margin-bottom: 2rem;
-    border-bottom: 2px solid #333;
-    padding-bottom: 0.5rem;
-}
-
-.receipt-addressee {
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
-    text-align: center;
-}
-
-.receipt-purpose {
-    font-size: 1.2rem;
-    margin-bottom: 2rem;
-    text-align: center;
-}
-
-.receipt-note {
-    font-size: 0.9rem;
-    line-height: 1.6;
-    margin-bottom: 2rem;
-    color: #666;
-    text-align: center;
-}
-
-.receipt-checkbox-area {
-    display: flex;
-    justify-content: center;
-    gap: 3rem;
-    margin-top: 2rem;
-}
-
-.receipt-checkbox {
-    font-size: 2rem;
-    font-weight: bold;
-    border: 2px solid #333;
-    width: 2.5rem;
-    height: 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.receipt-stamp-area {
-    font-size: 1.5rem;
-    font-weight: bold;
-    border: 2px solid #333;
-    width: 3rem;
-    height: 3rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #fff;
-}
 </style>
 </head>
 <body>
@@ -1183,14 +1031,6 @@ footer p {
 </div>
 <main>
     <div class="section-content">
-        <!-- ナビゲーションボタン -->
-        <div class="nav-buttons" style="display:flex; justify-content:center; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
-            <button id="navImageBtn" class="nav-btn active" onclick="showSection('image')">画像・T's券</button>
-            <button id="navTextBtn" class="nav-btn" onclick="showSection('text')">テキスト</button>
-            <button id="navSignatureBtn" class="nav-btn" onclick="showSection('signature')">手書き</button>
-            <button id="navReceiptBtn" class="nav-btn" onclick="showSection('receipt')">領収書宛名</button>
-        </div>
-        
         <section id="imageSection" class="image-selection">
             <form id="imageForm" enctype="multipart/form-data" onsubmit="sendToPrintAssist(event)">
                 <div class="file-upload">
@@ -1276,59 +1116,6 @@ footer p {
                 </label>
             </div>
         </section>
-        <!-- 領収書宛名セクション -->
-        <section id="receiptSection" style="display:none;">
-            <div class="receipt-container">
-                <h3 class="receipt-title">領収書宛名記入</h3>
-                <div class="receipt-form">
-                    <div class="receipt-field">
-                        <label for="receiptName">宛名（名前）:</label>
-                        <input type="text" id="receiptName" placeholder="お名前を入力してください" maxlength="20">
-                    </div>
-                    <div class="receipt-field">
-                        <label for="receiptPurpose">但し書き:</label>
-                        <input type="text" id="receiptPurpose" placeholder="○○代として" maxlength="30">
-                    </div>
-                    <div class="receipt-preview-container">
-                        <div class="receipt-template">
-                            <div class="receipt-header">領収書</div>
-                            <div class="receipt-addressee">
-                                <span id="receiptNameDisplay">（名前）</span>様
-                            </div>
-                            <div class="receipt-purpose">
-                                但し<span id="receiptPurposeDisplay">○○代として</span>
-                            </div>
-                            <div class="receipt-note">
-                                宛名が合っておりましたら下部の枠にチェック又はハンコを押印下さい。
-                            </div>
-                            <div class="receipt-checkbox-area">
-                                <div class="receipt-checkbox">□</div>
-                                <div class="receipt-stamp-area">印</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="choice-chips" id="receiptDateTimeChoice" style="display:flex;">
-                    <div class="chip" id="receiptChipWith">日付・時刻あり</div>
-                    <div class="chip" id="receiptChipWithout">日付・時刻なし</div>
-                </div>
-                <div class="print-options" id="receiptPrintOptions" style="display:none;">
-                    <select id="receiptCopiesSelect">
-                        <option value="1">1枚</option>
-                        <option value="2">2枚</option>
-                        <option value="3">3枚</option>
-                        <option value="4">4枚</option>
-                        <option value="5">5枚</option>
-                    </select>
-                    <button id="receiptPrintButton" class="disabled" type="button">発行</button>
-                    <label class="qr-print-checkbox" id="receiptQrPrintCheckboxLabel" style="margin-left:0.5em;">
-                        <input type="checkbox" id="receiptQrPrintCheckbox" title="QRコード印刷" />
-                        <span class="qr-checkmark"></span>
-                        <span class="qr-checkbox-label">QR</span>
-                    </label>
-                </div>
-            </div>
-        </section>
         <div id="dateDisplay"></div>
         <div id="timeDisplay"></div>
     </div>
@@ -1350,7 +1137,6 @@ let formattedTime = '';
 let selectedChip = '';
 let selectedTextChip = '';
 let selectedSignatureChip = '';
-let selectedReceiptChip = ''; // 領収書用チップ
 let lastPreviewImageNaturalWidth = 0;
 let lastPreviewImageNaturalHeight = 0;
 
@@ -1484,12 +1270,11 @@ const historyList = document.getElementById('historyList');
 const modeToggleUnified = document.getElementById('modeToggleUnified');
 const historyDrawerBg = document.getElementById('historyDrawerBg');
 let currentHistoryType = 'image';
-let modeOrder = ['image', 'text', 'signature', 'receipt'];
+let modeOrder = ['image', 'text', 'signature'];
 let modeNames = {
     image: '画像・T’s券',
     text: 'テキスト',
-    signature: '手書き(電子サイン)',
-    receipt: '領収書宛名'
+    signature: '手書き(電子サイン)'
 };
 function setModeToggle(mode) {
     modeToggleUnified.textContent = modeNames[mode];
@@ -1779,30 +1564,6 @@ function loadHistoryList() {
                 metaCopies.textContent = item.copies + '枚';
                 metaRow.appendChild(metaCopies);
                 contentBlock.appendChild(metaRow);
-            } else if (item.type === 'receipt') {
-                const receiptData = JSON.parse(item.data);
-                const text = document.createElement('div');
-                text.className = 'historyTextPreview';
-                text.textContent = `${receiptData.name}様 - ${receiptData.purpose}`;
-                contentBlock.appendChild(text);
-                const metaRow = document.createElement('div');
-                metaRow.className = 'historyMetaRow';
-                if (item.qrPrinted) {
-                    const qrIcon = document.createElement('span');
-                    qrIcon.className = 'historyQrIcon';
-                    qrIcon.innerHTML = 'QR';
-                    qrIcon.title = 'QRコード付き';
-                    metaRow.appendChild(qrIcon);
-                }
-                const metaText = document.createElement('span');
-                metaText.className = 'historyMetaText';
-                metaText.textContent = (item.dateTime === 'with' ? '日付・時刻あり' : '日付・時刻なし');
-                metaRow.appendChild(metaText);
-                const metaCopies = document.createElement('span');
-                metaCopies.className = 'historyMetaCopies';
-                metaCopies.textContent = item.copies + '枚';
-                metaRow.appendChild(metaCopies);
-                contentBlock.appendChild(metaRow);
             } else {
                 const text = document.createElement('div');
                 text.className = 'historyTextPreview';
@@ -1942,41 +1703,6 @@ function loadHistoryList() {
                     
                     console.log('テキスト履歴復元 - QRチェックボックス:', qrCheckbox.checked, 'from qrPrinted:', item.qrPrinted);
                     updateTextPrintButtonState();
-                } else if (item.type === 'receipt') {
-                    showSection('receipt');
-                    const receiptData = JSON.parse(item.data);
-                    document.getElementById('receiptName').value = receiptData.name;
-                    document.getElementById('receiptPurpose').value = receiptData.purpose;
-                    document.getElementById('receiptNameDisplay').textContent = receiptData.name;
-                    document.getElementById('receiptPurposeDisplay').textContent = receiptData.purpose;
-                    
-                    const chips = document.querySelectorAll('#receiptDateTimeChoice .chip');
-                    chips.forEach(chip => chip.classList.remove('selected'));
-                    if (item.dateTime === 'with') chips[0].classList.add('selected');
-                    else chips[1].classList.add('selected');
-                    selectedReceiptChip = item.dateTime;
-                    document.getElementById('receiptCopiesSelect').value = item.copies;
-                    
-                    // QRコードチェックボックス状態の復元（確実性向上）
-                    const qrCheckbox = document.getElementById('receiptQrPrintCheckbox');
-                    const shouldCheck = Boolean(item.qrPrinted);
-                    
-                    // 強制的にリセットしてから復元
-                    qrCheckbox.checked = false;
-                    qrCheckbox.removeAttribute('checked');
-                    qrCheckbox.offsetHeight; // DOM強制更新
-                    
-                    if (shouldCheck) {
-                        qrCheckbox.checked = true;
-                        qrCheckbox.setAttribute('checked', 'checked');
-                    }
-                    
-                    // イベント発火で状態を確実にする
-                    qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-                    
-                    console.log('領収書履歴復元 - QRチェックボックス:', qrCheckbox.checked, 'from qrPrinted:', item.qrPrinted);
-                    document.getElementById('receiptPrintOptions').style.display = 'flex';
-                    updateReceiptPrintButtonState();
                 }
             };
             historyList.appendChild(div);
@@ -2084,20 +1810,8 @@ function showSection(mode) {
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
     document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
-    document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
-    
-    // ナビゲーションボタンのアクティブ状態を更新
-    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    if (mode === 'image') document.getElementById('navImageBtn').classList.add('active');
-    else if (mode === 'text') document.getElementById('navTextBtn').classList.add('active');
-    else if (mode === 'signature') document.getElementById('navSignatureBtn').classList.add('active');
-    else if (mode === 'receipt') document.getElementById('navReceiptBtn').classList.add('active');
-    
     if (mode === 'signature') {
         setTimeout(function(){initSignaturePad();}, 50);
-    }
-    if (mode === 'receipt') {
-        setTimeout(function(){initReceiptSection();}, 50);
     }
 }
 function toggleMode(mode) {
@@ -2701,7 +2415,7 @@ function sendToPrintAssist(event) {
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // シンプルで確実な濃淡調整（影を大幅に明るくして真っ黒を完全に防ぐ）
+                    // シンプルで確実な濃淡調整（影をバランス良く調整）
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
@@ -2710,23 +2424,23 @@ function sendToPrintAssist(event) {
                         // 標準的なグレースケール変換
                         let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // 影部分の大幅改善（真っ黒を完全に防ぐ）
-                        if (gray < 40) {
-                            // 非常に暗い部分（影）を大幅に明るく（真っ黒を完全に防ぐ）
-                            gray = Math.min(100, gray + 60); // +60で大幅に明るく
-                        } else if (gray < 80) {
-                            // 暗い部分を大きく明るく
-                            gray = Math.min(130, gray + 50); // +50で大きく明るく
-                        } else if (gray < 120) {
-                            // やや暗い部分を適度に明るく
-                            gray = Math.min(150, gray + 30); // +30で適度に明るく
+                        // 影部分のバランス調整（真っ黒を防ぎつつ適度な濃度を保つ）
+                        if (gray < 30) {
+                            // 非常に暗い部分（影）を適度に明るく（真っ黒を防ぐ）
+                            gray = Math.min(85, gray + 45); // +45で適度に明るく
+                        } else if (gray < 70) {
+                            // 暗い部分を程よく明るく
+                            gray = Math.min(110, gray + 35); // +35で程よく明るく
+                        } else if (gray < 110) {
+                            // やや暗い部分を軽度に明るく
+                            gray = Math.min(130, gray + 20); // +20で軽度に明るく
                         } else if (gray > 200) {
                             // 非常に明るい部分はそのまま保持
                             gray = Math.min(255, gray);
                         } else {
                             // 中間調は軽微な調整のみ
                             if (gray < 128) {
-                                gray = Math.max(80, gray + 10); // 暗部をさらに明るく
+                                gray = Math.max(70, gray + 8); // 暗部を適度に明るく
                             } else {
                                 gray = Math.min(220, gray + 5); // 明部をわずかに強化
                             }
@@ -4031,44 +3745,6 @@ function restoreContentFromHistory(item) {
             }, 100); // 手書きは初期化に時間がかかるので100ms開始
             
         }, 100);
-    } else if (item.type === 'receipt') {
-        showSection('receipt');
-        
-        setTimeout(function() {
-            const receiptData = JSON.parse(item.data);
-            document.getElementById('receiptName').value = receiptData.name;
-            document.getElementById('receiptPurpose').value = receiptData.purpose;
-            document.getElementById('receiptNameDisplay').textContent = receiptData.name;
-            document.getElementById('receiptPurposeDisplay').textContent = receiptData.purpose;
-            
-            // 設定を復元
-            const chips = document.querySelectorAll('#receiptDateTimeChoice .chip');
-            chips.forEach(chip => chip.classList.remove('selected'));
-            if (item.dateTime === 'with') chips[0].classList.add('selected');
-            else chips[1].classList.add('selected');
-            selectedReceiptChip = item.dateTime;
-            
-            document.getElementById('receiptCopiesSelect').value = item.copies;
-            
-            // QRチェックボックスの復元
-            const receiptQrCheckbox = document.getElementById('receiptQrPrintCheckbox');
-            const qrValue = item.qrPrinted;
-            const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
-            
-            receiptQrCheckbox.checked = false;
-            receiptQrCheckbox.removeAttribute('checked');
-            receiptQrCheckbox.offsetHeight;
-            
-            if (shouldCheck) {
-                receiptQrCheckbox.checked = true;
-                receiptQrCheckbox.setAttribute('checked', 'checked');
-            }
-            
-            receiptQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-            
-            document.getElementById('receiptPrintOptions').style.display = 'flex';
-            updateReceiptPrintButtonState();
-        }, 100);
     } else {
         console.error('⚠️ 未対応のデータタイプ:', item.type);
         throw new Error('未対応のデータタイプです: ' + item.type);
@@ -4102,288 +3778,6 @@ function restoreContentFromQROnly(qrData) {
     } else {
         alert('このQRコードの完全なデータは履歴にありません。\n画像や手書きデータは履歴からのみ復元可能です。');
     }
-}
-
-// --- 領収書セクション ---
-function initReceiptSection() {
-    const receiptNameInput = document.getElementById('receiptName');
-    const receiptPurposeInput = document.getElementById('receiptPurpose');
-    const receiptNameDisplay = document.getElementById('receiptNameDisplay');
-    const receiptPurposeDisplay = document.getElementById('receiptPurposeDisplay');
-    
-    // リアルタイムプレビュー
-    receiptNameInput.addEventListener('input', function() {
-        const name = this.value.trim();
-        receiptNameDisplay.textContent = name || '（名前）';
-        updateReceiptPrintButtonState();
-    });
-    
-    receiptPurposeInput.addEventListener('input', function() {
-        const purpose = this.value.trim();
-        receiptPurposeDisplay.textContent = purpose || '○○代として';
-        updateReceiptPrintButtonState();
-    });
-    
-    // 日付・時刻チップの設定
-    const receiptChips = document.querySelectorAll('#receiptDateTimeChoice .chip');
-    receiptChips.forEach(chip => {
-        chip.addEventListener('click', preventDoubleTouch(function() {
-            receiptChips.forEach(c => c.classList.remove('selected'));
-            this.classList.add('selected');
-            selectedReceiptChip = this.id === 'receiptChipWith' ? 'with' : 'without';
-            updateReceiptPrintButtonState();
-        }));
-    });
-    
-    // 印刷ボタンの設定
-    const receiptPrintButton = document.getElementById('receiptPrintButton');
-    receiptPrintButton.addEventListener('click', preventDoubleTouch(function() {
-        if (!this.classList.contains('disabled')) {
-            printReceipt();
-        }
-    }));
-    
-    updateReceiptPrintButtonState();
-}
-
-function updateReceiptPrintButtonState() {
-    const receiptPrintButton = document.getElementById('receiptPrintButton');
-    const receiptNameInput = document.getElementById('receiptName');
-    const receiptPurposeInput = document.getElementById('receiptPurpose');
-    
-    const hasName = receiptNameInput.value.trim() !== '';
-    const hasPurpose = receiptPurposeInput.value.trim() !== '';
-    const hasChip = selectedReceiptChip !== '';
-    
-    console.log('🧾 領収書ボタン状態確認:', {
-        hasName: hasName,
-        hasPurpose: hasPurpose,
-        hasChip: hasChip,
-        selectedChip: selectedReceiptChip
-    });
-    
-    if (hasName && hasPurpose && hasChip) {
-        receiptPrintButton.classList.remove('disabled');
-        console.log('✅ 領収書ボタンを有効化');
-    } else {
-        receiptPrintButton.classList.add('disabled');
-        console.log('❌ 領収書ボタンを無効化');
-    }
-}
-
-function printReceipt() {
-    const receiptName = document.getElementById('receiptName').value.trim();
-    const receiptPurpose = document.getElementById('receiptPurpose').value.trim();
-    
-    if (!receiptName || !receiptPurpose || selectedReceiptChip === '') {
-        alert('名前、但し書き、日付・時刻の設定を確認してください。');
-        return;
-    }
-    
-    const qrPrintEnabled = document.getElementById('receiptQrPrintCheckbox').checked;
-    const isDateTimeEnabled = selectedReceiptChip === 'with';
-    const selectedReceiptCopies = parseInt(document.getElementById('receiptCopiesSelect').value);
-    
-    // キャンバスで領収書を画像として生成
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    // キャンバスサイズ設定（58mm × 適切な高さ）
-    const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
-    const canvasWidth = Math.round(58 * mmToPx); // 58mm
-    
-    // 領収書の内容から高さを計算
-    const baseHeight = 400; // 基本高さ
-    const dateTimeHeight = isDateTimeEnabled ? 120 : 0;
-    const qrSpaceMargin = qrPrintEnabled ? 
-        (isDateTimeEnabled ? 90 : 130) : // 日付あり：90px、なし：130px
-        (isDateTimeEnabled ? 50 : 30);  // QRなし日付あり：50px、なし：30px
-    
-    const canvasHeight = Math.round(baseHeight + dateTimeHeight + qrSpaceMargin);
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
-    
-    // 背景を白にする
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-    
-    // 領収書のテキスト描画
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    
-    let yPos = 40;
-    
-    // タイトル
-    ctx.font = 'bold 60px serif';
-    ctx.fillText('領収書', canvasWidth / 2, yPos);
-    yPos += 80;
-    
-    // 線
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(50, yPos);
-    ctx.lineTo(canvasWidth - 50, yPos);
-    ctx.stroke();
-    yPos += 40;
-    
-    // 宛名
-    ctx.font = '45px serif';
-    ctx.fillText(`${receiptName}様`, canvasWidth / 2, yPos);
-    yPos += 60;
-    
-    // 但し書き
-    ctx.font = '35px serif';
-    ctx.fillText(`但し${receiptPurpose}`, canvasWidth / 2, yPos);
-    yPos += 80;
-    
-    // 注意書き
-    ctx.font = '25px sans-serif';
-    ctx.fillStyle = '#666666';
-    ctx.fillText('宛名が合っておりましたら下部の枠に', canvasWidth / 2, yPos);
-    yPos += 35;
-    ctx.fillText('チェック又はハンコを押印下さい。', canvasWidth / 2, yPos);
-    yPos += 50;
-    
-    // チェックボックスとハンコ欄
-    ctx.fillStyle = '#000000';
-    const centerX = canvasWidth / 2;
-    
-    // チェックボックス
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(centerX - 100, yPos, 40, 40);
-    
-    // ハンコ欄
-    ctx.beginPath();
-    ctx.arc(centerX + 60, yPos + 20, 25, 0, 2 * Math.PI);
-    ctx.stroke();
-    ctx.font = '30px serif';
-    ctx.fillText('印', centerX + 60, yPos + 10);
-    
-    yPos += 60;
-    
-    // QRコードを生成して左側に配置
-    if (qrPrintEnabled) {
-        const historyItem = {
-            type: 'receipt',
-            mode: 'receipt',
-            data: JSON.stringify({
-                name: receiptName,
-                purpose: receiptPurpose
-            }),
-            dateTime: selectedReceiptChip,
-            copies: selectedReceiptCopies,
-            created: Date.now(),
-            qrPrinted: qrPrintEnabled
-        };
-        
-        const qrData = generateQRData(historyItem);
-        if (qrData) {
-            addHistory(historyItem).then(() => {
-                console.log('領収書履歴保存完了:', historyItem.managementId);
-            });
-            
-            const qrCodeCanvas = generateQRCode(qrData);
-            if (qrCodeCanvas) {
-                const qrSize = 150;
-                const qrX = 30;
-                let qrY;
-                if (isDateTimeEnabled) {
-                    qrY = yPos + 20;
-                } else {
-                    qrY = Math.max(yPos - qrSize + 10, yPos + 10);
-                }
-                ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
-            }
-        }
-    }
-    
-    // 日付・時刻を描画
-    if (isDateTimeEnabled) {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth() + 1;
-        const day = now.getDate();
-        const hour = now.getHours();
-        const minute = now.getMinutes();
-        const second = now.getSeconds();
-        
-        ctx.font = '50px Arial, sans-serif';
-        ctx.fillStyle = '#000000';
-        ctx.textAlign = 'center';
-        
-        let dateTimeX;
-        const currentQrEnabled = document.getElementById('receiptQrPrintCheckbox').checked;
-        if (currentQrEnabled) {
-            dateTimeX = Math.round(canvasWidth / 2) + 40;
-        } else {
-            dateTimeX = Math.round(canvasWidth / 2) - 40;
-        }
-        
-        yPos += 20;
-        
-        // 日付行
-        const dateText = `${year}年 ${month}月${day}日`;
-        ctx.fillText(dateText, dateTimeX, yPos);
-        yPos += 60;
-        
-        // 時刻行
-        const timeText = `${hour}時${minute}分${second}秒`;
-        ctx.fillText(timeText, dateTimeX, yPos);
-    }
-    
-    // キャンバスをPNGデータURLに変換
-    const pngDataUrl = canvas.toDataURL('image/png');
-    
-    // jsPDFを使用してPDFを生成
-    const { jsPDF } = window.jspdf;
-    const pdfHeight = Math.round(canvasHeight / mmToPx);
-    
-    const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [58, pdfHeight]
-    });
-    
-    pdf.internal.pageSize.width = 58;
-    pdf.internal.pageSize.height = pdfHeight;
-    
-    pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
-    
-    const pdfBase64 = pdf.output('datauristring').split(',')[1];
-    
-    let thisPage = window.location.href;
-    let printUrl = 'siiprintagent://1.0/print?' +
-                  'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                  'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                  'Format='           + 'pdf' + '&' +
-                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                  'SelectOnError='    + 'yes' + '&' +
-                  'CutType='          + 'full' + '&' +
-                  'CutFeed='          + 'yes' + '&' +
-                  'FitToWidth='       + 'no' + '&' +
-                  'PaperWidth='       + '58';
-    
-    console.log(`領収書印刷開始: 総枚数=${selectedReceiptCopies}枚`);
-    
-    // 枚数印刷情報をsessionStorageに保存
-    if (selectedReceiptCopies > 1) {
-        const printJob = {
-            type: 'receipt',
-            totalCopies: selectedReceiptCopies,
-            currentCopy: 1,
-            pdfData: pdfBase64,
-            thisPage: thisPage,
-            timestamp: Date.now()
-        };
-        sessionStorage.setItem('printJob', JSON.stringify(printJob));
-        console.log(`領収書印刷ジョブ保存: ${selectedReceiptCopies}枚中1枚目実行`);
-    }
-    
-    // 1枚目を印刷
-    window.location.href = printUrl;
 }
 </script>
 </body>
