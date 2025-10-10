@@ -2415,7 +2415,7 @@ function sendToPrintAssist(event) {
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 【軽微な濃淡調整】細かな濃淡を保持しつつ、極端な真っ黒のみ防ぐ
+                    // 【サーマルプリンター最適化】細かな濃淡を保持しつつコントラスト強化
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
@@ -2424,15 +2424,27 @@ function sendToPrintAssist(event) {
                         // 標準的なグレースケール変換
                         let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // 極端な真っ黒のみを軽微に調整（細かな濃淡は保持）
-                        if (gray < 15) {
-                            // 完全な黒に近い部分のみわずかに明るく
-                            gray = Math.min(25, gray + 10);
-                        } else if (gray > 240) {
-                            // 完全な白に近い部分はそのまま保持
+                        // サーマルプリンター向けの階調強化処理
+                        if (gray < 30) {
+                            // 非常に暗い部分：若干明るくして印刷可能に
+                            gray = Math.min(45, gray + 15);
+                        } else if (gray < 80) {
+                            // 暗い部分：コントラストを強化
+                            gray = Math.max(25, gray - 5);
+                        } else if (gray < 180) {
+                            // 中間調：細かな階調を強化
+                            if (gray < 128) {
+                                gray = Math.max(35, gray - 8); // 暗寄り中間調を少し濃く
+                            } else {
+                                gray = Math.min(200, gray + 8); // 明寄り中間調を少し明るく
+                            }
+                        } else if (gray < 220) {
+                            // 明るい部分：適度に強化
+                            gray = Math.min(235, gray + 10);
+                        } else {
+                            // 非常に明るい部分：そのまま保持
                             gray = Math.min(255, gray);
                         }
-                        // 中間調（15-240）は一切調整せず、細かな濃淡をそのまま保持
                         
                         // RGBに同じ値を設定してグレースケールに
                         data[i] = gray;
