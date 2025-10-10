@@ -1624,6 +1624,24 @@ function loadHistoryList() {
                     else chips[1].classList.add('selected');
                     selectedChip = item.dateTime;
                     document.getElementById('copiesSelect').value = item.copies;
+                    // QRコードチェックボックス状態の復元（確実性向上）
+                    const qrCheckbox = document.getElementById('qrPrintCheckbox');
+                    const shouldCheck = Boolean(item.qrPrinted);
+                    
+                    // 強制的にリセットしてから復元
+                    qrCheckbox.checked = false;
+                    qrCheckbox.removeAttribute('checked');
+                    qrCheckbox.offsetHeight; // DOM強制更新
+                    
+                    if (shouldCheck) {
+                        qrCheckbox.checked = true;
+                        qrCheckbox.setAttribute('checked', 'checked');
+                    }
+                    
+                    // イベント発火で状態を確実にする
+                    qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    console.log('画像履歴復元 - QRチェックボックス:', qrCheckbox.checked, 'from qrPrinted:', item.qrPrinted);
                     document.getElementById('imagePrintOptions').style.display = 'flex';
                     updatePrintButtonState();
                 } else if (item.type === 'signature') {
@@ -1636,6 +1654,24 @@ function loadHistoryList() {
                         else chips[1].classList.add('selected');
                         selectedSignatureChip = item.dateTime;
                         document.getElementById('signatureCopiesSelect').value = item.copies;
+                        // QRコードチェックボックス状態の復元（確実性向上）
+                        const qrCheckbox = document.getElementById('signatureQrPrintCheckbox');
+                        const shouldCheck = Boolean(item.qrPrinted);
+                        
+                        // 強制的にリセットしてから復元
+                        qrCheckbox.checked = false;
+                        qrCheckbox.removeAttribute('checked');
+                        qrCheckbox.offsetHeight; // DOM強制更新
+                        
+                        if (shouldCheck) {
+                            qrCheckbox.checked = true;
+                            qrCheckbox.setAttribute('checked', 'checked');
+                        }
+                        
+                        // イベント発火で状態を確実にする
+                        qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                        
+                        console.log('署名履歴復元 - QRチェックボックス:', qrCheckbox.checked, 'from qrPrinted:', item.qrPrinted);
                         updateSignaturePrintButtonState();
                     }, 100);
                 } else {
@@ -1648,6 +1684,24 @@ function loadHistoryList() {
                     else chips[1].classList.add('selected');
                     selectedTextChip = item.dateTime;
                     document.getElementById('textCopiesSelect').value = item.copies;
+                    // QRコードチェックボックス状態の復元（確実性向上）
+                    const qrCheckbox = document.getElementById('textQrPrintCheckbox');
+                    const shouldCheck = Boolean(item.qrPrinted);
+                    
+                    // 強制的にリセットしてから復元
+                    qrCheckbox.checked = false;
+                    qrCheckbox.removeAttribute('checked');
+                    qrCheckbox.offsetHeight; // DOM強制更新
+                    
+                    if (shouldCheck) {
+                        qrCheckbox.checked = true;
+                        qrCheckbox.setAttribute('checked', 'checked');
+                    }
+                    
+                    // イベント発火で状態を確実にする
+                    qrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    console.log('テキスト履歴復元 - QRチェックボックス:', qrCheckbox.checked, 'from qrPrinted:', item.qrPrinted);
                     updateTextPrintButtonState();
                 }
             };
