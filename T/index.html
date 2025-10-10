@@ -2094,7 +2094,7 @@ function executeSignaturePrint() {
             const signatureBottomMargin = 25; // 手書き用下余白
             // QRコード用スペースを調整（画像印刷に合わせて最適化）
             const qrSpaceMargin = qrPrintEnabled ? 
-                (isDateTimeEnabled ? 90 : 140) : // 日付あり：90px、なし：140px（QRコード下部余白をさらに20px増加）
+                (isDateTimeEnabled ? 70 : 90) : // 日付あり：70px、なし：90px
                 (isDateTimeEnabled ? 50 : 30);  // QRなし日付あり：50px、なし：30px
 
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
@@ -2415,7 +2415,7 @@ function sendToPrintAssist(event) {
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 【文字鮮明化最優先】細かな文字もくっきり印刷される調整
+                    // シンプルで確実な濃淡調整（影を薄くして真っ黒を防ぐ）
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
@@ -2424,29 +2424,24 @@ function sendToPrintAssist(event) {
                         // 標準的なグレースケール変換
                         let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // 文字鮮明化のためのシンプルな2値化寄りの処理
-                        if (gray < 140) {
-                            // 暗い部分（文字など）：適度に濃くして鮮明に
-                            if (gray < 50) {
-                                gray = Math.max(20, gray - 5); // 非常に暗い部分は少し濃く
-                            } else if (gray < 100) {
-                                gray = Math.max(25, gray - 10); // 暗い部分は濃く
-                            } else {
-                                gray = Math.max(30, gray - 15); // 中暗部も濃く（文字の境界を明確に）
-                            }
+                        // 影部分の改善（真っ黒を防ぐ調整）
+                        if (gray < 50) {
+                            // 非常に暗い部分（影）を大幅に明るく（真っ黒を防ぐ）
+                            gray = Math.min(80, gray + 40);
+                        } else if (gray < 100) {
+                            // 暗い部分を適度に明るく
+                            gray = Math.min(120, gray + 25);
+                        } else if (gray > 200) {
+                            // 非常に明るい部分はそのまま保持
+                            gray = Math.min(255, gray);
                         } else {
-                            // 明るい部分（背景など）：明るくして文字との対比を強化
-                            if (gray < 180) {
-                                gray = Math.min(220, gray + 25); // 中明部を明るく
-                            } else if (gray < 220) {
-                                gray = Math.min(240, gray + 20); // 明部をより明るく
+                            // 中間調は軽微な調整のみ
+                            if (gray < 128) {
+                                gray = Math.max(60, gray + 5); // 暗部をわずかに明るく
                             } else {
-                                gray = Math.min(255, gray + 15); // 非常に明るい部分は完全な白に
+                                gray = Math.min(220, gray + 5); // 明部をわずかに強化
                             }
                         }
-                        
-                        // 最終的な範囲制限
-                        gray = Math.max(15, Math.min(250, gray));
                         
                         // RGBに同じ値を設定してグレースケールに
                         data[i] = gray;
@@ -2703,9 +2698,9 @@ function printText() {
             textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
         }
         
-        // QRコード用スペースを調整（画像印刷に合わせて最適化）
+        // QRコード用スペースを調整（画像印刷に合わせて最適化 + 20px追加）
         const qrSpaceMargin = qrPrintEnabled ? 
-            (isDateTimeEnabled ? 90 : 140) : // 日付あり：90px、なし：140px（QRコード下部余白をさらに20px増加）
+            (isDateTimeEnabled ? 90 : 130) : // 日付あり：90px、なし：130px（110px + 20px追加）
             (isDateTimeEnabled ? 50 : 30);  // QRなし日付あり：50px、なし：30px
         
         const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
@@ -2765,7 +2760,7 @@ function printText() {
                         // 日付・時刻ありの場合：日付・時刻の左側に配置
                         qrY = textEndY + 20; // テキストの下、日付の横
                     } else {
-                        // 日付・時刻なしの場合：画像・手書きと同じ方式で印刷範囲内に調整
+                        // 日付・時刻なしの場合：画像印刷と同じ配置方式を適用
                         qrY = Math.max(textEndY - qrSize + 10, textEndY + 10);
                     }
                     // console.log('QRコード描画位置:', qrX, qrY, qrSize);
