@@ -2094,7 +2094,7 @@ function executeSignaturePrint() {
             const signatureBottomMargin = 25; // 手書き用下余白
             // QRコード用スペースを調整（画像印刷に合わせて最適化）
             const qrSpaceMargin = qrPrintEnabled ? 
-                (isDateTimeEnabled ? 70 : 90) : // 日付あり：70px、なし：90px
+                (isDateTimeEnabled ? 70 : 120) : // 日付あり：70px、なし：120px（QRコード下部余白を増加）
                 (isDateTimeEnabled ? 50 : 30);  // QRなし日付あり：50px、なし：30px
 
             // サインサイズを適切に調整（右側はみ出し防止、小さすぎない）
@@ -2411,124 +2411,36 @@ function sendToPrintAssist(event) {
                     
                     compositeCtx.drawImage(uploadedImg, imgX, imgY, finalImgWidth, finalImgHeight);
                     
-                    // 【自動濃度調整】画像の明度分布を分析して最適な調整を実行
+                    // 【改善版】画像描画後、適切な濃淡調整処理
                     const imageData = compositeCtx.getImageData(imgX, imgY, finalImgWidth, finalImgHeight);
                     const data = imageData.data;
                     
-                    // 画像の明度分析
-                    let totalPixels = 0;
-                    let brightPixels = 0;
-                    let darkPixels = 0;
-                    let mediumPixels = 0;
-                    let grayValues = [];
-                    
-                    // 全ピクセルの明度を分析
-                    for (let i = 0; i < data.length; i += 4) {
-                        const r = data[i];
-                        const g = data[i + 1];
-                        const b = data[i + 2];
-                        const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-                        
-                        grayValues.push(gray);
-                        totalPixels++;
-                        
-                        if (gray < 70) darkPixels++;
-                        else if (gray > 180) brightPixels++;
-                        else mediumPixels++;
-                    }
-                    
-                    // 明度分布の分析結果
-                    const darkRatio = darkPixels / totalPixels;
-                    const brightRatio = brightPixels / totalPixels;
-                    const mediumRatio = mediumPixels / totalPixels;
-                    
-                    // 平均明度と標準偏差を計算
-                    const avgGray = grayValues.reduce((sum, val) => sum + val, 0) / grayValues.length;
-                    const variance = grayValues.reduce((sum, val) => sum + Math.pow(val - avgGray, 2), 0) / grayValues.length;
-                    const stdDev = Math.sqrt(variance);
-                    
-                    console.log('🎨 画像明度分析結果:', {
-                        平均明度: Math.round(avgGray),
-                        暗い部分: Math.round(darkRatio * 100) + '%',
-                        明るい部分: Math.round(brightRatio * 100) + '%',
-                        中間調: Math.round(mediumRatio * 100) + '%',
-                        コントラスト: Math.round(stdDev)
-                    });
-                    
-                    // 画像タイプ別の自動調整パラメータ決定
-                    let adjustmentType;
-                    if (darkRatio > 0.4) {
-                        adjustmentType = 'dark'; // 暗い画像
-                    } else if (brightRatio > 0.4) {
-                        adjustmentType = 'bright'; // 明るい画像
-                    } else if (stdDev < 30) {
-                        adjustmentType = 'lowContrast'; // 低コントラスト画像
-                    } else {
-                        adjustmentType = 'balanced'; // バランス型画像
-                    }
-                    
-                    console.log('📊 自動調整タイプ:', adjustmentType);
-                    
-                    // タイプ別自動濃度調整処理
+                    // シンプルで確実な濃淡調整（影を薄くして真っ黒を防ぐ）
                     for (let i = 0; i < data.length; i += 4) {
                         const r = data[i];
                         const g = data[i + 1];
                         const b = data[i + 2];
                         
+                        // 標準的なグレースケール変換
                         let gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
                         
-                        // 画像タイプ別調整
-                        switch (adjustmentType) {
-                            case 'dark': // 暗い画像：影を大幅に明るく
-                                if (gray < 40) {
-                                    gray = Math.min(95, gray + 55);
-                                } else if (gray < 80) {
-                                    gray = Math.min(120, gray + 40);
-                                } else if (gray < 120) {
-                                    gray = Math.min(140, gray + 20);
-                                } else {
-                                    gray = Math.max(70, Math.min(230, gray + 5));
-                                }
-                                break;
-                                
-                            case 'bright': // 明るい画像：コントラストを強化
-                                if (gray < 50) {
-                                    gray = Math.min(80, gray + 30);
-                                } else if (gray < 100) {
-                                    gray = Math.min(110, gray + 10);
-                                } else if (gray > 200) {
-                                    gray = Math.min(255, gray);
-                                } else {
-                                    gray = Math.max(60, Math.min(220, gray));
-                                }
-                                break;
-                                
-                            case 'lowContrast': // 低コントラスト画像：全体的にコントラスト強化
-                                if (gray < 60) {
-                                    gray = Math.min(90, gray + 30);
-                                } else if (gray < 120) {
-                                    gray = Math.max(50, gray - 10);
-                                } else if (gray > 180) {
-                                    gray = Math.min(240, gray + 20);
-                                } else {
-                                    gray = Math.max(60, Math.min(200, gray));
-                                }
-                                break;
-                                
-                            case 'balanced': // バランス型画像：標準調整
-                            default:
-                                if (gray < 30) {
-                                    gray = Math.min(85, gray + 45);
-                                } else if (gray < 70) {
-                                    gray = Math.min(110, gray + 35);
-                                } else if (gray < 110) {
-                                    gray = Math.min(130, gray + 20);
-                                } else if (gray > 200) {
-                                    gray = Math.min(255, gray);
-                                } else {
-                                    gray = Math.max(70, Math.min(220, gray + 5));
-                                }
-                                break;
+                        // 影部分の改善（真っ黒を防ぐ調整）
+                        if (gray < 50) {
+                            // 非常に暗い部分（影）を大幅に明るく（真っ黒を防ぐ）
+                            gray = Math.min(80, gray + 40);
+                        } else if (gray < 100) {
+                            // 暗い部分を適度に明るく
+                            gray = Math.min(120, gray + 25);
+                        } else if (gray > 200) {
+                            // 非常に明るい部分はそのまま保持
+                            gray = Math.min(255, gray);
+                        } else {
+                            // 中間調は軽微な調整のみ
+                            if (gray < 128) {
+                                gray = Math.max(60, gray + 5); // 暗部をわずかに明るく
+                            } else {
+                                gray = Math.min(220, gray + 5); // 明部をわずかに強化
+                            }
                         }
                         
                         // RGBに同じ値を設定してグレースケールに
@@ -2786,9 +2698,9 @@ function printText() {
             textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
         }
         
-        // QRコード用スペースを調整（画像印刷に合わせて最適化 + 20px追加）
+        // QRコード用スペースを調整（画像印刷に合わせて最適化）
         const qrSpaceMargin = qrPrintEnabled ? 
-            (isDateTimeEnabled ? 90 : 130) : // 日付あり：90px、なし：130px（110px + 20px追加）
+            (isDateTimeEnabled ? 70 : 120) : // 日付あり：70px、なし：120px（QRコード下部余白を増加）
             (isDateTimeEnabled ? 50 : 30);  // QRなし日付あり：50px、なし：30px
         
         const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
@@ -2848,7 +2760,7 @@ function printText() {
                         // 日付・時刻ありの場合：日付・時刻の左側に配置
                         qrY = textEndY + 20; // テキストの下、日付の横
                     } else {
-                        // 日付・時刻なしの場合：画像印刷と同じ配置方式を適用
+                        // 日付・時刻なしの場合：画像・手書きと同じ方式で印刷範囲内に調整
                         qrY = Math.max(textEndY - qrSize + 10, textEndY + 10);
                     }
                     // console.log('QRコード描画位置:', qrX, qrY, qrSize);
