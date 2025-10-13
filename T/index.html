@@ -770,6 +770,65 @@ main {
 .clear-button:hover {
     background-color: var(--primary-hover);
 }
+
+/* 領収書セクション用のスタイル */
+#receiptSection {
+    display: none;
+    width: 100%;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.receipt-form-container {
+    margin: 1rem auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    max-width: 450px;
+}
+
+.receipt-input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.receipt-input-group label {
+    font-size: 1rem;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.receipt-input-group input[type="text"] {
+    width: 100%;
+    max-width: 350px;
+    padding: 0.5rem;
+    border: 1px solid var(--input-border);
+    border-radius: 5px;
+    font-size: 1rem;
+    text-align: center;
+    background: var(--input-bg);
+    color: var(--input-text);
+    box-sizing: border-box;
+}
+
+.receipt-input-group input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 5px rgba(0, 163, 237, 0.3);
+}
+
+@media (max-width: 500px) {
+    .receipt-input-group input[type="text"] {
+        font-size: 0.95rem;
+        padding: 0.4rem;
+    }
+}
+
 footer {
     position: fixed;
     bottom: 0;
@@ -1116,6 +1175,38 @@ footer p {
                 </label>
             </div>
         </section>
+        <section id="receiptSection" style="display:none;">
+            <div class="receipt-form-container">
+                <div class="receipt-input-group">
+                    <label for="receiptName">宛名</label>
+                    <input type="text" id="receiptName" placeholder="株式会社正美堂" />
+                </div>
+                <div class="receipt-input-group">
+                    <label for="receiptMemo">但し書き</label>
+                    <input type="text" id="receiptMemo" placeholder="時計代" />
+                </div>
+            </div>
+            <div class="choice-chips" id="receiptDateTimeChoice" style="display:flex;">
+                <div class="chip" id="receiptChipWith">日付・時刻あり</div>
+                <div class="chip" id="receiptChipWithout">日付・時刻なし</div>
+            </div>
+            <div class="print-options" id="receiptPrintOptions" style="display:flex;">
+                <select id="receiptCopiesSelect">
+                    <option value="1">1枚</option>
+                    <option value="2">2枚</option>
+                    <option value="3">3枚</option>
+                    <option value="4">4枚</option>
+                    <option value="5">5枚</option>
+                </select>
+                <button id="receiptPrintButtonNoMemo" class="disabled">但書無発行</button>
+                <button id="receiptPrintButton" class="disabled">発行</button>
+                <label class="qr-print-checkbox" id="receiptQrPrintCheckboxLabel" style="margin-left:0.5em;">
+                    <input type="checkbox" id="receiptQrPrintCheckbox" title="QRコード印刷" checked />
+                    <span class="qr-checkmark"></span>
+                    <span class="qr-checkbox-label">QR</span>
+                </label>
+            </div>
+        </section>
         <div id="dateDisplay"></div>
         <div id="timeDisplay"></div>
     </div>
@@ -1270,11 +1361,12 @@ const historyList = document.getElementById('historyList');
 const modeToggleUnified = document.getElementById('modeToggleUnified');
 const historyDrawerBg = document.getElementById('historyDrawerBg');
 let currentHistoryType = 'image';
-let modeOrder = ['image', 'text', 'signature'];
+let modeOrder = ['image', 'text', 'signature', 'receipt'];
 let modeNames = {
     image: '画像・T’s券',
     text: 'テキスト',
-    signature: '手書き(電子サイン)'
+    signature: '手書き(電子サイン)',
+    receipt: '領収書宛名'
 };
 function setModeToggle(mode) {
     modeToggleUnified.textContent = modeNames[mode];
@@ -1376,6 +1468,52 @@ document.addEventListener('DOMContentLoaded', function() {
             signaturePrintButton.ontouchstart = signaturePrintButton.onclick;
         }
     }
+    
+    // 領収書印刷ボタンのイベントハンドラー
+    const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
+    const receiptPrintWithoutMemo = document.getElementById('receiptPrintWithoutMemo');
+    
+    if (receiptPrintWithMemo) {
+        receiptPrintWithMemo.onclick = preventDoubleTouch(() => {
+            if (!receiptPrintWithMemo.classList.contains('disabled')) {
+                executeReceiptPrint(true); // メモ付きで印刷
+            }
+        });
+        if ('ontouchstart' in window) {
+            receiptPrintWithMemo.ontouchstart = receiptPrintWithMemo.onclick;
+        }
+    }
+    
+    if (receiptPrintWithoutMemo) {
+        receiptPrintWithoutMemo.onclick = preventDoubleTouch(() => {
+            if (!receiptPrintWithoutMemo.classList.contains('disabled')) {
+                executeReceiptPrint(false); // メモなしで印刷
+            }
+        });
+        if ('ontouchstart' in window) {
+            receiptPrintWithoutMemo.ontouchstart = receiptPrintWithoutMemo.onclick;
+        }
+    }
+    
+    // 領収書フォームの入力監視
+    const receiptCompanyName = document.getElementById('receiptCompanyName');
+    const receiptMemo = document.getElementById('receiptMemo');
+    
+    function updateReceiptPrintButtons() {
+        const hasCompanyName = receiptCompanyName.value.trim() !== '';
+        receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
+        receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
+    }
+    
+    if (receiptCompanyName) {
+        receiptCompanyName.addEventListener('input', updateReceiptPrintButtons);
+    }
+    if (receiptMemo) {
+        receiptMemo.addEventListener('input', updateReceiptPrintButtons);
+    }
+    
+    // 初期状態で印刷ボタンを無効化
+    updateReceiptPrintButtons();
     
     // chipのイベント処理も改善
     const chipWith = document.getElementById('chipWith');
@@ -1564,6 +1702,26 @@ function loadHistoryList() {
                 metaCopies.textContent = item.copies + '枚';
                 metaRow.appendChild(metaCopies);
                 contentBlock.appendChild(metaRow);
+            } else if (item.type === 'receipt') {
+                const receiptRow = document.createElement('div');
+                receiptRow.className = 'historyReceiptRow';
+                const receiptInfo = document.createElement('div');
+                receiptInfo.className = 'historyReceiptInfo';
+                receiptInfo.innerHTML = `<strong>宛名:</strong> ${item.companyName}<br>${item.memo ? `<strong>但し書き:</strong> ${item.memo}` : ''}`;
+                receiptRow.appendChild(receiptInfo);
+                contentBlock.appendChild(receiptRow);
+                const metaRow = document.createElement('div');
+                metaRow.className = 'historyMetaRow';
+                const qrIcon = document.createElement('span');
+                qrIcon.className = 'historyQrIcon';
+                qrIcon.innerHTML = 'QR';
+                qrIcon.title = 'QRコード付き';
+                metaRow.appendChild(qrIcon);
+                const metaText = document.createElement('span');
+                metaText.className = 'historyMetaText';
+                metaText.textContent = '日付・時刻・QRコード付き';
+                metaRow.appendChild(metaText);
+                contentBlock.appendChild(metaRow);
             } else {
                 const text = document.createElement('div');
                 text.className = 'historyTextPreview';
@@ -1674,6 +1832,16 @@ function loadHistoryList() {
                         console.log('署名履歴復元 - QRチェックボックス:', qrCheckbox.checked, 'from qrPrinted:', item.qrPrinted);
                         updateSignaturePrintButtonState();
                     }, 100);
+                } else if (item.type === 'receipt') {
+                    showSection('receipt');
+                    document.getElementById('receiptCompanyName').value = item.companyName || '';
+                    document.getElementById('receiptMemo').value = item.memo || '';
+                    // 印刷ボタンの状態を更新
+                    const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
+                    const receiptPrintWithoutMemo = document.getElementById('receiptPrintWithoutMemo');
+                    const hasCompanyName = item.companyName && item.companyName.trim() !== '';
+                    receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
+                    receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
                 } else {
                     showSection('text');
                     document.getElementById('textInput').value = item.data;
@@ -1810,6 +1978,7 @@ function showSection(mode) {
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
     document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
+    document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
     if (mode === 'signature') {
         setTimeout(function(){initSignaturePad();}, 50);
     }
@@ -2276,6 +2445,182 @@ function executeSignaturePrint() {
         });
     }
 };
+
+// --- 領収書印刷 ---
+function executeReceiptPrint(withMemo) {
+    const companyName = document.getElementById('receiptCompanyName').value.trim();
+    const memo = document.getElementById('receiptMemo').value.trim();
+    
+    if (!companyName) {
+        console.log('❌ 宛名が入力されていません');
+        return;
+    }
+    
+    console.log('🧾 領収書印刷を開始します', withMemo ? '(メモ付き)' : '(メモなし)');
+    
+    // キャンバスを作成
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // 58mm幅のサーマルプリンター用設定
+    const mmToPx = 11.8; // 300DPI換算
+    const canvasWidth = Math.round(58 * mmToPx);
+    
+    // フォント設定
+    const titleFontSize = 60;
+    const contentFontSize = 40;
+    const dateFontSize = 35;
+    
+    // レイアウト計算
+    let currentY = 40; // 上余白
+    const lineHeight = contentFontSize * 1.4;
+    const titleHeight = titleFontSize * 1.4;
+    
+    // 高さの計算
+    let totalHeight = currentY; // 上余白
+    totalHeight += titleHeight; // タイトル「領収書」
+    totalHeight += 30; // タイトル後の余白
+    totalHeight += lineHeight; // 宛名行
+    totalHeight += 20; // 宛名後の余白
+    
+    if (withMemo && memo) {
+        // メモを改行で分割
+        const memoLines = wrapTextForReceipt(memo, canvasWidth - 80, contentFontSize);
+        totalHeight += lineHeight * memoLines.length;
+        totalHeight += 20; // メモ後の余白
+    }
+    
+    totalHeight += lineHeight; // 日付行
+    totalHeight += lineHeight; // QRコード用スペース（必要に応じて）
+    totalHeight += 60; // 下余白
+    
+    canvas.width = canvasWidth;
+    canvas.height = totalHeight;
+    
+    // 背景を白に
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvasWidth, totalHeight);
+    
+    // 黒文字で描画
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'center';
+    
+    // タイトル「領収書」
+    ctx.font = `bold ${titleFontSize}px 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, sans-serif`;
+    ctx.fillText('領収書', canvasWidth / 2, currentY + titleFontSize);
+    currentY += titleHeight + 30;
+    
+    // 宛名
+    ctx.font = `${contentFontSize}px 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, sans-serif`;
+    ctx.fillText(`${companyName} 様`, canvasWidth / 2, currentY + contentFontSize);
+    currentY += lineHeight + 20;
+    
+    // メモ（但し書き）
+    if (withMemo && memo) {
+        ctx.font = `${contentFontSize}px 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, sans-serif`;
+        const memoLines = wrapTextForReceipt(memo, canvasWidth - 80, contentFontSize);
+        for (let i = 0; i < memoLines.length; i++) {
+            ctx.fillText(memoLines[i], canvasWidth / 2, currentY + contentFontSize);
+            currentY += lineHeight;
+        }
+        currentY += 20;
+    }
+    
+    // 日付
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+    ctx.font = `${dateFontSize}px 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, sans-serif`;
+    ctx.fillText(dateStr, canvasWidth / 2, currentY + dateFontSize);
+    currentY += lineHeight;
+    
+    // QRコードを生成（管理ID方式）
+    const managementId = 'RCP' + Date.now().toString(36).toUpperCase();
+    const qrContent = `https://example.com/receipt/${managementId}`;
+    
+    try {
+        const qr = qrcode(0, 'M');
+        qr.addData(qrContent);
+        qr.make();
+        
+        const qrSize = 80; // QRコードサイズ
+        const qrX = (canvasWidth - qrSize) / 2;
+        const qrY = currentY;
+        
+        // QRコードをキャンバスに描画
+        const modules = qr.modules;
+        const moduleSize = qrSize / modules.length;
+        
+        ctx.fillStyle = '#000000';
+        for (let row = 0; row < modules.length; row++) {
+            for (let col = 0; col < modules[row].length; col++) {
+                if (modules[row][col]) {
+                    ctx.fillRect(
+                        qrX + col * moduleSize,
+                        qrY + row * moduleSize,
+                        moduleSize,
+                        moduleSize
+                    );
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.warn('QRコード生成に失敗しました:', error);
+    }
+    
+    // 印刷データをPrintAssistに送信
+    const printData = {
+        image: canvas.toDataURL("image/png"),
+        width: 58, // mm
+        height: Math.round(totalHeight / mmToPx), // mm
+        copies: 1
+    };
+    
+    sendToPrintAssist(printData);
+    
+    // 履歴に保存
+    const historyItem = {
+        type: 'receipt',
+        companyName: companyName,
+        memo: withMemo ? memo : '',
+        managementId: managementId,
+        data: canvas.toDataURL("image/png"),
+        created: Date.now()
+    };
+    
+    addHistory(historyItem);
+    console.log('🧾 領収書印刷が完了しました');
+}
+
+// 領収書用テキスト折り返し関数
+function wrapTextForReceipt(text, maxWidth, fontSize) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.font = `${fontSize}px 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, sans-serif`;
+    
+    const lines = [];
+    const words = text.split('');
+    let currentLine = '';
+    
+    for (let i = 0; i < words.length; i++) {
+        const testLine = currentLine + words[i];
+        const metrics = ctx.measureText(testLine);
+        
+        if (metrics.width > maxWidth && currentLine !== '') {
+            lines.push(currentLine);
+            currentLine = words[i];
+        } else {
+            currentLine = testLine;
+        }
+    }
+    
+    if (currentLine) {
+        lines.push(currentLine);
+    }
+    
+    return lines;
+}
+
 // --- 画像印刷 ---
 function sendToPrintAssist(event) {
     event.preventDefault();
