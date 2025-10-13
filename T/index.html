@@ -829,6 +829,50 @@ main {
     }
 }
 
+.receipt-print-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+.receipt-print-buttons button {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 44px;
+}
+
+.receipt-print-buttons button:hover:not(.disabled) {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.receipt-print-buttons button.disabled {
+    background-color: var(--disabled-color);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+@media (max-width: 500px) {
+    .receipt-print-buttons {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .receipt-print-buttons button {
+        font-size: 1rem;
+        padding: 0.85rem;
+    }
+}
+
 footer {
     position: fixed;
     bottom: 0;
@@ -1178,33 +1222,17 @@ footer p {
         <section id="receiptSection" style="display:none;">
             <div class="receipt-form-container">
                 <div class="receipt-input-group">
-                    <label for="receiptName">宛名</label>
-                    <input type="text" id="receiptName" placeholder="株式会社正美堂" />
+                    <label for="receiptCompanyName">宛名</label>
+                    <input type="text" id="receiptCompanyName" placeholder="株式会社正美堂" />
                 </div>
                 <div class="receipt-input-group">
                     <label for="receiptMemo">但し書き</label>
                     <input type="text" id="receiptMemo" placeholder="時計代" />
                 </div>
-            </div>
-            <div class="choice-chips" id="receiptDateTimeChoice" style="display:flex;">
-                <div class="chip" id="receiptChipWith">日付・時刻あり</div>
-                <div class="chip" id="receiptChipWithout">日付・時刻なし</div>
-            </div>
-            <div class="print-options" id="receiptPrintOptions" style="display:flex;">
-                <select id="receiptCopiesSelect">
-                    <option value="1">1枚</option>
-                    <option value="2">2枚</option>
-                    <option value="3">3枚</option>
-                    <option value="4">4枚</option>
-                    <option value="5">5枚</option>
-                </select>
-                <button id="receiptPrintButtonNoMemo" class="disabled">但書無発行</button>
-                <button id="receiptPrintButton" class="disabled">発行</button>
-                <label class="qr-print-checkbox" id="receiptQrPrintCheckboxLabel" style="margin-left:0.5em;">
-                    <input type="checkbox" id="receiptQrPrintCheckbox" title="QRコード印刷" checked />
-                    <span class="qr-checkmark"></span>
-                    <span class="qr-checkbox-label">QR</span>
-                </label>
+                <div class="receipt-print-buttons">
+                    <button id="receiptPrintWithMemo" class="disabled">メモ付きで印刷</button>
+                    <button id="receiptPrintWithoutMemo" class="disabled">メモなしで印刷</button>
+                </div>
             </div>
         </section>
         <div id="dateDisplay"></div>
@@ -1500,6 +1528,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const receiptMemo = document.getElementById('receiptMemo');
     
     function updateReceiptPrintButtons() {
+        if (!receiptCompanyName || !receiptPrintWithMemo || !receiptPrintWithoutMemo) return;
         const hasCompanyName = receiptCompanyName.value.trim() !== '';
         receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
         receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
@@ -2569,14 +2598,15 @@ function executeReceiptPrint(withMemo) {
     }
     
     // 印刷データをPrintAssistに送信
-    const printData = {
-        image: canvas.toDataURL("image/png"),
-        width: 58, // mm
-        height: Math.round(totalHeight / mmToPx), // mm
-        copies: 1
+    const printEvent = {
+        target: {
+            canvas: canvas,
+            width: 58, // mm
+            height: Math.round(totalHeight / mmToPx) // mm
+        }
     };
     
-    sendToPrintAssist(printData);
+    sendToPrintAssist(printEvent);
     
     // 履歴に保存
     const historyItem = {
