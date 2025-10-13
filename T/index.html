@@ -808,49 +808,6 @@ main {
     max-width: 350px;
     padding: 0.5rem;
     border: 1px solid var(--input-border);
-    border-radius: 0.5rem;
-    font-size: 1rem;
-    box-sizing: border-box;
-}
-
-.receipt-print-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    width: 100%;
-}
-
-.receipt-print-buttons button {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    font-weight: bold;
-    border: none;
-    border-radius: 0.5rem;
-    background: var(--primary-color);
-    color: white;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    min-width: 120px;
-}
-
-.receipt-print-buttons button:hover {
-    background: var(--primary-hover);
-    transform: translateY(-2px);
-}
-
-.receipt-print-buttons button.disabled {
-    background: var(--disabled-color);
-    cursor: not-allowed;
-    transform: none;
-}
-
-.receipt-print-buttons button.disabled:hover {
-    background: var(--disabled-color);
-    transform: none;
-}
-
-.receipt-input-group input[type="text"] {
     border-radius: 5px;
     font-size: 1rem;
     text-align: center;
@@ -869,6 +826,56 @@ main {
     .receipt-input-group input[type="text"] {
         font-size: 0.95rem;
         padding: 0.4rem;
+    }
+}
+
+.receipt-print-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    justify-content: center;
+}
+
+.receipt-print-buttons button {
+    flex: 1;
+    max-width: 150px;
+    padding: 0.75rem 1rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.receipt-print-buttons button:hover {
+    background: var(--button-hover);
+    transform: translateY(-2px);
+}
+
+.receipt-print-buttons button.disabled {
+    background: var(--disabled-bg);
+    color: var(--disabled-text);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.receipt-print-buttons button.disabled:hover {
+    background: var(--disabled-bg);
+    transform: none;
+}
+
+@media (max-width: 500px) {
+    .receipt-print-buttons {
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .receipt-print-buttons button {
+        font-size: 0.9rem;
+        padding: 0.6rem 0.8rem;
     }
 }
 
@@ -1229,8 +1236,8 @@ footer p {
                     <input type="text" id="receiptMemo" placeholder="時計代" />
                 </div>
                 <div class="receipt-print-buttons">
-                    <button id="receiptPrintWithoutMemo" class="disabled">但書無印刷</button>
-                    <button id="receiptPrintWithMemo" class="disabled">印刷</button>
+                    <button id="receiptPrintWithoutMemo" class="disabled">印刷</button>
+                    <button id="receiptPrintWithMemo" class="disabled">但し書き印刷</button>
                 </div>
             </div>
         </section>
@@ -2006,6 +2013,40 @@ function showSection(mode) {
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
     document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
     document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
+    
+    // 領収書モードの時は日付・時刻選択と枚数選択を非表示
+    if (mode === 'receipt') {
+        // 日付・時刻選択を非表示
+        const dateTimeChoices = document.querySelectorAll('#dateTimeChoice, #textDateTimeChoice, #signatureDateTimeChoice');
+        dateTimeChoices.forEach(element => {
+            if (element) element.style.display = 'none';
+        });
+        
+        // 枚数選択を非表示
+        const copiesSelects = document.querySelectorAll('#imagePrintOptions, #textPrintOptions, #signaturePrintOptions');
+        copiesSelects.forEach(element => {
+            if (element) element.style.display = 'none';
+        });
+    } else {
+        // 他のモードの時は必要に応じて表示を復元
+        if (mode === 'image') {
+            const imageDateTime = document.getElementById('dateTimeChoice');
+            const imagePrintOptions = document.getElementById('imagePrintOptions');
+            if (imageDateTime) imageDateTime.style.display = 'flex';
+            if (imagePrintOptions) imagePrintOptions.style.display = 'flex';
+        } else if (mode === 'text') {
+            const textDateTime = document.getElementById('textDateTimeChoice');
+            const textPrintOptions = document.getElementById('textPrintOptions');
+            if (textDateTime) textDateTime.style.display = 'flex';
+            if (textPrintOptions) textPrintOptions.style.display = 'flex';
+        } else if (mode === 'signature') {
+            const signatureDateTime = document.getElementById('signatureDateTimeChoice');
+            const signaturePrintOptions = document.getElementById('signaturePrintOptions');
+            if (signatureDateTime) signatureDateTime.style.display = 'flex';
+            if (signaturePrintOptions) signaturePrintOptions.style.display = 'flex';
+        }
+    }
+    
     if (mode === 'signature') {
         setTimeout(function(){initSignaturePad();}, 50);
     }
@@ -2595,39 +2636,15 @@ function executeReceiptPrint(withMemo) {
         console.warn('QRコード生成に失敗しました:', error);
     }
     
-    // 直接URLスキームで印刷を実行（領収書専用）
-    const pdfData = createReceiptPdf(canvas);
-    const receiptUrl = 'printassistapp://job?' +
-                       'Format=' + 'pdf' + '&' +
-                       'Data=' + encodeURIComponent(pdfData) + '&' +
-                       'SelectOnError=' + 'yes' + '&' +
-                       'CutType=' + 'full' + '&' +
-                       'CutFeed=' + 'yes' + '&' +
-                       'FitToWidth=' + 'no' + '&' +
-                       'PaperWidth=' + '58';
+    // 印刷データをPrintAssistに送信
+    const printData = {
+        image: canvas.toDataURL("image/png"),
+        width: 58, // mm
+        height: Math.round(totalHeight / mmToPx), // mm
+        copies: 1
+    };
     
-    console.log('🧾 領収書印刷URLスキーム:', receiptUrl);
-    
-    try {
-        if (window.DeviceMotionEvent !== undefined && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
-            // iOS
-            window.location.href = receiptUrl;
-        } else {
-            // Android
-            const intent = 'intent://job?' +
-                          'Format=' + 'pdf' + '&' +
-                          'Data=' + encodeURIComponent(pdfData) + '&' +
-                          'SelectOnError=' + 'yes' + '&' +
-                          'CutType=' + 'full' + '&' +
-                          'CutFeed=' + 'yes' + '&' +
-                          'FitToWidth=' + 'no' + '&' +
-                          'PaperWidth=' + '58' +
-                          '#Intent;scheme=printassistapp;package=jp.co.brother.printassistapp;end';
-            window.location.href = intent;
-        }
-    } catch (error) {
-        console.error('領収書印刷エラー:', error);
-    }
+    sendToPrintAssist(printData);
     
     // 履歴に保存
     const historyItem = {
@@ -2641,20 +2658,6 @@ function executeReceiptPrint(withMemo) {
     
     addHistory(historyItem);
     console.log('🧾 領収書印刷が完了しました');
-}
-
-// 領収書専用PDF作成関数
-function createReceiptPdf(canvas) {
-    const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [58, Math.round(canvas.height / 11.8)] // height in mm
-    });
-    
-    const imgData = canvas.toDataURL('image/png');
-    pdf.addImage(imgData, 'PNG', 0, 0, 58, Math.round(canvas.height / 11.8));
-    
-    return pdf.output('datauristring').split(',')[1];
 }
 
 // 領収書用テキスト折り返し関数
