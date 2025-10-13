@@ -2636,15 +2636,43 @@ function executeReceiptPrint(withMemo) {
         console.warn('QRコード生成に失敗しました:', error);
     }
     
-    // 印刷データをPrintAssistに送信
-    const printData = {
-        image: canvas.toDataURL("image/png"),
-        width: 58, // mm
-        height: Math.round(totalHeight / mmToPx), // mm
-        copies: 1
-    };
+    // キャンバスをPNGデータURLに変換
+    const pngDataUrl = canvas.toDataURL('image/png');
     
-    sendToPrintAssist(printData);
+    // jsPDFを使用してPDFを生成
+    const { jsPDF } = window.jspdf;
+    const pdfHeight = Math.round(totalHeight / mmToPx);
+    
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [58, pdfHeight]
+    });
+    
+    // PDFの設定を直接操作
+    pdf.internal.pageSize.width = 58;
+    pdf.internal.pageSize.height = pdfHeight;
+    
+    // PNG画像をPDFに追加（位置調整なし、フルサイズ）
+    pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+    
+    // PDFをBase64形式で取得
+    const pdfBase64 = pdf.output('datauristring').split(',')[1];
+    
+    let thisPage = window.location.href;
+    let printUrl = 'siiprintagent://1.0/print?' +
+                  'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                  'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                  'Format='           + 'pdf' + '&' +
+                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                  'SelectOnError='    + 'yes' + '&' +
+                  'CutType='          + 'full' + '&' +
+                  'CutFeed='          + 'yes' + '&' +
+                  'FitToWidth='       + 'no' + '&' +
+                  'PaperWidth='       + '58';
+    
+    // 印刷実行
+    window.location.href = printUrl;
     
     // 履歴に保存
     const historyItem = {
