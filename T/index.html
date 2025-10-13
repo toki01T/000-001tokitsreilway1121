@@ -833,48 +833,50 @@ main {
     display: flex;
     gap: 1rem;
     margin-top: 1rem;
+    width: 100%;
+    max-width: 350px;
     justify-content: center;
-    flex-wrap: wrap;
 }
 
-.receipt-print-btn {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    font-weight: bold;
+.receipt-print-buttons button {
+    flex: 1;
+    padding: 0.75rem 1rem;
     border: none;
-    border-radius: 8px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: white;
+    background: var(--primary-color);
     cursor: pointer;
     transition: all 0.2s ease;
-    background: var(--primary-color);
-    color: white;
-    min-width: 120px;
+    min-height: 40px;
 }
 
-.receipt-print-btn:hover:not(.disabled) {
+.receipt-print-buttons button:hover {
     background: var(--primary-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.receipt-print-btn.disabled {
-    background: #cccccc;
-    color: #999999;
+.receipt-print-buttons button.disabled {
+    background: #ccc;
     cursor: not-allowed;
-    opacity: 0.6;
+    transform: none;
+}
+
+.receipt-print-buttons button.disabled:hover {
+    background: #ccc;
+    transform: none;
 }
 
 @media (max-width: 500px) {
     .receipt-print-buttons {
         flex-direction: column;
-        align-items: center;
-        gap: 0.75rem;
+        gap: 0.5rem;
     }
     
-    .receipt-print-btn {
-        width: 90%;
-        max-width: 200px;
-        padding: 0.7rem 1rem;
-        font-size: 0.95rem;
+    .receipt-print-buttons button {
+        font-size: 0.85rem;
+        padding: 0.6rem 0.8rem;
     }
 }
 
@@ -1235,8 +1237,8 @@ footer p {
                     <input type="text" id="receiptMemo" placeholder="時計代" />
                 </div>
                 <div class="receipt-print-buttons">
-                    <button id="receiptPrintWithoutMemo" class="receipt-print-btn disabled">但書無発行</button>
-                    <button id="receiptPrintWithMemo" class="receipt-print-btn disabled">発行</button>
+                    <button id="receiptPrintWithMemo" class="disabled">メモ付きで印刷</button>
+                    <button id="receiptPrintWithoutMemo" class="disabled">メモなしで印刷</button>
                 </div>
             </div>
         </section>
@@ -2500,32 +2502,35 @@ function executeReceiptPrint(withMemo) {
     const canvasWidth = Math.round(58 * mmToPx);
     
     // フォント設定
-    const titleFontSize = 60;
-    const contentFontSize = 40;
-    const dateFontSize = 35;
+    const titleFontSize = 56;
+    const contentFontSize = 42;
+    const dateFontSize = 36;
+    const qrLabelFontSize = 28;
     
     // レイアウト計算
-    let currentY = 40; // 上余白
-    const lineHeight = contentFontSize * 1.4;
-    const titleHeight = titleFontSize * 1.4;
+    let currentY = 30; // 上余白
+    const lineHeight = contentFontSize * 1.3;
+    const titleHeight = titleFontSize * 1.2;
     
     // 高さの計算
     let totalHeight = currentY; // 上余白
     totalHeight += titleHeight; // タイトル「領収書」
-    totalHeight += 30; // タイトル後の余白
+    totalHeight += 25; // タイトル後の余白
     totalHeight += lineHeight; // 宛名行
-    totalHeight += 20; // 宛名後の余白
+    totalHeight += 15; // 宛名後の余白
     
     if (withMemo && memo) {
         // メモを改行で分割
-        const memoLines = wrapTextForReceipt(memo, canvasWidth - 80, contentFontSize);
+        const memoLines = wrapTextForReceipt(memo, canvasWidth - 60, contentFontSize);
         totalHeight += lineHeight * memoLines.length;
-        totalHeight += 20; // メモ後の余白
+        totalHeight += 15; // メモ後の余白
     }
     
     totalHeight += lineHeight; // 日付行
-    totalHeight += lineHeight; // QRコード用スペース（必要に応じて）
-    totalHeight += 60; // 下余白
+    totalHeight += 20; // 日付後の余白
+    totalHeight += 100; // QRコード用スペース
+    totalHeight += 30; // QRラベル用スペース
+    totalHeight += 40; // 下余白
     
     canvas.width = canvasWidth;
     canvas.height = totalHeight;
@@ -2541,41 +2546,44 @@ function executeReceiptPrint(withMemo) {
     // タイトル「領収書」
     ctx.font = `bold ${titleFontSize}px 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, sans-serif`;
     ctx.fillText('領収書', canvasWidth / 2, currentY + titleFontSize);
-    currentY += titleHeight + 30;
+    currentY += titleHeight + 25;
     
     // 宛名
     ctx.font = `${contentFontSize}px 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, sans-serif`;
     ctx.fillText(`${companyName} 様`, canvasWidth / 2, currentY + contentFontSize);
-    currentY += lineHeight + 20;
+    currentY += lineHeight + 15;
     
     // メモ（但し書き）
     if (withMemo && memo) {
         ctx.font = `${contentFontSize}px 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, sans-serif`;
-        const memoLines = wrapTextForReceipt(memo, canvasWidth - 80, contentFontSize);
+        const memoLines = wrapTextForReceipt(memo, canvasWidth - 60, contentFontSize);
         for (let i = 0; i < memoLines.length; i++) {
             ctx.fillText(memoLines[i], canvasWidth / 2, currentY + contentFontSize);
             currentY += lineHeight;
         }
-        currentY += 20;
+        currentY += 15;
     }
     
-    // 日付
+    // 日付・時刻（常に表示）
     const now = new Date();
     const dateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     ctx.font = `${dateFontSize}px 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, sans-serif`;
     ctx.fillText(dateStr, canvasWidth / 2, currentY + dateFontSize);
-    currentY += lineHeight;
+    currentY += dateFontSize + 5;
+    ctx.fillText(timeStr, canvasWidth / 2, currentY + dateFontSize);
+    currentY += dateFontSize + 20;
     
-    // QRコードを生成（管理ID方式）
+    // QRコードを生成（領収書専用の管理ID方式）
     const managementId = 'RCP' + Date.now().toString(36).toUpperCase();
-    const qrContent = `https://example.com/receipt/${managementId}`;
+    const qrContent = `tokitm://receipt/${managementId}?company=${encodeURIComponent(companyName)}&memo=${encodeURIComponent(withMemo ? memo : '')}&date=${encodeURIComponent(dateStr)}&time=${encodeURIComponent(timeStr)}`;
     
     try {
         const qr = qrcode(0, 'M');
         qr.addData(qrContent);
         qr.make();
         
-        const qrSize = 80; // QRコードサイズ
+        const qrSize = 90; // QRコードサイズ
         const qrX = (canvasWidth - qrSize) / 2;
         const qrY = currentY;
         
@@ -2597,45 +2605,36 @@ function executeReceiptPrint(withMemo) {
             }
         }
         
+        currentY += qrSize + 10;
+        
+        // QRコードラベル
+        ctx.fillStyle = '#000000';
+        ctx.font = `${qrLabelFontSize}px 'ヒラギノ角ゴ Pro W3', 'Hiragino Kaku Gothic Pro', 'メイリオ', Meiryo, sans-serif`;
+        ctx.fillText(`管理ID: ${managementId}`, canvasWidth / 2, currentY + qrLabelFontSize);
+        
     } catch (error) {
         console.warn('QRコード生成に失敗しました:', error);
     }
     
-    // 印刷データをPrintAssistに送信（PDFとして）
-    const { jsPDF } = window.jspdf;
-    const pdfHeight = Math.round(totalHeight / mmToPx);
-    
-    const pdf = new jsPDF({
-        orientation: 'portrait',
+    // 印刷実行
+    const pdfDoc = new jsPDF({
         unit: 'mm',
-        format: [58, pdfHeight]
+        format: [58, Math.round(totalHeight / mmToPx)]
     });
     
-    // PDFの設定を直接操作
-    pdf.internal.pageSize.width = 58;
-    pdf.internal.pageSize.height = pdfHeight;
+    pdfDoc.addImage(canvas.toDataURL("image/png"), 'PNG', 0, 0, 58, Math.round(totalHeight / mmToPx));
+    const pdfData = pdfDoc.output('datauristring');
     
-    // PNG画像をPDFに追加
-    const pngDataUrl = canvas.toDataURL('image/png');
-    pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+    const printUrl = 'epwps://printasst/print?' +
+                    'Format='           + 'pdf' + '&' +
+                    'Data='             + encodeURIComponent(pdfData) + '&' +
+                    'SelectOnError='    + 'yes' + '&' +
+                    'CutType='          + 'full' + '&' +
+                    'CutFeed='          + 'yes' + '&' +
+                    'FitToWidth='       + 'no' + '&' +
+                    'PaperWidth='       + '58';
     
-    // PDFをBase64形式で取得
-    const pdfBase64 = pdf.output('datauristring').split(',')[1];
-    
-    let thisPage = window.location.href;
-    let printUrl = 'siiprintagent://1.0/print?' +
-                  'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                  'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                  'Format='           + 'pdf' + '&' +
-                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                  'SelectOnError='    + 'yes' + '&' +
-                  'CutType='          + 'full' + '&' +
-                  'CutFeed='          + 'yes' + '&' +
-                  'FitToWidth='       + 'no' + '&' +
-                  'PaperWidth='       + '58';
-    
-    // 印刷実行
-    window.location.href = printUrl;
+    window.open(printUrl, '_blank');
     
     // 履歴に保存
     const historyItem = {
@@ -2643,6 +2642,8 @@ function executeReceiptPrint(withMemo) {
         companyName: companyName,
         memo: withMemo ? memo : '',
         managementId: managementId,
+        dateTime: 'with', // 常に日付・時刻あり
+        qrPrinted: true, // 常にQRコード付き
         data: canvas.toDataURL("image/png"),
         created: Date.now()
     };
