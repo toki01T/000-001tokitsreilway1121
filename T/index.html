@@ -831,32 +831,34 @@ main {
 
 .receipt-print-buttons {
     display: flex;
-    gap: 0.5rem;
+    gap: 1rem;
     margin-top: 1rem;
     justify-content: center;
+    flex-wrap: wrap;
 }
 
-.receipt-print-buttons button {
-    flex: 1;
-    padding: 0.75rem 1rem;
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.9rem;
+.receipt-print-btn {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
     font-weight: bold;
+    border: none;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease;
-    min-height: 44px;
+    background: var(--primary-color);
+    color: white;
+    min-width: 120px;
 }
 
-.receipt-print-buttons button:hover:not(.disabled) {
-    background-color: var(--primary-hover);
+.receipt-print-btn:hover:not(.disabled) {
+    background: var(--primary-hover);
     transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-.receipt-print-buttons button.disabled {
-    background-color: var(--disabled-color);
+.receipt-print-btn.disabled {
+    background: #cccccc;
+    color: #999999;
     cursor: not-allowed;
     opacity: 0.6;
 }
@@ -864,12 +866,15 @@ main {
 @media (max-width: 500px) {
     .receipt-print-buttons {
         flex-direction: column;
+        align-items: center;
         gap: 0.75rem;
     }
     
-    .receipt-print-buttons button {
-        font-size: 1rem;
-        padding: 0.85rem;
+    .receipt-print-btn {
+        width: 90%;
+        max-width: 200px;
+        padding: 0.7rem 1rem;
+        font-size: 0.95rem;
     }
 }
 
@@ -1230,8 +1235,8 @@ footer p {
                     <input type="text" id="receiptMemo" placeholder="時計代" />
                 </div>
                 <div class="receipt-print-buttons">
-                    <button id="receiptPrintWithMemo" class="disabled">メモ付きで印刷</button>
-                    <button id="receiptPrintWithoutMemo" class="disabled">メモなしで印刷</button>
+                    <button id="receiptPrintWithoutMemo" class="receipt-print-btn disabled">但書無発行</button>
+                    <button id="receiptPrintWithMemo" class="receipt-print-btn disabled">発行</button>
                 </div>
             </div>
         </section>
@@ -1528,7 +1533,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const receiptMemo = document.getElementById('receiptMemo');
     
     function updateReceiptPrintButtons() {
-        if (!receiptCompanyName || !receiptPrintWithMemo || !receiptPrintWithoutMemo) return;
         const hasCompanyName = receiptCompanyName.value.trim() !== '';
         receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
         receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
@@ -2597,16 +2601,41 @@ function executeReceiptPrint(withMemo) {
         console.warn('QRコード生成に失敗しました:', error);
     }
     
-    // 印刷データをPrintAssistに送信
-    const printEvent = {
-        target: {
-            canvas: canvas,
-            width: 58, // mm
-            height: Math.round(totalHeight / mmToPx) // mm
-        }
-    };
+    // 印刷データをPrintAssistに送信（PDFとして）
+    const { jsPDF } = window.jspdf;
+    const pdfHeight = Math.round(totalHeight / mmToPx);
     
-    sendToPrintAssist(printEvent);
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [58, pdfHeight]
+    });
+    
+    // PDFの設定を直接操作
+    pdf.internal.pageSize.width = 58;
+    pdf.internal.pageSize.height = pdfHeight;
+    
+    // PNG画像をPDFに追加
+    const pngDataUrl = canvas.toDataURL('image/png');
+    pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+    
+    // PDFをBase64形式で取得
+    const pdfBase64 = pdf.output('datauristring').split(',')[1];
+    
+    let thisPage = window.location.href;
+    let printUrl = 'siiprintagent://1.0/print?' +
+                  'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                  'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                  'Format='           + 'pdf' + '&' +
+                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                  'SelectOnError='    + 'yes' + '&' +
+                  'CutType='          + 'full' + '&' +
+                  'CutFeed='          + 'yes' + '&' +
+                  'FitToWidth='       + 'no' + '&' +
+                  'PaperWidth='       + '58';
+    
+    // 印刷実行
+    window.location.href = printUrl;
     
     // 履歴に保存
     const historyItem = {
