@@ -1229,11 +1229,11 @@ footer p {
             <div class="receipt-form-container">
                 <div class="receipt-input-group">
                     <label for="receiptCompanyName">宛名</label>
-                    <input type="text" id="receiptCompanyName" placeholder="株式会社正美堂" />
+                    <input type="text" id="receiptCompanyName" />
                 </div>
                 <div class="receipt-input-group">
                     <label for="receiptMemo">但し書き</label>
-                    <input type="text" id="receiptMemo" placeholder="時計代" />
+                    <input type="text" id="receiptMemo" />
                 </div>
                 <div class="receipt-print-buttons">
                     <button id="receiptPrintWithoutMemo" class="disabled">印刷</button>
@@ -2030,10 +2030,20 @@ function showSection(mode) {
     } else {
         // 他のモードの時は必要に応じて表示を復元
         if (mode === 'image') {
+            // 画像モードでは、画像がプレビューされている場合のみ表示
+            const previewContainer = document.getElementById('imagePreviewContainer');
+            const hasImage = previewContainer && previewContainer.firstChild;
+            
             const imageDateTime = document.getElementById('dateTimeChoice');
             const imagePrintOptions = document.getElementById('imagePrintOptions');
-            if (imageDateTime) imageDateTime.style.display = 'flex';
-            if (imagePrintOptions) imagePrintOptions.style.display = 'flex';
+            
+            if (hasImage) {
+                if (imageDateTime) imageDateTime.style.display = 'flex';
+                if (imagePrintOptions) imagePrintOptions.style.display = 'flex';
+            } else {
+                if (imageDateTime) imageDateTime.style.display = 'none';
+                if (imagePrintOptions) imagePrintOptions.style.display = 'none';
+            }
         } else if (mode === 'text') {
             const textDateTime = document.getElementById('textDateTimeChoice');
             const textPrintOptions = document.getElementById('textPrintOptions');
@@ -2544,7 +2554,6 @@ function executeReceiptPrint(withMemo) {
     receiptLines.push('');
     receiptLines.push(`宛名は 「${companyName}」`);
     receiptLines.push('こちらでお願い致します。');
-    receiptLines.push('(小文字でお願い致します。)');
     receiptLines.push('');
     
     if (withMemo && memo) {
