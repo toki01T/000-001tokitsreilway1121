@@ -2534,39 +2534,45 @@ function executeReceiptPrint(withMemo) {
     const mmToPx = 11.8; // 300DPI換算
     const canvasWidth = Math.round(58 * mmToPx);
     
-    // フォントサイズ設定（テキスト印刷と同じ）
+    // フォント設定（テキスト印刷と同じ）
     const textFontSize = 37;  // テキスト用のフォントサイズ
     const dateFontSize = 50;  // 日付・時刻用のフォントサイズ
+    
+    // 行の高さ計算
     const lineHeight = textFontSize * 1.2;
+    const dateLineHeight = dateFontSize * 1.2;
     
-    // 高さの計算
-    let textHeight = 0;
+    // コンテンツの行数を計算
+    let contentLines = [];
+    contentLines.push('領収書'); // タイトル
+    contentLines.push(''); // 空行
+    contentLines.push(companyName); // 宛名
+    contentLines.push(''); // 空行
     
-    // タイトル「領収書」1行
-    textHeight += lineHeight;
-    
-    // 宛名「○○○」1行
-    textHeight += lineHeight;
-    
-    // 但し書き（メモ付きの場合）
     if (withMemo && memo) {
-        textHeight += lineHeight; // 但し書き行
+        contentLines.push(`但し ${memo} 代として`); // 但し書き
+        contentLines.push(''); // 空行
     }
     
-    // 確認文「宛名が合っておりましたら、」〜「印を付けて下さい✔️」2行
-    textHeight += lineHeight * 2;
+    contentLines.push('宛名が合っておりましたら、');
+    contentLines.push('下部の枠にボールペン又は印鑑で');
+    contentLines.push('印を付けて下さい✔️');
+    contentLines.push(''); // 空行
     
-    // 枠（3行分）
-    textHeight += lineHeight * 3;
+    // 枠のスペース
+    contentLines.push(''); // 枠用空行1
+    contentLines.push(''); // 枠用空行2
+    contentLines.push(''); // 枠用空行3
+    contentLines.push(''); // 枠用空行4
     
-    // 日付・時刻のスペースを追加（テキスト印刷と同じ）
-    const dateLineHeight = dateFontSize * 1.2;
-    textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
+    // 高さ計算
+    let textHeight = contentLines.length * lineHeight;
+    textHeight += dateLineHeight * 2.5; // 日付・時刻のスペース
     
-    // QRコード用スペースを調整（テキスト印刷と同じ）
-    const qrSpaceMargin = 90; // 日付あり：90px
+    // QRコード用スペースを追加（テキスト印刷と同じ方式）
+    const qrSpaceMargin = 140; // QRコード下部余白
+    const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin);
     
-    const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
     
@@ -2580,46 +2586,34 @@ function executeReceiptPrint(withMemo) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     
-    // 真ん中の位置を正確に計算（テキスト印刷と同じ）
-    const exactCenterX = Math.round(canvasWidth / 2) - 50; // -50 テキストの左右調整
+    // 中央位置計算（テキスト印刷と同じ）
+    const exactCenterX = Math.round(canvasWidth / 2) - 50; // テキストの左右調整
     
-    // テキストを描画（上部余白を小さく）
-    let yPos = 30; // 上余白を30pxに調整
-    
-    // タイトル「領収書」
-    ctx.fillText('領収書', exactCenterX, yPos);
-    yPos += lineHeight;
-    
-    // 宛名（「様」なし）
-    ctx.fillText(companyName, exactCenterX, yPos);
-    yPos += lineHeight;
-    
-    // 但し書き（メモ付きの場合）
-    if (withMemo && memo) {
-        ctx.fillText(`但し ${memo} 代として`, exactCenterX, yPos);
+    // テキストを描画
+    let yPos = 30; // 上余白
+    for (let i = 0; i < contentLines.length; i++) {
+        const line = contentLines[i];
+        if (line) {
+            ctx.fillText(line, exactCenterX, yPos);
+        }
         yPos += lineHeight;
+        
+        // 枠を描画する位置
+        if (i === contentLines.length - 4) { // 枠の開始位置
+            const boxWidth = 120;
+            const boxHeight = 60;
+            const boxX = exactCenterX - boxWidth / 2;
+            const boxY = yPos - lineHeight / 2;
+            
+            // 枠を描画
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+            
+            // 枠の分だけy位置を調整
+            yPos += boxHeight - lineHeight * 3;
+        }
     }
-    
-    // 確認文
-    ctx.fillText('宛名が合っておりましたら、', exactCenterX, yPos);
-    yPos += lineHeight;
-    ctx.fillText('下部の枠にボールペン又は印鑑で', exactCenterX, yPos);
-    yPos += lineHeight;
-    ctx.fillText('印を付けて下さい✔️', exactCenterX, yPos);
-    yPos += lineHeight;
-    
-    // 枠を描画（中央揃え）
-    const boxWidth = 120;
-    const boxHeight = lineHeight * 3;
-    const boxX = exactCenterX - boxWidth / 2;
-    const boxY = yPos;
-    
-    // 枠線を描画
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
-    
-    yPos += boxHeight + 20;
     
     // QRコードを生成（管理ID方式）
     const managementId = 'RCP' + Date.now().toString(36).toUpperCase();
@@ -2633,7 +2627,7 @@ function executeReceiptPrint(withMemo) {
         // QRコードサイズと配置（テキスト印刷と同じ）
         const qrSize = 120;
         const qrX = 30; // 左側に配置
-        const qrY = yPos;
+        const qrY = yPos + 20; // 少し間隔を開ける
         
         // QRコードをキャンバスに描画
         const modules = qr.modules;
@@ -2657,7 +2651,7 @@ function executeReceiptPrint(withMemo) {
         console.warn('QRコード生成に失敗しました:', error);
     }
     
-    // 日付・時刻を右側に配置（テキスト印刷と同じ位置）
+    // 日付・時刻を描画（テキスト印刷と同じ位置）
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
@@ -2666,29 +2660,27 @@ function executeReceiptPrint(withMemo) {
     const minute = now.getMinutes();
     const second = now.getSeconds();
     
-    // 日付・時刻フォント設定
+    // 日付・時刻用のフォント設定
     ctx.font = `${dateFontSize}px Arial, sans-serif`;
-    ctx.textAlign = 'left';
     
-    // QRコード印刷ありの場合：QRコードの右側に配置（テキスト印刷と同じ位置）
+    // QRコードの右側に配置（テキスト印刷と同じ）
     const dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
-    let dateTimeY = yPos + 20;
+    const dateTimeY = yPos + 30; // QRコードと同じ高さ
     
     // 日付行
     const dateText = `${year}年 ${month}月${day}日`;
     ctx.fillText(dateText, dateTimeX, dateTimeY);
-    dateTimeY += dateLineHeight;
     
     // 時刻行
     const timeText = `${hour}時${minute}分${second}秒`;
-    ctx.fillText(timeText, dateTimeX, dateTimeY);
+    ctx.fillText(timeText, dateTimeX, dateTimeY + dateLineHeight);
     
     // キャンバスをPNGデータURLに変換
     const pngDataUrl = canvas.toDataURL('image/png');
     
     // jsPDFを使用してPDFを生成
     const { jsPDF } = window.jspdf;
-    const pdfHeight = Math.round(totalHeight / mmToPx);
+    const pdfHeight = Math.round(canvasHeight / mmToPx);
     
     const pdf = new jsPDF({
         orientation: 'portrait',
