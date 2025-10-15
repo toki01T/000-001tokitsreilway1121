@@ -4343,6 +4343,26 @@ function restoreContentFromHistory(item) {
             }, 100); // 手書きは初期化に時間がかかるので100ms開始
             
         }, 100);
+    } else if (item.type === 'receipt') {
+        showSection('receipt');
+        
+        // 領収書データを復元
+        document.getElementById('receiptCompanyName').value = item.companyName || '';
+        document.getElementById('receiptMemo').value = item.memo || '';
+        
+        // 印刷ボタンの状態を更新
+        const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
+        const receiptPrintWithoutMemo = document.getElementById('receiptPrintWithoutMemo');
+        const hasCompanyName = item.companyName && item.companyName.trim() !== '';
+        
+        if (receiptPrintWithMemo) {
+            receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
+        }
+        if (receiptPrintWithoutMemo) {
+            receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
+        }
+        
+        console.log('=== 領収書QR復元完了 ===');
     } else {
         console.error('⚠️ 未対応のデータタイプ:', item.type);
         throw new Error('未対応のデータタイプです: ' + item.type);
@@ -4373,6 +4393,26 @@ function restoreContentFromQROnly(qrData) {
         updateTextPrintButtonState();
         
         alert('QRコードからテキスト情報を復元しました！\n（※一部のテキストのみ復元されています）');
+    } else if (qrData.type === 'receipt') {
+        showSection('receipt');
+        
+        // 領収書データを復元
+        document.getElementById('receiptCompanyName').value = qrData.companyName || '';
+        document.getElementById('receiptMemo').value = qrData.memo || '';
+        
+        // 印刷ボタンの状態を更新
+        const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
+        const receiptPrintWithoutMemo = document.getElementById('receiptPrintWithoutMemo');
+        const hasCompanyName = qrData.companyName && qrData.companyName.trim() !== '';
+        
+        if (receiptPrintWithMemo) {
+            receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
+        }
+        if (receiptPrintWithoutMemo) {
+            receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
+        }
+        
+        alert('QRコードから領収書情報を復元しました！');
     } else {
         alert('このQRコードの完全なデータは履歴にありません。\n画像や手書きデータは履歴からのみ復元可能です。');
     }
