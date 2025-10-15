@@ -2054,55 +2054,64 @@ function checkAndContinuePrinting() {
     }
 }
 function showSection(mode) {
-    document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
-    document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
-    document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
-    document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
+    // 全てのセクションを非表示
+    document.getElementById('imageSection').style.display = 'none';
+    document.getElementById('textSection').style.display = 'none';
+    document.getElementById('signatureSection').style.display = 'none';
+    document.getElementById('receiptSection').style.display = 'none';
     
-    // 領収書モードの時は日付・時刻選択と枚数選択を非表示
-    if (mode === 'receipt') {
-        // 日付・時刻選択を非表示
-        const dateTimeChoices = document.querySelectorAll('#dateTimeChoice, #textDateTimeChoice, #signatureDateTimeChoice');
-        dateTimeChoices.forEach(element => {
+    // 全ての日付・時刻選択と印刷オプションを一旦非表示
+    const allDateTimeChoices = document.querySelectorAll('#dateTimeChoice, #textDateTimeChoice, #signatureDateTimeChoice');
+    const allPrintOptions = document.querySelectorAll('#imagePrintOptions, #textPrintOptions, #signaturePrintOptions');
+    
+    allDateTimeChoices.forEach(element => {
+        if (element) element.style.display = 'none';
+    });
+    allPrintOptions.forEach(element => {
+        if (element) element.style.display = 'none';
+    });
+    
+    // 現在のモードのセクションのみ表示
+    document.getElementById(mode + 'Section').style.display = 'block';
+    
+    // 各モードに応じて必要な要素のみ表示
+    if (mode === 'image') {
+        const imageDateTime = document.getElementById('dateTimeChoice');
+        const imagePrintOptions = document.getElementById('imagePrintOptions');
+        if (imageDateTime) imageDateTime.style.display = 'flex';
+        if (imagePrintOptions) imagePrintOptions.style.display = 'flex';
+        
+        // 他のモードの要素を確実に非表示
+        const otherElements = document.querySelectorAll('#textDateTimeChoice, #textPrintOptions, #signatureDateTimeChoice, #signaturePrintOptions');
+        otherElements.forEach(element => {
             if (element) element.style.display = 'none';
         });
         
-        // 枚数選択を非表示
-        const copiesSelects = document.querySelectorAll('#imagePrintOptions, #textPrintOptions, #signaturePrintOptions');
-        copiesSelects.forEach(element => {
-            if (element) element.style.display = 'none';
-        });
-    } else {
-        // 他のモードの時は必要に応じて表示を復元し、不要な要素を非表示
-        // 全ての日付・時刻選択と印刷オプションを一旦非表示
-        const allDateTimeChoices = document.querySelectorAll('#dateTimeChoice, #textDateTimeChoice, #signatureDateTimeChoice');
-        const allPrintOptions = document.querySelectorAll('#imagePrintOptions, #textPrintOptions, #signaturePrintOptions');
+    } else if (mode === 'text') {
+        const textDateTime = document.getElementById('textDateTimeChoice');
+        const textPrintOptions = document.getElementById('textPrintOptions');
+        if (textDateTime) textDateTime.style.display = 'flex';
+        if (textPrintOptions) textPrintOptions.style.display = 'flex';
         
-        allDateTimeChoices.forEach(element => {
-            if (element) element.style.display = 'none';
-        });
-        allPrintOptions.forEach(element => {
+        // 他のモードの要素を確実に非表示
+        const otherElements = document.querySelectorAll('#dateTimeChoice, #imagePrintOptions, #signatureDateTimeChoice, #signaturePrintOptions');
+        otherElements.forEach(element => {
             if (element) element.style.display = 'none';
         });
         
-        // 現在のモードの要素のみ表示
-        if (mode === 'image') {
-            const imageDateTime = document.getElementById('dateTimeChoice');
-            const imagePrintOptions = document.getElementById('imagePrintOptions');
-            if (imageDateTime) imageDateTime.style.display = 'flex';
-            if (imagePrintOptions) imagePrintOptions.style.display = 'flex';
-        } else if (mode === 'text') {
-            const textDateTime = document.getElementById('textDateTimeChoice');
-            const textPrintOptions = document.getElementById('textPrintOptions');
-            if (textDateTime) textDateTime.style.display = 'flex';
-            if (textPrintOptions) textPrintOptions.style.display = 'flex';
-        } else if (mode === 'signature') {
-            const signatureDateTime = document.getElementById('signatureDateTimeChoice');
-            const signaturePrintOptions = document.getElementById('signaturePrintOptions');
-            if (signatureDateTime) signatureDateTime.style.display = 'flex';
-            if (signaturePrintOptions) signaturePrintOptions.style.display = 'flex';
-        }
+    } else if (mode === 'signature') {
+        const signatureDateTime = document.getElementById('signatureDateTimeChoice');
+        const signaturePrintOptions = document.getElementById('signaturePrintOptions');
+        if (signatureDateTime) signatureDateTime.style.display = 'flex';
+        if (signaturePrintOptions) signaturePrintOptions.style.display = 'flex';
+        
+        // 他のモードの要素を確実に非表示
+        const otherElements = document.querySelectorAll('#dateTimeChoice, #imagePrintOptions, #textDateTimeChoice, #textPrintOptions');
+        otherElements.forEach(element => {
+            if (element) element.style.display = 'none';
+        });
     }
+    // 領収書モードの場合は特別な処理は不要（デフォルトで非表示のまま）
     
     if (mode === 'signature') {
         setTimeout(function(){initSignaturePad();}, 50);
