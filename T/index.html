@@ -804,9 +804,8 @@ main {
 }
 
 .receipt-input-group input[type="text"] {
-    width: 100%;
-    max-width: 350px;
-    height: 120px; /* 正方形に近い高さ */
+    width: 120px;
+    height: 120px;
     padding: 0.5rem;
     border: 1px solid var(--input-border);
     border-radius: 5px;
@@ -815,7 +814,7 @@ main {
     background: var(--input-bg);
     color: var(--input-text);
     box-sizing: border-box;
-    resize: none; /* サイズ変更を無効化 */
+    resize: none;
 }
 
 .receipt-input-group input[type="text"]:focus {
@@ -824,40 +823,32 @@ main {
     box-shadow: 0 0 5px rgba(0, 163, 237, 0.3);
 }
 
-.receipt-checkbox-group {
-    margin: 1rem 0;
-    text-align: center;
-}
-
-.receipt-lowercase-checkbox {
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-    font-size: 1rem;
-    color: var(--input-text);
-}
-
-.receipt-lowercase-checkbox input[type="checkbox"] {
-    margin-right: 0.5rem;
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-}
-
-.receipt-lowercase-checkbox .checkmark {
-    margin-left: 0.3rem;
-}
-
 @media (max-width: 500px) {
     .receipt-input-group input[type="text"] {
         font-size: 0.95rem;
         padding: 0.4rem;
-        height: 100px; /* モバイルでは少し小さく */
     }
-    
-    .receipt-lowercase-checkbox {
-        font-size: 0.9rem;
-    }
+}
+
+.receipt-lowercase-option {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0;
+}
+
+.receipt-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.receipt-checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
 }
 
 .receipt-print-buttons {
@@ -1260,17 +1251,16 @@ footer p {
             <div class="receipt-form-container">
                 <div class="receipt-input-group">
                     <label for="receiptCompanyName">宛名</label>
-                    <input type="text" id="receiptCompanyName" placeholder="" />
+                    <input type="text" id="receiptCompanyName" />
                 </div>
                 <div class="receipt-input-group">
                     <label for="receiptMemo">但し書き</label>
-                    <input type="text" id="receiptMemo" placeholder="" />
+                    <input type="text" id="receiptMemo" />
                 </div>
-                <div class="receipt-checkbox-group">
-                    <label class="receipt-lowercase-checkbox">
+                <div class="receipt-lowercase-option">
+                    <label class="receipt-checkbox-label">
                         <input type="checkbox" id="receiptLowercaseCheckbox" />
-                        <span class="checkmark"></span>
-                        (小文字でお願い致します。)
+                        <span>(小文字でお願い致します。)</span>
                     </label>
                 </div>
                 <div class="receipt-print-buttons">
@@ -1570,7 +1560,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // 領収書フォームの入力監視
     const receiptCompanyName = document.getElementById('receiptCompanyName');
     const receiptMemo = document.getElementById('receiptMemo');
-    const receiptLowercaseCheckbox = document.getElementById('receiptLowercaseCheckbox');
     
     function updateReceiptPrintButtons() {
         const hasCompanyName = receiptCompanyName.value.trim() !== '';
@@ -1583,11 +1572,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (receiptMemo) {
         receiptMemo.addEventListener('input', updateReceiptPrintButtons);
-    }
-    if (receiptLowercaseCheckbox) {
-        receiptLowercaseCheckbox.addEventListener('change', function() {
-            console.log('小文字チェックボックス状態:', this.checked);
-        });
     }
     
     // 初期状態で印刷ボタンを無効化
@@ -1914,6 +1898,7 @@ function loadHistoryList() {
                     showSection('receipt');
                     document.getElementById('receiptCompanyName').value = item.companyName || '';
                     document.getElementById('receiptMemo').value = item.memo || '';
+                    document.getElementById('receiptLowercaseCheckbox').checked = Boolean(item.lowercaseRequested);
                     // 印刷ボタンの状態を更新
                     const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
                     const receiptPrintWithoutMemo = document.getElementById('receiptPrintWithoutMemo');
@@ -2058,36 +2043,72 @@ function showSection(mode) {
     document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
     document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
     
-    // すべての日付・時刻選択と枚数選択を一旦非表示
-    const allDateTime = document.querySelectorAll('#dateTimeChoice, #textDateTimeChoice, #signatureDateTimeChoice');
-    const allPrintOptions = document.querySelectorAll('#imagePrintOptions, #textPrintOptions, #signaturePrintOptions');
+    // 領収書モードの時は日付・時刻選択と枚数選択を非表示
+    if (mode === 'receipt') {
+        // 日付・時刻選択を非表示
+        const dateTimeChoices = document.querySelectorAll('#dateTimeChoice, #textDateTimeChoice, #signatureDateTimeChoice');
+        dateTimeChoices.forEach(element => {
+            if (element) element.style.display = 'none';
+        });
+        
+        // 枚数選択を非表示
+        const copiesSelects = document.querySelectorAll('#imagePrintOptions, #textPrintOptions, #signaturePrintOptions');
+        copiesSelects.forEach(element => {
+            if (element) element.style.display = 'none';
+        });
+    } else {
+        // 他のモードの時は必要に応じて表示を復元
+        if (mode === 'image') {
+            const imageDateTime = document.getElementById('dateTimeChoice');
+            const imagePrintOptions = document.getElementById('imagePrintOptions');
+            if (imageDateTime) imageDateTime.style.display = 'flex';
+            if (imagePrintOptions) imagePrintOptions.style.display = 'flex';
+            
+            // 他のモードの要素を確実に非表示
+            const textDateTime = document.getElementById('textDateTimeChoice');
+            const textPrintOptions = document.getElementById('textPrintOptions');
+            const signatureDateTime = document.getElementById('signatureDateTimeChoice');
+            const signaturePrintOptions = document.getElementById('signaturePrintOptions');
+            if (textDateTime) textDateTime.style.display = 'none';
+            if (textPrintOptions) textPrintOptions.style.display = 'none';
+            if (signatureDateTime) signatureDateTime.style.display = 'none';
+            if (signaturePrintOptions) signaturePrintOptions.style.display = 'none';
+        } else if (mode === 'text') {
+            const textDateTime = document.getElementById('textDateTimeChoice');
+            const textPrintOptions = document.getElementById('textPrintOptions');
+            if (textDateTime) textDateTime.style.display = 'flex';
+            if (textPrintOptions) textPrintOptions.style.display = 'flex';
+            
+            // 他のモードの要素を確実に非表示
+            const imageDateTime = document.getElementById('dateTimeChoice');
+            const imagePrintOptions = document.getElementById('imagePrintOptions');
+            const signatureDateTime = document.getElementById('signatureDateTimeChoice');
+            const signaturePrintOptions = document.getElementById('signaturePrintOptions');
+            if (imageDateTime) imageDateTime.style.display = 'none';
+            if (imagePrintOptions) imagePrintOptions.style.display = 'none';
+            if (signatureDateTime) signatureDateTime.style.display = 'none';
+            if (signaturePrintOptions) signaturePrintOptions.style.display = 'none';
+        } else if (mode === 'signature') {
+            const signatureDateTime = document.getElementById('signatureDateTimeChoice');
+            const signaturePrintOptions = document.getElementById('signaturePrintOptions');
+            if (signatureDateTime) signatureDateTime.style.display = 'flex';
+            if (signaturePrintOptions) signaturePrintOptions.style.display = 'flex';
+            
+            // 他のモードの要素を確実に非表示
+            const imageDateTime = document.getElementById('dateTimeChoice');
+            const imagePrintOptions = document.getElementById('imagePrintOptions');
+            const textDateTime = document.getElementById('textDateTimeChoice');
+            const textPrintOptions = document.getElementById('textPrintOptions');
+            if (imageDateTime) imageDateTime.style.display = 'none';
+            if (imagePrintOptions) imagePrintOptions.style.display = 'none';
+            if (textDateTime) textDateTime.style.display = 'none';
+            if (textPrintOptions) textPrintOptions.style.display = 'none';
+        }
+    }
     
-    allDateTime.forEach(element => {
-        if (element) element.style.display = 'none';
-    });
-    allPrintOptions.forEach(element => {
-        if (element) element.style.display = 'none';
-    });
-    
-    // 各モードに応じて必要な要素のみ表示
-    if (mode === 'image') {
-        const imageDateTime = document.getElementById('dateTimeChoice');
-        const imagePrintOptions = document.getElementById('imagePrintOptions');
-        if (imageDateTime) imageDateTime.style.display = 'flex';
-        if (imagePrintOptions) imagePrintOptions.style.display = 'flex';
-    } else if (mode === 'text') {
-        const textDateTime = document.getElementById('textDateTimeChoice');
-        const textPrintOptions = document.getElementById('textPrintOptions');
-        if (textDateTime) textDateTime.style.display = 'flex';
-        if (textPrintOptions) textPrintOptions.style.display = 'flex';
-    } else if (mode === 'signature') {
-        const signatureDateTime = document.getElementById('signatureDateTimeChoice');
-        const signaturePrintOptions = document.getElementById('signaturePrintOptions');
-        if (signatureDateTime) signatureDateTime.style.display = 'flex';
-        if (signaturePrintOptions) signaturePrintOptions.style.display = 'flex';
+    if (mode === 'signature') {
         setTimeout(function(){initSignaturePad();}, 50);
     }
-    // 領収書モードでは何も表示しない（既に上で非表示にしている）
 }
 function toggleMode(mode) {
     showSection(mode);
@@ -2556,14 +2577,14 @@ function executeSignaturePrint() {
 function executeReceiptPrint(withMemo) {
     const companyName = document.getElementById('receiptCompanyName').value.trim();
     const memo = document.getElementById('receiptMemo').value.trim();
-    const isLowercaseRequested = document.getElementById('receiptLowercaseCheckbox').checked;
+    const isLowercaseChecked = document.getElementById('receiptLowercaseCheckbox').checked;
     
     if (!companyName) {
         console.log('❌ 宛名が入力されていません');
         return;
     }
     
-    console.log('🧾 領収書印刷を開始します', withMemo ? '(メモ付き)' : '(メモなし)', isLowercaseRequested ? '(小文字あり)' : '(小文字なし)');
+    console.log('🧾 領収書印刷を開始します', withMemo ? '(メモ付き)' : '(メモなし)');
     
     // キャンバスでテキストを画像として生成（テキスト印刷と同じ方式）
     const canvas = document.createElement('canvas');
@@ -2584,10 +2605,11 @@ function executeReceiptPrint(withMemo) {
     receiptLines.push(`宛名は 「${companyName}」`);
     receiptLines.push('こちらでお願い致します。');
     
-    // チェックボックスの状態により小文字注意書きを追加
-    if (isLowercaseRequested) {
+    // 小文字チェックボックスがチェックされている場合のみ追加
+    if (isLowercaseChecked) {
         receiptLines.push('(小文字でお願い致します。)');
     }
+    
     receiptLines.push('');
     
     if (withMemo && memo) {
@@ -2653,7 +2675,7 @@ function executeReceiptPrint(withMemo) {
         mode: 'receipt',
         companyName: companyName,
         memo: withMemo ? memo : '',
-        lowercaseRequested: isLowercaseRequested,
+        lowercaseRequested: isLowercaseChecked,
         data: '', // 後で設定
         created: Date.now(),
         qrPrinted: true // 常にQRコード付き
@@ -4393,12 +4415,7 @@ function restoreContentFromHistory(item) {
         // 領収書データを復元
         document.getElementById('receiptCompanyName').value = item.companyName || '';
         document.getElementById('receiptMemo').value = item.memo || '';
-        
-        // チェックボックスの状態を復元
-        const receiptLowercaseCheckbox = document.getElementById('receiptLowercaseCheckbox');
-        if (receiptLowercaseCheckbox) {
-            receiptLowercaseCheckbox.checked = item.lowercaseRequested || false;
-        }
+        document.getElementById('receiptLowercaseCheckbox').checked = Boolean(item.lowercaseRequested);
         
         // 印刷ボタンの状態を更新
         const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
@@ -4449,12 +4466,7 @@ function restoreContentFromQROnly(qrData) {
         // 領収書データを復元
         document.getElementById('receiptCompanyName').value = qrData.companyName || '';
         document.getElementById('receiptMemo').value = qrData.memo || '';
-        
-        // チェックボックスの状態を復元
-        const receiptLowercaseCheckbox = document.getElementById('receiptLowercaseCheckbox');
-        if (receiptLowercaseCheckbox) {
-            receiptLowercaseCheckbox.checked = qrData.lowercaseRequested || false;
-        }
+        document.getElementById('receiptLowercaseCheckbox').checked = Boolean(qrData.lowercaseRequested);
         
         // 印刷ボタンの状態を更新
         const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
