@@ -2530,47 +2530,40 @@ function executeReceiptPrint(withMemo) {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    // 58mm幅のサーマルプリンター用設定（テキスト印刷と統一）
+    // 58mm幅のサーマルプリンター用設定（テキスト印刷と同じ）
     const mmToPx = 11.8; // 300DPI換算
     const canvasWidth = Math.round(58 * mmToPx);
     
-    // フォントサイズ設定（テキスト印刷と統一）
+    // フォント設定（テキスト印刷と同じサイズ）
     const textFontSize = 37;  // テキスト用のフォントサイズ
     const dateFontSize = 50;  // 日付・時刻用のフォントサイズ
     
-    // テキストの準備
-    let receiptText = '領収書\n\n';
-    receiptText += `宛名は 「${companyName}」\n`;
-    receiptText += 'こちらでお願い致します。\n';
-    receiptText += '(小文字でお願い致します。)\n\n';
+    // 高さ計算用の要素
+    const lineHeight = textFontSize * 1.2;
+    const dateLineHeight = dateFontSize * 1.2;
+    
+    // コンテンツの行数を計算
+    let contentLines = 2; // タイトル「領収書」+ 宛名
     
     if (withMemo && memo) {
-        receiptText += `但し ${memo} 代として\n\n`;
+        const memoLines = wrapTextForReceipt(memo, canvasWidth - 80, textFontSize);
+        contentLines += memoLines.length; // 但し書き行
     }
     
-    receiptText += '宛名が合っておりましたら、\n';
-    receiptText += '下部の枠にボールペン又は印鑑で\n';
-    receiptText += '印を付けて下さい✔️\n';
-    receiptText += '┌───────┐\n';
-    receiptText += '│　　　　　│\n';
-    receiptText += '│　　　　　│\n';
-    receiptText += '└───────┘\n';
+    contentLines += 1; // 確認メッセージ行
+    contentLines += 3; // 枠（3行分）
     
-    // テキストを行に分割
-    const lines = receiptText.split('\n');
+    // 高さ計算（テキスト印刷と同じ方式）
+    let textHeight = contentLines * lineHeight;
     
-    // テキストの行数から高さを計算
-    const lineHeight = textFontSize * 1.2;
-    let textHeight = lines.length * lineHeight;
+    // 日付・時刻のスペース追加（常にあり）
+    textHeight += dateLineHeight * 2.5; // 日付2行 + 余白
     
-    // 日付・時刻のスペースを追加（常にあり）
-    const receiptDateLineHeight = dateFontSize * 1.2;
-    textHeight += receiptDateLineHeight * 2.5; // 日付2行 + 余白
+    // QRコード用スペース（テキスト印刷と同じ）
+    const qrSpaceMargin = 90; // 日付あり：90px
     
-    // QRコード用スペースを調整（テキスト印刷と同じ）
-    const qrSpaceMargin = 90; // 日付あり・QRコードありの場合
+    const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin);
     
-    const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
     
@@ -2578,47 +2571,93 @@ function executeReceiptPrint(withMemo) {
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, canvasWidth, canvasHeight);
     
-    // テキスト描画設定
+    // テキスト描画設定（テキスト印刷と同じ）
     ctx.fillStyle = '#000000';
     ctx.font = `${textFontSize}px Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     
-    // 真ん中の位置を正確に計算（テキスト印刷と同じ）
-    const exactCenterX = Math.round(canvasWidth / 2) - 50; // -50 テキストの左右調整
+    // 真ん中の位置を計算
+    const exactCenterX = Math.round(canvasWidth / 2) - 50; // テキスト印刷と同じ調整
     
-    // テキストを描画（上部余白を小さく）
-    let yPos = 30; // 上余白を30pxに調整
-    for (let i = 0; i < lines.length; i++) {
-        ctx.fillText(lines[i], exactCenterX, yPos); // 真ん中に配置
-        yPos += lineHeight;
+    // テキストを描画（上部余白30px）
+    let yPos = 30;
+    
+    // タイトル「領収書」
+    ctx.fillText('領収書', exactCenterX, yPos);
+    yPos += lineHeight;
+    
+    // 宛名
+    ctx.fillText(`宛名は 「${companyName}」`, exactCenterX, yPos);
+    yPos += lineHeight;
+    ctx.fillText('こちらでお願い致します。', exactCenterX, yPos);
+    yPos += lineHeight;
+    ctx.fillText('(小文字でお願い致します。)', exactCenterX, yPos);
+    yPos += lineHeight;
+    
+    // 但し書き（メモ付きの場合）
+    if (withMemo && memo) {
+        const memoLines = wrapTextForReceipt(memo, canvasWidth - 80, textFontSize);
+        for (let i = 0; i < memoLines.length; i++) {
+            ctx.fillText(`但し ${memoLines[i]} 代として`, exactCenterX, yPos);
+            yPos += lineHeight;
+        }
     }
     
-    // QRコードを生成して左側に配置
+    // 確認メッセージ
+    yPos += lineHeight * 0.5; // 少し余白
+    ctx.fillText('宛名が合っておりましたら、', exactCenterX, yPos);
+    yPos += lineHeight;
+    ctx.fillText('下部の枠にボールペン又は印鑑で', exactCenterX, yPos);
+    yPos += lineHeight;
+    ctx.fillText('印を付けて下さい✔️', exactCenterX, yPos);
+    yPos += lineHeight;
+    
+    // 枠を描画（中央揃え）
+    yPos += lineHeight * 0.5; // 少し余白
+    const frameWidth = 200; // 枠の幅
+    const frameHeight = 60; // 枠の高さ
+    const frameX = (canvasWidth - frameWidth) / 2;
+    
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(frameX, yPos, frameWidth, frameHeight);
+    yPos += frameHeight + lineHeight;
+    
+    // QRコードを生成（管理ID方式）
     const managementId = 'RCP' + Date.now().toString(36).toUpperCase();
     const qrContent = `https://example.com/receipt/${managementId}`;
+    
+    // QRコード生成と配置（テキスト印刷と同じ方式）
+    let qrCodeCanvas = null;
     
     try {
         const qr = qrcode(0, 'M');
         qr.addData(qrContent);
         qr.make();
         
-        // QRコードサイズ設定（テキスト印刷と同じ）
-        const qrSize = 90;
-        const qrX = 30; // 左側に配置
-        const qrY = yPos + 10; // テキストの下に配置
+        // QRコードキャンバス作成
+        qrCodeCanvas = document.createElement('canvas');
+        const qrCtx = qrCodeCanvas.getContext('2d');
+        const qrSize = 120; // QRコードサイズ
+        qrCodeCanvas.width = qrSize;
+        qrCodeCanvas.height = qrSize;
         
-        // QRコードをキャンバスに描画
+        // QRコード背景を白に
+        qrCtx.fillStyle = '#FFFFFF';
+        qrCtx.fillRect(0, 0, qrSize, qrSize);
+        
+        // QRコードを描画
         const modules = qr.modules;
         const moduleSize = qrSize / modules.length;
         
-        ctx.fillStyle = '#000000';
+        qrCtx.fillStyle = '#000000';
         for (let row = 0; row < modules.length; row++) {
             for (let col = 0; col < modules[row].length; col++) {
                 if (modules[row][col]) {
-                    ctx.fillRect(
-                        qrX + col * moduleSize,
-                        qrY + row * moduleSize,
+                    qrCtx.fillRect(
+                        col * moduleSize,
+                        row * moduleSize,
                         moduleSize,
                         moduleSize
                     );
@@ -2626,11 +2665,16 @@ function executeReceiptPrint(withMemo) {
             }
         }
         
+        // QRコードをメインキャンバスの左側に配置
+        const qrX = 30; // 左側に配置
+        const qrY = yPos;
+        ctx.drawImage(qrCodeCanvas, qrX, qrY);
+        
     } catch (error) {
         console.warn('QRコード生成に失敗しました:', error);
     }
     
-    // 日付・時刻を描画（テキスト印刷と同じ形式）
+    // 日付・時刻を右側に配置（テキスト印刷と同じ方式）
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
@@ -2639,19 +2683,17 @@ function executeReceiptPrint(withMemo) {
     const minute = now.getMinutes();
     const second = now.getSeconds();
     
-    yPos += lineHeight * 0.3; // 余白を小さく
-    
-    // 日付・時刻用のフォント設定
+    // 日付・時刻のフォント設定
     ctx.font = `${dateFontSize}px Arial, sans-serif`;
-    const receiptDateLineHeight2 = dateFontSize * 1.2;
+    ctx.textAlign = 'center';
     
-    // QRコードありの場合：QRコードの右側に配置（テキスト印刷と同じ位置）
+    // QRコード印刷ありの場合：QRコードの右側に配置
     const dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
     
     // 日付行
     const dateText = `${year}年 ${month}月${day}日`;
     ctx.fillText(dateText, dateTimeX, yPos);
-    yPos += receiptDateLineHeight2;
+    yPos += dateLineHeight;
     
     // 時刻行
     const timeText = `${hour}時${minute}分${second}秒`;
