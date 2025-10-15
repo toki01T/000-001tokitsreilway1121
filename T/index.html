@@ -805,7 +805,8 @@ main {
 
 .receipt-input-group input[type="text"] {
     width: 100%;
-    max-width: 350px;
+    max-width: 200px;
+    height: 60px;
     padding: 0.5rem;
     border: 1px solid var(--input-border);
     border-radius: 5px;
@@ -876,6 +877,67 @@ main {
     .receipt-print-buttons button {
         font-size: 0.9rem;
         padding: 0.6rem 0.8rem;
+    }
+}
+
+.receipt-lowercase-option {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0;
+}
+
+.receipt-option-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.receipt-option-button:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.receipt-option-button.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.option-text {
+    font-size: 0.85rem;
+}
+
+.option-status {
+    font-weight: bold;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.2);
+    font-size: 0.75rem;
+}
+
+.receipt-option-button.active .option-status {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 500px) {
+    .receipt-input-group input[type="text"] {
+        font-size: 0.95rem;
+        padding: 0.4rem;
+        max-width: 150px;
+        height: 50px;
+    }
+    
+    .receipt-option-button {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
     }
 }
 
@@ -1235,6 +1297,12 @@ footer p {
                     <label for="receiptMemo">但し書き</label>
                     <input type="text" id="receiptMemo" />
                 </div>
+                <div class="receipt-lowercase-option">
+                    <button id="receiptLowercaseToggle" class="receipt-option-button">
+                        <span class="option-text">(小文字でお願い致します。)</span>
+                        <span class="option-status" id="receiptLowercaseStatus">OFF</span>
+                    </button>
+                </div>
                 <div class="receipt-print-buttons">
                     <button id="receiptPrintWithoutMemo" class="disabled">印刷</button>
                     <button id="receiptPrintWithMemo" class="disabled">但し書き印刷</button>
@@ -1548,6 +1616,22 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初期状態で印刷ボタンを無効化
     updateReceiptPrintButtons();
+    
+    // 領収書小文字オプションボタンのイベントハンドラー
+    const receiptLowercaseToggle = document.getElementById('receiptLowercaseToggle');
+    const receiptLowercaseStatus = document.getElementById('receiptLowercaseStatus');
+    let isLowercaseEnabled = false;
+    
+    if (receiptLowercaseToggle) {
+        receiptLowercaseToggle.onclick = preventDoubleTouch(() => {
+            isLowercaseEnabled = !isLowercaseEnabled;
+            receiptLowercaseToggle.classList.toggle('active', isLowercaseEnabled);
+            receiptLowercaseStatus.textContent = isLowercaseEnabled ? 'ON' : 'OFF';
+        });
+        if ('ontouchstart' in window) {
+            receiptLowercaseToggle.ontouchstart = receiptLowercaseToggle.onclick;
+        }
+    }
     
     // chipのイベント処理も改善
     const chipWith = document.getElementById('chipWith');
@@ -2030,20 +2114,10 @@ function showSection(mode) {
     } else {
         // 他のモードの時は必要に応じて表示を復元
         if (mode === 'image') {
-            // 画像モードでは、画像がプレビューされている場合のみ表示
-            const previewContainer = document.getElementById('imagePreviewContainer');
-            const hasImage = previewContainer && previewContainer.firstChild;
-            
             const imageDateTime = document.getElementById('dateTimeChoice');
             const imagePrintOptions = document.getElementById('imagePrintOptions');
-            
-            if (hasImage) {
-                if (imageDateTime) imageDateTime.style.display = 'flex';
-                if (imagePrintOptions) imagePrintOptions.style.display = 'flex';
-            } else {
-                if (imageDateTime) imageDateTime.style.display = 'none';
-                if (imagePrintOptions) imagePrintOptions.style.display = 'none';
-            }
+            if (imageDateTime) imageDateTime.style.display = 'flex';
+            if (imagePrintOptions) imagePrintOptions.style.display = 'flex';
         } else if (mode === 'text') {
             const textDateTime = document.getElementById('textDateTimeChoice');
             const textPrintOptions = document.getElementById('textPrintOptions');
@@ -2549,11 +2623,20 @@ function executeReceiptPrint(withMemo) {
     const dateFontSize = 50;  // 日付・時刻用のフォントサイズ
     
     // 領収書のテキスト内容を構築
+    // 小文字オプションの状態を取得
+    const lowercaseToggle = document.getElementById('receiptLowercaseToggle');
+    const isLowercaseEnabled = lowercaseToggle && lowercaseToggle.classList.contains('active');
+    
     let receiptLines = [];
     receiptLines.push('領収書');
     receiptLines.push('');
     receiptLines.push(`宛名は 「${companyName}」`);
     receiptLines.push('こちらでお願い致します。');
+    
+    // 小文字オプションが有効な場合のみ追加
+    if (isLowercaseEnabled) {
+        receiptLines.push('(小文字でお願い致します。)');
+    }
     receiptLines.push('');
     
     if (withMemo && memo) {
