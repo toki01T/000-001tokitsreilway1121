@@ -2602,39 +2602,32 @@ function executeReceiptPrint(withMemo) {
     }
     
     // QRコードを生成して左側に配置（テキスト印刷と同じ方式）
-    const managementId = 'RCP' + Date.now().toString(36).toUpperCase();
-    const qrContent = `https://example.com/receipt/${managementId}`;
+    let qrCodeCanvas = null;
     
-    try {
-        const qr = qrcode(0, 'M');
-        qr.addData(qrContent);
-        qr.make();
-        
-        // QRコードをキャンバスに描画（テキスト印刷と同じサイズ・配置）
-        const qrSize = 120;
-        const qrX = 30; // 左端から30pxの位置
-        const textEndY = yPos;
-        const qrY = textEndY + 20; // テキストの下、日付の横
-        
-        const modules = qr.modules;
-        const moduleSize = qrSize / modules.length;
-        
-        ctx.fillStyle = '#000000';
-        for (let row = 0; row < modules.length; row++) {
-            for (let col = 0; col < modules[row].length; col++) {
-                if (modules[row][col]) {
-                    ctx.fillRect(
-                        qrX + col * moduleSize,
-                        qrY + row * moduleSize,
-                        moduleSize,
-                        moduleSize
-                    );
-                }
-            }
+    // 履歴アイテムを先に作成
+    const historyItem = {
+        type: 'receipt',
+        mode: 'receipt',
+        companyName: companyName,
+        memo: withMemo ? memo : '',
+        data: '', // 後で設定
+        created: Date.now(),
+        qrPrinted: true // 常にQRコード付き
+    };
+    
+    // QRデータを生成
+    const qrData = generateQRData(historyItem);
+    if (qrData) {
+        qrCodeCanvas = generateQRCode(qrData);
+        if (qrCodeCanvas) {
+            const qrSize = 150; // QRコードのサイズ（テキスト印刷と同じ）
+            const qrX = 30; // 左端から30pxの位置
+            const textEndY = yPos;
+            const qrY = textEndY + 20; // テキストの下、日付の横
+            
+            // QRコードを描画
+            ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
         }
-        
-    } catch (error) {
-        console.warn('QRコード生成に失敗しました:', error);
     }
     
     // 日付・時刻を描画（テキスト印刷と同じ方式）
@@ -2663,6 +2656,9 @@ function executeReceiptPrint(withMemo) {
     
     // キャンバスをPNGデータURLに変換
     const pngDataUrl = canvas.toDataURL('image/png');
+    
+    // 履歴アイテムにデータを設定
+    historyItem.data = pngDataUrl;
     
     // jsPDFを使用してPDFを生成
     const { jsPDF } = window.jspdf;
@@ -2699,16 +2695,7 @@ function executeReceiptPrint(withMemo) {
     // 印刷実行
     window.location.href = printUrl;
     
-    // 履歴に保存
-    const historyItem = {
-        type: 'receipt',
-        companyName: companyName,
-        memo: withMemo ? memo : '',
-        managementId: managementId,
-        data: canvas.toDataURL("image/png"),
-        created: Date.now()
-    };
-    
+    // 履歴に保存（QRデータが既に含まれている）
     addHistory(historyItem);
     console.log('🧾 領収書印刷が完了しました');
 }
