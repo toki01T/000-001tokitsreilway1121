@@ -1001,17 +1001,39 @@ footer p {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-#qrReader {
-    width: 100%;
-    height: calc(100% - 65px);
-    background: #000;
-    object-fit: cover;
-}
-
-#closeQrReader {
+.qr-reader-buttons {
     position: absolute;
     top: 12px;
     right: 15px;
+    display: flex;
+    gap: 8px;
+}
+
+#flashlightToggle {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+#flashlightToggle:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+#flashlightToggle.active {
+    background: rgba(255,255,0,0.8);
+    color: #333;
+}
+
+#closeQrReader {
     background: rgba(255,255,255,0.2);
     color: white;
     border: none;
@@ -1198,7 +1220,10 @@ footer p {
     <div id="qrReaderContainer">
         <div id="qrReaderTitle">
             QRコード読み取り
-            <button id="closeQrReader">×</button>
+            <div class="qr-reader-buttons">
+                <button id="flashlightToggle">💡</button>
+                <button id="closeQrReader">×</button>
+            </div>
         </div>
         <div class="qr-instructions">
             QRコードを読み取ってください
@@ -1340,6 +1365,8 @@ let lastPreviewImageNaturalHeight = 0;
 
 // QRコード関連の変数
 let qrScanner = null;
+let flashlightEnabled = false;
+let currentStream = null;
 
 // 独自QRコード生成用の変数
 const QR_PREFIX = 'TOKI01_';
@@ -3786,10 +3813,16 @@ function generateQRCode(data) {
 function initQRReader() {
     const qrReaderModal = document.getElementById('qrReaderModal');
     const closeQrReader = document.getElementById('closeQrReader');
+    const flashlightToggle = document.getElementById('flashlightToggle');
     const qrReaderStatus = document.getElementById('qrReaderStatus');
     
     closeQrReader.onclick = () => {
         closeQRReader();
+    };
+    
+    // ライトボタンのイベントリスナー
+    flashlightToggle.onclick = () => {
+        toggleFlashlight();
     };
     
     // モーダル背景クリックで閉じる
@@ -3803,6 +3836,51 @@ function initQRReader() {
 // QRリーダーを閉じる関数
 async function closeQRReader() {
     await stopQRReader();
+}
+
+// ライト（フラッシュライト）機能
+async function toggleFlashlight() {
+    try {
+        const flashlightBtn = document.getElementById('flashlightToggle');
+        
+        if (!currentStream) {
+            console.warn('カメラストリームが利用できません');
+            return;
+        }
+        
+        const track = currentStream.getVideoTracks()[0];
+        if (!track) {
+            console.warn('ビデオトラックが見つかりません');
+            return;
+        }
+        
+        const capabilities = track.getCapabilities();
+        if (!capabilities.torch) {
+            console.warn('このデバイスはフラッシュライトをサポートしていません');
+            alert('このデバイスはライト機能をサポートしていません');
+            return;
+        }
+        
+        flashlightEnabled = !flashlightEnabled;
+        
+        await track.applyConstraints({
+            advanced: [{ torch: flashlightEnabled }]
+        });
+        
+        // ボタンの見た目を更新
+        if (flashlightEnabled) {
+            flashlightBtn.classList.add('active');
+            flashlightBtn.textContent = '🔦';
+        } else {
+            flashlightBtn.classList.remove('active');
+            flashlightBtn.textContent = '💡';
+        }
+        
+        console.log('ライト状態:', flashlightEnabled ? 'ON' : 'OFF');
+    } catch (error) {
+        console.error('ライト制御エラー:', error);
+        alert('ライトの制御に失敗しました');
+    }
 }
 
 // QRリーダー開始（フォールバック機能付き）
@@ -3923,6 +4001,13 @@ async function tryQrScannerLibrary(videoElement, statusElement) {
         );
         
         await window.qrScanner.start();
+        
+        // カメラストリームを取得してライト機能用に保存
+        if (videoElement.srcObject) {
+            currentStream = videoElement.srcObject;
+            console.log('カメラストリーム取得成功');
+        }
+        
         statusElement.textContent = ''; // メッセージ非表示
         console.log('✅ QrScannerライブラリ開始成功');
         return true;
@@ -4061,6 +4146,15 @@ async function stopQRReader() {
         } catch (error) {
             console.error('❌ ビデオストリーム停止エラー:', error);
         }
+    }
+    
+    // ライト状態をリセット
+    flashlightEnabled = false;
+    currentStream = null;
+    const flashlightBtn = document.getElementById('flashlightToggle');
+    if (flashlightBtn) {
+        flashlightBtn.classList.remove('active');
+        flashlightBtn.textContent = '💡';
     }
     
     // モーダルを閉じる
