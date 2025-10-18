@@ -853,15 +853,41 @@ main {
     border-color: var(--primary-color);
 }
 
-.receipt-print-buttons {
+.receipt-buttons-row {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
+    align-items: center;
     gap: 1rem;
-    margin-top: 1rem;
+    margin-top: 1.5rem;
+    width: 100%;
+    max-width: 350px;
 }
 
-.receipt-print-buttons button {
-    padding: 0.8rem 2rem;
+.receipt-option-btn {
+    padding: 0.6rem 1rem;
+    background: var(--button-bg);
+    color: var(--button-text);
+    border: 2px solid var(--input-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex: 1;
+    max-width: 160px;
+}
+
+.receipt-option-btn.selected {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.receipt-option-btn:hover {
+    border-color: var(--primary-color);
+}
+
+.receipt-print-btn {
+    padding: 0.8rem 1.5rem;
     background: var(--primary-color);
     color: white;
     border: none;
@@ -870,22 +896,24 @@ main {
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
-    min-width: 120px;
+    flex: 1;
+    max-width: 140px;
+    min-width: 100px;
 }
 
-.receipt-print-buttons button:hover {
+.receipt-print-btn:hover {
     background: var(--primary-hover);
     transform: translateY(-1px);
 }
 
-.receipt-print-buttons button.disabled {
+.receipt-print-btn.disabled {
     background: #ccc;
     color: #666;
     cursor: not-allowed;
     transform: none;
 }
 
-.receipt-print-buttons button.disabled:hover {
+.receipt-print-btn.disabled:hover {
     background: #ccc;
     transform: none;
 }
@@ -894,63 +922,32 @@ main {
     .receipt-input-group input[type="text"] {
         font-size: 0.95rem;
         padding: 0.4rem;
-        height: 70px;
+        height: 60px;
+    }
+    
+    .receipt-buttons-row {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+    
+    .receipt-option-btn,
+    .receipt-print-btn {
+        max-width: 100%;
+        width: 100%;
     }
     
     .receipt-option-btn {
         font-size: 0.8rem;
-        padding: 0.4rem 0.8rem;
+        padding: 0.5rem 0.8rem;
     }
 }
 
-.receipt-print-buttons {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    justify-content: center;
-}
-
-.receipt-print-buttons button {
-    flex: 1;
-    max-width: 150px;
-    padding: 0.75rem 1rem;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.receipt-print-buttons button:hover {
-    background: var(--button-hover);
-    transform: translateY(-2px);
-}
-
-.receipt-print-buttons button.disabled {
-    background: var(--disabled-bg);
-    color: var(--disabled-text);
-    cursor: not-allowed;
-    transform: none;
-}
-
-.receipt-print-buttons button.disabled:hover {
-    background: var(--disabled-bg);
-    transform: none;
-}
-
-@media (max-width: 500px) {
-    .receipt-print-buttons {
-        gap: 0.5rem;
-        margin-top: 1rem;
-    }
-    
-    .receipt-print-buttons button {
-        font-size: 0.9rem;
-        padding: 0.6rem 0.8rem;
-    }
+/* テキスト入力セクション用のスタイル */
+#textSection {
+    display: none;
+    width: 100%;
+    margin: 0 auto;
+    text-align: center;
 }
 
 footer {
@@ -964,12 +961,12 @@ footer {
     z-index: 100; /* 他の要素との重なりを制御 */
     pointer-events: none; /* フッター自体はクリックを通す */
 }
+
 footer p {
     margin: 0;
     color: var(--primary-color);
-    font-size: 12px;
-    pointer-events: auto; /* テキスト部分のみクリック可能 */
     font-size: 14px;
+    pointer-events: auto; /* テキスト部分のみクリック可能 */
 }
 
 /* QRコード関連のスタイル */
@@ -1309,13 +1306,11 @@ footer p {
                     <label for="receiptMemo">但し書き</label>
                     <input type="text" id="receiptMemo" placeholder="" />
                 </div>
-                <div class="receipt-option-group">
+                <div class="receipt-buttons-row">
                     <button id="receiptSmallTextBtn" class="receipt-option-btn" onclick="toggleSmallTextOption()">
                         <span class="option-text">(小文字でお願い致します。)</span>
                     </button>
-                </div>
-                <div class="receipt-print-buttons">
-                    <button id="receiptPrintBtn" class="disabled">印刷</button>
+                    <button id="receiptPrintBtn" class="receipt-print-btn disabled">印刷</button>
                 </div>
             </div>
         </section>
