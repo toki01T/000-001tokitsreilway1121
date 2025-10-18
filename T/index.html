@@ -2689,11 +2689,6 @@ function executeReceiptPrint(withMemo) {
     // QRデータを生成
     const qrData = generateQRData(historyItem);
     if (qrData) {
-        // 履歴を即座に保存
-        addHistory(historyItem).then(() => {
-            console.log('領収書履歴保存完了:', historyItem.managementId);
-        });
-        
         qrCodeCanvas = generateQRCode(qrData);
         if (qrCodeCanvas) {
             const qrSize = 150; // QRコードのサイズ（テキスト印刷と同じ）
@@ -2735,6 +2730,11 @@ function executeReceiptPrint(withMemo) {
     
     // 履歴アイテムにデータを設定
     historyItem.data = pngDataUrl;
+    
+    // 履歴を保存
+    addHistory(historyItem).then(() => {
+        console.log('領収書履歴保存完了:', historyItem.managementId);
+    });
     
     // jsPDFを使用してPDFを生成
     const { jsPDF } = window.jspdf;
