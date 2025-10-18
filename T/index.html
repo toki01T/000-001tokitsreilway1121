@@ -776,17 +776,22 @@ main {
     display: none;
     width: 100%;
     margin: 0 auto;
+    padding: 1rem;
     text-align: center;
 }
 
 .receipt-form-container {
-    margin: 1rem auto;
+    margin: 2rem auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    gap: 1.5rem;
     width: 100%;
     max-width: 450px;
+    background: var(--section-bg, rgba(255, 255, 255, 0.02));
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .receipt-input-group {
@@ -797,69 +802,95 @@ main {
 }
 
 .receipt-input-group label {
-    font-size: 1rem;
+    font-size: 1.1rem;
     color: var(--text-color);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     font-weight: bold;
+    text-align: center;
 }
 
 .receipt-input-group input[type="text"] {
     width: 100%;
     max-width: 350px;
-    height: 80px; /* 正方形に近い形にするため高さを追加 */
-    padding: 0.5rem;
-    border: 1px solid var(--input-border);
-    border-radius: 5px;
-    font-size: 1rem;
+    height: 60px;
+    padding: 1rem;
+    border: 2px solid var(--input-border);
+    border-radius: 8px;
+    font-size: 1.1rem;
     text-align: center;
     background: var(--input-bg);
     color: var(--input-text);
     box-sizing: border-box;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .receipt-input-group input[type="text"]:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 5px rgba(0, 163, 237, 0.3);
+    box-shadow: 0 0 0 3px rgba(0, 163, 237, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
 }
 
 .receipt-option-group {
     display: flex;
     justify-content: center;
-    margin: 1rem 0;
+    margin: 0.5rem 0;
 }
 
 .receipt-option-btn {
-    padding: 0.5rem 1rem;
+    padding: 0.75rem 1.25rem;
     background: var(--button-bg);
     color: var(--button-text);
     border: 2px solid var(--input-border);
-    border-radius: 5px;
+    border-radius: 8px;
     font-size: 0.9rem;
     cursor: pointer;
     transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .receipt-option-btn.selected {
     background: var(--primary-color);
     color: white;
     border-color: var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0, 163, 237, 0.3);
 }
 
 .receipt-option-btn:hover {
     border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 @media (max-width: 500px) {
+    .receipt-form-container {
+        margin: 1rem auto;
+        padding: 1.5rem 1rem;
+        gap: 1rem;
+    }
+    
     .receipt-input-group input[type="text"] {
-        font-size: 0.95rem;
-        padding: 0.4rem;
-        height: 70px;
+        font-size: 1rem;
+        padding: 0.75rem;
+        height: 55px;
+        max-width: 320px;
     }
     
     .receipt-option-btn {
         font-size: 0.8rem;
-        padding: 0.4rem 0.8rem;
+        padding: 0.6rem 1rem;
+    }
+    
+    .receipt-print-buttons {
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+    
+    .receipt-print-buttons button {
+        font-size: 0.9rem;
+        padding: 0.6rem 1.2rem;
+        min-width: 130px;
     }
 }
 
@@ -868,25 +899,27 @@ main {
     gap: 1rem;
     margin-top: 1.5rem;
     justify-content: center;
+    align-items: center;
 }
 
 .receipt-print-buttons button {
-    flex: 1;
-    max-width: 150px;
-    padding: 0.75rem 1rem;
+    min-width: 150px;
+    padding: 0.75rem 1.5rem;
     background: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     font-size: 1rem;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.receipt-print-buttons button:hover {
+.receipt-print-buttons button:hover:not(.disabled) {
     background: var(--button-hover);
     transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .receipt-print-buttons button.disabled {
@@ -894,23 +927,13 @@ main {
     color: var(--disabled-text);
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
 }
 
 .receipt-print-buttons button.disabled:hover {
     background: var(--disabled-bg);
     transform: none;
-}
-
-@media (max-width: 500px) {
-    .receipt-print-buttons {
-        gap: 0.5rem;
-        margin-top: 1rem;
-    }
-    
-    .receipt-print-buttons button {
-        font-size: 0.9rem;
-        padding: 0.6rem 0.8rem;
-    }
+    box-shadow: none;
 }
 
 footer {
@@ -1275,8 +1298,8 @@ footer p {
                     </button>
                 </div>
                 <div class="receipt-print-buttons">
-                    <button id="receiptPrintWithoutMemo" class="disabled">印刷</button>
-                    <button id="receiptPrintWithMemo" class="disabled">但し書き印刷</button>
+                    <button id="receiptPrintWithoutMemo" class="disabled" style="display: none;">印刷</button>
+                    <button id="receiptPrintWithMemo" class="disabled" style="display: none;">但し書き印刷</button>
                 </div>
             </div>
         </section>
@@ -1587,8 +1610,28 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateReceiptPrintButtons() {
         const hasCompanyName = receiptCompanyName.value.trim() !== '';
-        receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
-        receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
+        const hasMemo = receiptMemo.value.trim() !== '';
+        
+        const printWithoutMemoBtn = document.getElementById('receiptPrintWithoutMemo');
+        const printWithMemoBtn = document.getElementById('receiptPrintWithMemo');
+        
+        if (hasCompanyName) {
+            if (hasMemo) {
+                // 但し書きがある場合：但し書き印刷ボタンのみ表示
+                printWithoutMemoBtn.style.display = 'none';
+                printWithMemoBtn.style.display = 'block';
+                printWithMemoBtn.classList.remove('disabled');
+            } else {
+                // 宛名のみの場合：印刷ボタンのみ表示
+                printWithoutMemoBtn.style.display = 'block';
+                printWithMemoBtn.style.display = 'none';
+                printWithoutMemoBtn.classList.remove('disabled');
+            }
+        } else {
+            // 宛名が空の場合：両方のボタンを非表示
+            printWithoutMemoBtn.style.display = 'none';
+            printWithMemoBtn.style.display = 'none';
+        }
     }
     
     if (receiptCompanyName) {
