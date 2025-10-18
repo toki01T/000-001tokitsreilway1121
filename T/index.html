@@ -2689,7 +2689,7 @@ function executeReceiptPrint(withMemo) {
     // QRデータを生成
     const qrData = generateQRData(historyItem);
     if (qrData) {
-        // 履歴を即座に保存（テキスト印刷と同じ方式）
+        // 履歴を即座に保存
         addHistory(historyItem).then(() => {
             console.log('領収書履歴保存完了:', historyItem.managementId);
         });
