@@ -777,7 +777,6 @@ main {
     width: 100%;
     margin: 0 auto;
     text-align: center;
-    padding: 1rem;
 }
 
 .receipt-form-container {
@@ -785,13 +784,9 @@ main {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1.5rem;
+    gap: 1rem;
     width: 100%;
-    max-width: 400px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    padding: 2rem 1rem;
-    border: 1px solid var(--border-color);
+    max-width: 450px;
 }
 
 .receipt-input-group {
@@ -799,21 +794,22 @@ main {
     flex-direction: column;
     align-items: center;
     width: 100%;
-    gap: 0.8rem;
+    margin-bottom: 0.5rem;
 }
 
 .receipt-input-group label {
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: var(--text-color);
+    margin-bottom: 0.5rem;
     font-weight: bold;
-    margin: 0;
+    text-align: center;
 }
 
 .receipt-input-group input[type="text"] {
     width: 100%;
-    max-width: 320px;
+    max-width: 350px;
     height: 60px;
-    padding: 0.8rem 1rem;
+    padding: 0.8rem;
     border: 2px solid var(--input-border);
     border-radius: 8px;
     font-size: 1rem;
@@ -821,52 +817,47 @@ main {
     background: var(--input-bg);
     color: var(--input-text);
     box-sizing: border-box;
-    transition: all 0.3s ease;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .receipt-input-group input[type="text"]:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 8px rgba(0, 163, 237, 0.3);
-    transform: translateY(-1px);
+    box-shadow: 0 0 5px rgba(0, 163, 237, 0.3);
 }
 
 .receipt-option-group {
     display: flex;
     justify-content: center;
-    margin: 0;
-    width: 100%;
+    margin: 1rem 0;
 }
 
 .receipt-option-btn {
-    padding: 0.6rem 1.2rem;
+    padding: 0.5rem 1rem;
     background: var(--button-bg);
     color: var(--button-text);
     border: 2px solid var(--input-border);
-    border-radius: 8px;
+    border-radius: 5px;
     font-size: 0.9rem;
     cursor: pointer;
     transition: all 0.3s ease;
-    white-space: nowrap;
 }
 
 .receipt-option-btn.selected {
     background: var(--primary-color);
     color: white;
     border-color: var(--primary-color);
-    transform: translateY(-1px);
 }
 
 .receipt-option-btn:hover {
     border-color: var(--primary-color);
-    transform: translateY(-1px);
 }
 
 .receipt-print-buttons {
     display: flex;
     justify-content: center;
-    margin: 1rem 0;
-    width: 100%;
+    gap: 1rem;
+    margin-top: 1rem;
 }
 
 .receipt-print-buttons button {
@@ -888,14 +879,14 @@ main {
 }
 
 .receipt-print-buttons button.disabled {
-    background: var(--disabled-bg);
-    color: var(--disabled-text);
+    background: #ccc;
+    color: #666;
     cursor: not-allowed;
     transform: none;
 }
 
 .receipt-print-buttons button.disabled:hover {
-    background: var(--disabled-bg);
+    background: #ccc;
     transform: none;
 }
 
@@ -1324,7 +1315,7 @@ footer p {
                     </button>
                 </div>
                 <div class="receipt-print-buttons">
-                    <button id="receiptPrintButton" class="disabled">印刷</button>
+                    <button id="receiptPrintBtn" class="disabled">印刷</button>
                 </div>
             </div>
         </section>
@@ -1604,17 +1595,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // 領収書印刷ボタンのイベントハンドラー
-    const receiptPrintButton = document.getElementById('receiptPrintButton');
+    const receiptPrintBtn = document.getElementById('receiptPrintBtn');
     
-    if (receiptPrintButton) {
-        receiptPrintButton.onclick = preventDoubleTouch(() => {
-            if (!receiptPrintButton.classList.contains('disabled')) {
-                const hasMemo = document.getElementById('receiptMemo').value.trim() !== '';
+    if (receiptPrintBtn) {
+        receiptPrintBtn.onclick = preventDoubleTouch(() => {
+            if (!receiptPrintBtn.classList.contains('disabled')) {
+                const receiptMemo = document.getElementById('receiptMemo');
+                const hasMemo = receiptMemo && receiptMemo.value.trim() !== '';
                 executeReceiptPrint(hasMemo); // メモの有無に応じて印刷
             }
         });
         if ('ontouchstart' in window) {
-            receiptPrintButton.ontouchstart = receiptPrintButton.onclick;
+            receiptPrintBtn.ontouchstart = receiptPrintBtn.onclick;
         }
     }
     
@@ -1626,14 +1618,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const hasCompanyName = receiptCompanyName.value.trim() !== '';
         const hasMemo = receiptMemo.value.trim() !== '';
         
-        // ボタンの有効/無効状態
-        receiptPrintButton.classList.toggle('disabled', !hasCompanyName);
-        
-        // ボタンのテキスト切り替え
-        if (hasCompanyName && hasMemo) {
-            receiptPrintButton.textContent = '但し書き印刷';
-        } else {
-            receiptPrintButton.textContent = '印刷';
+        if (receiptPrintBtn) {
+            receiptPrintBtn.classList.toggle('disabled', !hasCompanyName);
+            
+            // ボタンのテキストを動的に変更
+            if (hasMemo) {
+                receiptPrintBtn.textContent = '但し書き印刷';
+            } else {
+                receiptPrintBtn.textContent = '印刷';
+            }
         }
     }
     
@@ -1643,9 +1636,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (receiptMemo) {
         receiptMemo.addEventListener('input', updateReceiptPrintButtons);
     }
-    
-    // 初期状態で印刷ボタンを更新
-    updateReceiptPrintButtons();
     
     // 初期状態で印刷ボタンを無効化
     updateReceiptPrintButtons();
@@ -1965,7 +1955,11 @@ function loadHistoryList() {
                     document.getElementById('receiptCompanyName').value = item.companyName || '';
                     document.getElementById('receiptMemo').value = item.memo || '';
                     // 印刷ボタンの状態を更新
-                    updateReceiptPrintButtons();
+                    const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
+                    const receiptPrintWithoutMemo = document.getElementById('receiptPrintWithoutMemo');
+                    const hasCompanyName = item.companyName && item.companyName.trim() !== '';
+                    receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
+                    receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
                 } else {
                     showSection('text');
                     document.getElementById('textInput').value = item.data;
@@ -4477,7 +4471,16 @@ function restoreContentFromHistory(item) {
         }
         
         // 印刷ボタンの状態を更新
-        updateReceiptPrintButtons();
+        const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
+        const receiptPrintWithoutMemo = document.getElementById('receiptPrintWithoutMemo');
+        const hasCompanyName = item.companyName && item.companyName.trim() !== '';
+        
+        if (receiptPrintWithMemo) {
+            receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
+        }
+        if (receiptPrintWithoutMemo) {
+            receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
+        }
         
         console.log('=== 領収書QR復元完了 ===');
     } else {
@@ -4518,7 +4521,16 @@ function restoreContentFromQROnly(qrData) {
         document.getElementById('receiptMemo').value = qrData.memo || '';
         
         // 印刷ボタンの状態を更新
-        updateReceiptPrintButtons();
+        const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
+        const receiptPrintWithoutMemo = document.getElementById('receiptPrintWithoutMemo');
+        const hasCompanyName = qrData.companyName && qrData.companyName.trim() !== '';
+        
+        if (receiptPrintWithMemo) {
+            receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
+        }
+        if (receiptPrintWithoutMemo) {
+            receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
+        }
         
         alert('QRコードから領収書情報を復元しました！');
     } else {
