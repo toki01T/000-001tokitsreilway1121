@@ -4460,8 +4460,11 @@ function restoreContentFromHistory(item) {
         showSection('receipt');
         
         // 領収書データを復元
-        document.getElementById('receiptCompanyName').value = item.companyName || '';
-        document.getElementById('receiptMemo').value = item.memo || '';
+        const receiptCompanyName = document.getElementById('receiptCompanyName');
+        const receiptMemo = document.getElementById('receiptMemo');
+        
+        receiptCompanyName.value = item.companyName || '';
+        receiptMemo.value = item.memo || '';
         
         // 小文字オプションの状態を復元
         receiptSmallTextEnabled = item.smallTextEnabled || false;
@@ -4470,17 +4473,9 @@ function restoreContentFromHistory(item) {
             smallTextBtn.classList.toggle('selected', receiptSmallTextEnabled);
         }
         
-        // 印刷ボタンの状態を更新
-        const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
-        const receiptPrintWithoutMemo = document.getElementById('receiptPrintWithoutMemo');
-        const hasCompanyName = item.companyName && item.companyName.trim() !== '';
-        
-        if (receiptPrintWithMemo) {
-            receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
-        }
-        if (receiptPrintWithoutMemo) {
-            receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
-        }
+        // 入力イベントを発火させてボタンの状態を更新
+        receiptCompanyName.dispatchEvent(new Event('input', { bubbles: true }));
+        receiptMemo.dispatchEvent(new Event('input', { bubbles: true }));
         
         console.log('=== 領収書QR復元完了 ===');
     } else {
@@ -4517,20 +4512,22 @@ function restoreContentFromQROnly(qrData) {
         showSection('receipt');
         
         // 領収書データを復元
-        document.getElementById('receiptCompanyName').value = qrData.companyName || '';
-        document.getElementById('receiptMemo').value = qrData.memo || '';
+        const receiptCompanyName = document.getElementById('receiptCompanyName');
+        const receiptMemo = document.getElementById('receiptMemo');
         
-        // 印刷ボタンの状態を更新
-        const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
-        const receiptPrintWithoutMemo = document.getElementById('receiptPrintWithoutMemo');
-        const hasCompanyName = qrData.companyName && qrData.companyName.trim() !== '';
+        receiptCompanyName.value = qrData.companyName || '';
+        receiptMemo.value = qrData.memo || '';
         
-        if (receiptPrintWithMemo) {
-            receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
+        // 小文字オプションの状態を復元
+        receiptSmallTextEnabled = qrData.smallTextEnabled || false;
+        const smallTextBtn = document.getElementById('receiptSmallTextBtn');
+        if (smallTextBtn) {
+            smallTextBtn.classList.toggle('selected', receiptSmallTextEnabled);
         }
-        if (receiptPrintWithoutMemo) {
-            receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
-        }
+        
+        // 入力イベントを発火させてボタンの状態を更新
+        receiptCompanyName.dispatchEvent(new Event('input', { bubbles: true }));
+        receiptMemo.dispatchEvent(new Event('input', { bubbles: true }));
         
         alert('QRコードから領収書情報を復元しました！');
     } else {
