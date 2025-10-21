@@ -1530,6 +1530,22 @@ let modeNames = {
 // 小文字オプションの状態管理
 let receiptSmallTextEnabled = false;
 
+// PWA対応: 適切なコールバックURLを生成する関数
+function getPWACompatibleURL() {
+    // PWAとして動作しているかチェック
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  window.navigator.standalone || 
+                  document.referrer.includes('android-app://');
+    
+    if (isPWA) {
+        // PWAの場合は起動URLを使用
+        return window.location.origin + window.location.pathname;
+    } else {
+        // 通常のブラウザの場合は現在のURLを使用
+        return window.location.href;
+    }
+}
+
 // 小文字オプションのトグル関数
 function toggleSmallTextOption() {
     receiptSmallTextEnabled = !receiptSmallTextEnabled;
@@ -2084,7 +2100,42 @@ window.onload = function() {
     
     // 【枚数印刷の自動続行システム】
     checkAndContinuePrinting();
+    
+    // PWA初期化処理
+    initializePWA();
 };
+
+// PWA初期化関数
+function initializePWA() {
+    // URLパラメータでモード指定があればそのモードに切り替え
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    
+    if (mode && ['image', 'text', 'signature', 'receipt'].includes(mode)) {
+        showSection(mode);
+        
+        // モードトグルボタンの更新
+        const modeToggle = document.getElementById('modeToggleUnified');
+        if (modeToggle) {
+            const modeTexts = {
+                image: '画像・T\'s券',
+                text: 'テキスト',
+                signature: '手書き(電子サイン)',
+                receipt: '領収書宛名'
+            };
+            modeToggle.textContent = modeTexts[mode] || '画像・T\'s券';
+        }
+        
+        console.log('PWA: モード切り替え完了:', mode);
+    }
+    
+    // PWAステータスの表示（デバッグ用）
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('✅ PWAモードで動作中');
+    } else {
+        console.log('🌐 ブラウザモードで動作中');
+    }
+}
 
 // 枚数印刷の続行をチェックする関数
 function checkAndContinuePrinting() {
@@ -2106,8 +2157,8 @@ function checkAndContinuePrinting() {
             
             // 次の印刷を実行
             const nextPrintUrl = 'siiprintagent://1.0/print?' +
-                                'CallbackSuccess='  + encodeURIComponent(job.thisPage) + '&' +
-                                'CallbackFail='     + encodeURIComponent(job.thisPage) + '&' +
+                                'CallbackSuccess='  + encodeURIComponent(getPWACompatibleURL()) + '&' +
+                                'CallbackFail='     + encodeURIComponent(getPWACompatibleURL()) + '&' +
                                 'Format='           + 'pdf' + '&' +
                                 'Data='             + encodeURIComponent(job.pdfData) + '&' +
                                 'SelectOnError='    + 'yes' + '&' +
@@ -2611,7 +2662,7 @@ function executeSignaturePrint() {
             // PDFをBase64形式で取得
             const pdfBase64 = pdf.output('datauristring').split(',')[1];
             
-            let thisPage = window.location.href;
+            let thisPage = getPWACompatibleURL();
             let printUrl = 'siiprintagent://1.0/print?' +
                           'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                           'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
@@ -2841,7 +2892,7 @@ function executeReceiptPrint(withMemo) {
     // PDFをBase64形式で取得
     const pdfBase64 = pdf.output('datauristring').split(',')[1];
     
-    let thisPage = window.location.href;
+    let thisPage = getPWACompatibleURL();
     let printUrl = 'siiprintagent://1.0/print?' +
                   'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                   'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
@@ -3279,7 +3330,7 @@ function sendToPrintAssist(event) {
                     // PDFをBase64形式で取得
                     const pdfBase64 = pdf.output('datauristring').split(',')[1];
                     
-                    let thisPage = window.location.href;
+                    let thisPage = getPWACompatibleURL();
                     let printUrlImage = 'siiprintagent://1.0/print?' +
                                       'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                                       'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
@@ -3592,7 +3643,7 @@ function printText() {
         // PDFをBase64形式で取得
         const pdfBase64 = pdf.output('datauristring').split(',')[1];
         
-        let thisPage = window.location.href;
+        let thisPage = getPWACompatibleURL();
         let printUrl = 'siiprintagent://1.0/print?' +
                       'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                       'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
