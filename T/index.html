@@ -942,6 +942,166 @@ main {
     }
 }
 
+/* T's券セクション用のスタイル */
+#ticketSection {
+    display: none;
+    width: 100%;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.ticket-form-container {
+    margin: 1rem auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    max-width: 450px;
+}
+
+.ticket-input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+
+.ticket-input-group label {
+    font-size: 1rem;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+.ticket-input-group input[type="text"] {
+    width: 100%;
+    max-width: 350px;
+    height: 60px;
+    padding: 0.8rem;
+    border: 2px solid var(--input-border);
+    border-radius: 8px;
+    font-size: 1rem;
+    text-align: center;
+    background: var(--input-bg);
+    color: var(--input-text);
+    box-sizing: border-box;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.ticket-input-group input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 5px rgba(0, 163, 237, 0.3);
+}
+
+.ticket-buttons-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    width: 100%;
+    max-width: 350px;
+}
+
+.ticket-option-btn {
+    padding: 0.6rem 1rem;
+    background: var(--button-bg);
+    color: var(--button-text);
+    border: 2px solid var(--input-border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex: 1;
+    max-width: 160px;
+}
+
+.ticket-option-btn.selected {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.ticket-option-btn:hover {
+    border-color: var(--primary-color);
+}
+
+.ticket-print-btn {
+    padding: 0.8rem 1.5rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex: 1;
+    max-width: 140px;
+    min-width: 100px;
+}
+
+.ticket-print-btn:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.ticket-print-btn.disabled {
+    background: #ccc;
+    color: #666;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.ticket-print-btn.disabled:hover {
+    background: #ccc;
+    transform: none;
+}
+
+.ticket-info {
+    margin-top: 1rem;
+    padding: 0.5rem;
+    background: var(--chip-bg);
+    border-radius: 5px;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.ticket-serial-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+@media (max-width: 500px) {
+    .ticket-input-group input[type="text"] {
+        font-size: 0.95rem;
+        padding: 0.4rem;
+        height: 60px;
+    }
+    
+    .ticket-buttons-row {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+    
+    .ticket-option-btn,
+    .ticket-print-btn {
+        max-width: 100%;
+        width: 100%;
+    }
+    
+    .ticket-option-btn {
+        font-size: 0.8rem;
+        padding: 0.5rem 0.8rem;
+    }
+}
+
 /* テキスト入力セクション用のスタイル */
 #textSection {
     display: none;
@@ -1339,6 +1499,33 @@ footer p {
                 </div>
             </div>
         </section>
+        <section id="ticketSection" style="display:none;">
+            <div class="ticket-form-container">
+                <div class="ticket-input-group">
+                    <label for="ticketDestination">行き先</label>
+                    <input type="text" id="ticketDestination" placeholder="行き先を入力" />
+                </div>
+                <div class="ticket-input-group">
+                    <label for="ticketPrice">運賃</label>
+                    <input type="text" id="ticketPrice" placeholder="運賃を入力" />
+                </div>
+                <div class="ticket-input-group">
+                    <label for="ticketFromStation">発駅</label>
+                    <input type="text" id="ticketFromStation" placeholder="発駅を入力" />
+                </div>
+                <div class="ticket-buttons-row">
+                    <button id="ticketSmallTextBtn" class="ticket-option-btn" onclick="toggleTicketSmallTextOption()">
+                        <span class="option-text">(小文字でお願い致します。)</span>
+                    </button>
+                    <button id="ticketPrintBtn" class="ticket-print-btn disabled">発券</button>
+                </div>
+                <div class="ticket-info">
+                    <div class="ticket-serial-info">
+                        <span>次回連番: </span><span id="nextTicketSerial">001</span>
+                    </div>
+                </div>
+            </div>
+        </section>
         <div id="dateDisplay"></div>
         <div id="timeDisplay"></div>
     </div>
@@ -1495,7 +1682,7 @@ const historyList = document.getElementById('historyList');
 const modeToggleUnified = document.getElementById('modeToggleUnified');
 const historyDrawerBg = document.getElementById('historyDrawerBg');
 let currentHistoryType = 'image';
-let modeOrder = ['image', 'text', 'signature', 'receipt'];
+let modeOrder = ['image', 'ticket', 'text', 'signature', 'receipt'];
 let modeNames = {
     image: '画像・T’s券',
     text: 'テキスト',
@@ -1505,6 +1692,8 @@ let modeNames = {
 
 // 小文字オプションの状態管理
 let receiptSmallTextEnabled = false;
+let ticketSmallTextEnabled = false;
+let ticketSerialNumber = 1; // 001-999の連番管理
 
 // 小文字オプションのトグル関数
 function toggleSmallTextOption() {
@@ -1513,6 +1702,49 @@ function toggleSmallTextOption() {
     if (btn) {
         btn.classList.toggle('selected', receiptSmallTextEnabled);
     }
+}
+
+function toggleTicketSmallTextOption() {
+    ticketSmallTextEnabled = !ticketSmallTextEnabled;
+    const btn = document.getElementById('ticketSmallTextBtn');
+    if (btn) {
+        btn.classList.toggle('selected', ticketSmallTextEnabled);
+    }
+}
+
+// T's券連番管理
+function getNextTicketSerial() {
+    const current = ticketSerialNumber;
+    ticketSerialNumber++;
+    if (ticketSerialNumber > 999) {
+        ticketSerialNumber = 1; // 999から001に戻る
+    }
+    updateTicketSerialDisplay();
+    return current.toString().padStart(3, '0');
+}
+
+function updateTicketSerialDisplay() {
+    const serialDisplay = document.getElementById('nextTicketSerial');
+    if (serialDisplay) {
+        serialDisplay.textContent = ticketSerialNumber.toString().padStart(3, '0');
+    }
+}
+
+// ローカルストレージから連番を読み込み
+function loadTicketSerial() {
+    const saved = localStorage.getItem('ticketSerialNumber');
+    if (saved) {
+        ticketSerialNumber = parseInt(saved, 10);
+        if (isNaN(ticketSerialNumber) || ticketSerialNumber < 1 || ticketSerialNumber > 999) {
+            ticketSerialNumber = 1;
+        }
+    }
+    updateTicketSerialDisplay();
+}
+
+// ローカルストレージに連番を保存
+function saveTicketSerial() {
+    localStorage.setItem('ticketSerialNumber', ticketSerialNumber.toString());
 }
 
 function setModeToggle(mode) {
@@ -1661,6 +1893,49 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初期状態で印刷ボタンを無効化
     updateReceiptPrintButtons();
+    
+    // T's券印刷ボタンのイベントハンドラー
+    const ticketPrintBtn = document.getElementById('ticketPrintBtn');
+    
+    if (ticketPrintBtn) {
+        ticketPrintBtn.onclick = preventDoubleTouch(() => {
+            if (!ticketPrintBtn.classList.contains('disabled')) {
+                executeTicketPrint();
+            }
+        });
+        if ('ontouchstart' in window) {
+            ticketPrintBtn.ontouchstart = ticketPrintBtn.onclick;
+        }
+    }
+    
+    // T's券フォームの入力監視
+    const ticketDestination = document.getElementById('ticketDestination');
+    const ticketPrice = document.getElementById('ticketPrice');
+    const ticketFromStation = document.getElementById('ticketFromStation');
+    
+    function updateTicketPrintButtons() {
+        const hasDestination = ticketDestination.value.trim() !== '';
+        const hasPrice = ticketPrice.value.trim() !== '';
+        const hasFromStation = ticketFromStation.value.trim() !== '';
+        const allFieldsFilled = hasDestination && hasPrice && hasFromStation;
+        
+        if (ticketPrintBtn) {
+            ticketPrintBtn.classList.toggle('disabled', !allFieldsFilled);
+        }
+    }
+    
+    if (ticketDestination) {
+        ticketDestination.addEventListener('input', updateTicketPrintButtons);
+    }
+    if (ticketPrice) {
+        ticketPrice.addEventListener('input', updateTicketPrintButtons);
+    }
+    if (ticketFromStation) {
+        ticketFromStation.addEventListener('input', updateTicketPrintButtons);
+    }
+    
+    // T's券の初期状態で印刷ボタンを無効化
+    updateTicketPrintButtons();
     
     // chipのイベント処理も改善
     const chipWith = document.getElementById('chipWith');
@@ -2116,12 +2391,13 @@ function checkAndContinuePrinting() {
 }
 function showSection(mode) {
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
+    document.getElementById('ticketSection').style.display = (mode === 'ticket') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
     document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
     document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
     
-    // 領収書モードの時は日付・時刻選択と枚数選択を非表示
-    if (mode === 'receipt') {
+    // 領収書モードまたはT's券モードの時は日付・時刻選択と枚数選択を非表示
+    if (mode === 'receipt' || mode === 'ticket') {
         // 日付・時刻選択を非表示
         const dateTimeChoices = document.querySelectorAll('#dateTimeChoice, #textDateTimeChoice, #signatureDateTimeChoice');
         dateTimeChoices.forEach(element => {
@@ -2862,6 +3138,162 @@ function wrapTextForReceipt(text, maxWidth, fontSize) {
     }
     
     return lines;
+}
+
+// --- T's券発券 ---
+function executeTicketPrint() {
+    console.log('🎫 T\'s券発券を開始します');
+    
+    const destination = document.getElementById('ticketDestination').value;
+    const price = document.getElementById('ticketPrice').value;
+    const fromStation = document.getElementById('ticketFromStation').value;
+    
+    if (!destination || !price || !fromStation) {
+        alert('すべての項目を入力してください');
+        return;
+    }
+    
+    // T's券のテキスト内容を構築
+    const ticketLines = [];
+    
+    // 上部の連番
+    const serialNumber = getNextTicketSerial();
+    ticketLines.push(`01${serialNumber}`);
+    ticketLines.push(''); // 空行
+    
+    // メイン情報
+    ticketLines.push('【T\'s券】');
+    ticketLines.push('車内補充券');
+    ticketLines.push(''); // 空行
+    
+    // 発駅・行き先・運賃
+    ticketLines.push(`発: ${fromStation}`);
+    ticketLines.push(`着: ${destination}`);
+    ticketLines.push(`運賃: ¥${price}`);
+    ticketLines.push(''); // 空行
+    
+    // 日付（本日の日付）
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    ticketLines.push(`${year}.${month}.${day}`);
+    
+    // テキストを結合
+    const ticketText = ticketLines.join('\n');
+    
+    // 小文字変換
+    let finalText = ticketText;
+    if (ticketSmallTextEnabled) {
+        finalText = toZenkaku(finalText);
+    }
+    
+    // Canvas作成と描画
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // T's券専用のサイズ設定（58mm幅に最適化）
+    const canvasWidth = 384; // 58mm相当
+    const textFontSize = 18;
+    const lineHeight = textFontSize * 1.3;
+    
+    // 行数計算
+    const lines = finalText.split('\n');
+    const textHeight = lines.length * lineHeight;
+    
+    // キャンバス高さ設定
+    const canvasHeight = Math.round(textHeight + 120); // 上下余白
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    
+    // 背景を白にする
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    
+    // テキスト描画設定
+    ctx.fillStyle = '#000000';
+    ctx.font = `${textFontSize}px Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    
+    // テキストを描画
+    const centerX = Math.round(canvasWidth / 2);
+    let yPos = 40; // 上余白
+    
+    for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], centerX, yPos);
+        yPos += lineHeight;
+    }
+    
+    // 履歴アイテムを作成
+    const historyItem = {
+        type: 'ticket',
+        mode: 'ticket',
+        destination: destination,
+        price: price,
+        fromStation: fromStation,
+        serialNumber: serialNumber,
+        smallTextEnabled: ticketSmallTextEnabled,
+        data: '', // 後で設定
+        created: Date.now(),
+        qrPrinted: true // 常にQRコード付き
+    };
+    
+    // QRデータを生成
+    const qrData = generateQRData(historyItem);
+    if (qrData) {
+        const qrCodeCanvas = generateQRCode(qrData);
+        if (qrCodeCanvas) {
+            const qrSize = 100; // QRコードのサイズ
+            const qrX = 30; // 左端から30pxの位置
+            const qrY = yPos + 10; // テキストの下
+            
+            // QRコードを描画
+            ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
+        }
+    }
+    
+    // Canvas→PNG→Base64
+    const pngDataUrl = canvas.toDataURL('image/png');
+    const base64Data = pngDataUrl.split(',')[1];
+    
+    // 履歴にデータを設定
+    historyItem.data = pngDataUrl;
+    
+    // 履歴に保存
+    addHistory(historyItem).then(() => {
+        console.log('T\'s券履歴保存完了:', historyItem.managementId);
+    }).catch(error => {
+        console.error('T\'s券履歴保存エラー:', error);
+    });
+    
+    // 連番を保存
+    saveTicketSerial();
+    
+    // PDFに変換して印刷
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [58, Math.round(canvasHeight * 0.264583)] // 解像度変換
+    });
+    
+    pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, Math.round(canvasHeight * 0.264583));
+    const pdfBase64 = pdf.output('datauristring').split(',')[1];
+    
+    // PrintAssist印刷URL構築
+    const printUrl = 'printassist://print?' +
+                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                  'SelectOnError='    + 'yes' + '&' +
+                  'CutType='          + 'full' + '&' +
+                  'CutFeed='          + 'yes' + '&' +
+                  'FitToWidth='       + 'no' + '&' +
+                  'PaperWidth='       + '58';
+    
+    // 印刷実行
+    window.location.href = printUrl;
+    
+    console.log('🎫 T\'s券発券が完了しました');
 }
 
 // --- 画像印刷 ---
@@ -3710,6 +4142,14 @@ if ('serviceWorker' in navigator) {
         }).catch(function(error) {
             console.log('Service Worker登録失敗:', error);
         });
+        
+        // T's券連番を読み込み
+        loadTicketSerial();
+    });
+} else {
+    // Service Workerが利用できない場合も連番を読み込み
+    document.addEventListener('DOMContentLoaded', function() {
+        loadTicketSerial();
     });
 }
 
@@ -4567,6 +5007,31 @@ function restoreContentFromHistory(item) {
         receiptMemo.dispatchEvent(new Event('input', { bubbles: true }));
         
         console.log('=== 領収書QR復元完了 ===');
+    } else if (item.type === 'ticket') {
+        showSection('ticket');
+        
+        // T's券データを復元
+        const ticketDestination = document.getElementById('ticketDestination');
+        const ticketPrice = document.getElementById('ticketPrice');
+        const ticketFromStation = document.getElementById('ticketFromStation');
+        
+        ticketDestination.value = item.destination || '';
+        ticketPrice.value = item.price || '';
+        ticketFromStation.value = item.fromStation || '';
+        
+        // 小文字オプションの状態を復元
+        ticketSmallTextEnabled = item.smallTextEnabled || false;
+        const smallTextBtn = document.getElementById('ticketSmallTextBtn');
+        if (smallTextBtn) {
+            smallTextBtn.classList.toggle('selected', ticketSmallTextEnabled);
+        }
+        
+        // 入力イベントを発火させてボタンの状態を更新
+        ticketDestination.dispatchEvent(new Event('input', { bubbles: true }));
+        ticketPrice.dispatchEvent(new Event('input', { bubbles: true }));
+        ticketFromStation.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        console.log('=== T\'s券QR復元完了 ===');
     } else {
         console.error('⚠️ 未対応のデータタイプ:', item.type);
         throw new Error('未対応のデータタイプです: ' + item.type);
@@ -4619,6 +5084,31 @@ function restoreContentFromQROnly(qrData) {
         receiptMemo.dispatchEvent(new Event('input', { bubbles: true }));
         
         alert('QRコードから領収書情報を復元しました！');
+    } else if (qrData.type === 'ticket') {
+        showSection('ticket');
+        
+        // T's券データを復元
+        const ticketDestination = document.getElementById('ticketDestination');
+        const ticketPrice = document.getElementById('ticketPrice');
+        const ticketFromStation = document.getElementById('ticketFromStation');
+        
+        ticketDestination.value = qrData.destination || '';
+        ticketPrice.value = qrData.price || '';
+        ticketFromStation.value = qrData.fromStation || '';
+        
+        // 小文字オプションの状態を復元
+        ticketSmallTextEnabled = qrData.smallTextEnabled || false;
+        const smallTextBtn = document.getElementById('ticketSmallTextBtn');
+        if (smallTextBtn) {
+            smallTextBtn.classList.toggle('selected', ticketSmallTextEnabled);
+        }
+        
+        // 入力イベントを発火させてボタンの状態を更新
+        ticketDestination.dispatchEvent(new Event('input', { bubbles: true }));
+        ticketPrice.dispatchEvent(new Event('input', { bubbles: true }));
+        ticketFromStation.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        alert('QRコードからT\'s券情報を復元しました！');
     } else {
         alert('このQRコードの完全なデータは履歴にありません。\n画像や手書きデータは履歴からのみ復元可能です。');
     }
