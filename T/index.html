@@ -1532,17 +1532,42 @@ let receiptSmallTextEnabled = false;
 
 // PWA対応: 適切なコールバックURLを生成する関数
 function getPWACompatibleURL() {
-    // PWAとして動作しているかチェック
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                  window.navigator.standalone || 
-                  document.referrer.includes('android-app://');
+    // PWAとして動作しているかチェック（複数の方法で確認）
+    const standaloneMode = window.matchMedia('(display-mode: standalone)').matches;
+    const iOSStandalone = window.navigator.standalone === true;
+    const androidApp = document.referrer.includes('android-app://');
+    const fullscreenMode = window.matchMedia('(display-mode: fullscreen)').matches;
+    
+    const isPWA = standaloneMode || iOSStandalone || androidApp || fullscreenMode;
+    
+    console.log('PWA検出結果:', {
+        standaloneMode,
+        iOSStandalone,
+        androidApp,
+        fullscreenMode,
+        isPWA,
+        userAgent: navigator.userAgent
+    });
     
     if (isPWA) {
-        // PWAの場合は起動URLを使用
-        return window.location.origin + window.location.pathname;
+        // PWAの場合は明示的にmanifestのstart_urlを使用
+        let pwaUrl = window.location.origin + window.location.pathname;
+        
+        // 現在のURLにhash fragmentがある場合は保持
+        if (window.location.hash) {
+            pwaUrl += window.location.hash;
+        }
+        
+        // PWA識別用パラメータを追加
+        pwaUrl += '?pwa_callback=1&t=' + Date.now();
+        
+        console.log('PWAコールバックURL生成:', pwaUrl);
+        return pwaUrl;
     } else {
         // 通常のブラウザの場合は現在のURLを使用
-        return window.location.href;
+        const returnUrl = window.location.href;
+        console.log('ブラウザコールバックURL:', returnUrl);
+        return returnUrl;
     }
 }
 
@@ -2107,9 +2132,24 @@ window.onload = function() {
 
 // PWA初期化関数
 function initializePWA() {
+    // PWAコールバック処理を実行
+    handlePWACallback();
+    
     // URLパラメータでモード指定があればそのモードに切り替え
     const urlParams = new URLSearchParams(window.location.search);
     const mode = urlParams.get('mode');
+    const source = urlParams.get('source');
+    
+    // PWA起動検出
+    if (source === 'pwa') {
+        console.log('🚀 PWAから起動されました');
+        // PWA起動パラメータをクリーンアップ
+        urlParams.delete('source');
+        const cleanUrl = window.location.pathname + 
+                        (urlParams.toString() ? '?' + urlParams.toString() : '') +
+                        window.location.hash;
+        window.history.replaceState({}, '', cleanUrl);
+    }
     
     if (mode && ['image', 'text', 'signature', 'receipt'].includes(mode)) {
         showSection(mode);
@@ -2130,10 +2170,15 @@ function initializePWA() {
     }
     
     // PWAステータスの表示（デバッグ用）
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-        console.log('✅ PWAモードで動作中');
-    } else {
-        console.log('🌐 ブラウザモードで動作中');
+    const displayMode = window.matchMedia('(display-mode: standalone)').matches ? 'PWA' :
+                       window.navigator.standalone ? 'iOS PWA' : 'ブラウザ';
+    console.log(`🚀 動作モード: ${displayMode}`);
+    
+    // PWA固有の設定
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+        // PWAモード時の追加設定
+        document.body.classList.add('pwa-mode');
+        console.log('✅ PWAモード設定完了');
     }
 }
 
@@ -4701,6 +4746,42 @@ function restoreContentFromQROnly(qrData) {
 
 // PWA関連の処理
 let deferredPrompt;
+
+// PWAコールバック処理を強化
+function handlePWACallback() {
+    // PWAコールバックパラメータがある場合の処理
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPWACallback = urlParams.get('pwa_callback') === '1';
+    
+    if (isPWACallback) {
+        console.log('🔄 PWAコールバックを検出しました');
+        
+        // URLからPWAパラメータを削除してクリーンアップ
+        urlParams.delete('pwa_callback');
+        urlParams.delete('t');
+        
+        const cleanUrl = window.location.pathname + 
+                        (urlParams.toString() ? '?' + urlParams.toString() : '') +
+                        window.location.hash;
+        
+        // ブラウザ履歴を更新（ページリロードなし）
+        window.history.replaceState({}, '', cleanUrl);
+        
+        // PWAとして動作していることを確認
+        setTimeout(() => {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                                window.navigator.standalone;
+            
+            if (isStandalone) {
+                console.log('✅ PWAコールバック成功 - PWAモードで動作中');
+                // 成功通知（オプション）
+                // showToast('印刷完了 - アプリに戻りました');
+            } else {
+                console.log('⚠️ PWAコールバック - ブラウザモードで開かれました');
+            }
+        }, 200);
+    }
+}
 
 // サービスワーカーの登録
 if ('serviceWorker' in navigator) {
