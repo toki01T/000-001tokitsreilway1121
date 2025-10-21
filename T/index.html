@@ -17,6 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
 <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
+<script src="./pwa-return-manager.js"></script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -1530,33 +1531,13 @@ let modeNames = {
 // 小文字オプションの状態管理
 let receiptSmallTextEnabled = false;
 
-// PWA対応: 印刷後のPWA復帰処理
-function handlePrintReturn() {
-    // PWA復帰のための特別な処理
-    const isReturningFromPrint = sessionStorage.getItem('printInProgress');
-    const wasPWA = sessionStorage.getItem('wasPWA') === 'true';
-    
-    if (isReturningFromPrint && wasPWA) {
-        console.log('🔄 印刷からPWAに復帰');
-        
-        // PWAモードで再開を試行
-        if (window.location.search.includes('pwa_return=true')) {
-            // ブラウザからPWAへの復帰を促す
-            setTimeout(() => {
-                if (confirm('印刷が完了しました。\n\nアプリモードに戻りますか？\n\n「OK」を押すとホーム画面のアプリアイコンからご利用ください。')) {
-                    // ホーム画面アプリアイコンへの案内
-                    alert('📱 ホーム画面の「toki01TM」アイコンをタップしてアプリモードでご利用ください。');
-                }
-            }, 1000);
-        }
-        
-        // 印刷状態をクリア
-        sessionStorage.removeItem('printInProgress');
-    }
-}
-
 // PWA対応: 適切なコールバックURLを生成する関数
 function getPWACompatibleURL() {
+    // PWA復帰管理システムを使用
+    if (window.preparePWAReturn) {
+        window.preparePWAReturn();
+    }
+    
     // PWAとして動作しているかチェック（複数の方法で確実に検出）
     const isDisplayStandalone = window.matchMedia('(display-mode: standalone)').matches;
     const isNavigatorStandalone = window.navigator.standalone === true;
@@ -1565,55 +1546,47 @@ function getPWACompatibleURL() {
     
     const isPWA = isDisplayStandalone || isNavigatorStandalone || isAndroidPWA || isHomescreenLaunch;
     
-    console.log('PWA状態詳細チェック:', {
-        isDisplayStandalone,
-        isNavigatorStandalone,
-        isAndroidPWA,
-        isHomescreenLaunch,
-        finalIsPWA: isPWA,
-        userAgent: navigator.userAgent.substring(0, 50) + '...',
-        currentURL: window.location.href
+    console.log('📍 印刷コールバックURL生成:', {
+        isPWA,
+        currentURL: window.location.href,
+        userAgent: navigator.userAgent.substring(0, 80)
     });
     
-    // PWA状態をsessionStorageに保存
-    sessionStorage.setItem('wasPWA', isPWA.toString());
-    sessionStorage.setItem('originalURL', window.location.href);
-    sessionStorage.setItem('printInProgress', 'true'); // 印刷開始フラグ
-    sessionStorage.setItem('pwaModeDetected', Date.now().toString());
-    
     if (isPWA) {
-        // PWAの場合: 特別な復帰システムを使用
+        // PWAの場合: 複数のフォールバック戦略
         const baseUrl = window.location.origin + window.location.pathname;
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams();
         
-        // 重要なパラメータのみ保持
-        const importantParams = new URLSearchParams();
-        if (params.get('mode')) {
-            importantParams.set('mode', params.get('mode'));
+        // 現在のモードを保持
+        const currentParams = new URLSearchParams(window.location.search);
+        if (currentParams.get('mode')) {
+            params.set('mode', currentParams.get('mode'));
         }
-        // PWA復帰フラグを追加
-        importantParams.set('pwa_return', 'true');
-        importantParams.set('utm_source', 'print_callback');
-        importantParams.set('pwa_mode_hint', 'true'); // PWAヒント追加
         
-        const finalUrl = baseUrl + '?' + importantParams.toString();
-        console.log('✅ PWA コールバックURL生成:', finalUrl);
-        console.log('⚠️ 注意: PWAモードではプリンタアプリからの復帰に制限があります');
+        // PWA復帰用のパラメータ
+        params.set('pwa_return', 'true');
+        params.set('utm_source', 'print_callback');
+        params.set('return_method', 'sii_callback');
+        params.set('timestamp', Date.now().toString());
         
-        // PWAユーザーに事前通知
-        setTimeout(() => {
-            if (confirm('📱 PWAモードで印刷を実行します。\n\n印刷後、ブラウザが開く場合があります。\nその場合はホーム画面の「toki01TM」アイコンをタップしてアプリモードに戻ってください。\n\n続行しますか？')) {
-                return finalUrl;
-            } else {
-                sessionStorage.removeItem('printInProgress');
-                return null;
-            }
-        }, 100);
+        const callbackUrl = baseUrl + '?' + params.toString();
         
-        return finalUrl;
+        // 代替URL生成（PWAアプリとして開く可能性を高める）
+        const alternativeUrls = [
+            callbackUrl,
+            baseUrl + '?utm_source=homescreen&mode=' + (currentParams.get('mode') || 'image'),
+            baseUrl + '?pwa_return=true'
+        ];
+        
+        console.log('🎯 PWAコールバック戦略:', {
+            primary: callbackUrl,
+            alternatives: alternativeUrls
+        });
+        
+        return callbackUrl;
     } else {
-        // 通常のブラウザの場合は現在のURLを使用
-        console.log('🌐 ブラウザ コールバックURL使用:', window.location.href);
+        // 通常のブラウザの場合
+        console.log('🌐 ブラウザモード: 標準コールバック使用');
         return window.location.href;
     }
 }
@@ -2175,13 +2148,19 @@ window.onload = function() {
     
     // PWA初期化処理
     initializePWA();
+    
+    // デバッグ用: PWA状態の表示（開発時のみ）
+    if (window.location.search.includes('debug=true')) {
+        setTimeout(() => {
+            if (window.debugPWA) {
+                window.debugPWA();
+            }
+        }, 1000);
+    }
 };
 
 // PWA初期化関数
 function initializePWA() {
-    // 印刷からの復帰処理
-    handlePrintReturn();
-    
     // PWA復帰チェック
     const urlParams = new URLSearchParams(window.location.search);
     const isPWAReturn = urlParams.get('pwa_return') === 'true';
@@ -2195,50 +2174,24 @@ function initializePWA() {
             const newUrl = new URL(window.location);
             newUrl.searchParams.delete('pwa_return');
             newUrl.searchParams.delete('utm_source');
-            newUrl.searchParams.delete('pwa_mode_hint');
+            newUrl.searchParams.delete('return_method');
+            newUrl.searchParams.delete('timestamp');
             history.replaceState({}, '', newUrl);
         }
         
-        // 印刷完了メッセージ
-        setTimeout(() => {
-            console.log('📱 PWAに戻りました');
-            
-            // PWAモードでない場合は案内表示
-            if (!window.matchMedia('(display-mode: standalone)').matches && wasPWA) {
-                const notification = document.createElement('div');
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    background: var(--primary-color);
-                    color: white;
-                    padding: 15px 20px;
-                    border-radius: 8px;
-                    z-index: 10000;
-                    font-size: 14px;
-                    text-align: center;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    cursor: pointer;
-                `;
-                notification.innerHTML = '📱 ホーム画面の「toki01TM」アイコンをタップしてアプリモードに戻れます';
-                document.body.appendChild(notification);
-                
-                // 5秒後に自動で非表示
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                }, 5000);
-                
-                // クリックで非表示
-                notification.onclick = () => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                };
-            }
-        }, 500);
+        // PWA復帰管理システムに処理を委譲
+        if (window.pwaReturnManager) {
+            window.pwaReturnManager.handlePWAReturn();
+        }
+        
+        // PWA状態をチェック
+        const currentPWA = window.matchMedia('(display-mode: standalone)').matches;
+        if (!currentPWA && wasPWA) {
+            // PWAに戻れなかった場合の対処
+            setTimeout(() => {
+                showPWAReturnHelper();
+            }, 2000);
+        }
     }
     
     // URLパラメータでモード指定があればそのモードに切り替え
@@ -2267,6 +2220,119 @@ function initializePWA() {
         console.log('✅ PWAモードで動作中');
     } else {
         console.log('🌐 ブラウザモードで動作中');
+    }
+}
+
+// PWA復帰ヘルパー関数
+function showPWAReturnHelper() {
+    const isCurrentlyPWA = window.matchMedia('(display-mode: standalone)').matches;
+    if (isCurrentlyPWA) {
+        return; // 既にPWAなので何もしない
+    }
+    
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    
+    // PWA復帰ヘルパーのDOM要素を作成
+    const helper = document.createElement('div');
+    helper.id = 'pwa-return-helper';
+    helper.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 100000;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 20px;
+        box-sizing: border-box;
+    `;
+    
+    let instructions = '';
+    if (isIOS) {
+        instructions = `
+            <div style="font-size: 24px; margin-bottom: 20px;">📱</div>
+            <h2 style="margin: 0 0 20px 0;">アプリに戻る</h2>
+            <p style="font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
+                ホーム画面の「toki01TM」アイコンをタップして<br>
+                アプリに戻ってください
+            </p>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="margin: 0; font-size: 14px;">
+                    💡 ホームボタンを押すか、画面下から上にスワイプして<br>
+                    ホーム画面に移動してください
+                </p>
+            </div>
+        `;
+    } else if (isAndroid) {
+        instructions = `
+            <div style="font-size: 24px; margin-bottom: 20px;">📱</div>
+            <h2 style="margin: 0 0 20px 0;">アプリに戻る</h2>
+            <p style="font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
+                最近使ったアプリから「toki01TM」を選択するか、<br>
+                ホーム画面のアプリアイコンをタップしてください
+            </p>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="margin: 0; font-size: 14px;">
+                    💡 四角ボタン（最近使ったアプリ）を押すか、<br>
+                    ホーム画面のアイコンをタップしてください
+                </p>
+            </div>
+        `;
+    } else {
+        instructions = `
+            <div style="font-size: 24px; margin-bottom: 20px;">📱</div>
+            <h2 style="margin: 0 0 20px 0;">アプリに戻る</h2>
+            <p style="font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
+                ホーム画面のアプリアイコンから起動してください
+            </p>
+        `;
+    }
+    
+    helper.innerHTML = instructions + `
+        <button onclick="closePWAHelper()" style="
+            background: #00a3ed;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        ">閉じる</button>
+        <p style="font-size: 12px; margin-top: 20px; opacity: 0.7;">
+            このブラウザでも引き続き使用できます
+        </p>
+    `;
+    
+    document.body.appendChild(helper);
+    
+    // 10秒後に自動で閉じる
+    setTimeout(() => {
+        if (document.getElementById('pwa-return-helper')) {
+            closePWAHelper();
+        }
+    }, 10000);
+}
+
+// PWAヘルパーを閉じる関数
+function closePWAHelper() {
+    const helper = document.getElementById('pwa-return-helper');
+    if (helper) {
+        helper.style.opacity = '0';
+        helper.style.transition = 'opacity 0.3s';
+        setTimeout(() => {
+            if (helper.parentNode) {
+                helper.parentNode.removeChild(helper);
+            }
+        }, 300);
     }
 }
 
