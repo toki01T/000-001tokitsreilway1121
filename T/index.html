@@ -3,8 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="toki01TM">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#00a3ed">
 <title>toki01Ⓣ 発券</title>
 <link rel="icon" href="favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%2300a3ed'/><text x='256' y='280' font-family='Arial' font-size='200' fill='white' text-anchor='middle' font-weight='bold'>T</text></svg>">
+<link rel="manifest" href="./manifest.json">
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
@@ -93,6 +100,23 @@ header {
     padding: 0;
     white-space: nowrap;
 }
+
+/* PWA スタンドアロンモード時のスタイル */
+@media all and (display-mode: standalone) {
+    body {
+        padding-top: env(safe-area-inset-top, 0);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    
+    .navbar {
+        padding-top: env(safe-area-inset-top, 0);
+    }
+    
+    main {
+        min-height: calc(100vh - env(safe-area-inset-top, 0) - env(safe-area-inset-bottom, 0) - 40px);
+    }
+}
+
 #historyMenuBtn {
     position: absolute;
     right: 1rem;
@@ -942,121 +966,6 @@ main {
     }
 }
 
-/* T's券セクション用のスタイル */
-#ticketSection {
-    display: none;
-    width: 100%;
-    margin: 0 auto;
-    text-align: center;
-}
-
-.ticket-form-container {
-    margin: 1rem auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    width: 100%;
-    max-width: 450px;
-}
-
-.ticket-input-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    margin-bottom: 0.5rem;
-}
-
-.ticket-input-group label {
-    font-size: 1rem;
-    color: var(--text-color);
-    margin-bottom: 0.5rem;
-    font-weight: bold;
-    text-align: center;
-}
-
-.ticket-input-group input[type="text"] {
-    width: 100%;
-    max-width: 350px;
-    height: 60px;
-    padding: 0.8rem;
-    border: 2px solid var(--input-border);
-    border-radius: 8px;
-    font-size: 1rem;
-    text-align: center;
-    background: var(--input-bg);
-    color: var(--input-text);
-    box-sizing: border-box;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-.ticket-input-group input[type="text"]:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 5px rgba(0, 163, 237, 0.3);
-}
-
-.ticket-buttons-row {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    width: 100%;
-    max-width: 350px;
-}
-
-.ticket-print-btn {
-    padding: 0.8rem 1.5rem;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    width: 100%;
-    min-width: 150px;
-}
-
-.ticket-print-btn:hover {
-    background: var(--primary-hover);
-    transform: translateY(-1px);
-}
-
-.ticket-print-btn.disabled {
-    background: #ccc;
-    color: #666;
-    cursor: not-allowed;
-    transform: none;
-}
-
-.ticket-print-btn.disabled:hover {
-    background: #ccc;
-    transform: none;
-}
-
-.ticket-note {
-    margin-top: 1rem;
-    font-size: 0.9rem;
-    color: #666;
-    font-style: italic;
-}
-
-@media (max-width: 500px) {
-    .ticket-input-group input[type="text"] {
-        font-size: 0.95rem;
-        padding: 0.4rem;
-        height: 60px;
-    }
-    
-    .ticket-print-btn {
-        font-size: 0.9rem;
-        padding: 0.7rem 1rem;
-    }
-}
-
 /* テキスト入力セクション用のスタイル */
 #textSection {
     display: none;
@@ -1454,28 +1363,6 @@ footer p {
                 </div>
             </div>
         </section>
-        <section id="ticketSection" style="display:none;">
-            <div class="ticket-form-container">
-                <div class="ticket-input-group">
-                    <label for="ticketDestination">ゆき先</label>
-                    <input type="text" id="ticketDestination" placeholder="必須入力" />
-                </div>
-                <div class="ticket-input-group">
-                    <label for="ticketReason">事由</label>
-                    <input type="text" id="ticketReason" placeholder="必須入力" />
-                </div>
-                <div class="ticket-input-group">
-                    <label for="ticketMemo">備考</label>
-                    <input type="text" id="ticketMemo" placeholder="任意入力" />
-                </div>
-                <div class="ticket-buttons-row">
-                    <button id="ticketPrintBtn" class="ticket-print-btn disabled">T's券発券</button>
-                </div>
-                <div class="ticket-note">
-                    ※T's券は乗車券ではありません！
-                </div>
-            </div>
-        </section>
         <div id="dateDisplay"></div>
         <div id="timeDisplay"></div>
     </div>
@@ -1504,21 +1391,6 @@ let lastPreviewImageNaturalHeight = 0;
 let qrScanner = null;
 let flashlightEnabled = false;
 let currentStream = null;
-
-// T's券連番管理
-function getNextTicketNumber() {
-    let currentNumber = localStorage.getItem('toki01_ticket_number');
-    if (!currentNumber) {
-        currentNumber = 1;
-    } else {
-        currentNumber = parseInt(currentNumber) + 1;
-        if (currentNumber > 999) {
-            currentNumber = 1; // 999から001に戻す
-        }
-    }
-    localStorage.setItem('toki01_ticket_number', currentNumber.toString());
-    return currentNumber.toString().padStart(3, '0'); // 001形式にフォーマット
-}
 
 // 独自QRコード生成用の変数
 const QR_PREFIX = 'TOKI01_';
@@ -1647,7 +1519,7 @@ const historyList = document.getElementById('historyList');
 const modeToggleUnified = document.getElementById('modeToggleUnified');
 const historyDrawerBg = document.getElementById('historyDrawerBg');
 let currentHistoryType = 'image';
-let modeOrder = ['image', 'ticket', 'text', 'signature', 'receipt'];
+let modeOrder = ['image', 'text', 'signature', 'receipt'];
 let modeNames = {
     image: '画像・T’s券',
     text: 'テキスト',
@@ -1813,44 +1685,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初期状態で印刷ボタンを無効化
     updateReceiptPrintButtons();
-    
-    // T's券印刷ボタンのイベントハンドラー
-    const ticketPrintBtn = document.getElementById('ticketPrintBtn');
-    
-    if (ticketPrintBtn) {
-        ticketPrintBtn.onclick = preventDoubleTouch(() => {
-            if (!ticketPrintBtn.classList.contains('disabled')) {
-                executeTicketPrint();
-            }
-        });
-        if ('ontouchstart' in window) {
-            ticketPrintBtn.ontouchstart = ticketPrintBtn.onclick;
-        }
-    }
-    
-    // T's券フォームの入力監視
-    const ticketDestination = document.getElementById('ticketDestination');
-    const ticketReason = document.getElementById('ticketReason');
-    const ticketMemo = document.getElementById('ticketMemo');
-    
-    function updateTicketPrintButtons() {
-        const hasDestination = ticketDestination.value.trim() !== '';
-        const hasReason = ticketReason.value.trim() !== '';
-        
-        if (ticketPrintBtn) {
-            ticketPrintBtn.classList.toggle('disabled', !(hasDestination && hasReason));
-        }
-    }
-    
-    if (ticketDestination) {
-        ticketDestination.addEventListener('input', updateTicketPrintButtons);
-    }
-    if (ticketReason) {
-        ticketReason.addEventListener('input', updateTicketPrintButtons);
-    }
-    
-    // 初期状態でT's券印刷ボタンを無効化
-    updateTicketPrintButtons();
     
     // chipのイベント処理も改善
     const chipWith = document.getElementById('chipWith');
@@ -2306,13 +2140,12 @@ function checkAndContinuePrinting() {
 }
 function showSection(mode) {
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
-    document.getElementById('ticketSection').style.display = (mode === 'ticket') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
     document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
     document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
     
-    // 領収書・T's券モードの時は日付・時刻選択と枚数選択を非表示
-    if (mode === 'receipt' || mode === 'ticket') {
+    // 領収書モードの時は日付・時刻選択と枚数選択を非表示
+    if (mode === 'receipt') {
         // 日付・時刻選択を非表示
         const dateTimeChoices = document.querySelectorAll('#dateTimeChoice, #textDateTimeChoice, #signatureDateTimeChoice');
         dateTimeChoices.forEach(element => {
@@ -3053,214 +2886,6 @@ function wrapTextForReceipt(text, maxWidth, fontSize) {
     }
     
     return lines;
-}
-
-// --- T's券印刷 ---
-function executeTicketPrint() {
-    console.log('🎫 T\'s券印刷を開始します');
-    
-    const destination = document.getElementById('ticketDestination').value.trim();
-    const reason = document.getElementById('ticketReason').value.trim();
-    const memo = document.getElementById('ticketMemo').value.trim();
-    
-    if (!destination || !reason) {
-        alert('ゆき先と事由は必須入力です');
-        return;
-    }
-    
-    // T's券のレイアウト設定
-    const canvasWidth = 220;  // 58mm相当
-    const canvasHeight = 340; // T's券サイズ
-    
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
-    
-    // 背景を白にする
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-    
-    // 黒色でテキスト描画
-    ctx.fillStyle = '#000000';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    
-    // 連番取得
-    const ticketNumber = getNextTicketNumber();
-    
-    // 上部の連番（01001形式）
-    ctx.font = 'bold 14px Arial, sans-serif';
-    ctx.fillText(`01${ticketNumber}`, canvasWidth / 2, 10);
-    
-    // タイトル「T's券」
-    ctx.font = 'bold 18px Arial, sans-serif';
-    ctx.fillText('T\'s券', canvasWidth / 2, 40);
-    
-    // 区切り線
-    ctx.beginPath();
-    ctx.moveTo(20, 70);
-    ctx.lineTo(canvasWidth - 20, 70);
-    ctx.stroke();
-    
-    // ゆき先
-    ctx.font = 'bold 12px Arial, sans-serif';
-    ctx.fillText('ゆき先:', canvasWidth / 2, 85);
-    ctx.font = '14px Arial, sans-serif';
-    const destinationLines = wrapTextForTicket(destination, canvasWidth - 40, 14);
-    let yPos = 105;
-    destinationLines.forEach(line => {
-        ctx.fillText(line, canvasWidth / 2, yPos);
-        yPos += 18;
-    });
-    
-    // 事由
-    yPos += 10;
-    ctx.font = 'bold 12px Arial, sans-serif';
-    ctx.fillText('事由:', canvasWidth / 2, yPos);
-    yPos += 20;
-    ctx.font = '14px Arial, sans-serif';
-    const reasonLines = wrapTextForTicket(reason, canvasWidth - 40, 14);
-    reasonLines.forEach(line => {
-        ctx.fillText(line, canvasWidth / 2, yPos);
-        yPos += 18;
-    });
-    
-    // 備考（任意）
-    if (memo) {
-        yPos += 10;
-        ctx.font = 'bold 12px Arial, sans-serif';
-        ctx.fillText('備考:', canvasWidth / 2, yPos);
-        yPos += 20;
-        ctx.font = '12px Arial, sans-serif';
-        const memoLines = wrapTextForTicket(memo, canvasWidth - 40, 12);
-        memoLines.forEach(line => {
-            ctx.fillText(line, canvasWidth / 2, yPos);
-            yPos += 16;
-        });
-    }
-    
-    // 下部の日付
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    const dateStr = `${year}.${month}.${day}`;
-    
-    ctx.font = '12px Arial, sans-serif';
-    ctx.fillText(dateStr, canvasWidth / 2, canvasHeight - 60);
-    
-    // 注意事項
-    ctx.font = '10px Arial, sans-serif';
-    ctx.fillText('※T\'s券は乗車券ではありません！', canvasWidth / 2, canvasHeight - 40);
-    
-    // QRコード用スペースを追加
-    const qrSize = 80;
-    const qrX = (canvasWidth - qrSize) / 2;
-    const qrY = canvasHeight - 140;
-    
-    // 履歴アイテムを先に作成
-    const historyItem = {
-        type: 'ticket',
-        mode: 'ticket',
-        destination: destination,
-        reason: reason,
-        memo: memo,
-        ticketNumber: ticketNumber,
-        data: '', // 後で設定
-        created: Date.now(),
-        qrPrinted: true // 常にQRコード付き
-    };
-    
-    // QRデータを生成
-    const qrData = generateQRData(historyItem);
-    if (qrData) {
-        const qrCodeCanvas = generateQRCode(qrData);
-        if (qrCodeCanvas) {
-            // QRコードを描画
-            ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
-        }
-    }
-    
-    // データを保存
-    const pngDataUrl = canvas.toDataURL('image/png');
-    historyItem.data = pngDataUrl;
-    
-    // 履歴に保存
-    addHistory(historyItem);
-    
-    // 印刷実行
-    printTicketCanvas(canvas);
-    
-    console.log('🎫 T\'s券印刷が完了しました');
-}
-
-// T's券用テキスト折り返し関数
-function wrapTextForTicket(text, maxWidth, fontSize) {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    ctx.font = `${fontSize}px Arial, sans-serif`;
-    
-    const lines = [];
-    const words = text.split('');
-    let currentLine = '';
-    
-    for (let i = 0; i < words.length; i++) {
-        const testLine = currentLine + words[i];
-        const metrics = ctx.measureText(testLine);
-        
-        if (metrics.width > maxWidth && currentLine !== '') {
-            lines.push(currentLine);
-            currentLine = words[i];
-        } else {
-            currentLine = testLine;
-        }
-    }
-    
-    if (currentLine) {
-        lines.push(currentLine);
-    }
-    
-    return lines;
-}
-
-// T's券キャンバス印刷関数
-function printTicketCanvas(canvas) {
-    const pngDataUrl = canvas.toDataURL('image/png');
-    
-    // PDFを作成
-    const { jsPDF } = window.jspdf;
-    const pdfHeight = (canvas.height * 58) / canvas.width; // 幅58mmに合わせて高さを計算
-    const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [58, pdfHeight]
-    });
-    
-    // PDFの設定を直接操作
-    pdf.internal.pageSize.width = 58;
-    pdf.internal.pageSize.height = pdfHeight;
-    
-    // PNG画像をPDFに追加
-    pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
-    
-    // PDFをBase64形式で取得
-    const pdfBase64 = pdf.output('datauristring').split(',')[1];
-    
-    let thisPage = window.location.href;
-    let printUrl = 'siiprintagent://1.0/print?' +
-                  'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
-                  'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
-                  'Format='           + 'pdf' + '&' +
-                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                  'SelectOnError='    + 'yes' + '&' +
-                  'CutType='          + 'full' + '&' +
-                  'CutFeed='          + 'yes' + '&' +
-                  'FitToWidth='       + 'no' + '&' +
-                  'PaperWidth='       + '58';
-    
-    // 印刷実行
-    window.location.href = printUrl;
 }
 
 // --- 画像印刷 ---
@@ -5022,6 +4647,67 @@ function restoreContentFromQROnly(qrData) {
         alert('このQRコードの完全なデータは履歴にありません。\n画像や手書きデータは履歴からのみ復元可能です。');
     }
 }
+
+// PWA関連の処理
+let deferredPrompt;
+
+// サービスワーカーの登録
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('./sw.js')
+            .then(function(registration) {
+                console.log('ServiceWorker registration successful: ', registration.scope);
+            })
+            .catch(function(err) {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+    });
+}
+
+// PWAインストールプロンプトの処理
+window.addEventListener('beforeinstallprompt', (e) => {
+    console.log('PWA インストールプロンプト表示可能');
+    e.preventDefault();
+    deferredPrompt = e;
+    showInstallPromotion();
+});
+
+// PWAインストール促進の表示
+function showInstallPromotion() {
+    // インストール済みかチェック
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        console.log('既にPWAとしてインストール済み');
+        return;
+    }
+    
+    // 初回訪問時のみ表示
+    if (!localStorage.getItem('pwa-install-prompted')) {
+        setTimeout(() => {
+            if (confirm('📱 ホーム画面に追加してアプリのように使用できます。\n\n今すぐインストールしますか？')) {
+                installPWA();
+            } else {
+                localStorage.setItem('pwa-install-prompted', 'true');
+            }
+        }, 3000); // 3秒後に表示
+    }
+}
+
+// PWAインストール実行
+async function installPWA() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`PWA install outcome: ${outcome}`);
+        deferredPrompt = null;
+        localStorage.setItem('pwa-install-prompted', 'true');
+    }
+}
+
+// PWAインストール完了時の処理
+window.addEventListener('appinstalled', (evt) => {
+    console.log('PWA インストール完了');
+    localStorage.setItem('pwa-install-prompted', 'true');
+});
 </script>
 </body>
 </html>
