@@ -2,12 +2,13 @@
   "name": "とき T's 鉄道部 toki01TM",
   "short_name": "toki01TM",
   "description": "サーマルプリンター対応印刷アプリ",
-  "start_url": "./index.html",
+  "start_url": "./index.html?utm_source=homescreen",
   "display": "standalone",
   "orientation": "portrait-primary",
   "theme_color": "#00a3ed",
   "background_color": "#ffffff",
   "scope": "./",
+  "id": "toki01tm-app",
   "icons": [
     {
       "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%2300a3ed'/><text x='96' y='120' font-family='Arial' font-size='80' fill='white' text-anchor='middle' font-weight='bold'>T</text></svg>",
@@ -26,12 +27,15 @@
   "lang": "ja",
   "dir": "ltr",
   "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
   "shortcuts": [
     {
       "name": "画像印刷",
       "short_name": "画像",
       "description": "画像やT's券を印刷する",
-      "url": "./index.html?mode=image",
+      "url": "./index.html?mode=image&utm_source=homescreen",
       "icons": [
         {
           "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%2300a3ed'/><text x='96' y='120' font-family='Arial' font-size='60' fill='white' text-anchor='middle'>📷</text></svg>",
@@ -44,7 +48,7 @@
       "name": "テキスト印刷",
       "short_name": "テキスト",
       "description": "テキストを印刷する",
-      "url": "./index.html?mode=text",
+      "url": "./index.html?mode=text&utm_source=homescreen",
       "icons": [
         {
           "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%2300a3ed'/><text x='96' y='120' font-family='Arial' font-size='60' fill='white' text-anchor='middle'>📝</text></svg>",
@@ -57,7 +61,7 @@
       "name": "領収書印刷",
       "short_name": "領収書",
       "description": "領収書を印刷する",
-      "url": "./index.html?mode=receipt",
+      "url": "./index.html?mode=receipt&utm_source=homescreen",
       "icons": [
         {
           "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%2300a3ed'/><text x='96' y='120' font-family='Arial' font-size='60' fill='white' text-anchor='middle'>🧾</text></svg>",
