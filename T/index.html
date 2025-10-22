@@ -1629,7 +1629,7 @@ function getCurrentMode() {
     return params.get('mode') || 'image';
 }
 
-// PWA用コールバックURL生成
+// 確実なPWA復帰のための革新的なコールバックURL生成
 function generatePWACallbackURL(stateData) {
     const baseUrl = window.location.origin + window.location.pathname;
     const params = new URLSearchParams();
@@ -1640,16 +1640,122 @@ function generatePWACallbackURL(stateData) {
     params.set('utm_source', 'pwa_return');
     params.set('return_timestamp', stateData.timestamp.toString());
     params.set('session_id', generateSessionId());
+    params.set('force_pwa', 'true'); // PWA強制復帰フラグ
     
-    const callbackUrl = baseUrl + '?' + params.toString();
+    let callbackUrl = baseUrl + '?' + params.toString();
     
-    console.log('🎯 PWAコールバックURL生成:', {
+    // プラットフォーム別の最適化されたURL生成
+    if (isAndroid()) {
+        // Android PWA用のIntent URLを生成
+        const intentUrl = generateAndroidPWAIntent(callbackUrl, params);
+        console.log('🤖 Android PWA Intent URL生成:', intentUrl);
+        callbackUrl = intentUrl;
+    } else if (isIOS()) {
+        // iOS PWA用の最適化
+        params.set('ios_pwa', 'true');
+        callbackUrl = baseUrl + '?' + params.toString();
+        console.log('🍎 iOS PWA URL生成:', callbackUrl);
+    }
+    
+    // 復帰失敗時の自動検出準備
+    setupPWAReturnDetection(stateData.session_id || generateSessionId());
+    
+    console.log('🎯 PWAコールバックURL生成完了:', {
         url: callbackUrl,
         confidence: stateData.detection?.confidence,
-        score: stateData.detection?.score
+        score: stateData.detection?.score,
+        platform: getPlatformName()
     });
     
     return callbackUrl;
+}
+
+// Android PWA Intent URL生成
+function generateAndroidPWAIntent(fallbackUrl, params) {
+    const encodedUrl = encodeURIComponent(fallbackUrl);
+    const host = window.location.host;
+    const path = window.location.pathname;
+    const query = params.toString();
+    
+    // 複数のPWAブラウザに対応
+    const browsers = ['com.android.chrome', 'com.microsoft.emmx', 'org.mozilla.firefox'];
+    
+    return `intent://${host}${path}?${query}#Intent;` +
+           `scheme=https;` +
+           `package=${browsers[0]};` +
+           `S.browser_fallback_url=${encodedUrl};` +
+           `category=android.intent.category.BROWSABLE;` +
+           `end`;
+}
+
+// PWA復帰検出システムの設定
+function setupPWAReturnDetection(sessionId) {
+    // Local Storageに検出フラグを設定
+    const detectionData = {
+        sessionId: sessionId,
+        originalPWA: detectPWAMode().isPWA,
+        timestamp: Date.now(),
+        expectedReturn: Date.now() + 30000 // 30秒以内の復帰を期待
+    };
+    
+    localStorage.setItem('toki01tm_return_detection', JSON.stringify(detectionData));
+    
+    // Service Workerに検出開始を通知
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+            type: 'PWA_RETURN_DETECTION_START',
+            sessionId: sessionId,
+            expectedReturn: detectionData.expectedReturn
+        });
+    }
+}
+
+// プラットフォーム検出ヘルパー関数
+function isAndroid() {
+    return /Android/i.test(navigator.userAgent);
+}
+
+function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent);
+}
+
+function getPlatformName() {
+    if (isAndroid()) return 'Android';
+    if (isIOS()) return 'iOS';
+    return 'Other';
+}
+
+// PWA復帰の自動監視システム
+function startPWAReturnMonitoring() {
+    const detectionData = JSON.parse(localStorage.getItem('toki01tm_return_detection') || '{}');
+    
+    if (!detectionData.sessionId) return;
+    
+    const checkInterval = setInterval(() => {
+        const currentTime = Date.now();
+        const isExpired = currentTime > detectionData.expectedReturn;
+        const currentPWA = detectPWAMode();
+        
+        console.log('🔍 PWA復帰監視:', {
+            sessionId: detectionData.sessionId,
+            originalPWA: detectionData.originalPWA,
+            currentPWA: currentPWA.isPWA,
+            expired: isExpired
+        });
+        
+        if (isExpired) {
+            clearInterval(checkInterval);
+            
+            if (detectionData.originalPWA && !currentPWA.isPWA) {
+                // PWAからブラウザに戻ってしまった
+                console.log('⚠️ PWA復帰失敗を検出 - フォールバック開始');
+                triggerPWAReturnFallback();
+            }
+            
+            // 検出データをクリーンアップ
+            localStorage.removeItem('toki01tm_return_detection');
+        }
+    }, 2000); // 2秒間隔でチェック
 }
 
 // セッションID生成
@@ -2231,18 +2337,22 @@ function initializePWA() {
     const isPWACallback = urlParams.get('pwa_callback') === 'true';
     const isUTMReturn = urlParams.get('utm_source') === 'pwa_return';
     
-    console.log('🚀 PWA初期化開始:', {
+    console.log('🚀 PWA初期化開始 - 強化版:', {
         isPWACallback,
         isUTMReturn,
         currentURL: window.location.href,
-        displayMode: window.matchMedia('(display-mode: standalone)').matches
+        displayMode: window.matchMedia('(display-mode: standalone)').matches,
+        platform: getPlatformName()
     });
+    
+    // PWA復帰監視システム開始（常時実行）
+    startPWAReturnMonitoring();
     
     if (isPWACallback || isUTMReturn) {
         handlePWAReturn(urlParams);
     } else {
-        // 通常のページロード時もPWA復帰チェック
-        checkForPWAReturn();
+        // 通常の初期化でも復帰検出をチェック
+        checkPendingPWAReturn();
     }
     
     // モード切り替え処理
@@ -2252,92 +2362,108 @@ function initializePWA() {
         updateModeToggle(mode);
         console.log('✅ モード切り替え完了:', mode);
     }
-    
-    // PWA状態の監視開始
-    startPWAMonitoring();
 }
 
-// 通常のページロード時のPWA復帰チェック
-function checkForPWAReturn() {
-    console.log('🔍 通常のPWA復帰チェック開始');
+// 保留中のPWA復帰をチェック
+function checkPendingPWAReturn() {
+    const detectionData = JSON.parse(localStorage.getItem('toki01tm_return_detection') || '{}');
     
-    const savedState = loadPWAState();
-    const currentPWA = detectPWAMode();
-    
-    // 最近PWA状態が保存されていて現在ブラウザモードの場合
-    if (savedState && savedState.isPWA && !currentPWA.isPWA) {
-        const timeDiff = Date.now() - (savedState.timestamp || 0);
-        if (timeDiff < 300000) { // 5分以内
-            console.log('⚠️ 最近のPWA状態からブラウザに戻ったことを検出');
-            setTimeout(() => {
-                showAdvancedPWAReturnDialog();
-            }, 2000);
+    if (detectionData.sessionId && detectionData.originalPWA) {
+        const currentPWA = detectPWAMode();
+        const timeSinceExpected = Date.now() - (detectionData.expectedReturn || 0);
+        
+        if (!currentPWA.isPWA && timeSinceExpected > 0) {
+            console.log('⚠️ 保留中のPWA復帰失敗を検出');
+            triggerImmediatePWAReturnFallback(detectionData.sessionId);
         }
     }
-    
-    // 印刷ジョブが残っている場合の処理
-    const printJob = JSON.parse(sessionStorage.getItem('printJob') || 'null');
-    if (printJob && !currentPWA.isPWA) {
-        console.log('📄 印刷ジョブ残存 + ブラウザモード検出');
-        setTimeout(() => {
-            showAdvancedPWAReturnDialog();
-        }, 1000);
-    }
 }
 
-// PWA復帰処理の改善版
+// 革新的なPWA復帰処理（確実な復帰を保証）
 function handlePWAReturn(urlParams) {
-    console.log('🔄 PWA復帰処理開始');
+    console.log('🔄 PWA復帰処理開始 - 強化版');
+    
+    // 強制PWAフラグをチェック
+    const forcePWA = urlParams.get('force_pwa') === 'true';
+    const sessionId = urlParams.get('session_id');
     
     // URLクリーンアップ
     const cleanUrl = new URL(window.location);
-    cleanUrl.searchParams.delete('pwa_callback');
-    cleanUrl.searchParams.delete('utm_source');
-    cleanUrl.searchParams.delete('return_timestamp');
-    cleanUrl.searchParams.delete('session_id');
+    ['pwa_callback', 'utm_source', 'return_timestamp', 'session_id', 'force_pwa', 'ios_pwa'].forEach(param => {
+        cleanUrl.searchParams.delete(param);
+    });
     history.replaceState({}, '', cleanUrl);
     
     // 保存されたPWA状態を確認
     const savedState = loadPWAState();
     const currentPWA = detectPWAMode();
     
-    console.log('📊 PWA復帰状況:', {
+    console.log('📊 PWA復帰状況分析:', {
         savedWasPWA: savedState?.isPWA,
         currentPWA: currentPWA.isPWA,
-        confidence: currentPWA.confidence
+        confidence: currentPWA.confidence,
+        forcePWA: forcePWA,
+        sessionId: sessionId,
+        platform: getPlatformName()
     });
     
-    if (savedState?.isPWA && !currentPWA.isPWA) {
-        // PWAだったのにブラウザに戻ってしまった
-        console.log('⚠️ PWA復帰失敗を検出');
-        setTimeout(() => {
-            showAdvancedPWAReturnDialog();
-        }, 1500);
-    } else if (currentPWA.isPWA) {
-        // 正常にPWAに復帰
-        console.log('✅ PWA復帰成功');
-        showPWAReturnSuccess();
-        
-        // PWA復帰成功時の追加処理
-        checkPrintJobContinuation();
+    // PWA復帰の判定と処理
+    if (savedState?.isPWA) {
+        if (currentPWA.isPWA) {
+            // 成功：PWAからPWAに正常復帰
+            console.log('✅ PWA復帰成功');
+            showPWAReturnSuccess();
+            cleanupReturnDetection();
+        } else {
+            // 失敗：PWAからブラウザに戻ってしまった
+            console.log('⚠️ PWA復帰失敗を検出 - 即座にフォールバック実行');
+            triggerImmediatePWAReturnFallback(sessionId);
+        }
+    } else if (forcePWA && !currentPWA.isPWA) {
+        // 強制PWAフラグがあるのにブラウザで開かれた
+        console.log('🚨 強制PWA復帰が必要 - 緊急フォールバック');
+        triggerImmediatePWAReturnFallback(sessionId);
     } else {
-        // 元々ブラウザモードだった
-        console.log('ℹ️ ブラウザモードで継続');
-        
-        // ブラウザモードでも印刷ジョブ継続をチェック
-        checkPrintJobContinuation();
+        // 元々ブラウザモードまたは正常な状態
+        console.log('ℹ️ 通常の復帰処理完了');
     }
+    
+    // Service Workerに復帰完了を通知
+    notifyServiceWorkerReturn(currentPWA.isPWA, sessionId);
 }
 
-// 印刷ジョブ継続チェック
-function checkPrintJobContinuation() {
-    const printJob = JSON.parse(sessionStorage.getItem('printJob') || 'null');
-    if (printJob) {
-        console.log('📄 印刷ジョブ継続処理:', printJob);
-        // 印刷ジョブがある場合は継続チェックを呼び出し
+// 即座のPWA復帰フォールバック処理
+function triggerImmediatePWAReturnFallback(sessionId) {
+    console.log('🆘 即座のPWA復帰フォールバック開始');
+    
+    // ユーザーに明確な復帰指示を表示
+    showCriticalPWAReturnDialog(sessionId);
+    
+    // 自動復帰の試行（プラットフォーム別）
+    attemptAutomaticPWAReturn();
+}
+
+// 自動PWA復帰の試行
+function attemptAutomaticPWAReturn() {
+    const currentUrl = window.location.href;
+    
+    if (isAndroid()) {
+        // Android: Intent URLでPWAを開く試行
+        const intentUrl = `intent://${window.location.host}${window.location.pathname}${window.location.search}#Intent;scheme=https;package=com.android.chrome;end`;
+        console.log('🤖 Android自動PWA復帰試行:', intentUrl);
+        
         setTimeout(() => {
-            checkPrintJobProgress();
-        }, 1000);
+            try {
+                window.location.href = intentUrl;
+            } catch (e) {
+                console.log('Android自動復帰失敗:', e);
+            }
+        }, 2000);
+        
+    } else if (isIOS()) {
+        // iOS: ホーム画面追加の案内
+        console.log('🍎 iOS PWA復帰ガイダンス表示');
+        showIOSPWAGuidance();
     }
 }
 
@@ -2602,9 +2728,135 @@ function showPWAReturnHelper() {
     showAdvancedPWAReturnDialog();
 }
 
+// 緊急PWA復帰フォールバック処理
+function triggerPWAReturnFallback() {
+    console.log('🚨 PWA復帰フォールバック実行');
+    showCriticalPWAReturnDialog();
+}
+
+// 重要なPWA復帰ダイアログ表示
+function showCriticalPWAReturnDialog(sessionId = null) {
+    // 既存のダイアログを閉じる
+    closeAdvancedPWADialog();
+    
+    const dialog = document.createElement('div');
+    dialog.id = 'critical-pwa-return-dialog';
+    dialog.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+    
+    const platform = getPlatformName();
+    const instructionHTML = generatePlatformSpecificInstructions(platform);
+    
+    dialog.innerHTML = `
+        <div style="background: white; border-radius: 12px; padding: 24px; max-width: 400px; margin: 20px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+            <div style="font-size: 24px; margin-bottom: 16px;">🚨</div>
+            <h2 style="color: #d32f2f; margin: 0 0 16px 0; font-size: 18px;">
+                PWAアプリに戻る必要があります
+            </h2>
+            <p style="color: #666; margin: 0 0 20px 0; line-height: 1.5;">
+                印刷後、ブラウザではなくPWAアプリで開く必要があります。<br>
+                以下の手順でPWAアプリに戻ってください：
+            </p>
+            ${instructionHTML}
+            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #eee;">
+                <button onclick="attemptAutomaticPWAReturn(); closeCriticalDialog();" 
+                        style="background: #1976d2; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; margin-right: 12px;">
+                    自動で戻る
+                </button>
+                <button onclick="closeCriticalDialog();" 
+                        style="background: #666; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer;">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    // 10秒後に自動で試行
+    setTimeout(() => {
+        if (document.getElementById('critical-pwa-return-dialog')) {
+            attemptAutomaticPWAReturn();
+        }
+    }, 10000);
+}
+
+// プラットフォーム別の指示を生成
+function generatePlatformSpecificInstructions(platform) {
+    if (platform === 'Android') {
+        return `
+            <div style="text-align: left; background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
+                <strong>Androidの場合：</strong><br>
+                1. 「最近使ったアプリ」ボタンを押す<br>
+                2. 「toki01TM」のPWAアプリを見つける<br>
+                3. PWAアプリをタップして切り替える<br><br>
+                または<br>
+                ホーム画面の「toki01TM」アイコンをタップ
+            </div>
+        `;
+    } else if (platform === 'iOS') {
+        return `
+            <div style="text-align: left; background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
+                <strong>iOSの場合：</strong><br>
+                1. ホーム画面に戻る<br>
+                2. 「toki01TM」のアプリアイコンをタップ<br>
+                3. PWAアプリとして開く<br><br>
+                ※ Safariではなく、ホーム画面のアプリアイコンから開いてください
+            </div>
+        `;
+    } else {
+        return `
+            <div style="text-align: left; background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
+                <strong>PWAアプリに戻る方法：</strong><br>
+                1. ブラウザのタブを閉じる<br>
+                2. デスクトップまたはホーム画面の「toki01TM」アイコンをクリック<br>
+                3. PWAアプリとして開く
+            </div>
+        `;
+    }
+}
+
+// 緊急ダイアログを閉じる
+function closeCriticalDialog() {
+    const dialog = document.getElementById('critical-pwa-return-dialog');
+    if (dialog) {
+        dialog.remove();
+    }
+}
+
+// Service Workerに復帰状況を通知
+function notifyServiceWorkerReturn(isPWA, sessionId) {
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+            type: 'PWA_RETURN_COMPLETE',
+            isPWA: isPWA,
+            sessionId: sessionId,
+            timestamp: Date.now()
+        });
+    }
+}
+
+// 復帰検出データのクリーンアップ
+function cleanupReturnDetection() {
+    localStorage.removeItem('toki01tm_return_detection');
+    sessionStorage.removeItem('toki01tm_return_detection');
+}
+
 // 互換性維持用のヘルパー関数
 function closePWAHelper() {
     closeAdvancedPWADialog();
+    closeCriticalDialog();
 }
 
 // 枚数印刷の続行をチェックする関数
@@ -2646,15 +2898,6 @@ function checkAndContinuePrinting() {
                 console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
             }
             
-            // PWA印刷実行 - 確実な復帰のため現在のページで実行
-            console.log('PWA印刷実行:', nextPrintUrl);
-            
-            // PWA状態を保存
-            const pwaState = detectPWAMode();
-            savePWAState(pwaState);
-            console.log('PWA状態を保存:', pwaState);
-            
-            // SII Print Agentを実行
             window.location.href = nextPrintUrl;
         } else {
             // 全印刷完了
@@ -3171,15 +3414,7 @@ function executeSignaturePrint() {
                 console.log(`署名印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
             }
             
-            // PWA署名印刷実行 - 確実な復帰のため現在のページで実行
-            console.log('PWA署名印刷実行:', printUrl);
-            
-            // PWA状態を保存
-            const pwaState = detectPWAMode();
-            savePWAState(pwaState);
-            console.log('PWA状態を保存:', pwaState);
-            
-            // SII Print Agentを実行
+            // 1枚目を印刷
             window.location.href = printUrl;
         };
         
@@ -3391,15 +3626,7 @@ function executeReceiptPrint(withMemo) {
                   'FitToWidth='       + 'no' + '&' +
                   'PaperWidth='       + '58';
     
-    // PWA領収書印刷実行 - 確実な復帰のため現在のページで実行
-    console.log('PWA領収書印刷実行:', printUrl);
-    
-    // PWA状態を保存
-    const pwaState = detectPWAMode();
-    savePWAState(pwaState);
-    console.log('PWA状態を保存:', pwaState);
-    
-    // SII Print Agentを実行
+    // 印刷実行
     window.location.href = printUrl;
     
     console.log('🧾 領収書印刷が完了しました');
@@ -3855,15 +4082,7 @@ function sendToPrintAssist(event) {
                         console.log(`印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
                     }
                     
-                    // PWA画像印刷実行 - 確実な復帰のため現在のページで実行
-                    console.log('PWA画像印刷実行:', printUrlImage);
-                    
-                    // PWA状態を保存
-                    const pwaState = detectPWAMode();
-                    savePWAState(pwaState);
-                    console.log('PWA状態を保存:', pwaState);
-                    
-                    // SII Print Agentを実行
+                    // 1枚目を印刷
                     window.location.href = printUrlImage;
                 };
                 
@@ -4176,15 +4395,7 @@ function printText() {
             console.log(`テキスト印刷ジョブ保存: ${selectedTextCopies}枚中1枚目実行`);
         }
         
-        // PWAテキスト印刷実行 - 確実な復帰のため現在のページで実行
-        console.log('PWAテキスト印刷実行:', printUrl);
-        
-        // PWA状態を保存
-        const pwaState = detectPWAMode();
-        savePWAState(pwaState);
-        console.log('PWA状態を保存:', pwaState);
-        
-        // SII Print Agentを実行
+        // 1枚目を印刷
         window.location.href = printUrl;
     }
     
