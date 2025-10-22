@@ -18,6 +18,202 @@
 <script src="https://unpkg.com/qr-scanner@1.4.2/qr-scanner.umd.min.js"></script>
 <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 <script src="./pwa-return-manager.js"></script>
+
+<!-- 確実に動作するPWA自動復帰システム（即座実行版） -->
+<script>
+// ページ読み込み直後に自動で判定・復帰を実行
+(function() {
+    'use strict';
+    
+    console.log('🚀 即座PWA復帰システム起動');
+    
+    // ページ読み込み直後にコールバック判定
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPWACallback = urlParams.get('pwa_callback') === 'true';
+    const isUTMReturn = urlParams.get('utm_source') === 'pwa_return';
+    
+    if (isPWACallback || isUTMReturn) {
+        console.log('🎯 印刷コールバック検出 - 即座に復帰処理実行');
+        
+        // 即座に復帰処理を実行
+        executeImmediatePWAReturn();
+    }
+    
+    function executeImmediatePWAReturn() {
+        try {
+            // 保存されたPWA状態を確認
+            const savedState = getSavedPWAState();
+            const currentPWA = isCurrentlyPWA();
+            
+            console.log('📊 即座復帰判定:', {
+                印刷前: savedState?.isPWA ? 'PWAアプリ' : 'Webブラウザ',
+                現在: currentPWA ? 'PWAアプリ' : 'Webブラウザ',
+                復帰が必要: savedState?.isPWA && !currentPWA
+            });
+            
+            if (savedState?.isPWA && !currentPWA) {
+                // PWAから印刷 → Webに戻った：即座に強制復帰
+                console.log('🔄 強制PWA復帰を即座に実行');
+                performForcedPWAReturn(savedState);
+            } else if (savedState?.isPWA && currentPWA) {
+                // PWAから印刷 → PWAに戻った：成功
+                console.log('✅ PWA正常復帰確認');
+                cleanupCallbackParams();
+                showSuccessNotification('PWAアプリに戻りました');
+            } else {
+                // Webから印刷またはその他
+                console.log('🌐 Web継続またはその他');
+                cleanupCallbackParams();
+                if (!savedState?.isPWA) {
+                    showSuccessNotification('印刷が完了しました');
+                }
+            }
+        } catch (error) {
+            console.error('❌ 即座復帰処理エラー:', error);
+        }
+    }
+    
+    function getSavedPWAState() {
+        try {
+            const localState = localStorage.getItem('toki01tm_pwa_state');
+            const sessionState = sessionStorage.getItem('toki01tm_pwa_state');
+            const stateJson = sessionState || localState;
+            
+            if (stateJson) {
+                return JSON.parse(stateJson);
+            }
+        } catch (error) {
+            console.error('状態読み込みエラー:', error);
+        }
+        return null;
+    }
+    
+    function isCurrentlyPWA() {
+        const displayMode = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+        const navigatorStandalone = window.navigator && window.navigator.standalone === true;
+        const homescreenLaunch = window.location.search.includes('utm_source=homescreen');
+        
+        return displayMode || navigatorStandalone || homescreenLaunch;
+    }
+    
+    function performForcedPWAReturn(savedState) {
+        // URLクリーンアップ
+        cleanupCallbackParams();
+        
+        // PWA復帰URLを構築
+        const pwaUrl = buildPWAReturnURL(savedState);
+        
+        console.log('🚀 強制リダイレクト実行:', pwaUrl);
+        
+        // プラットフォーム別の最適化された復帰
+        const platform = detectPlatform();
+        
+        if (platform === 'Android') {
+            // Android: Intent URLを試行
+            const intentUrl = createAndroidIntentURL(pwaUrl);
+            console.log('🤖 Android Intent復帰:', intentUrl);
+            
+            try {
+                // Intent URLで復帰を試行
+                window.location.replace(intentUrl);
+            } catch (e) {
+                console.log('Intent失敗、直接リダイレクト');
+                window.location.replace(pwaUrl);
+            }
+        } else {
+            // iOS・Desktop: 直接リダイレクト
+            console.log('📱 直接PWA復帰:', pwaUrl);
+            window.location.replace(pwaUrl);
+        }
+    }
+    
+    function buildPWAReturnURL(savedState) {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const params = new URLSearchParams();
+        
+        // 元のモードを保持
+        if (savedState?.mode) {
+            params.set('mode', savedState.mode);
+        }
+        
+        // PWA識別パラメータ
+        params.set('utm_source', 'homescreen');
+        params.set('pwa_return_success', 'true');
+        params.set('timestamp', Date.now().toString());
+        
+        return baseUrl + '?' + params.toString();
+    }
+    
+    function createAndroidIntentURL(fallbackUrl) {
+        const url = new URL(fallbackUrl);
+        const encodedFallback = encodeURIComponent(fallbackUrl);
+        
+        return `intent://${url.host}${url.pathname}${url.search}#Intent;` +
+               `scheme=https;` +
+               `package=com.android.chrome;` +
+               `S.browser_fallback_url=${encodedFallback};` +
+               `category=android.intent.category.BROWSABLE;` +
+               `end`;
+    }
+    
+    function detectPlatform() {
+        const ua = navigator.userAgent;
+        if (/Android/i.test(ua)) return 'Android';
+        if (/iPad|iPhone|iPod/i.test(ua)) return 'iOS';
+        return 'Desktop';
+    }
+    
+    function cleanupCallbackParams() {
+        try {
+            const url = new URL(window.location);
+            ['pwa_callback', 'utm_source', 'return_timestamp', 'pwa_auto_return', 'pwa_return_success'].forEach(param => {
+                url.searchParams.delete(param);
+            });
+            history.replaceState({}, '', url);
+        } catch (error) {
+            console.log('URL整理エラー:', error);
+        }
+    }
+    
+    function showSuccessNotification(message) {
+        // DOM読み込み後に通知表示
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                displayNotification(message);
+            });
+        } else {
+            displayNotification(message);
+        }
+    }
+    
+    function displayNotification(message) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            z-index: 10000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        `;
+        notification.textContent = `✅ ${message}`;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 3000);
+    }
+    
+})();
+</script>
 <style>
 :root {
     --primary-color: #00A3ED;
@@ -2345,19 +2541,26 @@ function initializePWA() {
     const isPWACallback = urlParams.get('pwa_callback') === 'true';
     const isUTMReturn = urlParams.get('utm_source') === 'pwa_return';
     const isAutoReturn = urlParams.get('pwa_auto_return') === 'true';
+    const isReturnSuccess = urlParams.get('pwa_return_success') === 'true';
     
-    console.log('🚀 PWA初期化 - 統合版:', {
+    console.log('🚀 PWA初期化 - 即座復帰統合版:', {
         isPWACallback,
         isUTMReturn, 
         isAutoReturn,
+        isReturnSuccess,
         currentURL: window.location.href,
         displayMode: window.matchMedia('(display-mode: standalone)').matches
     });
     
-    // 印刷コールバックの場合、確実に復帰処理を実行
-    if (isPWACallback || isUTMReturn || isAutoReturn) {
-        console.log('🎯 印刷コールバック検出 - 確実な復帰処理開始');
-        handlePrintCallback(urlParams);
+    // 即座実行システムが既に処理済みの場合はスキップ
+    if (isPWACallback || isUTMReturn) {
+        console.log('ℹ️ 即座実行システムが処理済み - 初期化のみ実行');
+    }
+    
+    // 成功復帰の場合は通知のみ
+    if (isReturnSuccess) {
+        console.log('✅ PWA復帰成功確認');
+        showReturnNotification('アプリに正常に戻りました', 'success');
     }
     
     // モード切り替え処理
@@ -2643,23 +2846,54 @@ function showReturnNotification(message, type = 'success') {
     }, 3000);
 }
 
-// テスト機能
-function testPWAReturn() {
-    console.log('🧪 PWA復帰テスト開始');
+// 新しい即座復帰システムのテスト機能
+function testImmediatePWAReturn() {
+    console.log('🧪 即座PWA復帰テスト開始');
     
-    const currentPWA = detectCurrentPWAMode();
-    const savedState = loadSavedPWAState();
+    // 現在の状態確認
+    const currentPWA = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches ||
+                      window.navigator && window.navigator.standalone === true;
+    const savedState = getSavedPWAState();
     
-    console.log('📊 現在の状態:');
+    console.log('📊 テスト結果:');
     console.log('- 現在のモード:', currentPWA ? 'PWAアプリ' : 'Webブラウザ');
     console.log('- 現在のURL:', window.location.href);
     console.log('- 保存された状態:', savedState);
+    console.log('- 即座復帰システム:', '実装済み ✅');
     
-    alert(`PWA復帰テスト完了！
+    // テスト用の状態保存
+    const testState = {
+        isPWA: currentPWA,
+        mode: getCurrentMode(),
+        url: window.location.href,
+        timestamp: Date.now()
+    };
     
+    localStorage.setItem('toki01tm_pwa_state', JSON.stringify(testState));
+    console.log('💾 テスト状態保存完了:', testState);
+    
+    alert(`即座PWA復帰システム テスト完了！
+
 現在のモード: ${currentPWA ? 'PWAアプリ' : 'Webブラウザ'}
+即座復帰システム: 実装済み ✅
 保存された状態: ${savedState ? (savedState.isPWA ? 'PWAアプリ' : 'Webブラウザ') : 'なし'}
-コンソールで詳細を確認してください。`);
+
+詳細はコンソールを確認してください。`);
+}
+
+function getSavedPWAState() {
+    try {
+        const localState = localStorage.getItem('toki01tm_pwa_state');
+        const sessionState = sessionStorage.getItem('toki01tm_pwa_state');
+        const stateJson = sessionState || localState;
+        
+        if (stateJson) {
+            return JSON.parse(stateJson);
+        }
+    } catch (error) {
+        console.error('状態読み込みエラー:', error);
+    }
+    return null;
 }
 
 // PWA状態を読み込み
