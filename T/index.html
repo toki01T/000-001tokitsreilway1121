@@ -2240,6 +2240,9 @@ function initializePWA() {
     
     if (isPWACallback || isUTMReturn) {
         handlePWAReturn(urlParams);
+    } else {
+        // 通常のページロード時もPWA復帰チェック
+        checkForPWAReturn();
     }
     
     // モード切り替え処理
@@ -2252,6 +2255,34 @@ function initializePWA() {
     
     // PWA状態の監視開始
     startPWAMonitoring();
+}
+
+// 通常のページロード時のPWA復帰チェック
+function checkForPWAReturn() {
+    console.log('🔍 通常のPWA復帰チェック開始');
+    
+    const savedState = loadPWAState();
+    const currentPWA = detectPWAMode();
+    
+    // 最近PWA状態が保存されていて現在ブラウザモードの場合
+    if (savedState && savedState.isPWA && !currentPWA.isPWA) {
+        const timeDiff = Date.now() - (savedState.timestamp || 0);
+        if (timeDiff < 300000) { // 5分以内
+            console.log('⚠️ 最近のPWA状態からブラウザに戻ったことを検出');
+            setTimeout(() => {
+                showAdvancedPWAReturnDialog();
+            }, 2000);
+        }
+    }
+    
+    // 印刷ジョブが残っている場合の処理
+    const printJob = JSON.parse(sessionStorage.getItem('printJob') || 'null');
+    if (printJob && !currentPWA.isPWA) {
+        console.log('📄 印刷ジョブ残存 + ブラウザモード検出');
+        setTimeout(() => {
+            showAdvancedPWAReturnDialog();
+        }, 1000);
+    }
 }
 
 // PWA復帰処理の改善版
@@ -2286,9 +2317,27 @@ function handlePWAReturn(urlParams) {
         // 正常にPWAに復帰
         console.log('✅ PWA復帰成功');
         showPWAReturnSuccess();
+        
+        // PWA復帰成功時の追加処理
+        checkPrintJobContinuation();
     } else {
         // 元々ブラウザモードだった
         console.log('ℹ️ ブラウザモードで継続');
+        
+        // ブラウザモードでも印刷ジョブ継続をチェック
+        checkPrintJobContinuation();
+    }
+}
+
+// 印刷ジョブ継続チェック
+function checkPrintJobContinuation() {
+    const printJob = JSON.parse(sessionStorage.getItem('printJob') || 'null');
+    if (printJob) {
+        console.log('📄 印刷ジョブ継続処理:', printJob);
+        // 印刷ジョブがある場合は継続チェックを呼び出し
+        setTimeout(() => {
+            checkPrintJobProgress();
+        }, 1000);
     }
 }
 
@@ -2597,6 +2646,15 @@ function checkAndContinuePrinting() {
                 console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
             }
             
+            // PWA印刷実行 - 確実な復帰のため現在のページで実行
+            console.log('PWA印刷実行:', nextPrintUrl);
+            
+            // PWA状態を保存
+            const pwaState = detectPWAMode();
+            savePWAState(pwaState);
+            console.log('PWA状態を保存:', pwaState);
+            
+            // SII Print Agentを実行
             window.location.href = nextPrintUrl;
         } else {
             // 全印刷完了
@@ -3113,7 +3171,15 @@ function executeSignaturePrint() {
                 console.log(`署名印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
             }
             
-            // 1枚目を印刷
+            // PWA署名印刷実行 - 確実な復帰のため現在のページで実行
+            console.log('PWA署名印刷実行:', printUrl);
+            
+            // PWA状態を保存
+            const pwaState = detectPWAMode();
+            savePWAState(pwaState);
+            console.log('PWA状態を保存:', pwaState);
+            
+            // SII Print Agentを実行
             window.location.href = printUrl;
         };
         
@@ -3325,7 +3391,15 @@ function executeReceiptPrint(withMemo) {
                   'FitToWidth='       + 'no' + '&' +
                   'PaperWidth='       + '58';
     
-    // 印刷実行
+    // PWA領収書印刷実行 - 確実な復帰のため現在のページで実行
+    console.log('PWA領収書印刷実行:', printUrl);
+    
+    // PWA状態を保存
+    const pwaState = detectPWAMode();
+    savePWAState(pwaState);
+    console.log('PWA状態を保存:', pwaState);
+    
+    // SII Print Agentを実行
     window.location.href = printUrl;
     
     console.log('🧾 領収書印刷が完了しました');
@@ -3781,7 +3855,15 @@ function sendToPrintAssist(event) {
                         console.log(`印刷ジョブ保存: ${selectedCopies}枚中1枚目実行`);
                     }
                     
-                    // 1枚目を印刷
+                    // PWA画像印刷実行 - 確実な復帰のため現在のページで実行
+                    console.log('PWA画像印刷実行:', printUrlImage);
+                    
+                    // PWA状態を保存
+                    const pwaState = detectPWAMode();
+                    savePWAState(pwaState);
+                    console.log('PWA状態を保存:', pwaState);
+                    
+                    // SII Print Agentを実行
                     window.location.href = printUrlImage;
                 };
                 
@@ -4094,7 +4176,15 @@ function printText() {
             console.log(`テキスト印刷ジョブ保存: ${selectedTextCopies}枚中1枚目実行`);
         }
         
-        // 1枚目を印刷
+        // PWAテキスト印刷実行 - 確実な復帰のため現在のページで実行
+        console.log('PWAテキスト印刷実行:', printUrl);
+        
+        // PWA状態を保存
+        const pwaState = detectPWAMode();
+        savePWAState(pwaState);
+        console.log('PWA状態を保存:', pwaState);
+        
+        // SII Print Agentを実行
         window.location.href = printUrl;
     }
     
