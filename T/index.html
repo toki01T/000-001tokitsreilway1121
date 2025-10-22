@@ -1531,45 +1531,34 @@ let modeNames = {
 // 小文字オプションの状態管理
 let receiptSmallTextEnabled = false;
 
-// 新しい確実なPWA検出とコールバック生成システム
+// シンプルで確実なPWAコールバックURL生成
 function getPWACompatibleURL() {
-    // より確実なPWA検出
-    const pwaDetection = detectPWAMode();
-    
-    console.log('🔍 PWA検出結果:', pwaDetection);
-    
-    // Service Workerに状態を通知
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({
-            type: 'PWA_PRINT_PREPARE',
-            originalUrl: window.location.href,
-            mode: getCurrentMode(),
-            isPWA: pwaDetection.isPWA,
-            timestamp: Date.now()
-        });
+    // PWA復帰管理システムを使用
+    if (window.pwaReturnManager) {
+        // 印刷前の状態を保存
+        window.pwaReturnManager.preparePrintCallback();
     }
     
-    // PWA状態を複数の場所に保存
-    const stateData = {
-        isPWA: pwaDetection.isPWA,
-        url: window.location.href,
-        mode: getCurrentMode(),
-        timestamp: Date.now(),
-        userAgent: navigator.userAgent,
-        detection: pwaDetection
-    };
+    // コールバックURL生成
+    const baseUrl = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams();
     
-    localStorage.setItem('toki01tm_pwa_state', JSON.stringify(stateData));
-    sessionStorage.setItem('toki01tm_pwa_state', JSON.stringify(stateData));
-    
-    if (pwaDetection.isPWA) {
-        // PWAモードの場合の特別なコールバックURL
-        return generatePWACallbackURL(stateData);
-    } else {
-        // ブラウザモードの場合は標準URL
-        console.log('🌐 ブラウザモード: 標準コールバック使用');
-        return window.location.href;
+    // 現在のモードを保持
+    const currentMode = getCurrentMode();
+    if (currentMode) {
+        params.set('mode', currentMode);
     }
+    
+    // PWA復帰用パラメータ
+    params.set('pwa_callback', 'true');
+    params.set('utm_source', 'pwa_return');
+    params.set('return_timestamp', Date.now().toString());
+    
+    const callbackUrl = baseUrl + '?' + params.toString();
+    
+    console.log('📱 コールバックURL生成:', callbackUrl);
+    
+    return callbackUrl;
 }
 
 // より確実なPWA検出関数
@@ -2336,24 +2325,18 @@ function initializePWA() {
     const urlParams = new URLSearchParams(window.location.search);
     const isPWACallback = urlParams.get('pwa_callback') === 'true';
     const isUTMReturn = urlParams.get('utm_source') === 'pwa_return';
+    const isAutoReturn = urlParams.get('pwa_auto_return') === 'true';
     
-    console.log('🚀 PWA初期化開始 - 強化版:', {
+    console.log('🚀 PWA初期化 - シンプル版:', {
         isPWACallback,
-        isUTMReturn,
+        isUTMReturn, 
+        isAutoReturn,
         currentURL: window.location.href,
-        displayMode: window.matchMedia('(display-mode: standalone)').matches,
-        platform: getPlatformName()
+        displayMode: window.matchMedia('(display-mode: standalone)').matches
     });
     
-    // PWA復帰監視システム開始（常時実行）
-    startPWAReturnMonitoring();
-    
-    if (isPWACallback || isUTMReturn) {
-        handlePWAReturn(urlParams);
-    } else {
-        // 通常の初期化でも復帰検出をチェック
-        checkPendingPWAReturn();
-    }
+    // PWA復帰管理システムが処理を実行
+    // （pwa-return-manager.jsが自動で処理）
     
     // モード切り替え処理
     const mode = urlParams.get('mode');
@@ -2443,27 +2426,28 @@ function triggerImmediatePWAReturnFallback(sessionId) {
     attemptAutomaticPWAReturn();
 }
 
-// 自動PWA復帰の試行
-function attemptAutomaticPWAReturn() {
-    const currentUrl = window.location.href;
+// シンプルで確実なPWA復帰システム
+// ユーザー向けテスト機能
+function testPWAReturn() {
+    console.log('🧪 PWA復帰テスト開始');
     
-    if (isAndroid()) {
-        // Android: Intent URLでPWAを開く試行
-        const intentUrl = `intent://${window.location.host}${window.location.pathname}${window.location.search}#Intent;scheme=https;package=com.android.chrome;end`;
-        console.log('🤖 Android自動PWA復帰試行:', intentUrl);
+    if (window.pwaReturnManager) {
+        console.log('📊 現在の状態:');
+        console.log('- PWAモード:', window.pwaReturnManager.detectPWAMode() ? 'PWAアプリ' : 'Webブラウザ');
+        console.log('- 現在のURL:', window.location.href);
+        console.log('- 現在のモード:', getCurrentMode());
         
-        setTimeout(() => {
-            try {
-                window.location.href = intentUrl;
-            } catch (e) {
-                console.log('Android自動復帰失敗:', e);
-            }
-        }, 2000);
+        // テスト用の状態保存
+        const state = window.pwaReturnManager.preparePrintCallback();
+        console.log('- 保存された状態:', state);
         
-    } else if (isIOS()) {
-        // iOS: ホーム画面追加の案内
-        console.log('🍎 iOS PWA復帰ガイダンス表示');
-        showIOSPWAGuidance();
+        alert(`PWA復帰テスト完了！
+        
+現在のモード: ${window.pwaReturnManager.detectPWAMode() ? 'PWAアプリ' : 'Webブラウザ'}
+コンソールで詳細を確認してください。`);
+    } else {
+        console.error('❌ PWA復帰管理システムが見つかりません');
+        alert('PWA復帰システムのロードエラーです');
     }
 }
 
