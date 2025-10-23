@@ -1652,43 +1652,78 @@ function checkCustomURLSchemeSupport() {
     };
 }
 
-// プロキシ経由での復帰処理（改良版）
+// プロキシ経由での復帰処理（PWA専用強化版）
 function handleProxyCallback() {
     const urlParams = new URLSearchParams(window.location.search);
     
-    // プロキシ経由での復帰を検出
-    if (urlParams.has('proxy_return')) {
-        console.log('🔄 プロキシ経由での復帰を検出');
+    // プロキシ経由での復帰を検出（複数条件チェック）
+    const isProxyReturn = urlParams.has('proxy_return') || 
+                         (urlParams.get('utm_source') === 'homescreen' && urlParams.has('pwa_return'));
+    
+    if (isProxyReturn) {
+        console.log('🔄 プロキシ経由でのPWA復帰を検出');
         
         const mode = urlParams.get('mode');
         const proxySession = urlParams.get('proxy_session');
         const returnTimestamp = urlParams.get('return_timestamp');
+        const isStandalone = urlParams.get('standalone') === 'true';
+        const utmSource = urlParams.get('utm_source');
         
-        console.log('📥 プロキシ復帰データ:', { mode, proxySession, returnTimestamp });
+        console.log('📥 プロキシ復帰データ:', { 
+            mode, proxySession, returnTimestamp, isStandalone, utmSource 
+        });
         
-        // PWA状態の復元
-        const savedState = loadSavedPWAState();
-        console.log('💾 保存されたPWA状態:', savedState);
+        // PWA状態の強制設定
+        if (isStandalone || utmSource === 'homescreen') {
+            console.log('💪 PWA状態を強制設定中...');
+            
+            // PWA状態情報を保存
+            const pwaState = {
+                isPWA: true,
+                mode: mode,
+                url: window.location.href,
+                timestamp: Date.now(),
+                source: 'proxy_return'
+            };
+            
+            localStorage.setItem('toki01tm_pwa_state', JSON.stringify(pwaState));
+            sessionStorage.setItem('toki01tm_pwa_state', JSON.stringify(pwaState));
+        }
+        
+        // 現在のPWA状態確認
+        const currentPWA = detectCurrentPWAMode();
+        console.log('� 復帰後PWA検出結果:', currentPWA);
         
         // モード復帰処理
         if (mode && ['image', 'text', 'signature', 'receipt'].includes(mode)) {
             console.log('🎯 復帰モード設定:', mode);
+            
             // 即座にモードを設定
             showSection(mode);
             updateModeToggle(mode);
             
-            // 追加の遅延設定でも確実にする
+            // 確実な設定のため複数回実行
             setTimeout(() => {
                 showSection(mode);
                 updateModeToggle(mode);
             }, 100);
+            
+            setTimeout(() => {
+                showSection(mode);
+                updateModeToggle(mode);
+            }, 300);
         }
         
-        // 成功通知表示
-        showPrintReturnNotification('印刷完了 - PWAアプリに復帰しました', 'success');
+        // 成功通知表示（PWA状態に応じてメッセージ変更）
+        const message = currentPWA ? 
+                       '印刷完了 - PWAアプリに復帰しました' : 
+                       '印刷完了 - アプリに戻りました';
         
-        // URLパラメータをクリーンアップ
-        const cleanUrl = window.location.origin + window.location.pathname;
+        showPrintReturnNotification(message, 'success');
+        
+        // URLパラメータをクリーンアップ（PWA識別情報は保持）
+        const cleanUrl = window.location.origin + window.location.pathname + 
+                        (currentPWA ? '?utm_source=homescreen' : '');
         window.history.replaceState({}, document.title, cleanUrl);
         
         return true;
@@ -2765,19 +2800,30 @@ function loadSavedPWAState() {
     return null;
 }
 
-// 現在のPWAモードを検出
+// 強化されたPWAモード検出
 function detectCurrentPWAMode() {
     const displayMode = window.matchMedia('(display-mode: standalone)').matches;
     const navigatorStandalone = window.navigator.standalone === true;
-    const homescreenLaunch = window.location.search.includes('utm_source=homescreen');
     
-    const isPWA = displayMode || navigatorStandalone || homescreenLaunch;
+    // PWA識別パラメータの複数チェック
+    const urlParams = new URLSearchParams(window.location.search);
+    const homescreenLaunch = urlParams.get('utm_source') === 'homescreen';
+    const pwaReturn = urlParams.get('pwa_return') === 'true';
+    const standaloneParam = urlParams.get('standalone') === 'true';
+    const isProxyReturn = urlParams.get('proxy_return') === 'true';
     
-    console.log('🔍 現在のPWA検出:', {
+    // PWA条件の判定
+    const isPWA = displayMode || navigatorStandalone || homescreenLaunch || standaloneParam || (pwaReturn && isProxyReturn);
+    
+    console.log('🔍 強化PWA検出:', {
         displayMode,
-        navigatorStandalone,
+        navigatorStandalone, 
         homescreenLaunch,
-        結果: isPWA ? 'PWAアプリ' : 'Webブラウザ'
+        pwaReturn,
+        standaloneParam,
+        isProxyReturn,
+        結果: isPWA ? 'PWAアプリ' : 'Webブラウザ',
+        URL: window.location.href
     });
     
     return isPWA;
@@ -2785,6 +2831,28 @@ function detectCurrentPWAMode() {
 
 // 新システム統合完了 - 古い複雑な処理は削除され、
 // より自然で確実な自動復帰システムに置き換えられました
+
+// PWAアプリ専用復帰URL構築
+function buildPWAReturnURL(mode = null) {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams();
+    
+    // PWA識別パラメータ（重要！）
+    params.set('utm_source', 'homescreen'); // PWAとして認識させる
+    params.set('utm_medium', 'pwa_return');
+    params.set('utm_campaign', 'print_callback');
+    params.set('pwa_return', 'true');
+    params.set('standalone', 'true'); // 追加のPWA識別子
+    
+    if (mode) {
+        params.set('mode', mode);
+    }
+    
+    const pwaUrl = baseUrl + '?' + params.toString();
+    console.log('🎯 PWA専用復帰URL:', pwaUrl);
+    
+    return pwaUrl;
+}
 
 // PWA復帰用URLの構築
 function buildReturnURL(savedState) {
@@ -2959,11 +3027,68 @@ function simulateSIIPrint() {
     console.log('=== シミュレーション完了 ===');
 }
 
+// PWAアプリ強制起動テスト
+function forcePWALaunch() {
+    console.log('🚀 === PWAアプリ強制起動テスト ===');
+    
+    const currentMode = getCurrentMode();
+    const pwaUrl = buildPWAAppURL(currentMode);
+    
+    console.log('🎯 PWA専用URL:', pwaUrl);
+    console.log('📱 PWAアプリを強制起動します...');
+    
+    // 複数の方法でPWAアプリ起動を試行
+    try {
+        // Method 1: window.open with _blank
+        const pwaWindow = window.open(pwaUrl, '_blank');
+        if (pwaWindow) {
+            console.log('✅ PWAアプリ新タブ起動成功');
+        }
+        
+        // Method 2: location.href (2秒後)
+        setTimeout(() => {
+            console.log('🔄 現在のタブでPWAアプリに移行中...');
+            window.location.href = pwaUrl;
+        }, 2000);
+        
+    } catch (error) {
+        console.warn('❌ PWAアプリ起動エラー:', error);
+    }
+    
+    console.log('=== PWA強制起動完了 ===');
+}
+
+// PWA専用URLビルダー（メイン関数）
+function buildPWAAppURL(mode = null) {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams();
+    
+    // PWA識別パラメータ（確実にPWAとして認識させる）
+    params.set('utm_source', 'homescreen');
+    params.set('utm_medium', 'pwa_app');
+    params.set('utm_campaign', 'direct_launch');
+    params.set('pwa_return', 'true');
+    params.set('standalone', 'true');
+    params.set('app_launch', 'true'); // 追加識別子
+    params.set('return_timestamp', Date.now().toString());
+    
+    if (mode) {
+        params.set('mode', mode);
+    }
+    
+    const pwaUrl = baseUrl + '?' + params.toString();
+    console.log('🎯 PWA専用アプリURL構築完了:', pwaUrl);
+    
+    return pwaUrl;
+}
+
 // グローバル関数として使用可能にする
 window.debugProxyRedirect = debugProxyRedirect;
 window.debugCustomURLScheme = debugCustomURLScheme;
 window.testProxySystem = testProxySystem;
 window.simulateSIIPrint = simulateSIIPrint;
+window.forcePWALaunch = forcePWALaunch;
+window.buildPWAAppURL = buildPWAAppURL;
 
 // テスト機能
 function testPWAReturn() {
