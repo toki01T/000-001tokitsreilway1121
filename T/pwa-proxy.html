@@ -113,51 +113,107 @@
             updateStatus(`PWAアプリに復帰中... (試行 ${attemptCount}/${maxAttempts})`);
             console.log(`🚀 PWA復帰試行 ${attemptCount}/${maxAttempts}`);
             
-            // カスタムURLスキーム試行（デスクトップブラウザ向け）
-            const customProtocol = 'web+toki01tm';
-            const customUrl = `${customProtocol}://${encodeURIComponent(returnUrl + (mode ? '?mode=' + mode : ''))}`;
+            // 複数の方法を順番に試行
+            const methods = [
+                () => tryCustomURLScheme(),
+                () => tryWindowOpen(),
+                () => tryLocationReplace(),
+                () => handleFallback()
+            ];
             
-            console.log('🔗 カスタムURL試行:', customUrl);
+            // 現在の方法を実行
+            if (methods[attemptCount - 1]) {
+                methods[attemptCount - 1]();
+            } else {
+                handleFallback();
+            }
+        }
+        
+        function tryCustomURLScheme() {
+            console.log('🔗 カスタムURLスキーム試行');
+            const customProtocol = 'web+toki01tm';
+            const targetUrl = returnUrl + (mode ? '?mode=' + mode : '');
+            const customUrl = `${customProtocol}://${encodeURIComponent(targetUrl)}`;
+            
+            console.log('🎯 カスタムURL:', customUrl);
             
             try {
-                // カスタムURLスキーム呼び出し
+                // 非表示iframeで試行
                 const iframe = document.createElement('iframe');
                 iframe.style.display = 'none';
                 iframe.src = customUrl;
                 document.body.appendChild(iframe);
                 
-                // 成功判定のためのタイマー
                 setTimeout(() => {
-                    document.body.removeChild(iframe);
-                    
-                    // 2秒後にまだページにいる場合はフォールバック
+                    if (iframe.parentNode) {
+                        document.body.removeChild(iframe);
+                    }
+                    // 1.5秒後にまだページにいれば次の方法へ
                     setTimeout(() => {
-                        if (!document.hidden) {
-                            console.log('⚠️ カスタムURLスキーム失敗、フォールバック実行');
-                            handleFallback();
+                        if (!document.hidden && attemptCount < maxAttempts) {
+                            console.log('⚠️ カスタムURL失敗、次の方法へ');
+                            attemptPWAReturn();
                         }
-                    }, 2000);
-                }, 500);
+                    }, 1500);
+                }, 300);
                 
             } catch (error) {
-                console.warn('❌ カスタムURLスキーム失敗:', error);
-                handleFallback();
+                console.warn('❌ カスタムURL例外:', error);
+                setTimeout(() => attemptPWAReturn(), 500);
+            }
+        }
+        
+        function tryWindowOpen() {
+            console.log('🪟 window.open試行');
+            const targetUrl = returnUrl + (mode ? '?mode=' + mode + '&proxy_return=true' : '?proxy_return=true');
+            
+            try {
+                const newWindow = window.open(targetUrl, '_self');
+                if (newWindow) {
+                    console.log('✅ window.open成功');
+                } else {
+                    console.log('⚠️ window.open失敗、次の方法へ');
+                    setTimeout(() => attemptPWAReturn(), 500);
+                }
+            } catch (error) {
+                console.warn('❌ window.open例外:', error);
+                setTimeout(() => attemptPWAReturn(), 500);
+            }
+        }
+        
+        function tryLocationReplace() {
+            console.log('🔄 location.replace試行');
+            const targetUrl = returnUrl + (mode ? '?mode=' + mode + '&proxy_return=true' : '?proxy_return=true');
+            
+            try {
+                window.location.replace(targetUrl);
+            } catch (error) {
+                console.warn('❌ location.replace例外:', error);
+                setTimeout(() => attemptPWAReturn(), 500);
             }
         }
         
         function handleFallback() {
-            console.log('🔄 フォールバック処理開始');
+            console.log('🔄 最終フォールバック処理開始');
             
             // PWA復帰のためのパラメータ付きでリダイレクト
-            const fallbackUrl = returnUrl + '?pwa_callback=true&proxy_return=true&utm_source=pwa_return&return_timestamp=' + Date.now() + (mode ? '&mode=' + mode : '');
+            const params = new URLSearchParams();
+            params.set('pwa_callback', 'true');
+            params.set('proxy_return', 'true');
+            params.set('utm_source', 'pwa_return');
+            params.set('return_timestamp', Date.now().toString());
             
-            updateStatus('通常の方法でアプリに戻ります...');
-            console.log('🌐 フォールバックURL:', fallbackUrl);
+            if (mode) {
+                params.set('mode', mode);
+            }
             
-            // 少し遅延させてからリダイレクト
-            setTimeout(() => {
-                window.location.href = fallbackUrl;
-            }, 1000);
+            const fallbackUrl = returnUrl + '?' + params.toString();
+            
+            updateStatus('✅ PWAアプリに戻ります...');
+            console.log('🌐 最終フォールバックURL:', fallbackUrl);
+            
+            // 即座にリダイレクト
+            window.location.href = fallbackUrl;
         }
         
         function detectBrowserCapabilities() {
@@ -188,14 +244,9 @@
             // フォールバックボタンを5秒後に表示
             setTimeout(showFallbackButton, 5000);
             
-            // 環境に応じた復帰方法選択
-            if (capabilities.supportsCustomProtocol) {
-                console.log('✅ カスタムプロトコル対応環境、試行開始');
-                setTimeout(attemptPWAReturn, 1000); // 1秒後に試行
-            } else {
-                console.log('📱 モバイル環境、直接フォールバック');
-                setTimeout(handleFallback, 2000); // 2秒後にフォールバック
-            }
+            // 環境に関係なく復帰処理を開始
+            console.log('🚀 PWA復帰処理開始（1秒後）');
+            setTimeout(attemptPWAReturn, 1000);
             
             // デバッグ情報表示
             document.getElementById('debug').textContent = 
