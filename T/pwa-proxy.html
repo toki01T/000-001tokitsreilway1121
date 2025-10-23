@@ -164,13 +164,13 @@
         }
         
         function tryWindowOpen() {
-            console.log('🪟 window.open試行');
-            const targetUrl = returnUrl + (mode ? '?mode=' + mode + '&proxy_return=true' : '?proxy_return=true');
+            console.log('🪟 PWAアプリ専用window.open試行');
+            const pwaUrl = buildPWAAppURL(mode);
             
             try {
-                const newWindow = window.open(targetUrl, '_self');
+                const newWindow = window.open(pwaUrl, '_self');
                 if (newWindow) {
-                    console.log('✅ window.open成功');
+                    console.log('✅ PWAアプリwindow.open成功');
                 } else {
                     console.log('⚠️ window.open失敗、次の方法へ');
                     setTimeout(() => attemptPWAReturn(), 500);
@@ -182,38 +182,51 @@
         }
         
         function tryLocationReplace() {
-            console.log('🔄 location.replace試行');
-            const targetUrl = returnUrl + (mode ? '?mode=' + mode + '&proxy_return=true' : '?proxy_return=true');
+            console.log('🔄 PWAアプリ専用location.replace試行');
+            const pwaUrl = buildPWAAppURL(mode);
             
             try {
-                window.location.replace(targetUrl);
+                window.location.replace(pwaUrl);
             } catch (error) {
                 console.warn('❌ location.replace例外:', error);
                 setTimeout(() => attemptPWAReturn(), 500);
             }
         }
         
-        function handleFallback() {
-            console.log('🔄 最終フォールバック処理開始');
-            
-            // PWA復帰のためのパラメータ付きでリダイレクト
+        function buildPWAAppURL(mode) {
+            const baseUrl = returnUrl;
             const params = new URLSearchParams();
-            params.set('pwa_callback', 'true');
+            
+            // PWA専用パラメータ（重要！）
+            params.set('utm_source', 'homescreen'); // PWAとして認識
+            params.set('utm_medium', 'pwa_return');
+            params.set('utm_campaign', 'print_callback');
+            params.set('pwa_return', 'true');
             params.set('proxy_return', 'true');
-            params.set('utm_source', 'pwa_return');
+            params.set('standalone', 'true');
             params.set('return_timestamp', Date.now().toString());
             
             if (mode) {
                 params.set('mode', mode);
             }
             
-            const fallbackUrl = returnUrl + '?' + params.toString();
+            const pwaUrl = baseUrl + '?' + params.toString();
+            console.log('🎯 PWA専用復帰URL生成:', pwaUrl);
+            
+            return pwaUrl;
+        }
+        
+        function handleFallback() {
+            console.log('🔄 最終フォールバック処理開始');
+            
+            // PWA専用最終フォールバックURL
+            const pwaUrl = buildPWAAppURL(mode);
             
             updateStatus('✅ PWAアプリに戻ります...');
-            console.log('🌐 最終フォールバックURL:', fallbackUrl);
+            console.log('🌐 PWA専用最終フォールバックURL:', pwaUrl);
             
-            // 即座にリダイレクト
-            window.location.href = fallbackUrl;
+            // 即座にPWAアプリにリダイレクト
+            window.location.href = pwaUrl;
         }
         
         function detectBrowserCapabilities() {
