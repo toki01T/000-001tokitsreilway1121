@@ -1666,26 +1666,21 @@ function handleProxyCallback() {
         
         console.log('📥 プロキシ復帰データ:', { mode, proxySession, returnTimestamp });
         
-        // PWA状態の復元
-        const savedState = loadSavedPWAState();
-        console.log('💾 保存されたPWA状態:', savedState);
+        // PWAアプリとして確実に復帰
+        const pwaReturnSuccess = returnToPWAApp(mode);
         
-        // モード復帰処理
-        if (mode && ['image', 'text', 'signature', 'receipt'].includes(mode)) {
-            console.log('🎯 復帰モード設定:', mode);
-            // 即座にモードを設定
-            showSection(mode);
-            updateModeToggle(mode);
+        if (!pwaReturnSuccess) {
+            // PWAアプリ復帰に失敗した場合の通常処理
+            console.log('⚠️ PWAアプリ復帰失敗、通常のモード復帰処理実行');
             
-            // 追加の遅延設定でも確実にする
-            setTimeout(() => {
+            if (mode && ['image', 'text', 'signature', 'receipt'].includes(mode)) {
+                console.log('🎯 通常モード復帰:', mode);
                 showSection(mode);
                 updateModeToggle(mode);
-            }, 100);
+            }
+            
+            showPrintReturnNotification('印刷完了', 'info');
         }
-        
-        // 成功通知表示
-        showPrintReturnNotification('印刷完了 - PWAアプリに復帰しました', 'success');
         
         // URLパラメータをクリーンアップ
         const cleanUrl = window.location.origin + window.location.pathname;
@@ -1728,271 +1723,46 @@ function handleProxyCallback() {
     return false;
 }
 
-// SII Print Agent正規仕様対応（Callbackなし）
-function prepareSIIPrintAgent() {
-    console.log('�️ SII Print Agent印刷準備開始');
+// 簡潔なプロキシリダイレクト方式のURL生成
+function getEnhancedPWACompatibleURL() {
+    console.log('🔗 プロキシリダイレクトURL生成開始');
     
-    // 現在のPWA状態を完全保存
-    const currentPWA = detectCurrentPWAMode();
+    // 現在のモードを取得
     const currentMode = getCurrentMode();
-    const printSession = 'print_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
-    const printState = {
-        isPWA: currentPWA,
-        mode: currentMode,
-        url: window.location.href,
-        timestamp: Date.now(),
-        session: printSession,
-        userAgent: navigator.userAgent,
-        displayMode: window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser'
+    // 簡潔なプロキシURL生成
+    const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+    const proxyUrl = baseUrl + 'pwa-proxy.html';
+    const returnUrl = baseUrl + 'index.html';
+    
+    // プロキシページに渡すパラメータ
+    const proxyParams = new URLSearchParams();
+    proxyParams.set('return_url', returnUrl);
+    proxyParams.set('proxy_session', Date.now().toString());
+    proxyParams.set('utm_source', 'sii_print_callback');
+    
+    if (currentMode) {
+        proxyParams.set('mode', currentMode);
+    }
+    
+    const fullProxyUrl = proxyUrl + '?' + proxyParams.toString();
+    
+    // 従来の直接復帰URLも準備（フォールバック用）
+    const directUrl = getPWACompatibleURL();
+    
+    console.log('🚀 プロキシURL:', fullProxyUrl);
+    console.log('📱 直接URL (フォールバック):', directUrl);
+    
+    // デバッグ情報保存
+    localStorage.setItem('toki01tm_last_proxy_callback', fullProxyUrl);
+    localStorage.setItem('toki01tm_last_direct_callback', directUrl);
+    localStorage.setItem('toki01tm_proxy_redirect_enabled', 'true');
+    
+    return {
+        primary: fullProxyUrl,
+        fallback: directUrl,
+        useProxy: true
     };
-    
-    // 複数の場所に印刷状態を保存
-    localStorage.setItem('toki01tm_print_state', JSON.stringify(printState));
-    sessionStorage.setItem('toki01tm_print_state', JSON.stringify(printState));
-    
-    // ServiceWorkerにも状態を送信
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({
-            type: 'PWA_PRINT_PREPARE',
-            data: printState
-        });
-    }
-    
-    // 印刷待機フラグを設定
-    localStorage.setItem('toki01tm_print_waiting', 'true');
-    localStorage.setItem('toki01tm_print_session', printSession);
-    
-    console.log('� 印刷状態保存完了:', printState);
-    
-    // 印刷後復帰監視を開始
-    startPrintReturnMonitoring();
-    
-    return printState;
-}
-
-// 印刷後復帰監視システム
-function startPrintReturnMonitoring() {
-    console.log('👁️ 印刷復帰監視システム開始');
-    
-    let checkCount = 0;
-    const maxChecks = 60; // 最大5分間監視
-    
-    const monitorInterval = setInterval(() => {
-        checkCount++;
-        
-        // 印刷待機フラグをチェック
-        const isPrintWaiting = localStorage.getItem('toki01tm_print_waiting') === 'true';
-        
-        if (!isPrintWaiting) {
-            console.log('📱 印刷待機終了、監視停止');
-            clearInterval(monitorInterval);
-            return;
-        }
-        
-        // ページがフォーカスされたかチェック
-        if (!document.hidden && document.hasFocus()) {
-            console.log('👁️ ページフォーカス検出、PWA復帰処理実行');
-            
-            // 印刷待機フラグをクリア
-            localStorage.setItem('toki01tm_print_waiting', 'false');
-            
-            // PWA復帰処理を実行
-            handlePrintReturn();
-            
-            clearInterval(monitorInterval);
-            return;
-        }
-        
-        // 最大チェック回数に達したら監視終了
-        if (checkCount >= maxChecks) {
-            console.log('⏰ 印刷復帰監視タイムアウト');
-            localStorage.setItem('toki01tm_print_waiting', 'false');
-            clearInterval(monitorInterval);
-        }
-        
-    }, 5000); // 5秒ごとにチェック
-    
-    // ページの可視性変更も監視
-    const visibilityHandler = () => {
-        if (!document.hidden && localStorage.getItem('toki01tm_print_waiting') === 'true') {
-            console.log('🔄 ページ表示復帰検出');
-            setTimeout(() => {
-                if (localStorage.getItem('toki01tm_print_waiting') === 'true') {
-                    localStorage.setItem('toki01tm_print_waiting', 'false');
-                    handlePrintReturn();
-                }
-            }, 1000);
-        }
-    };
-    
-    document.addEventListener('visibilitychange', visibilityHandler);
-    
-    // 5分後に自動クリーンアップ
-    setTimeout(() => {
-        document.removeEventListener('visibilitychange', visibilityHandler);
-        localStorage.setItem('toki01tm_print_waiting', 'false');
-    }, 300000);
-}
-
-// 印刷後復帰処理
-function handlePrintReturn() {
-    console.log('🔄 印刷後復帰処理開始');
-    
-    // 保存された印刷状態を取得
-    const printState = JSON.parse(localStorage.getItem('toki01tm_print_state') || '{}');
-    const currentPWA = detectCurrentPWAMode();
-    
-    console.log('📊 復帰状況分析:', {
-        '印刷前PWA': printState.isPWA,
-        '現在PWA': currentPWA,
-        '印刷前モード': printState.mode,
-        'セッション': printState.session
-    });
-    
-    // PWA状態の復帰判定
-    if (printState.isPWA && !currentPWA) {
-        // PWAから印刷 → Webに戻った場合：PWAに復帰させる
-        console.log('🚀 PWAアプリへの復帰が必要');
-        attemptPWAReturn(printState);
-        
-    } else if (printState.isPWA && currentPWA) {
-        // PWAから印刷 → PWAに戻った場合：成功
-        console.log('✅ PWAアプリに正常復帰');
-        completePrintReturn(printState);
-        
-    } else if (!printState.isPWA && !currentPWA) {
-        // Webから印刷 → Webに戻った場合：正常
-        console.log('🌐 Webブラウザで正常継続');
-        completePrintReturn(printState);
-        
-    } else {
-        console.log('ℹ️ 印刷処理完了');
-    }
-}
-
-// PWA復帰試行
-function attemptPWAReturn(printState) {
-    console.log('🚀 PWAアプリ復帰処理開始');
-    
-    // PWA復帰用のURL生成
-    const pwaUrl = buildPWAReturnURL(printState);
-    
-    // 複数の復帰方法を試行
-    const methods = [
-        () => tryStandaloneReturn(pwaUrl),
-        () => tryIntentReturn(pwaUrl),
-        () => tryDirectReturn(pwaUrl)
-    ];
-    
-    let methodIndex = 0;
-    
-    const tryNextMethod = () => {
-        if (methodIndex < methods.length) {
-            console.log(`🔄 復帰方法 ${methodIndex + 1}/${methods.length} 試行中`);
-            methods[methodIndex]();
-            methodIndex++;
-            
-            // 3秒後に次の方法を試行
-            setTimeout(() => {
-                if (localStorage.getItem('toki01tm_print_waiting') === 'false') {
-                    console.log('✅ 復帰成功、試行停止');
-                    return;
-                }
-                tryNextMethod();
-            }, 3000);
-        } else {
-            console.log('⚠️ すべての復帰方法が失敗');
-            showManualPWAGuidance(printState);
-        }
-    };
-    
-    tryNextMethod();
-}
-
-// PWA復帰URL生成
-function buildPWAReturnURL(printState) {
-    const params = new URLSearchParams();
-    params.set('pwa_return', 'true');
-    params.set('print_session', printState.session);
-    params.set('utm_source', 'print_return');
-    
-    if (printState.mode) {
-        params.set('mode', printState.mode);
-    }
-    
-    return window.location.origin + window.location.pathname + '?' + params.toString();
-}
-
-// standalone復帰試行
-function tryStandaloneReturn(url) {
-    console.log('📱 standalone復帰試行');
-    
-    try {
-        // PWAとして開く試行
-        window.location.href = url + '&display-mode=standalone';
-        
-    } catch (error) {
-        console.warn('standalone復帰失敗:', error);
-    }
-}
-
-// Intent復帰試行（Android向け）
-function tryIntentReturn(url) {
-    console.log('🤖 Intent復帰試行');
-    
-    const userAgent = navigator.userAgent;
-    if (!/Android/i.test(userAgent)) {
-        console.log('Android以外では Intent 不使用');
-        return;
-    }
-    
-    try {
-        const intentUrl = `intent://${window.location.host}${window.location.pathname}${window.location.search}#Intent;scheme=https;package=com.android.chrome;category=android.intent.category.BROWSABLE;end`;
-        window.location.href = intentUrl;
-        
-    } catch (error) {
-        console.warn('Intent復帰失敗:', error);
-    }
-}
-
-// 直接復帰試行
-function tryDirectReturn(url) {
-    console.log('🔄 直接復帰試行');
-    
-    try {
-        window.location.replace(url);
-        
-    } catch (error) {
-        console.warn('直接復帰失敗:', error);
-    }
-}
-
-// 印刷復帰完了処理
-function completePrintReturn(printState) {
-    // モード復帰
-    if (printState.mode && ['image', 'text', 'signature', 'receipt'].includes(printState.mode)) {
-        console.log('🎯 モード復帰:', printState.mode);
-        showSection(printState.mode);
-        updateModeToggle(printState.mode);
-    }
-    
-    // 成功通知
-    showPrintReturnNotification('印刷完了 - アプリに復帰しました', 'success');
-    
-    // 印刷状態クリーンアップ
-    localStorage.removeItem('toki01tm_print_state');
-    localStorage.removeItem('toki01tm_print_waiting');
-    localStorage.removeItem('toki01tm_print_session');
-}
-
-// 手動PWAガイダンス表示
-function showManualPWAGuidance(printState) {
-    const message = 'PWAアプリに戻ってください。ホーム画面のアプリアイコンをタップしてください。';
-    showPrintReturnNotification(message, 'warning');
-    
-    // 詳細ガイダンス表示
-    console.log('📱 手動PWA復帰ガイダンス表示');
 }
 
 // より確実なPWA検出関数
@@ -2788,18 +2558,23 @@ function initializePWA() {
         handleProxyCallback();
     }
     
-    // 印刷復帰チェック
-    const isPrintReturn = urlParams.get('pwa_return') === 'true' && urlParams.get('print_session');
-    if (isPrintReturn) {
-        console.log('🖨️ 印刷復帰検出');
-        localStorage.setItem('toki01tm_print_waiting', 'false');
-        handlePrintReturn();
-    }
-    
-    // 印刷待機状態のチェック
-    if (localStorage.getItem('toki01tm_print_waiting') === 'true') {
-        console.log('📱 印刷待機状態を検出、復帰監視再開');
-        startPrintReturnMonitoring();
+    // PWAアプリとしての起動検出
+    const isPWALaunch = urlParams.get('pwa_launch') === 'true';
+    if (isPWALaunch) {
+        console.log('🚀 PWAアプリとして起動されました');
+        
+        const launchMode = urlParams.get('mode');
+        if (launchMode) {
+            setTimeout(() => {
+                showSection(launchMode);
+                updateModeToggle(launchMode);
+                showPrintReturnNotification('PWAアプリで印刷完了しました', 'success');
+            }, 500);
+        }
+        
+        // URLをクリーンアップ
+        const cleanUrl = window.location.origin + window.location.pathname + '?utm_source=homescreen';
+        window.history.replaceState({}, document.title, cleanUrl);
     }
     
     // モード切り替え処理
@@ -3004,19 +2779,37 @@ function loadSavedPWAState() {
     return null;
 }
 
-// 現在のPWAモードを検出
+// 現在のPWAモードを検出（強化版）
 function detectCurrentPWAMode() {
     const displayMode = window.matchMedia('(display-mode: standalone)').matches;
     const navigatorStandalone = window.navigator.standalone === true;
     const homescreenLaunch = window.location.search.includes('utm_source=homescreen');
     
-    const isPWA = displayMode || navigatorStandalone || homescreenLaunch;
+    // 追加のPWA検出方法
+    const isFullscreen = window.matchMedia('(display-mode: fullscreen)').matches;
+    const isMinimalUI = window.matchMedia('(display-mode: minimal-ui)').matches;
+    const windowChrome = window.chrome !== undefined;
+    const windowOuterHeight = window.outerHeight;
+    const windowInnerHeight = window.innerHeight;
+    const heightDifference = windowOuterHeight - windowInnerHeight;
     
-    console.log('🔍 現在のPWA検出:', {
+    // PWAでは通常ブラウザのUIが少ないため高さの差が小さい
+    const likelyPWA = heightDifference < 100 && !windowChrome;
+    
+    const isPWA = displayMode || navigatorStandalone || homescreenLaunch || isFullscreen || isMinimalUI;
+    
+    console.log('🔍 詳細PWA検出:', {
         displayMode,
         navigatorStandalone,
         homescreenLaunch,
-        結果: isPWA ? 'PWAアプリ' : 'Webブラウザ'
+        isFullscreen,
+        isMinimalUI,
+        heightDifference,
+        likelyPWA,
+        windowChrome: !!windowChrome,
+        結果: isPWA ? 'PWAアプリ' : 'Webブラウザ',
+        URL: window.location.href,
+        userAgent: navigator.userAgent.substring(0, 50) + '...'
     });
     
     return isPWA;
@@ -3093,6 +2886,88 @@ function showReturnNotification(message, type = 'success') {
 // 印刷復帰通知表示（カスタムURLスキーム対応）
 function showPrintReturnNotification(message, type = 'success') {
     showReturnNotification(message, type);
+}
+
+// PWAアプリとして確実に復帰するための関数
+function returnToPWAApp(mode = null) {
+    console.log('🚀 PWAアプリ復帰処理開始');
+    
+    // 現在がPWAアプリかどうか確認
+    const currentPWA = detectCurrentPWAMode();
+    
+    if (currentPWA) {
+        console.log('✅ 既にPWAアプリで実行中');
+        if (mode) {
+            showSection(mode);
+            updateModeToggle(mode);
+        }
+        showPrintReturnNotification('PWAアプリで印刷完了', 'success');
+        return true;
+    }
+    
+    console.log('🔄 Webブラウザで実行中、PWAアプリに切り替えます');
+    
+    // PWAアプリとして起動するためのURL構築
+    const currentUrl = new URL(window.location.href);
+    const pwaParams = new URLSearchParams();
+    
+    // PWAアプリフラグ
+    pwaParams.set('utm_source', 'homescreen');
+    pwaParams.set('pwa_launch', 'true');
+    pwaParams.set('return_timestamp', Date.now().toString());
+    
+    if (mode) {
+        pwaParams.set('mode', mode);
+    }
+    
+    // PWAアプリURL生成
+    const pwaUrl = currentUrl.origin + currentUrl.pathname + '?' + pwaParams.toString();
+    
+    console.log('📱 PWAアプリURL:', pwaUrl);
+    
+    // PWAアプリとして開く複数の方法を試行
+    const methods = [
+        () => {
+            // 方法1: 新しいウィンドウでPWAアプリとして開く
+            console.log('試行1: 新しいウィンドウでPWAアプリ起動');
+            const pwaWindow = window.open(pwaUrl, '_blank');
+            if (pwaWindow) {
+                // 成功メッセージを表示してから元のウィンドウを閉じる
+                showReturnNotification('PWAアプリを起動しました', 'success');
+                setTimeout(() => {
+                    try {
+                        window.close();
+                    } catch(e) {
+                        // ウィンドウが閉じられない場合は元のページをPWAページに置き換え
+                        window.location.href = pwaUrl;
+                    }
+                }, 2000);
+                return true;
+            }
+            return false;
+        },
+        () => {
+            // 方法2: 現在のウィンドウをPWAアプリに置き換え
+            console.log('試行2: 現在のウィンドウをPWAアプリに置き換え');
+            window.location.href = pwaUrl;
+            return true;
+        }
+    ];
+    
+    // 各方法を順番に試行
+    for (let i = 0; i < methods.length; i++) {
+        try {
+            if (methods[i]()) {
+                console.log(`✅ PWAアプリ復帰方法${i + 1}成功`);
+                return true;
+            }
+        } catch (error) {
+            console.warn(`⚠️ PWAアプリ復帰方法${i + 1}失敗:`, error);
+        }
+    }
+    
+    console.log('❌ PWAアプリ復帰に失敗');
+    return false;
 }
 
 // プロキシリダイレクト方式のデバッグ表示
@@ -3176,36 +3051,44 @@ function testProxySystem() {
     console.log('=== テスト完了 ===');
 }
 
-// SII Print Agentシミュレーション（正しい仕様）
+// SII Print Agentシミュレーション
 function simulateSIIPrint() {
     console.log('🖨️ === SII Print Agent呼び出しシミュレーション ===');
     
-    // 印刷前準備
-    const printState = prepareSIIPrintAgent();
-    
-    // 正しいSII Print Agent URL（Callbackなし）
+    const urlConfig = getEnhancedPWACompatibleURL();
     const siiUrl = 'siiprintagent://1.0/print?' +
-                  'Format=pdf&' +
-                  'Data=dummyPDFdata&' +
-                  'SelectOnError=yes&' +
-                  'CutType=full&' +
-                  'FitToWidth=no&' +
-                  'PaperWidth=58';
+                  'CallbackSuccess=' + encodeURIComponent(urlConfig.primary) + '&' +
+                  'CallbackFail=' + encodeURIComponent(urlConfig.fallback) + '&' +
+                  'Format=pdf&Data=dummydata&SelectOnError=yes';
     
     console.log('🎯 SII Print Agent URL:', siiUrl);
     console.log('💡 実際の印刷では、このURLがSII Print Agentアプリで処理されます');
-    console.log('📱 テスト用に3秒後に印刷完了をシミュレートします...');
+    console.log('📱 テスト用に CallbackSuccess URL に直接アクセスします...');
     
-    // テスト用に印刷完了をシミュレート
+    // テスト用にコールバックURLに直接移動
     setTimeout(() => {
-        console.log('✅ 印刷完了シミュレート');
-        // 印刷復帰処理をトリガー
-        if (localStorage.getItem('toki01tm_print_waiting') === 'true') {
-            handlePrintReturn();
-        }
-    }, 3000);
+        window.location.href = urlConfig.primary;
+    }, 2000);
     
-    console.log('=== シミュレーション開始 ===');
+    console.log('=== シミュレーション完了 ===');
+}
+
+// PWAアプリ復帰テスト
+function testPWAReturn() {
+    console.log('🧪 === PWAアプリ復帰テスト ===');
+    
+    const currentPWA = detectCurrentPWAMode();
+    console.log('現在の状態:', currentPWA ? 'PWAアプリ' : 'Webブラウザ');
+    
+    if (currentPWA) {
+        console.log('✅ 既にPWAアプリです。Webブラウザで開いてテストしてください。');
+        return;
+    }
+    
+    console.log('🔄 PWAアプリ復帰テスト実行...');
+    returnToPWAApp('text');
+    
+    console.log('=== テスト完了 ===');
 }
 
 // グローバル関数として使用可能にする
@@ -3213,6 +3096,8 @@ window.debugProxyRedirect = debugProxyRedirect;
 window.debugCustomURLScheme = debugCustomURLScheme;
 window.testProxySystem = testProxySystem;
 window.simulateSIIPrint = simulateSIIPrint;
+window.testPWAReturn = testPWAReturn;
+window.returnToPWAApp = returnToPWAApp;
 
 // テスト機能
 function testPWAReturn() {
@@ -3643,16 +3528,18 @@ function checkAndContinuePrinting() {
             
             console.log(`${job.type}印刷続行: ${job.currentCopy}/${job.totalCopies}枚目実行`);
             
-            // 次の印刷を実行（正しいSII Print Agent仕様）
-            prepareSIIPrintAgent(); // 印刷前準備
+            // 次の印刷を実行（カスタムURLスキーム対応）
+            const callbackConfig = getEnhancedPWACompatibleURL();
             const nextPrintUrl = 'siiprintagent://1.0/print?' +
-                                'Format=pdf&' +
-                                'Data=' + encodeURIComponent(job.pdfData) + '&' +
-                                'SelectOnError=yes&' +
-                                'CutType=full&' +
-                                'CutFeed=yes&' +
-                                'FitToWidth=no&' +
-                                'PaperWidth=58';
+                                'CallbackSuccess='  + encodeURIComponent(callbackConfig.primary) + '&' +
+                                'CallbackFail='     + encodeURIComponent(callbackConfig.fallback) + '&' +
+                                'Format='           + 'pdf' + '&' +
+                                'Data='             + encodeURIComponent(job.pdfData) + '&' +
+                                'SelectOnError='    + 'yes' + '&' +
+                                'CutType='          + 'full' + '&' +
+                                'CutFeed='          + 'yes' + '&' +
+                                'FitToWidth='       + 'no' + '&' +
+                                'PaperWidth='       + '58';
             
             if (job.currentCopy < job.totalCopies) {
                 // まだ残りがある場合は情報を更新して保存
@@ -4149,16 +4036,17 @@ function executeSignaturePrint() {
             // PDFをBase64形式で取得
             const pdfBase64 = pdf.output('datauristring').split(',')[1];
             
-            // 印刷前準備とSII Print Agent呼び出し
-            prepareSIIPrintAgent();
+            const callbackConfig = getEnhancedPWACompatibleURL();
             let printUrl = 'siiprintagent://1.0/print?' +
-                          'Format=pdf&' +
-                          'Data=' + encodeURIComponent(pdfBase64) + '&' +
-                          'SelectOnError=yes&' +
-                          'CutType=full&' +
-                          'CutFeed=yes&' +
-                          'FitToWidth=no&' +
-                          'PaperWidth=58';
+                          'CallbackSuccess='  + encodeURIComponent(callbackConfig.primary) + '&' +
+                          'CallbackFail='     + encodeURIComponent(callbackConfig.fallback) + '&' +
+                          'Format='           + 'pdf' + '&' +
+                          'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                          'SelectOnError='    + 'yes' + '&' +
+                          'CutType='          + 'full' + '&' +
+                          'CutFeed='          + 'yes' + '&' +
+                          'FitToWidth='       + 'no' + '&' +
+                          'PaperWidth='       + '58';
             
             // 【革新的枚数印刷システム】sessionStorageによる永続化方式
             
@@ -4378,16 +4266,17 @@ function executeReceiptPrint(withMemo) {
     // PDFをBase64形式で取得
     const pdfBase64 = pdf.output('datauristring').split(',')[1];
     
-    // 印刷前準備とSII Print Agent呼び出し
-    prepareSIIPrintAgent();
+    const callbackConfig = getEnhancedPWACompatibleURL();
     let printUrl = 'siiprintagent://1.0/print?' +
-                  'Format=pdf&' +
-                  'Data=' + encodeURIComponent(pdfBase64) + '&' +
-                  'SelectOnError=yes&' +
-                  'CutType=full&' +
-                  'CutFeed=yes&' +
-                  'FitToWidth=no&' +
-                  'PaperWidth=58';
+                  'CallbackSuccess='  + encodeURIComponent(callbackConfig.primary) + '&' +
+                  'CallbackFail='     + encodeURIComponent(callbackConfig.fallback) + '&' +
+                  'Format='           + 'pdf' + '&' +
+                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                  'SelectOnError='    + 'yes' + '&' +
+                  'CutType='          + 'full' + '&' +
+                  'CutFeed='          + 'yes' + '&' +
+                  'FitToWidth='       + 'no' + '&' +
+                  'PaperWidth='       + '58';
     
     // 印刷実行
     window.location.href = printUrl;
@@ -4815,16 +4704,17 @@ function sendToPrintAssist(event) {
                     // PDFをBase64形式で取得
                     const pdfBase64 = pdf.output('datauristring').split(',')[1];
                     
-                    // 印刷前準備とSII Print Agent呼び出し
-                    prepareSIIPrintAgent();
+                    const callbackConfig = getEnhancedPWACompatibleURL();
                     let printUrlImage = 'siiprintagent://1.0/print?' +
-                                      'Format=pdf&' +
-                                      'Data=' + encodeURIComponent(pdfBase64) + '&' +
-                                      'SelectOnError=yes&' +
-                                      'CutType=full&' +
-                                      'CutFeed=yes&' +
-                                      'FitToWidth=no&' +
-                                      'PaperWidth=58';
+                                      'CallbackSuccess='  + encodeURIComponent(callbackConfig.primary) + '&' +
+                                      'CallbackFail='     + encodeURIComponent(callbackConfig.fallback) + '&' +
+                                      'Format='           + 'pdf' + '&' +
+                                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                      'SelectOnError='    + 'yes' + '&' +
+                                      'CutType='          + 'full' + '&' +
+                                      'CutFeed='          + 'yes' + '&' +
+                                      'FitToWidth='       + 'no' + '&' +
+                                      'PaperWidth='       + '58';
                     
                     // 【革新的枚数印刷システム】sessionStorageによる永続化方式
                     
@@ -5127,16 +5017,17 @@ function printText() {
         // PDFをBase64形式で取得
         const pdfBase64 = pdf.output('datauristring').split(',')[1];
         
-        // 印刷前準備とSII Print Agent呼び出し
-        prepareSIIPrintAgent();
+        const callbackConfig = getEnhancedPWACompatibleURL();
         let printUrl = 'siiprintagent://1.0/print?' +
-                      'Format=pdf&' +
-                      'Data=' + encodeURIComponent(pdfBase64) + '&' +
-                      'SelectOnError=yes&' +
-                      'CutType=full&' +
-                      'CutFeed=yes&' +
-                      'FitToWidth=no&' +
-                      'PaperWidth=58';
+                      'CallbackSuccess='  + encodeURIComponent(callbackConfig.primary) + '&' +
+                      'CallbackFail='     + encodeURIComponent(callbackConfig.fallback) + '&' +
+                      'Format='           + 'pdf' + '&' +
+                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                      'SelectOnError='    + 'yes' + '&' +
+                      'CutType='          + 'full' + '&' +
+                      'CutFeed='          + 'yes' + '&' +
+                      'FitToWidth='       + 'no' + '&' +
+                      'PaperWidth='       + '58';
         
         // 【革新的枚数印刷システム】sessionStorageによる永続化方式
         
