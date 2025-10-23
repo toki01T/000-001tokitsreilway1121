@@ -1652,7 +1652,7 @@ function checkCustomURLSchemeSupport() {
     };
 }
 
-// プロキシ経由での復帰処理
+// プロキシ経由での復帰処理（改良版）
 function handleProxyCallback() {
     const urlParams = new URLSearchParams(window.location.search);
     
@@ -1662,29 +1662,30 @@ function handleProxyCallback() {
         
         const mode = urlParams.get('mode');
         const proxySession = urlParams.get('proxy_session');
+        const returnTimestamp = urlParams.get('return_timestamp');
         
-        console.log('📥 プロキシ復帰データ:', { mode, proxySession });
+        console.log('📥 プロキシ復帰データ:', { mode, proxySession, returnTimestamp });
+        
+        // PWA状態の復元
+        const savedState = loadSavedPWAState();
+        console.log('💾 保存されたPWA状態:', savedState);
         
         // モード復帰処理
         if (mode && ['image', 'text', 'signature', 'receipt'].includes(mode)) {
-            console.log('🎯 復帰モード:', mode);
-            setTimeout(() => showMode(mode), 300);
+            console.log('🎯 復帰モード設定:', mode);
+            // 即座にモードを設定
+            showSection(mode);
+            updateModeToggle(mode);
+            
+            // 追加の遅延設定でも確実にする
+            setTimeout(() => {
+                showSection(mode);
+                updateModeToggle(mode);
+            }, 100);
         }
         
         // 成功通知表示
         showPrintReturnNotification('印刷完了 - PWAアプリに復帰しました', 'success');
-        
-        // プロキシウィンドウに成功メッセージ送信
-        if (window.opener) {
-            try {
-                window.opener.postMessage({
-                    type: 'PWA_RETURN_SUCCESS',
-                    session: proxySession
-                }, '*');
-            } catch (error) {
-                console.warn('プロキシウィンドウへのメッセージ送信失敗:', error);
-            }
-        }
         
         // URLパラメータをクリーンアップ
         const cleanUrl = window.location.origin + window.location.pathname;
@@ -1727,23 +1728,21 @@ function handleProxyCallback() {
     return false;
 }
 
-// プロキシリダイレクト方式のPWA対応URL生成
+// 簡潔なプロキシリダイレクト方式のURL生成
 function getEnhancedPWACompatibleURL() {
     console.log('🔗 プロキシリダイレクトURL生成開始');
     
     // 現在のモードを取得
     const currentMode = getCurrentMode();
     
-    // プロキシページのURL生成
-    const basePath = window.location.pathname.endsWith('/') ? 
-                    window.location.pathname : 
-                    window.location.pathname.replace(/\/[^\/]*$/, '/');
-    const proxyUrl = window.location.origin + basePath + 'pwa-proxy.html';
+    // 簡潔なプロキシURL生成
+    const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/');
+    const proxyUrl = baseUrl + 'pwa-proxy.html';
+    const returnUrl = baseUrl + 'index.html';
     
     // プロキシページに渡すパラメータ
     const proxyParams = new URLSearchParams();
-    const returnBaseUrl = window.location.origin + basePath + (window.location.pathname.endsWith('index.html') ? 'index.html' : '');
-    proxyParams.set('return_url', returnBaseUrl);
+    proxyParams.set('return_url', returnUrl);
     proxyParams.set('proxy_session', Date.now().toString());
     proxyParams.set('utm_source', 'sii_print_callback');
     
@@ -2914,9 +2913,57 @@ function debugCustomURLScheme() {
     console.log('===========================================');
 }
 
+// プロキシシステムのテスト関数
+function testProxySystem() {
+    console.log('🧪 === プロキシシステムテスト開始 ===');
+    
+    // URL生成テスト
+    const urlConfig = getEnhancedPWACompatibleURL();
+    console.log('📊 生成されたURL:', urlConfig);
+    
+    // プロキシページへのアクセステスト
+    const testUrl = urlConfig.primary;
+    console.log('🌐 プロキシページテスト URL:', testUrl);
+    
+    // 新しいタブで開いてテスト
+    const testWindow = window.open(testUrl, '_blank');
+    if (testWindow) {
+        console.log('✅ プロキシページのテスト開始');
+        console.log('💡 新しいタブでプロキシページが開かれました');
+    } else {
+        console.log('❌ ポップアップブロックによりテスト失敗');
+    }
+    
+    console.log('=== テスト完了 ===');
+}
+
+// SII Print Agentシミュレーション
+function simulateSIIPrint() {
+    console.log('🖨️ === SII Print Agent呼び出しシミュレーション ===');
+    
+    const urlConfig = getEnhancedPWACompatibleURL();
+    const siiUrl = 'siiprintagent://1.0/print?' +
+                  'CallbackSuccess=' + encodeURIComponent(urlConfig.primary) + '&' +
+                  'CallbackFail=' + encodeURIComponent(urlConfig.fallback) + '&' +
+                  'Format=pdf&Data=dummydata&SelectOnError=yes';
+    
+    console.log('🎯 SII Print Agent URL:', siiUrl);
+    console.log('💡 実際の印刷では、このURLがSII Print Agentアプリで処理されます');
+    console.log('📱 テスト用に CallbackSuccess URL に直接アクセスします...');
+    
+    // テスト用にコールバックURLに直接移動
+    setTimeout(() => {
+        window.location.href = urlConfig.primary;
+    }, 2000);
+    
+    console.log('=== シミュレーション完了 ===');
+}
+
 // グローバル関数として使用可能にする
 window.debugProxyRedirect = debugProxyRedirect;
 window.debugCustomURLScheme = debugCustomURLScheme;
+window.testProxySystem = testProxySystem;
+window.simulateSIIPrint = simulateSIIPrint;
 
 // テスト機能
 function testPWAReturn() {
