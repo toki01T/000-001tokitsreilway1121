@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>印刷完了 - PWAアプリに戻しています...</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            text-align: center;
+            max-width: 400px;
+            padding: 2rem;
+            background: rgba(255,255,255,0.1);
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 300;
+        }
+        p {
+            font-size: 1rem;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+        .fallback-button {
+            margin-top: 2rem;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: none;
+        }
+        .fallback-button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .status {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h1>📱 PWAアプリに戻しています...</h1>
+        <p id="status">印刷が完了しました。<br>アプリに自動的に戻ります。</p>
+        
+        <button id="fallbackButton" class="fallback-button" onclick="handleFallback()">
+            手動でアプリに戻る
+        </button>
+        
+        <div id="debug" class="status"></div>
+    </div>
+
+    <script>
+        console.log('🔄 PWAプロキシリダイレクトページ開始');
+        
+        // URLパラメータを取得
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode');
+        const returnUrl = urlParams.get('return_url') || window.location.origin + '/';
+        
+        // ページ固有のID生成
+        const sessionId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        
+        let attemptCount = 0;
+        let maxAttempts = 3;
+        let fallbackTimer = null;
+        
+        function updateStatus(message) {
+            document.getElementById('status').innerHTML = message;
+            console.log('📱 ステータス:', message);
+        }
+        
+        function showFallbackButton() {
+            document.getElementById('fallbackButton').style.display = 'inline-block';
+        }
+        
+        function attemptPWAReturn() {
+            attemptCount++;
+            
+            updateStatus(`PWAアプリに復帰中... (試行 ${attemptCount}/${maxAttempts})`);
+            console.log(`🚀 PWA復帰試行 ${attemptCount}/${maxAttempts}`);
+            
+            // カスタムURLスキーム試行（デスクトップブラウザ向け）
+            const customProtocol = 'web+toki01tm';
+            const customUrl = `${customProtocol}://${encodeURIComponent(returnUrl + (mode ? '?mode=' + mode : ''))}`;
+            
+            console.log('🔗 カスタムURL試行:', customUrl);
+            
+            try {
+                // カスタムURLスキーム呼び出し
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = customUrl;
+                document.body.appendChild(iframe);
+                
+                // 成功判定のためのタイマー
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                    
+                    // 2秒後にまだページにいる場合はフォールバック
+                    setTimeout(() => {
+                        if (!document.hidden) {
+                            console.log('⚠️ カスタムURLスキーム失敗、フォールバック実行');
+                            handleFallback();
+                        }
+                    }, 2000);
+                }, 500);
+                
+            } catch (error) {
+                console.warn('❌ カスタムURLスキーム失敗:', error);
+                handleFallback();
+            }
+        }
+        
+        function handleFallback() {
+            console.log('🔄 フォールバック処理開始');
+            
+            // PWA復帰のためのパラメータ付きでリダイレクト
+            const fallbackUrl = returnUrl + '?pwa_callback=true&proxy_return=true&utm_source=pwa_return&return_timestamp=' + Date.now() + (mode ? '&mode=' + mode : '');
+            
+            updateStatus('通常の方法でアプリに戻ります...');
+            console.log('🌐 フォールバックURL:', fallbackUrl);
+            
+            // 少し遅延させてからリダイレクト
+            setTimeout(() => {
+                window.location.href = fallbackUrl;
+            }, 1000);
+        }
+        
+        function detectBrowserCapabilities() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const isMobile = /android|iphone|ipad|ipod/.test(userAgent);
+            const isChrome = /chrome/.test(userAgent) && !/edge/.test(userAgent);
+            const isSafari = /safari/.test(userAgent) && !/chrome/.test(userAgent);
+            const supportsCustomProtocol = navigator.registerProtocolHandler && !isMobile;
+            
+            console.log('📊 ブラウザ環境:', {
+                userAgent: navigator.userAgent,
+                isMobile,
+                isChrome,
+                isSafari,
+                supportsCustomProtocol,
+                registerProtocolHandler: !!navigator.registerProtocolHandler
+            });
+            
+            return { isMobile, supportsCustomProtocol };
+        }
+        
+        // ページ読み込み完了時の処理
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎯 PWAプロキシリダイレクトページ初期化完了');
+            
+            const capabilities = detectBrowserCapabilities();
+            
+            // フォールバックボタンを5秒後に表示
+            setTimeout(showFallbackButton, 5000);
+            
+            // 環境に応じた復帰方法選択
+            if (capabilities.supportsCustomProtocol) {
+                console.log('✅ カスタムプロトコル対応環境、試行開始');
+                setTimeout(attemptPWAReturn, 1000); // 1秒後に試行
+            } else {
+                console.log('📱 モバイル環境、直接フォールバック');
+                setTimeout(handleFallback, 2000); // 2秒後にフォールバック
+            }
+            
+            // デバッグ情報表示
+            document.getElementById('debug').textContent = 
+                `環境: ${capabilities.isMobile ? 'モバイル' : 'デスクトップ'} | ` +
+                `カスタムプロトコル: ${capabilities.supportsCustomProtocol ? '対応' : '非対応'}`;
+        });
+        
+        // ページの可視性変化を監視（PWAに戻ったかの判定）
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                console.log('✅ ページが非表示になりました（PWA復帰成功の可能性）');
+                clearTimeout(fallbackTimer);
+            } else {
+                console.log('👁️ ページが再表示されました');
+            }
+        });
+        
+        // PWAアプリからのメッセージを受信
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'PWA_RETURN_SUCCESS') {
+                console.log('✅ PWAからの復帰成功メッセージを受信');
+                updateStatus('✅ PWAアプリに正常に戻りました');
+            }
+        });
+    </script>
+</body>
+</html>
