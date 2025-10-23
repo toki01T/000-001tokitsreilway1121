@@ -1615,8 +1615,8 @@ function initializeCustomURLScheme() {
         localStorage.setItem('toki01tm_custom_url_fallback_reason', isSupported.reason);
     }
     
-    // プロトコルコールバック処理
-    handleProtocolCallback();
+    // プロキシ・プロトコルコールバック処理
+    handleProxyCallback();
 }
 
 // ブラウザサポート判定
@@ -1652,28 +1652,63 @@ function checkCustomURLSchemeSupport() {
     };
 }
 
-// プロトコルコールバック処理
-function handleProtocolCallback() {
+// プロキシ経由での復帰処理
+function handleProxyCallback() {
     const urlParams = new URLSearchParams(window.location.search);
     
+    // プロキシ経由での復帰を検出
+    if (urlParams.has('proxy_return')) {
+        console.log('🔄 プロキシ経由での復帰を検出');
+        
+        const mode = urlParams.get('mode');
+        const proxySession = urlParams.get('proxy_session');
+        
+        console.log('📥 プロキシ復帰データ:', { mode, proxySession });
+        
+        // モード復帰処理
+        if (mode && ['image', 'text', 'signature', 'receipt'].includes(mode)) {
+            console.log('🎯 復帰モード:', mode);
+            setTimeout(() => showMode(mode), 300);
+        }
+        
+        // 成功通知表示
+        showPrintReturnNotification('印刷完了 - PWAアプリに復帰しました', 'success');
+        
+        // プロキシウィンドウに成功メッセージ送信
+        if (window.opener) {
+            try {
+                window.opener.postMessage({
+                    type: 'PWA_RETURN_SUCCESS',
+                    session: proxySession
+                }, '*');
+            } catch (error) {
+                console.warn('プロキシウィンドウへのメッセージ送信失敗:', error);
+            }
+        }
+        
+        // URLパラメータをクリーンアップ
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        
+        return true;
+    }
+    
+    // プロトコルコールバックも処理（カスタムURLスキーム用）
     if (urlParams.has('protocol_callback')) {
         console.log('🔗 カスタムURLスキーム経由での復帰を検出');
         
-        // データパラメータの処理
         const data = urlParams.get('data');
         if (data) {
             try {
                 const decodedData = decodeURIComponent(data);
                 console.log('📥 プロトコルデータ:', decodedData);
                 
-                // 必要に応じてデータ処理を追加
                 const dataParams = new URLSearchParams(decodedData.split('?')[1] || '');
                 const mode = dataParams.get('mode');
                 
                 if (mode) {
                     console.log('🎯 復帰モード:', mode);
-                    // モード復帰処理
-                    setTimeout(() => showMode(mode), 500);
+                    setTimeout(() => showMode(mode), 300);
                 }
                 
             } catch (error) {
@@ -1681,10 +1716,8 @@ function handleProtocolCallback() {
             }
         }
         
-        // 成功通知表示
         showPrintReturnNotification('カスタムURLスキーム経由で復帰しました', 'success');
         
-        // URLパラメータをクリーンアップ
         const cleanUrl = window.location.origin + window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
         
@@ -1694,44 +1727,48 @@ function handleProtocolCallback() {
     return false;
 }
 
-// 拡張版PWA対応URL生成（カスタムURLスキーム対応）
+// プロキシリダイレクト方式のPWA対応URL生成
 function getEnhancedPWACompatibleURL() {
-    console.log('🔗 拡張PWAコールバックURL生成開始');
+    console.log('🔗 プロキシリダイレクトURL生成開始');
     
-    // 基本のPWA復帰URL取得
-    const standardUrl = getPWACompatibleURL();
+    // 現在のモードを取得
+    const currentMode = getCurrentMode();
     
-    // カスタムURLスキーム登録状態確認
-    const isCustomUrlRegistered = localStorage.getItem('toki01tm_custom_url_registered') === 'true';
-    const customProtocol = localStorage.getItem('toki01tm_custom_url_protocol');
+    // プロキシページのURL生成
+    const basePath = window.location.pathname.endsWith('/') ? 
+                    window.location.pathname : 
+                    window.location.pathname.replace(/\/[^\/]*$/, '/');
+    const proxyUrl = window.location.origin + basePath + 'pwa-proxy.html';
     
-    if (isCustomUrlRegistered && customProtocol) {
-        console.log('✨ カスタムURLスキーム使用可能、専用URLを生成');
-        
-        // カスタムプロトコルURL生成
-        const customUrl = customProtocol + '://' + encodeURIComponent(standardUrl);
-        
-        console.log('🚀 カスタムURL:', customUrl);
-        console.log('📱 標準URL (フォールバック):', standardUrl);
-        
-        // デバッグ情報保存
-        localStorage.setItem('toki01tm_last_custom_callback', customUrl);
-        localStorage.setItem('toki01tm_last_standard_callback', standardUrl);
-        
-        return {
-            primary: customUrl,
-            fallback: standardUrl,
-            useCustom: true
-        };
-    } else {
-        console.log('📱 標準PWA復帰URL使用');
-        
-        return {
-            primary: standardUrl,
-            fallback: standardUrl,
-            useCustom: false
-        };
+    // プロキシページに渡すパラメータ
+    const proxyParams = new URLSearchParams();
+    const returnBaseUrl = window.location.origin + basePath + (window.location.pathname.endsWith('index.html') ? 'index.html' : '');
+    proxyParams.set('return_url', returnBaseUrl);
+    proxyParams.set('proxy_session', Date.now().toString());
+    proxyParams.set('utm_source', 'sii_print_callback');
+    
+    if (currentMode) {
+        proxyParams.set('mode', currentMode);
     }
+    
+    const fullProxyUrl = proxyUrl + '?' + proxyParams.toString();
+    
+    // 従来の直接復帰URLも準備（フォールバック用）
+    const directUrl = getPWACompatibleURL();
+    
+    console.log('🚀 プロキシURL:', fullProxyUrl);
+    console.log('📱 直接URL (フォールバック):', directUrl);
+    
+    // デバッグ情報保存
+    localStorage.setItem('toki01tm_last_proxy_callback', fullProxyUrl);
+    localStorage.setItem('toki01tm_last_direct_callback', directUrl);
+    localStorage.setItem('toki01tm_proxy_redirect_enabled', 'true');
+    
+    return {
+        primary: fullProxyUrl,
+        fallback: directUrl,
+        useProxy: true
+    };
 }
 
 // より確実なPWA検出関数
@@ -2520,6 +2557,13 @@ function initializePWA() {
         setTimeout(() => handlePrintCallback(urlParams), 100); // 少し遅延させて安全性を確保
     }
     
+    // プロキシ復帰処理も同時実行
+    const isProxyReturn = urlParams.get('proxy_return') === 'true';
+    if (isProxyReturn) {
+        console.log('🔄 プロキシ復帰処理実行');
+        handleProxyCallback();
+    }
+    
     // モード切り替え処理
     const mode = urlParams.get('mode');
     if (mode && ['image', 'text', 'signature', 'receipt'].includes(mode)) {
@@ -2813,38 +2857,65 @@ function showPrintReturnNotification(message, type = 'success') {
     showReturnNotification(message, type);
 }
 
-// カスタムURLスキーム状況のデバッグ表示
-function debugCustomURLScheme() {
-    console.log('🔗 === カスタムURLスキーム状況デバッグ ===');
+// プロキシリダイレクト方式のデバッグ表示
+function debugProxyRedirect() {
+    console.log('� === プロキシリダイレクト方式デバッグ ===');
     
-    const isRegistered = localStorage.getItem('toki01tm_custom_url_registered') === 'true';
-    const protocol = localStorage.getItem('toki01tm_custom_url_protocol');
-    const fallbackReason = localStorage.getItem('toki01tm_custom_url_fallback_reason');
-    const lastCustomCallback = localStorage.getItem('toki01tm_last_custom_callback');
-    const lastStandardCallback = localStorage.getItem('toki01tm_last_standard_callback');
+    const isProxyEnabled = localStorage.getItem('toki01tm_proxy_redirect_enabled') === 'true';
+    const lastProxyCallback = localStorage.getItem('toki01tm_last_proxy_callback');
+    const lastDirectCallback = localStorage.getItem('toki01tm_last_direct_callback');
     
-    console.log('📊 登録状況:', {
-        'カスタムURLスキーム登録済み': isRegistered,
-        'プロトコル名': protocol || 'なし',
-        '非サポート理由': fallbackReason || 'なし',
+    // 現在生成されるURLをテスト
+    const testConfig = getEnhancedPWACompatibleURL();
+    
+    console.log('📊 プロキシ方式状況:', {
+        'プロキシリダイレクト有効': isProxyEnabled,
         'ブラウザ': navigator.userAgent,
         'registerProtocolHandler対応': !!navigator.registerProtocolHandler
     });
     
     console.log('🔄 最新のコールバックURL:', {
-        'カスタムURL': lastCustomCallback || 'なし',
-        '標準URL': lastStandardCallback || 'なし'
+        'プロキシURL': lastProxyCallback || 'なし',
+        '直接URL': lastDirectCallback || 'なし'
     });
     
-    console.log('🧪 サポート判定テスト:');
-    const supportTest = checkCustomURLSchemeSupport();
-    console.log('  - 登録可能:', supportTest.canRegister);
-    console.log('  - 理由:', supportTest.reason);
+    console.log('🧪 現在の生成URL:', {
+        'プライマリ': testConfig.primary,
+        'フォールバック': testConfig.fallback,
+        'プロキシ使用': testConfig.useProxy
+    });
+    
+    console.log('🌐 プロキシページURL:', {
+        'ベースURL': window.location.origin + window.location.pathname.replace('index.html', '') + 'pwa-proxy.html',
+        '存在確認': 'fetch でテストしてください'
+    });
     
     console.log('===========================================');
 }
 
+// 旧カスタムURLスキームデバッグも残す
+function debugCustomURLScheme() {
+    console.log('🔗 === 旧カスタムURLスキーム状況 ===');
+    
+    const isRegistered = localStorage.getItem('toki01tm_custom_url_registered') === 'true';
+    const protocol = localStorage.getItem('toki01tm_custom_url_protocol');
+    const fallbackReason = localStorage.getItem('toki01tm_custom_url_fallback_reason');
+    
+    console.log('📊 カスタムURLスキーム登録状況:', {
+        '登録済み': isRegistered,
+        'プロトコル名': protocol || 'なし',
+        '非サポート理由': fallbackReason || 'なし'
+    });
+    
+    const supportTest = checkCustomURLSchemeSupport();
+    console.log('🧪 サポート判定:', supportTest);
+    
+    console.log('ℹ️ 注意: 現在はプロキシリダイレクト方式を使用中');
+    console.log('===========================================');
+}
+
 // グローバル関数として使用可能にする
+window.debugProxyRedirect = debugProxyRedirect;
 window.debugCustomURLScheme = debugCustomURLScheme;
 
 // テスト機能
