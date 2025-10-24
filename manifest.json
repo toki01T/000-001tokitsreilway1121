@@ -27,6 +27,10 @@
   "lang": "ja",
   "dir": "ltr",
   "prefer_related_applications": false,
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "capture_links": "existing-client-navigate",
   "edge_side_panel": {
     "preferred_width": 400
   },
