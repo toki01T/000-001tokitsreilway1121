@@ -3030,39 +3030,38 @@ async function executeTsTicketPrint() {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    // フォント設定
-    const titleFontSize = 16;
-    const textFontSize = 12;
-    const dateFontSize = 10;
+    // フォント設定（テンプレートに合わせて調整）
+    const titleFontSize = 14;
+    const textFontSize = 11;
+    const dateFontSize = 9;
     const smallFontSize = 8;
-    const lineHeight = textFontSize * 1.4;
+    const lineHeight = textFontSize * 1.3;
     
-    // テンプレートのロゴと枠の高さを計算
-    let logoHeight = 0;
+    // テキストを折り返し処理
+    const contentLines = wrapTextForTsTicket(content, canvasWidth - 60, textFontSize);
+    
+    // ロゴ読み込み
     let logoCanvas = null;
-    
     if (logoEnabled) {
-        // ロゴ画像を読み込み
         try {
             logoCanvas = await loadLogoImage();
-            logoHeight = logoCanvas ? 60 : 0; // ロゴの表示高さ
         } catch (error) {
             console.warn('ロゴ読み込みエラー:', error);
-            logoHeight = 0;
         }
     }
     
-    // テキストを折り返し処理
-    const contentLines = wrapTextForTsTicket(content, canvasWidth - 40, textFontSize);
+    // レイアウト計算（テンプレートに合わせて）
+    const topMargin = 15;
+    const titleArea = 25;
+    const ticketNumberArea = 20;
+    const logoSection = logoEnabled ? 70 : 0;
+    const contentFrameHeight = Math.max(80, contentLines.length * lineHeight + 30);
+    const footerArea = 60;
+    const qrCodeArea = 160;
+    const bottomMargin = 20;
     
-    // 券面構成の高さを計算
-    const headerHeight = 40; // 「T's券」タイトル + 余白
-    const ticketNumberHeight = 25; // 券番号エリア
-    const frameHeight = Math.max(120, contentLines.length * lineHeight + 40); // 最小120px
-    const footerHeight = 80; // 発行者情報 + 日付
-    const qrSpaceHeight = 170; // QRコード用スペース
-    
-    const totalHeight = headerHeight + ticketNumberHeight + logoHeight + frameHeight + footerHeight + qrSpaceHeight;
+    const totalHeight = topMargin + titleArea + ticketNumberArea + logoSection + 
+                       contentFrameHeight + footerArea + qrCodeArea + bottomMargin;
     
     canvas.width = canvasWidth;
     canvas.height = totalHeight;
@@ -3072,65 +3071,76 @@ async function executeTsTicketPrint() {
     ctx.fillRect(0, 0, canvasWidth, totalHeight);
     ctx.fillStyle = '#000000';
     
-    let yPos = 20;
+    let yPos = topMargin;
     
-    // 「T's券」タイトルを上部に描画
+    // テンプレートの上部 「T」マークと番号表示
     ctx.font = `bold ${titleFontSize}px Arial, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    
+    // 「T」マーク枠（左上）
+    const tMarkSize = 20;
+    ctx.strokeRect(15, yPos, tMarkSize, tMarkSize);
     ctx.textAlign = 'center';
-    ctx.fillText("T's券", canvasWidth / 2, yPos);
-    yPos += 30;
+    ctx.fillText('T', 15 + tMarkSize/2, yPos + 15);
     
-    // 券番号エリア（テンプレートの○番号部分）
-    ctx.font = `${smallFontSize}px Arial, sans-serif`;
+    // 券番号（右上）
     ctx.textAlign = 'right';
-    ctx.fillText('01○○○', canvasWidth - 20, yPos);
-    yPos += 20;
+    ctx.font = `${smallFontSize}px Arial, sans-serif`;
+    ctx.fillText('01○○○', canvasWidth - 15, yPos + 15);
     
-    // ロゴを表示（該当する場合）
+    yPos += titleArea + 10;
+    
+    // ロゴセクション（左側に配置）
     if (logoCanvas) {
-        const logoX = 20;
+        const logoX = 15;
         const logoY = yPos;
-        const logoW = 60;
-        const logoH = 60;
+        const logoSize = 50;
         
         // ロゴ枠を描画
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 1;
-        ctx.strokeRect(logoX, logoY, logoW, logoH);
+        ctx.strokeRect(logoX, logoY, logoSize, logoSize);
         
         // ロゴ画像を描画
-        ctx.drawImage(logoCanvas, logoX + 2, logoY + 2, logoW - 4, logoH - 4);
-        yPos += logoHeight + 10;
+        ctx.drawImage(logoCanvas, logoX + 2, logoY + 2, logoSize - 4, logoSize - 4);
+        
+        yPos += logoSection;
     }
     
-    // 券面内容の枠を描画
-    const frameX = 20;
+    // メインコンテンツ枠（テンプレートの中央大枠）
+    const frameX = 15;
     const frameY = yPos;
-    const frameW = canvasWidth - 40;
+    const frameW = canvasWidth - 30;
     
+    // 外枠を描画（太線）
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(frameX, frameY, frameW, frameHeight);
+    ctx.lineWidth = 3;
+    ctx.strokeRect(frameX, frameY, frameW, contentFrameHeight);
     
     // 券面内容を枠内に描画
     ctx.font = `${textFontSize}px Arial, sans-serif`;
     ctx.textAlign = 'center';
-    let contentY = frameY + 25;
+    ctx.fillStyle = '#000000';
     
+    let contentY = frameY + 20;
     for (const line of contentLines) {
         ctx.fillText(line, canvasWidth / 2, contentY);
         contentY += lineHeight;
     }
     
-    yPos += frameHeight + 20;
+    yPos += contentFrameHeight + 15;
     
-    // 発行者情報
+    // フッター情報（テンプレートの下部）
     ctx.font = `${smallFontSize}px Arial, sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('とき T\'s 鉄道部　toki　01Ⓣ', canvasWidth / 2, yPos);
-    yPos += 20;
     
-    // 日付
+    // 発行者情報
+    ctx.fillText('とき T\'s 鉄道部　toki　01Ⓣ', canvasWidth / 2, yPos);
+    yPos += 15;
+    
+    // 日付（○○○○年○○月○○日形式）
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -3138,14 +3148,16 @@ async function executeTsTicketPrint() {
     const dateStr = `${year}年${month}月${day}日`;
     
     ctx.fillText(dateStr, canvasWidth / 2, yPos);
-    yPos += 20;
+    yPos += 15;
     
     // 注意事項
     ctx.font = `${smallFontSize - 1}px Arial, sans-serif`;
-    ctx.fillText('※長期間保存する場合は、コピーをお取り下さい', canvasWidth / 2, yPos);
-    yPos += 30;
+    ctx.fillText('※長期間保存する場合は、コピー', canvasWidth / 2, yPos);
+    yPos += 12;
+    ctx.fillText('をお取り下さい', canvasWidth / 2, yPos);
+    yPos += 20;
     
-    // QRコード生成と配置
+    // QRコード生成と配置（右下）
     const historyItem = {
         type: 'ts-ticket',
         mode: 'ts-ticket',
@@ -3160,8 +3172,8 @@ async function executeTsTicketPrint() {
     if (qrData) {
         const qrCodeCanvas = generateQRCode(qrData);
         if (qrCodeCanvas) {
-            const qrSize = 150;
-            const qrX = 30;
+            const qrSize = 130;
+            const qrX = canvasWidth - qrSize - 20; // 右寄せ
             const qrY = yPos;
             
             ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
@@ -3219,26 +3231,50 @@ function wrapTextForTsTicket(text, maxWidth, fontSize) {
     ctx.font = `${fontSize}px Arial, sans-serif`;
     
     const lines = [];
-    const words = text.split('');
+    const words = text.split(/(\s+)/); // スペースも保持
     let currentLine = '';
     
-    for (const char of words) {
-        const testLine = currentLine + char;
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        const testLine = currentLine + word;
         const metrics = ctx.measureText(testLine);
         
         if (metrics.width > maxWidth && currentLine !== '') {
-            lines.push(currentLine);
-            currentLine = char;
+            lines.push(currentLine.trim());
+            currentLine = word;
         } else {
             currentLine = testLine;
         }
     }
     
-    if (currentLine) {
-        lines.push(currentLine);
+    if (currentLine.trim()) {
+        lines.push(currentLine.trim());
     }
     
-    return lines;
+    // 長すぎる行を文字単位で分割
+    const finalLines = [];
+    for (const line of lines) {
+        if (ctx.measureText(line).width <= maxWidth) {
+            finalLines.push(line);
+        } else {
+            // 文字単位で分割
+            let chars = '';
+            for (const char of line) {
+                const testChars = chars + char;
+                if (ctx.measureText(testChars).width > maxWidth && chars !== '') {
+                    finalLines.push(chars);
+                    chars = char;
+                } else {
+                    chars = testChars;
+                }
+            }
+            if (chars) {
+                finalLines.push(chars);
+            }
+        }
+    }
+    
+    return finalLines;
 }
 
 // ロゴ画像を読み込む関数
@@ -3249,28 +3285,51 @@ async function loadLogoImage() {
         const ctx = canvas.getContext('2d');
         
         img.onload = function() {
-            canvas.width = 60;
-            canvas.height = 60;
+            canvas.width = 50;
+            canvas.height = 50;
             
-            // 画像をキャンバスサイズに合わせて描画
-            ctx.drawImage(img, 0, 0, 60, 60);
+            // 画像のアスペクト比を保持してキャンバスに描画
+            const aspectRatio = img.width / img.height;
+            let drawWidth = 50;
+            let drawHeight = 50;
+            let offsetX = 0;
+            let offsetY = 0;
+            
+            if (aspectRatio > 1) {
+                drawHeight = 50 / aspectRatio;
+                offsetY = (50 - drawHeight) / 2;
+            } else {
+                drawWidth = 50 * aspectRatio;
+                offsetX = (50 - drawWidth) / 2;
+            }
+            
+            // 背景を白にする
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, 50, 50);
+            
+            // 画像を描画
+            ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
             resolve(canvas);
         };
         
         img.onerror = function() {
-            console.warn('ロゴファイルが見つかりません: tokiTsrailway.jpg/png');
+            console.warn('ロゴファイルが見つかりません');
             resolve(null);
         };
         
-        // JPGとPNGの両方を試す
+        // JPGファイルを試す
         img.src = './tokiTsrailway.jpg';
         
-        // JPG読み込み失敗時はPNGを試す
+        // 2秒後にPNGファイルを試す
         setTimeout(() => {
             if (!img.complete) {
+                img.onerror = function() {
+                    console.warn('ロゴファイル（PNG）も見つかりません');
+                    resolve(null);
+                };
                 img.src = './tokiTsrailway.png';
             }
-        }, 1000);
+        }, 2000);
     });
 }
 
