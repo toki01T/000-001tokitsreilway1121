@@ -958,64 +958,47 @@ main {
     align-items: center;
     gap: 1.5rem;
     width: 100%;
-    max-width: 500px;
+    max-width: 600px;
     padding: 0 1rem;
 }
 
-.ts-ticket-image-section {
-    width: 100%;
-}
-
-.ts-ticket-image-section h3 {
-    margin-bottom: 1.5rem;
+.ts-ticket-form-container h3 {
+    margin: 0 0 1rem 0;
     color: var(--text-color);
     font-size: 1.2rem;
     font-weight: bold;
 }
 
-.image-upload-area {
-    position: relative;
+.template-image-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
     width: 100%;
-    margin-bottom: 1rem;
+    max-width: 500px;
 }
 
-#tsTicketImageInput {
-    display: none;
-}
-
-.file-upload-label {
-    display: inline-block;
-    padding: 1rem 2rem;
-    background: var(--primary-color);
-    color: white;
-    border-radius: 8px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: all 0.3s ease;
-    min-width: 200px;
-}
-
-.file-upload-label:hover {
-    background: #0080BF;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 163, 237, 0.3);
-}
-
-.image-preview-container {
-    margin: 1.5rem 0;
-    border: 2px solid var(--input-border);
-    border-radius: 8px;
-    padding: 1rem;
-    background: var(--input-bg);
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-#tsTicketImagePreview {
-    max-width: 100%;
+.template-image {
+    width: 100%;
     height: auto;
-    border-radius: 4px;
+    min-height: 150px;
+    object-fit: contain;
+    border: 3px solid var(--input-border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #f5f5f5;
+}
+
+.template-image:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0, 163, 237, 0.3);
+    transform: translateY(-2px);
+}
+
+.template-image.selected {
+    border-color: var(--primary-color);
+    border-width: 4px;
+    box-shadow: 0 4px 16px rgba(0, 163, 237, 0.5);
 }
 
 /* T's券の日付・時刻選択 */
@@ -1072,23 +1055,18 @@ main {
 }
 
 @media (max-width: 600px) {
-    .ts-ticket-form-container {
+    .template-image-grid {
+        grid-template-columns: 1fr;
         gap: 1rem;
-        padding: 0 0.5rem;
     }
     
-    .image-preview-container {
-        max-width: 100%;
+    .template-image {
+        min-height: 200px;
     }
     
     #tsTicketPrintOptions {
         flex-direction: column;
         gap: 0.8rem;
-    }
-    
-    .file-upload-label {
-        width: 100%;
-        box-sizing: border-box;
     }
 }
 
@@ -1491,17 +1469,12 @@ footer p {
         </section>
         <section id="tsTicketSection" style="display:none;">
             <div class="ts-ticket-form-container">
-                <div class="ts-ticket-image-section">
-                    <h3>T's券画像</h3>
-                    <div class="image-upload-area">
-                        <input type="file" id="tsTicketImageInput" accept="image/*" />
-                        <label for="tsTicketImageInput" class="file-upload-label">
-                            <span>画像を選択</span>
-                        </label>
-                    </div>
-                    <div class="image-preview-container" id="tsTicketImagePreviewContainer" style="display:none;">
-                        <img id="tsTicketImagePreview" alt="T's券プレビュー" />
-                    </div>
+                <h3>T's券テンプレート選択</h3>
+                <div class="template-image-grid">
+                    <img class="template-image" data-template="1" src="./ken/template1.jpg" alt="テンプレート1">
+                    <img class="template-image" data-template="2" src="./ken/template2.jpg" alt="テンプレート2">
+                    <img class="template-image" data-template="3" src="./ken/template3.jpg" alt="テンプレート3">
+                    <img class="template-image" data-template="4" src="./ken/template4.jpg" alt="テンプレート4">
                 </div>
                 
                 <div class="choice-chips" id="tsTicketDateTimeChoice" style="display:none;">
@@ -1556,7 +1529,7 @@ let flashlightEnabled = false;
 let currentStream = null;
 
 // T's券関連の変数
-let selectedTsTicketImageData = null;
+let selectedTsTicketTemplate = null;
 let selectedTsTicketChip = '';
 
 // 独自QRコード生成用の変数
@@ -1857,32 +1830,27 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // T's券初期化関数
     function initTsTicket() {
-        // 画像ファイル入力
-        const imageInput = document.getElementById('tsTicketImageInput');
-        if (imageInput) {
-            imageInput.onchange = function(event) {
-                const file = event.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        selectedTsTicketImageData = e.target.result;
-                        
-                        // プレビュー表示
-                        const preview = document.getElementById('tsTicketImagePreview');
-                        const previewContainer = document.getElementById('tsTicketImagePreviewContainer');
-                        preview.src = selectedTsTicketImageData;
-                        previewContainer.style.display = 'block';
-                        
-                        // 日付・時刻選択と印刷オプションを表示
-                        document.getElementById('tsTicketDateTimeChoice').style.display = 'flex';
-                        document.getElementById('tsTicketPrintOptions').style.display = 'flex';
-                        
-                        updateTsTicketPrintButtonState();
-                    };
-                    reader.readAsDataURL(file);
-                }
-            };
-        }
+        // テンプレート画像のイベントリスナー
+        const templateImages = document.querySelectorAll('.template-image');
+        templateImages.forEach(img => {
+            img.onclick = preventDoubleTouch(() => {
+                // 他のテンプレートの選択を解除
+                templateImages.forEach(t => t.classList.remove('selected'));
+                
+                // 選択されたテンプレートをマーク
+                img.classList.add('selected');
+                selectedTsTicketTemplate = img.dataset.template;
+                
+                // 日付・時刻選択と印刷オプションを表示
+                document.getElementById('tsTicketDateTimeChoice').style.display = 'flex';
+                document.getElementById('tsTicketPrintOptions').style.display = 'flex';
+                
+                updateTsTicketPrintButtonState();
+            });
+            if ('ontouchstart' in window) {
+                img.ontouchstart = img.onclick;
+            }
+        });
         
         // T's券印刷ボタン
         const tsTicketPrintButton = document.getElementById('tsTicketPrintButton');
@@ -1916,18 +1884,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const tsTicketChipWith = document.getElementById('tsTicketChipWith');
         const tsTicketChipWithout = document.getElementById('tsTicketChipWithout');
         
-        tsTicketChipWith.classList.toggle('selected', selection === 'with');
-        tsTicketChipWithout.classList.toggle('selected', selection === 'without');
+        if (tsTicketChipWith) tsTicketChipWith.classList.toggle('selected', selection === 'with');
+        if (tsTicketChipWithout) tsTicketChipWithout.classList.toggle('selected', selection === 'without');
         updateTsTicketPrintButtonState();
     }
     
     function updateTsTicketPrintButtonState() {
-        const hasImage = selectedTsTicketImageData !== null;
+        const hasTemplate = selectedTsTicketTemplate !== null;
         const hasChip = selectedTsTicketChip !== '';
         const tsTicketPrintButton = document.getElementById('tsTicketPrintButton');
         
         if (tsTicketPrintButton) {
-            tsTicketPrintButton.classList.toggle('disabled', !(hasImage && hasChip));
+            tsTicketPrintButton.classList.toggle('disabled', !(hasTemplate && hasChip));
         }
     }
     
@@ -3108,149 +3076,289 @@ function executeReceiptPrint(withMemo) {
 
 // --- T's券印刷 ---
 async function executeTsTicketPrint() {
-    if (!selectedTsTicketImageData || !selectedTsTicketChip) {
-        alert('画像と日付・時刻設定を選択してください');
+    if (!selectedTsTicketTemplate || !selectedTsTicketChip) {
+        alert('テンプレートと日付・時刻設定を選択してください');
         return;
     }
     
     const qrEnabled = document.getElementById('tsTicketQrPrintCheckbox').checked;
     const copies = parseInt(document.getElementById('tsTicketCopiesSelect').value);
     
-    console.log("🎫 T's券印刷を開始します", qrEnabled ? '(QR付き)' : '(QRなし)');
+    console.log("🎫 T's券印刷を開始します", `テンプレート${selectedTsTicketTemplate}`, qrEnabled ? '(QR付き)' : '(QRなし)');
     
-    // 画像をCanvasに描画
-    const img = new Image();
-    img.onload = function() {
-        // 58mmの熱転写印字機に対応するサイズ
-        const mmToPx = 3.77;
-        const paperWidth = Math.round(58 * mmToPx); // 約218px
-        
-        // 画像の縦横比を保持して、紙幅に合わせてリサイズ
-        let imgWidth = paperWidth;
-        let imgHeight = Math.round(img.naturalHeight * (paperWidth / img.naturalWidth));
-        
-        // QRコード追加時の高さ調整
-        const qrSize = qrEnabled ? 150 : 0;
-        const qrMargin = qrEnabled ? 20 : 0;
-        const totalHeight = imgHeight + qrSize + qrMargin;
-        
-        // キャンバス作成
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = paperWidth;
-        canvas.height = totalHeight;
-        
-        // 背景を白で塗りつぶし
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, paperWidth, totalHeight);
-        
-        // 画像を描画
-        ctx.drawImage(img, 0, 0, imgWidth, imgHeight);
-        
-        // QRコード生成と配置
-        if (qrEnabled) {
-            const historyItem = {
-                type: 'ts-ticket',
-                mode: 'ts-ticket',
-                imageData: selectedTsTicketImageData,
-                dateTime: selectedTsTicketChip,
-                copies: copies,
-                data: '', // 後で設定
-                created: Date.now(),
-                qrPrinted: true
-            };
-            
-            const qrData = generateQRData(historyItem);
-            if (qrData) {
-                const qrCodeCanvas = generateQRCode(qrData);
-                if (qrCodeCanvas) {
-                    const qrX = (paperWidth - qrSize) / 2; // 中央配置
-                    const qrY = imgHeight + qrMargin;
-                    ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
-                }
-            }
+    // 58mmに対応するキャンバスサイズ（1mm ≈ 3.77px）
+    const mmToPx = 3.77;
+    const canvasWidth = Math.round(58 * mmToPx); // 約218px
+    
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // フォント設定（8.4mmサイズ = 約32px、丸ゴシック風）
+    const mainFontSize = Math.round(8.4 * mmToPx); // 約32px
+    const smallFontSize = Math.round(6 * mmToPx); // 約23px
+    const tinyFontSize = Math.round(4 * mmToPx); // 約15px
+    
+    // テンプレート画像を読み込み
+    const templateCanvas = await loadTemplateImage(selectedTsTicketTemplate);
+    
+    // レイアウト計算
+    const topMargin = 10;
+    const logoSection = 60; // ロゴ/Tマーク部分
+    const templateSection = templateCanvas ? 120 : 0; // テンプレート画像部分
+    const footerSection = 80; // 発行者情報・日付
+    const qrSection = qrEnabled ? 160 : 0; // QRコード部分
+    const bottomMargin = 20;
+    
+    const totalHeight = topMargin + logoSection + templateSection + footerSection + qrSection + bottomMargin;
+    
+    canvas.width = canvasWidth;
+    canvas.height = totalHeight;
+    
+    // 背景を白にする
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvasWidth, totalHeight);
+    ctx.fillStyle = '#000000';
+    
+    let yPos = topMargin;
+    
+    // 上部：ロゴまたはTマーク（左）と券番号（右）
+    try {
+        const logoCanvas = await loadLogoImage();
+        if (logoCanvas) {
+            // ロゴを左側に配置
+            ctx.drawImage(logoCanvas, 15, yPos, 40, 40);
+        } else {
+            // ロゴがない場合はTマークを配置
+            ctx.font = `bold ${mainFontSize}px Arial, sans-serif`;
+            ctx.textAlign = 'left';
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(15, yPos, 40, 40);
+            ctx.textAlign = 'center';
+            ctx.fillText('🅃', 35, yPos + 28);
         }
+    } catch (error) {
+        // エラー時はTマークを配置
+        ctx.font = `bold ${mainFontSize}px Arial, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(15, yPos, 40, 40);
+        ctx.textAlign = 'center';
+        ctx.fillText('🅃', 35, yPos + 28);
+    }
+    
+    // 券番号を右側に配置
+    ctx.font = `${smallFontSize}px Arial, sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.fillText('01○○○', canvasWidth - 15, yPos + 25);
+    
+    yPos += logoSection;
+    
+    // テンプレート画像を中央に配置
+    if (templateCanvas) {
+        const templateX = (canvasWidth - 180) / 2; // 中央配置
+        const templateY = yPos;
+        const templateW = 180;
+        const templateH = 120;
         
-        // PNG画像をBase64に変換
-        const pngDataUrl = canvas.toDataURL('image/png');
+        // テンプレート枠を描画
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(templateX, templateY, templateW, templateH);
         
-        // 履歴に保存
+        // テンプレート画像を描画
+        ctx.drawImage(templateCanvas, templateX + 2, templateY + 2, templateW - 4, templateH - 4);
+        
+        yPos += templateSection;
+    }
+    
+    yPos += 20; // 余白
+    
+    // フッター情報
+    ctx.font = `${tinyFontSize}px Arial, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText('とき T\'s 鉄道部　toki　01Ⓣ', 15, yPos);
+    
+    // 日付を右寄せで表示（日付・時刻ありの場合のみ）
+    if (selectedTsTicketChip === 'with') {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const dateStr = `${year}年${month}月${day}日`;
+        
+        ctx.textAlign = 'right';
+        ctx.fillText(dateStr, canvasWidth - 15, yPos);
+    }
+    
+    yPos += 20;
+    
+    // 注意事項
+    ctx.textAlign = 'left';
+    ctx.fillText('※長期間保存する場合は、コピー', 15, yPos);
+    yPos += 15;
+    ctx.fillText('をお取り下さい', 15, yPos);
+    
+    // QRコードマーク（右下）
+    if (selectedTsTicketChip === 'with') {
+        ctx.font = `${smallFontSize}px Arial, sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.fillText('㋣', canvasWidth - 15, yPos);
+    }
+    
+    yPos += 20;
+    
+    // QRコード生成と配置（QR有効時のみ）
+    if (qrEnabled) {
         const historyItem = {
             type: 'ts-ticket',
             mode: 'ts-ticket',
-            imageData: selectedTsTicketImageData,
+            template: selectedTsTicketTemplate,
             dateTime: selectedTsTicketChip,
             copies: copies,
-            data: pngDataUrl,
+            data: '', // 後で設定
             created: Date.now(),
-            qrPrinted: qrEnabled
+            qrPrinted: true
         };
         
+        const qrData = generateQRData(historyItem);
+        if (qrData) {
+            const qrCodeCanvas = generateQRCode(qrData);
+            if (qrCodeCanvas) {
+                const qrSize = 140;
+                const qrX = (canvasWidth - qrSize) / 2; // 中央配置
+                const qrY = yPos;
+                
+                ctx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
+            }
+        }
+        
+        // 履歴アイテムにデータを設定
+        const pngDataUrl = canvas.toDataURL('image/png');
+        historyItem.data = pngDataUrl;
+        
+        // 履歴を保存
         addHistory(historyItem).then(() => {
             console.log("T's券履歴保存完了:", historyItem.managementId);
         });
-        
-        // PDFを生成
-        const { jsPDF } = window.jspdf;
-        const pdfHeight = Math.round(totalHeight / mmToPx);
-        
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: [58, pdfHeight]
-        });
-        
-        pdf.internal.pageSize.width = 58;
-        pdf.internal.pageSize.height = pdfHeight;
-        pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
-        
-        const pdfBase64 = pdf.output('datauristring').split(',')[1];
-        
-        // 複数枚印刷に対応
-        if (copies === 1) {
-            // 1枚の場合はそのまま印刷
-            const printUrl = 'siiprintagent://1.0/print?' +
-                            'CallbackSuccess='  + encodeURIComponent(window.location.href) + '&' +
-                            'CallbackFail='     + encodeURIComponent(window.location.href) + '&' +
-                            'Format='           + 'pdf' + '&' +
-                            'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                            'SelectOnError='    + 'yes' + '&' +
-                            'CutType='          + 'full' + '&' +
-                            'CutFeed='          + 'yes' + '&' +
-                            'FitToWidth='       + 'no' + '&' +
-                            'PaperWidth='       + '58';
-            
-            window.location.href = printUrl;
-        } else {
-            // 複数枚の場合は最初の1枚を印刷してから続行システムに登録
-            const printUrl = 'siiprintagent://1.0/print?' +
-                            'CallbackSuccess='  + encodeURIComponent(window.location.href) + '&' +
-                            'CallbackFail='     + encodeURIComponent(window.location.href) + '&' +
-                            'Format='           + 'pdf' + '&' +
-                            'Data='             + encodeURIComponent(pdfBase64) + '&' +
-                            'SelectOnError='    + 'yes' + '&' +
-                            'CutType='          + 'full' + '&' +
-                            'CutFeed='          + 'yes' + '&' +
-                            'FitToWidth='       + 'no' + '&' +
-                            'PaperWidth='       + '58';
-            
-            // 複数枚印刷ジョブを保存
-            const printJob = {
-                type: 'ts-ticket',
-                totalCopies: copies,
-                currentCopy: 1,
-                timestamp: Date.now(),
-                pdfData: pdfBase64,
-                thisPage: window.location.href
-            };
-            sessionStorage.setItem('printJob', JSON.stringify(printJob));
-            
-            window.location.href = printUrl;
-        }
-    };
+    } else {
+        // QRなしの場合
+        const pngDataUrl = canvas.toDataURL('image/png');
+    }
     
-    // 画像を読み込み
-    img.src = selectedTsTicketImageData;
+    // Canvas画像をBase64に変換
+    const pngDataUrl = canvas.toDataURL('image/png');
+    
+    // PDFを生成
+    const { jsPDF } = window.jspdf;
+    const pdfHeight = Math.round(totalHeight / mmToPx);
+    
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [58, pdfHeight]
+    });
+    
+    pdf.internal.pageSize.width = 58;
+    pdf.internal.pageSize.height = pdfHeight;
+    pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+    
+    const pdfBase64 = pdf.output('datauristring').split(',')[1];
+    
+    let thisPage = window.location.href;
+    let printUrl = 'siiprintagent://1.0/print?' +
+                  'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                  'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                  'Format='           + 'pdf' + '&' +
+                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                  'SelectOnError='    + 'yes' + '&' +
+                  'CutType='          + 'full' + '&' +
+                  'CutFeed='          + 'yes' + '&' +
+                  'FitToWidth='       + 'no' + '&' +
+                  'PaperWidth='       + '58';
+    
+    window.location.href = printUrl;
+    
+    console.log("🎫 T's券印刷が完了しました");
+}
+
+// テンプレート画像を読み込む関数
+async function loadTemplateImage(templateNumber) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        img.onload = function() {
+            canvas.width = 176;
+            canvas.height = 116;
+            
+            // 背景を白にする
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, 176, 116);
+            
+            // アスペクト比を保持して画像を描画
+            const aspectRatio = img.width / img.height;
+            let drawWidth = 176;
+            let drawHeight = 116;
+            let offsetX = 0;
+            let offsetY = 0;
+            
+            if (aspectRatio > 176/116) {
+                drawHeight = 176 / aspectRatio;
+                offsetY = (116 - drawHeight) / 2;
+            } else {
+                drawWidth = 116 * aspectRatio;
+                offsetX = (176 - drawWidth) / 2;
+            }
+            
+            ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+            resolve(canvas);
+        };
+        
+        img.onerror = function() {
+            console.warn(`テンプレート${templateNumber}が見つかりません`);
+            resolve(null);
+        };
+        
+        // JPGファイルを試す
+        img.src = `./ken/template${templateNumber}.jpg`;
+        
+        // 2秒後にPNGファイルを試す
+        setTimeout(() => {
+            if (!img.complete) {
+                img.onerror = function() {
+                    console.warn(`テンプレート${templateNumber}（PNG）も見つかりません`);
+                    resolve(null);
+                };
+                img.src = `./ken/template${templateNumber}.png`;
+            }
+        }, 2000);
+    });
+}
+
+// プレビュー生成関数
+async function generateTsTicketPreview(canvas, templateNumber) {
+    const ctx = canvas.getContext('2d');
+    const templateCanvas = await loadTemplateImage(templateNumber);
+    
+    if (templateCanvas) {
+        canvas.width = 200;
+        canvas.height = 150;
+        
+        // 背景を白にする
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, 200, 150);
+        
+        // テンプレート画像を描画
+        ctx.drawImage(templateCanvas, 12, 15, 176, 116);
+        
+        // 枠を描画
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(12, 15, 176, 116);
+    }
 }
 
 // 領収書用テキスト折り返し関数
@@ -4994,13 +5102,12 @@ function restoreContentFromHistory(item) {
         
         // テンプレート選択を復元
         if (selectedTsTicketTemplate) {
-            const templateItems = document.querySelectorAll('.template-item');
-            templateItems.forEach(t => t.classList.remove('selected'));
+            const templateImages = document.querySelectorAll('.template-image');
+            templateImages.forEach(t => t.classList.remove('selected'));
             
-            const selectedItem = document.querySelector(`[data-template="${selectedTsTicketTemplate}"]`);
-            if (selectedItem) {
-                selectedItem.classList.add('selected');
-                showTsTicketPreview();
+            const selectedImage = document.querySelector(`.template-image[data-template="${selectedTsTicketTemplate}"]`);
+            if (selectedImage) {
+                selectedImage.classList.add('selected');
             }
         }
         
@@ -5087,13 +5194,12 @@ function restoreContentFromQROnly(qrData) {
         
         // テンプレート選択を復元
         if (selectedTsTicketTemplate) {
-            const templateItems = document.querySelectorAll('.template-item');
-            templateItems.forEach(t => t.classList.remove('selected'));
+            const templateImages = document.querySelectorAll('.template-image');
+            templateImages.forEach(t => t.classList.remove('selected'));
             
-            const selectedItem = document.querySelector(`[data-template="${selectedTsTicketTemplate}"]`);
-            if (selectedItem) {
-                selectedItem.classList.add('selected');
-                showTsTicketPreview();
+            const selectedImage = document.querySelector(`.template-image[data-template="${selectedTsTicketTemplate}"]`);
+            if (selectedImage) {
+                selectedImage.classList.add('selected');
             }
         }
         
