@@ -76,54 +76,79 @@ header {
     max-width: 1200px;
     margin: 0 auto;
     height: 40px;
-    padding: 0 1rem;
+    padding: 0 0.8rem;
     box-sizing: border-box;
     position: relative;
 }
 .navbar-brand {
     color: #fff;
     text-decoration: none;
-    font-size: 1.05rem;
+    font-size: 1rem;
     flex: 1 1 auto;
     text-align: center;
     font-weight: normal;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.03em;
     line-height: 1;
     margin: 0;
-    padding: 0;
+    padding: 0 2.5rem;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 #historyMenuBtn {
     position: absolute;
-    right: 1rem;
+    right: 0.8rem;
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
     border: none;
     color: #fff;
-    font-size: 1.7rem;
+    font-size: 1.6rem;
     cursor: pointer;
     z-index: 12;
-    padding: 0;
+    padding: 0.2rem;
     width: auto;
     height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+@media (max-width: 500px) {
+    .navbar {
+        padding: 0 0.5rem;
+    }
+    .navbar-brand {
+        font-size: 0.9rem;
+        padding: 0 2rem;
+    }
+    #historyMenuBtn {
+        right: 0.5rem;
+        font-size: 1.5rem;
+    }
 }
 #qrCodeBtn {
     position: absolute;
-    right: 4rem;
+    right: 3.5rem;
     top: 50%;
     transform: translateY(-50%);
     background: var(--primary-color);
     border: 2px solid #fff;
     color: #fff;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: bold;
     cursor: pointer;
     z-index: 12;
-    padding: 4px 8px;
+    padding: 3px 7px;
     width: auto;
     height: auto;
     border-radius: 4px;
+}
+@media (max-width: 500px) {
+    #qrCodeBtn {
+        right: 3rem;
+        font-size: 0.8rem;
+        padding: 2px 6px;
+    }
 }
 #qrCodeBtn:focus, #historyMenuBtn:focus { outline: none; }
 #historyDrawer {
@@ -408,16 +433,16 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-top: 60px;
-    padding-bottom: 50px; /* フッターとの重なりを避けるため調整 */
+    padding-top: 50px;
+    padding-bottom: 45px; /* フッターとの重なりを避けるため調整 */
     background: var(--background-color);
     color: var(--text-color);
     box-sizing: border-box;
 }
 @media (max-width: 600px) {
     main {
-        padding-top: 50px;
-        padding-bottom: 80px;
+        padding-top: 45px;
+        padding-bottom: 70px;
     }
     #historyDrawer { width: 95vw; }
     .historyImgThumb { max-width: 98vw; }
@@ -434,14 +459,15 @@ main {
     flex-direction: column;
     align-items: center;
     width: 100%;
-    max-width: 500px;
+    max-width: 380px;
+    padding: 0 0.5rem;
 }
 .print-options {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 1rem;
-    gap: 0.5rem;
+    margin-top: 0.8rem;
+    gap: 0.4rem;
     width: 100%;
     position: relative;
     z-index: 200; /* フッターより上に表示 */
@@ -453,25 +479,25 @@ main {
 .print-options select {
     text-align: center;
     text-align-last: center;
-    margin: 0 0.3em;
-    padding: 0.4rem 1.5rem 0.4rem 1.5rem;
+    margin: 0 0.25em;
+    padding: 0.35rem 1.3rem 0.35rem 1.3rem;
     border: 1.5px solid var(--primary-color);
     border-radius: 5px;
     background-color: var(--background-color);
     color: var(--primary-color);
-    font-size: 0.97rem;
+    font-size: 0.9rem;
     appearance: none;
     -webkit-appearance: none;
     outline: none;
-    min-width: 80px;
+    min-width: 70px;
     box-sizing: border-box;
     display: inline-block;
 }
 @media (max-width: 500px) {
     .print-options select {
-        min-width: 70px;
-        font-size: 0.93rem;
-        padding: 0.3rem 1.2rem 0.3rem 1.2rem;
+        min-width: 65px;
+        font-size: 0.85rem;
+        padding: 0.3rem 1rem 0.3rem 1rem;
     }
 }
 .print-options button {
@@ -479,16 +505,16 @@ main {
     vertical-align: middle;
 }
 #printButton, #textPrintButton, #signaturePrintButton {
-    padding: 0.4rem 1.3rem;
+    padding: 0.4rem 1.1rem;
     border-radius: 5px;
     background-color: var(--primary-color);
     color: #fff;
-    font-size: 0.97rem;
+    font-size: 0.9rem;
     cursor: pointer;
     transition: .3s;
     border: none;
-    margin-left: 0.5rem;
-    margin-right: 0.5rem;
+    margin-left: 0.4rem;
+    margin-right: 0.4rem;
     text-align: center;
 }
 #printButton.disabled, #textPrintButton.disabled, #signaturePrintButton.disabled {
@@ -499,26 +525,26 @@ main {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: 1rem;
-    gap: 0.7rem;
+    margin-top: 0.8rem;
+    gap: 0.6rem;
     width: 100%;
 }
 .chip {
     display: inline-block;
-    min-width: 110px;
+    min-width: 100px;
     text-align: center;
-    padding: 0.4rem 1.1rem;
+    padding: 0.35rem 1rem;
     border-radius: 0.5rem;
     background-color: var(--chip-bg);
     color: var(--primary-color);
     cursor: pointer;
-    font-size: 0.97rem;
+    font-size: 0.9rem;
     border: 1.5px solid var(--primary-color);
     transition: .3s;
     opacity: 1;
     pointer-events: auto;
     user-select: none;
-    margin: 0 0.2em;
+    margin: 0 0.15em;
 }
 .chip.selected {
     background-color: var(--primary-color);
@@ -530,9 +556,9 @@ main {
 }
 @media (max-width: 500px) {
     .chip {
-        min-width: 90px;
-        font-size: 0.93rem;
-        padding: 0.3rem 0.7rem;
+        min-width: 85px;
+        font-size: 0.85rem;
+        padding: 0.3rem 0.6rem;
     }
 }
 /* チェックボックスカスタムデザイン（履歴リスト・画像モード共通） */
@@ -604,7 +630,7 @@ main {
     text-align: center;
 }
 .signature-pad-container {
-    margin: 1.2rem auto 0.7rem auto;
+    margin: 0.8rem auto 0.5rem auto;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -616,15 +642,15 @@ main {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-bottom: 0.5em;
+    margin-bottom: 0.4em;
 }
 #signatureClearBtn {
     background: var(--primary-color);
     color: #fff;
     border: none;
     border-radius: 4px;
-    padding: 0.3em 1.3em;
-    font-size: 0.97rem;
+    padding: 0.3em 1.2em;
+    font-size: 0.9rem;
     cursor: pointer;
     transition: background 0.2s;
     display: inline-block;
@@ -639,10 +665,10 @@ main {
     justify-content: center;
     background: #fff;
     border: 2.5px solid var(--primary-color);
-    border-radius: 10px;
-    box-shadow: 0 1px 8px rgba(0,0,0,0.06);
-    width: 260px;
-    height: 340px;
+    border-radius: 8px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    width: 240px;
+    height: 300px;
     margin: 0 auto;
     max-width: 95vw;
     max-height: 90vw;
@@ -653,18 +679,18 @@ main {
 #signaturePad {
     background: #fff;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     display: block;
     margin: 0 auto;
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
-    width: 260px;
-    height: 340px;
+    width: 240px;
+    height: 300px;
     min-width: 120px;
     min-height: 120px;
-    max-width: 260px;
-    max-height: 340px;
+    max-width: 240px;
+    max-height: 300px;
     box-sizing: border-box;
 }
 @media (max-width: 500px) {
@@ -673,24 +699,24 @@ main {
         height: 110vw !important;
         min-width: 120px !important;
         min-height: 120px !important;
-        max-width: 260px !important;
-        max-height: 340px !important;
+        max-width: 240px !important;
+        max-height: 300px !important;
     }
 }
 .signature-instruction {
-    margin-bottom: 0.2em;
-    font-size: 0.96em;
+    margin-bottom: 0.3em;
+    font-size: 0.9em;
     color: #444;
 }
-.file-upload { margin: 1rem 0; text-align: center; }
+.file-upload { margin: 0.8rem 0; text-align: center; }
 .file-upload-label {
     display: inline-block;
-    padding: 0.3rem 0.7rem;
+    padding: 0.3rem 0.6rem;
     border: 2px solid var(--primary-color);
     border-radius: 5px;
     background-color: var(--chip-bg);
     cursor: pointer;
-    font-size: 0.97rem;
+    font-size: 0.9rem;
     color: var(--primary-color);
     transition: background-color 0.3s, color 0.3s;
 }
@@ -703,7 +729,7 @@ main {
     margin-top: 10px;
     text-align: center;
     width: 100%;
-    max-width: 480px;
+    max-width: 360px;
     margin-left: auto;
     margin-right: auto;
     display: flex;
@@ -720,7 +746,7 @@ main {
     width: auto;
     height: auto;
     max-width: 90vw;
-    max-height: 360px;
+    max-height: 300px;
 }
 @media (max-width: 700px) {
     .image-preview {
@@ -734,15 +760,15 @@ main {
 }
 #textInput {
     width: calc(16 * 1em);
-    max-width: 450px;
-    height: 300px;
-    margin-top: 1rem;
+    max-width: 360px;
+    height: 260px;
+    margin-top: 0.8rem;
     padding: 0.5rem;
     border: 1px solid var(--input-border);
     border-radius: 5px;
     resize: vertical;
     font-family: monospace;
-    font-size: 17px;
+    font-size: 16px;
     white-space: pre-wrap;
     text-align: center;
     background: var(--input-bg);
@@ -780,13 +806,14 @@ main {
 }
 
 .receipt-form-container {
-    margin: 1rem auto;
+    margin: 0.5rem auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    gap: 0.8rem;
     width: 100%;
-    max-width: 450px;
+    max-width: 360px;
+    padding: 0 0.5rem;
 }
 
 .receipt-input-group {
@@ -794,25 +821,25 @@ main {
     flex-direction: column;
     align-items: center;
     width: 100%;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
 }
 
 .receipt-input-group label {
-    font-size: 1rem;
+    font-size: 0.95rem;
     color: var(--text-color);
-    margin-bottom: 0.5rem;
-    font-weight: bold;
+    margin-bottom: 0.4rem;
+    font-weight: normal;
     text-align: center;
 }
 
 .receipt-input-group input[type="text"] {
     width: 100%;
-    max-width: 350px;
-    height: 60px;
-    padding: 0.8rem;
+    max-width: 320px;
+    height: 50px;
+    padding: 0.6rem;
     border: 2px solid var(--input-border);
-    border-radius: 8px;
-    font-size: 1rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
     text-align: center;
     background: var(--input-bg);
     color: var(--input-text);
@@ -829,16 +856,16 @@ main {
 .receipt-option-group {
     display: flex;
     justify-content: center;
-    margin: 1rem 0;
+    margin: 0.5rem 0;
 }
 
 .receipt-option-btn {
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.9rem;
     background: var(--button-bg);
     color: var(--button-text);
     border: 2px solid var(--input-border);
     border-radius: 5px;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.3s ease;
 }
@@ -857,23 +884,23 @@ main {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 1rem;
-    margin-top: 1.5rem;
+    gap: 0.8rem;
+    margin-top: 1rem;
     width: 100%;
-    max-width: 350px;
+    max-width: 320px;
 }
 
 .receipt-option-btn {
-    padding: 0.6rem 1rem;
+    padding: 0.5rem 0.9rem;
     background: var(--button-bg);
     color: var(--button-text);
     border: 2px solid var(--input-border);
-    border-radius: 8px;
-    font-size: 0.9rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.3s ease;
     flex: 1;
-    max-width: 160px;
+    max-width: 140px;
 }
 
 .receipt-option-btn.selected {
@@ -887,18 +914,18 @@ main {
 }
 
 .receipt-print-btn {
-    padding: 0.8rem 1.5rem;
+    padding: 0.7rem 1.2rem;
     background: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: bold;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: normal;
     cursor: pointer;
     transition: all 0.3s ease;
     flex: 1;
-    max-width: 140px;
-    min-width: 100px;
+    max-width: 120px;
+    min-width: 90px;
 }
 
 .receipt-print-btn:hover {
@@ -920,14 +947,16 @@ main {
 
 @media (max-width: 500px) {
     .receipt-input-group input[type="text"] {
-        font-size: 0.95rem;
-        padding: 0.4rem;
-        height: 60px;
+        font-size: 0.9rem;
+        padding: 0.5rem;
+        height: 48px;
+        max-width: 280px;
     }
     
     .receipt-buttons-row {
         flex-direction: column;
-        gap: 0.8rem;
+        gap: 0.6rem;
+        max-width: 280px;
     }
     
     .receipt-option-btn,
@@ -938,7 +967,11 @@ main {
     
     .receipt-option-btn {
         font-size: 0.8rem;
-        padding: 0.5rem 0.8rem;
+        padding: 0.5rem 0.7rem;
+    }
+    
+    .receipt-form-container {
+        max-width: 300px;
     }
 }
 
@@ -948,125 +981,125 @@ main {
     width: 100%;
     margin: 0 auto;
     text-align: center;
-    padding: 1rem 0;
 }
 
 .ts-ticket-form-container {
-    margin: 0 auto;
+    margin: 0.5rem auto;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1.5rem;
+    gap: 0.8rem;
     width: 100%;
-    max-width: 600px;
-    padding: 0 1rem;
+    max-width: 340px;
+    padding: 0 0.5rem;
 }
 
-.ts-ticket-form-container h3 {
-    margin: 0 0 1rem 0;
+.ts-ticket-templates h3 {
+    margin-bottom: 0.5rem;
     color: var(--text-color);
-    font-size: 1.2rem;
-    font-weight: bold;
+    font-size: 0.95rem;
+    font-weight: normal;
 }
 
-.template-image-grid {
+.template-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    width: 100%;
-    max-width: 500px;
-}
-
-.template-image {
-    width: 100%;
-    height: auto;
-    min-height: 150px;
-    object-fit: contain;
-    border: 3px solid var(--input-border);
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background: #f5f5f5;
-}
-
-.template-image:hover {
-    border-color: var(--primary-color);
-    box-shadow: 0 4px 12px rgba(0, 163, 237, 0.3);
-    transform: translateY(-2px);
-}
-
-.template-image.selected {
-    border-color: var(--primary-color);
-    border-width: 4px;
-    box-shadow: 0 4px 16px rgba(0, 163, 237, 0.5);
-}
-
-/* T's券の日付・時刻選択 */
-#tsTicketDateTimeChoice {
-    display: none;
     gap: 0.5rem;
-    margin: 1rem 0;
-    justify-content: center;
+    width: 100%;
+    max-width: 300px;
 }
 
-/* T's券の印刷オプション */
-#tsTicketPrintOptions {
-    display: none;
-    align-items: center;
-    gap: 1rem;
-    margin: 1rem 0;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-
-#tsTicketCopiesSelect {
-    padding: 0.5rem 1rem;
+.template-item {
+    cursor: pointer;
     border: 2px solid var(--input-border);
-    border-radius: 8px;
+    border-radius: 6px;
+    padding: 0.4rem;
+    transition: all 0.3s ease;
     background: var(--input-bg);
-    color: var(--text-color);
-    font-size: 1rem;
-    min-width: 80px;
 }
 
-#tsTicketPrintButton {
-    padding: 1rem 2rem;
-    font-size: 1.1rem;
-    font-weight: bold;
+.template-item:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 6px rgba(0, 163, 237, 0.15);
+}
+
+.template-item.selected {
+    border-color: var(--primary-color);
     background: var(--primary-color);
     color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
 }
 
-#tsTicketPrintButton:hover:not(.disabled) {
-    background: #0056b3;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 163, 237, 0.3);
+.template-preview {
+    width: 100%;
+    height: 70px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.3rem;
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-#tsTicketPrintButton.disabled {
-    background: #ccc;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+.template-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
-@media (max-width: 600px) {
-    .template-image-grid {
+.template-item span {
+    font-size: 0.75rem;
+    font-weight: normal;
+    display: block;
+    text-align: center;
+}
+
+.ts-ticket-preview {
+    width: 100%;
+    margin: 0.5rem 0;
+}
+
+.ts-ticket-preview h3 {
+    margin-bottom: 0.5rem;
+    color: var(--text-color);
+    font-size: 0.95rem;
+    font-weight: normal;
+}
+
+.preview-container {
+    border: 2px solid var(--input-border);
+    border-radius: 6px;
+    padding: 0.5rem;
+    background: var(--input-bg);
+    max-width: 220px;
+    margin: 0 auto;
+}
+
+#tsTicketPreviewCanvas {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+@media (max-width: 500px) {
+    .template-grid {
         grid-template-columns: 1fr;
-        gap: 1rem;
+        gap: 0.5rem;
+        max-width: 250px;
     }
     
-    .template-image {
-        min-height: 200px;
+    .template-preview {
+        height: 80px;
     }
     
-    #tsTicketPrintOptions {
-        flex-direction: column;
-        gap: 0.8rem;
+    .preview-container {
+        padding: 0.4rem;
+        max-width: 200px;
+    }
+    
+    .ts-ticket-form-container {
+        max-width: 300px;
     }
 }
 
@@ -1469,12 +1502,41 @@ footer p {
         </section>
         <section id="tsTicketSection" style="display:none;">
             <div class="ts-ticket-form-container">
-                <h3>T's券テンプレート選択</h3>
-                <div class="template-image-grid">
-                    <img class="template-image" data-template="1" src="./ken/template1.jpg" alt="テンプレート1">
-                    <img class="template-image" data-template="2" src="./ken/template2.jpg" alt="テンプレート2">
-                    <img class="template-image" data-template="3" src="./ken/template3.jpg" alt="テンプレート3">
-                    <img class="template-image" data-template="4" src="./ken/template4.jpg" alt="テンプレート4">
+                <div class="ts-ticket-templates">
+                    <h3>テンプレート選択</h3>
+                    <div class="template-grid">
+                        <div class="template-item" data-template="1">
+                            <div class="template-preview">
+                                <img id="template1" src="./ken/template1.jpg" alt="テンプレート1" onerror="this.src='./ken/template1.png'">
+                            </div>
+                            <span>テンプレート1</span>
+                        </div>
+                        <div class="template-item" data-template="2">
+                            <div class="template-preview">
+                                <img id="template2" src="./ken/template2.jpg" alt="テンプレート2" onerror="this.src='./ken/template2.png'">
+                            </div>
+                            <span>テンプレート2</span>
+                        </div>
+                        <div class="template-item" data-template="3">
+                            <div class="template-preview">
+                                <img id="template3" src="./ken/template3.jpg" alt="テンプレート3" onerror="this.src='./ken/template3.png'">
+                            </div>
+                            <span>テンプレート3</span>
+                        </div>
+                        <div class="template-item" data-template="4">
+                            <div class="template-preview">
+                                <img id="template4" src="./ken/template4.jpg" alt="テンプレート4" onerror="this.src='./ken/template4.png'">
+                            </div>
+                            <span>テンプレート4</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ts-ticket-preview" id="tsTicketPreview" style="display:none;">
+                    <h3>プレビュー</h3>
+                    <div class="preview-container">
+                        <canvas id="tsTicketPreviewCanvas"></canvas>
+                    </div>
                 </div>
                 
                 <div class="choice-chips" id="tsTicketDateTimeChoice" style="display:none;">
@@ -1527,10 +1589,6 @@ let lastPreviewImageNaturalHeight = 0;
 let qrScanner = null;
 let flashlightEnabled = false;
 let currentStream = null;
-
-// T's券関連の変数
-let selectedTsTicketTemplate = null;
-let selectedTsTicketChip = '';
 
 // 独自QRコード生成用の変数
 const QR_PREFIX = 'TOKI01_';
@@ -1712,14 +1770,17 @@ modeToggleUnified.onclick = preventDoubleTouch(() => {
     let nextIdx = (idx + 1) % modeOrder.length;
     currentHistoryType = modeOrder[nextIdx];
     setModeToggle(currentHistoryType);
-    loadHistoryList();
     toggleMode(currentHistoryType);
+    loadHistoryList();
 });
 
 historyMenuBtn.onclick = preventDoubleTouch(() => { 
     historyDrawer.classList.add('open'); 
     historyDrawerBg.style.display = 'block'; 
-    loadHistoryList(); 
+    if (!historyDrawer.dataset.loaded) {
+        loadHistoryList();
+        historyDrawer.dataset.loaded = 'true';
+    }
 });
 
 qrCodeBtn.onclick = preventDoubleTouch(() => { 
@@ -1728,7 +1789,8 @@ qrCodeBtn.onclick = preventDoubleTouch(() => {
 
 historyDrawerClose.onclick = preventDoubleTouch(() => { 
     historyDrawer.classList.remove('open'); 
-    historyDrawerBg.style.display = 'none'; 
+    historyDrawerBg.style.display = 'none';
+    delete historyDrawer.dataset.loaded;
 });
 
 // タッチイベントも同時に追加
@@ -1826,76 +1888,84 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初期状態で印刷ボタンを無効化
     updateReceiptPrintButtons();
     
-    // T's券初期化関数
+    // T's券のイベントリスナー
+    let selectedTsTicketTemplate = null;
+    let selectedTsTicketChip = '';
     
-    // T's券初期化関数
-    function initTsTicket() {
-        // テンプレート画像のイベントリスナー
-        const templateImages = document.querySelectorAll('.template-image');
-        templateImages.forEach(img => {
-            img.onclick = preventDoubleTouch(() => {
-                // 他のテンプレートの選択を解除
-                templateImages.forEach(t => t.classList.remove('selected'));
-                
-                // 選択されたテンプレートをマーク
-                img.classList.add('selected');
-                selectedTsTicketTemplate = img.dataset.template;
-                
-                // 日付・時刻選択と印刷オプションを表示
-                document.getElementById('tsTicketDateTimeChoice').style.display = 'flex';
-                document.getElementById('tsTicketPrintOptions').style.display = 'flex';
-                
-                updateTsTicketPrintButtonState();
-            });
-            if ('ontouchstart' in window) {
-                img.ontouchstart = img.onclick;
+    // テンプレート選択のイベントリスナー
+    const templateItems = document.querySelectorAll('.template-item');
+    templateItems.forEach(item => {
+        item.onclick = preventDoubleTouch(() => {
+            // 他のテンプレートの選択を解除
+            templateItems.forEach(t => t.classList.remove('selected'));
+            
+            // 選択されたテンプレートをマーク
+            item.classList.add('selected');
+            selectedTsTicketTemplate = item.dataset.template;
+            
+            // プレビューを表示
+            showTsTicketPreview();
+            
+            // 日付・時刻選択と印刷オプションを表示
+            document.getElementById('tsTicketDateTimeChoice').style.display = 'flex';
+            document.getElementById('tsTicketPrintOptions').style.display = 'flex';
+            
+            updateTsTicketPrintButtonState();
+        });
+        if ('ontouchstart' in window) {
+            item.ontouchstart = item.onclick;
+        }
+    });
+    
+    // T's券印刷ボタン
+    const tsTicketPrintButton = document.getElementById('tsTicketPrintButton');
+    if (tsTicketPrintButton) {
+        tsTicketPrintButton.onclick = preventDoubleTouch(() => {
+            if (!tsTicketPrintButton.classList.contains('disabled')) {
+                executeTsTicketPrint();
             }
         });
-        
-        // T's券印刷ボタン
-        const tsTicketPrintButton = document.getElementById('tsTicketPrintButton');
-        if (tsTicketPrintButton) {
-            tsTicketPrintButton.onclick = preventDoubleTouch(() => {
-                if (!tsTicketPrintButton.classList.contains('disabled')) {
-                    executeTsTicketPrint();
-                }
-            });
-            if ('ontouchstart' in window) {
-                tsTicketPrintButton.ontouchstart = tsTicketPrintButton.onclick;
-            }
+        if ('ontouchstart' in window) {
+            tsTicketPrintButton.ontouchstart = tsTicketPrintButton.onclick;
         }
-        
-        // T's券の日付・時刻選択
-        const tsTicketChipWith = document.getElementById('tsTicketChipWith');
-        const tsTicketChipWithout = document.getElementById('tsTicketChipWithout');
-        
-        if (tsTicketChipWith) {
-            tsTicketChipWith.onclick = preventDoubleTouch(() => selectTsTicketChip('with'));
-            if ('ontouchstart' in window) tsTicketChipWith.ontouchstart = tsTicketChipWith.onclick;
-        }
-        if (tsTicketChipWithout) {
-            tsTicketChipWithout.onclick = preventDoubleTouch(() => selectTsTicketChip('without'));
-            if ('ontouchstart' in window) tsTicketChipWithout.ontouchstart = tsTicketChipWithout.onclick;
-        }
+    }
+    
+    // T's券の日付・時刻選択
+    const tsTicketChipWith = document.getElementById('tsTicketChipWith');
+    const tsTicketChipWithout = document.getElementById('tsTicketChipWithout');
+    
+    if (tsTicketChipWith) {
+        tsTicketChipWith.onclick = preventDoubleTouch(() => selectTsTicketChip('with'));
+        if ('ontouchstart' in window) tsTicketChipWith.ontouchstart = tsTicketChipWith.onclick;
+    }
+    if (tsTicketChipWithout) {
+        tsTicketChipWithout.onclick = preventDoubleTouch(() => selectTsTicketChip('without'));
+        if ('ontouchstart' in window) tsTicketChipWithout.ontouchstart = tsTicketChipWithout.onclick;
     }
     
     function selectTsTicketChip(selection) {
         selectedTsTicketChip = selection;
-        const tsTicketChipWith = document.getElementById('tsTicketChipWith');
-        const tsTicketChipWithout = document.getElementById('tsTicketChipWithout');
-        
-        if (tsTicketChipWith) tsTicketChipWith.classList.toggle('selected', selection === 'with');
-        if (tsTicketChipWithout) tsTicketChipWithout.classList.toggle('selected', selection === 'without');
+        tsTicketChipWith.classList.toggle('selected', selection === 'with');
+        tsTicketChipWithout.classList.toggle('selected', selection === 'without');
         updateTsTicketPrintButtonState();
     }
     
     function updateTsTicketPrintButtonState() {
         const hasTemplate = selectedTsTicketTemplate !== null;
         const hasChip = selectedTsTicketChip !== '';
-        const tsTicketPrintButton = document.getElementById('tsTicketPrintButton');
         
         if (tsTicketPrintButton) {
             tsTicketPrintButton.classList.toggle('disabled', !(hasTemplate && hasChip));
+        }
+    }
+    
+    function showTsTicketPreview() {
+        const previewContainer = document.getElementById('tsTicketPreview');
+        const canvas = document.getElementById('tsTicketPreviewCanvas');
+        
+        if (selectedTsTicketTemplate && canvas) {
+            previewContainer.style.display = 'block';
+            generateTsTicketPreview(canvas, selectedTsTicketTemplate);
         }
     }
     
@@ -2287,7 +2357,6 @@ window.onload = function() {
     loadHistoryList();
     initSignaturePad();
     initQRReader();
-    initTsTicket(); // T's券の初期化を追加
     
     // QRライブラリの初期化チェック
     setTimeout(() => {
@@ -2827,7 +2896,16 @@ function executeSignaturePrint() {
             const pdfBase64 = pdf.output('datauristring').split(',')[1];
             
             let thisPage = window.location.href;
-            let printUrl = 'siiprintagent://1.0/print?' +
+            
+            // デバイス判定: iOSかAndroidかを判定
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            
+            let printUrl;
+            
+            if (isAndroid) {
+                // Android用URL Scheme
+                printUrl = 'siiprintagent://1.0/print?' +
                           'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                           'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
                           'Format='           + 'pdf' + '&' +
@@ -2837,6 +2915,19 @@ function executeSignaturePrint() {
                           'CutFeed='          + 'yes' + '&' +
                           'FitToWidth='       + 'no' + '&' +
                           'PaperWidth='       + '58';
+            } else {
+                // iOS用URL Scheme
+                printUrl = 'siiprintagent://1.0/print?' +
+                          'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                          'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                          'Format='           + 'pdf' + '&' +
+                          'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                          'SelectOnError='    + 'yes' + '&' +
+                          'CutType='          + 'full' + '&' +
+                          'CutFeed='          + 'yes' + '&' +
+                          'FitToWidth='       + 'no' + '&' +
+                          'PaperWidth='       + '58';
+            }
             
             // 【革新的枚数印刷システム】sessionStorageによる永続化方式
             
@@ -3057,7 +3148,16 @@ function executeReceiptPrint(withMemo) {
     const pdfBase64 = pdf.output('datauristring').split(',')[1];
     
     let thisPage = window.location.href;
-    let printUrl = 'siiprintagent://1.0/print?' +
+    
+    // デバイス判定: iOSかAndroidかを判定
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    let printUrl;
+    
+    if (isAndroid) {
+        // Android用URL Scheme
+        printUrl = 'siiprintagent://1.0/print?' +
                   'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                   'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
                   'Format='           + 'pdf' + '&' +
@@ -3067,6 +3167,19 @@ function executeReceiptPrint(withMemo) {
                   'CutFeed='          + 'yes' + '&' +
                   'FitToWidth='       + 'no' + '&' +
                   'PaperWidth='       + '58';
+    } else {
+        // iOS用URL Scheme
+        printUrl = 'siiprintagent://1.0/print?' +
+                  'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                  'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                  'Format='           + 'pdf' + '&' +
+                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                  'SelectOnError='    + 'yes' + '&' +
+                  'CutType='          + 'full' + '&' +
+                  'CutFeed='          + 'yes' + '&' +
+                  'FitToWidth='       + 'no' + '&' +
+                  'PaperWidth='       + '58';
+    }
     
     // 印刷実行
     window.location.href = printUrl;
@@ -3267,7 +3380,16 @@ async function executeTsTicketPrint() {
     const pdfBase64 = pdf.output('datauristring').split(',')[1];
     
     let thisPage = window.location.href;
-    let printUrl = 'siiprintagent://1.0/print?' +
+    
+    // デバイス判定: iOSかAndroidかを判定
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    let printUrl;
+    
+    if (isAndroid) {
+        // Android用URL Scheme
+        printUrl = 'siiprintagent://1.0/print?' +
                   'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                   'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
                   'Format='           + 'pdf' + '&' +
@@ -3277,6 +3399,19 @@ async function executeTsTicketPrint() {
                   'CutFeed='          + 'yes' + '&' +
                   'FitToWidth='       + 'no' + '&' +
                   'PaperWidth='       + '58';
+    } else {
+        // iOS用URL Scheme
+        printUrl = 'siiprintagent://1.0/print?' +
+                  'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                  'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                  'Format='           + 'pdf' + '&' +
+                  'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                  'SelectOnError='    + 'yes' + '&' +
+                  'CutType='          + 'full' + '&' +
+                  'CutFeed='          + 'yes' + '&' +
+                  'FitToWidth='       + 'no' + '&' +
+                  'PaperWidth='       + '58';
+    }
     
     window.location.href = printUrl;
     
@@ -3782,7 +3917,16 @@ function sendToPrintAssist(event) {
                     const pdfBase64 = pdf.output('datauristring').split(',')[1];
                     
                     let thisPage = window.location.href;
-                    let printUrlImage = 'siiprintagent://1.0/print?' +
+                    
+                    // デバイス判定: iOSかAndroidかを判定
+                    const isAndroid = /Android/i.test(navigator.userAgent);
+                    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+                    
+                    let printUrlImage;
+                    
+                    if (isAndroid) {
+                        // Android用URL Scheme (SII URL Print Agent for Android)
+                        printUrlImage = 'siiprintagent://1.0/print?' +
                                       'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                                       'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
                                       'Format='           + 'pdf' + '&' +
@@ -3792,6 +3936,19 @@ function sendToPrintAssist(event) {
                                       'CutFeed='          + 'yes' + '&' +
                                       'FitToWidth='       + 'no' + '&' +
                                       'PaperWidth='       + '58';
+                    } else {
+                        // iOS用URL Scheme (従来通り)
+                        printUrlImage = 'siiprintagent://1.0/print?' +
+                                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                                      'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                                      'Format='           + 'pdf' + '&' +
+                                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                                      'SelectOnError='    + 'yes' + '&' +
+                                      'CutType='          + 'full' + '&' +
+                                      'CutFeed='          + 'yes' + '&' +
+                                      'FitToWidth='       + 'no' + '&' +
+                                      'PaperWidth='       + '58';
+                    }
                     
                     // 【革新的枚数印刷システム】sessionStorageによる永続化方式
                     
@@ -4095,7 +4252,16 @@ function printText() {
         const pdfBase64 = pdf.output('datauristring').split(',')[1];
         
         let thisPage = window.location.href;
-        let printUrl = 'siiprintagent://1.0/print?' +
+        
+        // デバイス判定: iOSかAndroidかを判定
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        let printUrl;
+        
+        if (isAndroid) {
+            // Android用URL Scheme
+            printUrl = 'siiprintagent://1.0/print?' +
                       'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
                       'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
                       'Format='           + 'pdf' + '&' +
@@ -4105,6 +4271,19 @@ function printText() {
                       'CutFeed='          + 'yes' + '&' +
                       'FitToWidth='       + 'no' + '&' +
                       'PaperWidth='       + '58';
+        } else {
+            // iOS用URL Scheme
+            printUrl = 'siiprintagent://1.0/print?' +
+                      'CallbackSuccess='  + encodeURIComponent(thisPage) + '&' +
+                      'CallbackFail='     + encodeURIComponent(thisPage) + '&' +
+                      'Format='           + 'pdf' + '&' +
+                      'Data='             + encodeURIComponent(pdfBase64) + '&' +
+                      'SelectOnError='    + 'yes' + '&' +
+                      'CutType='          + 'full' + '&' +
+                      'CutFeed='          + 'yes' + '&' +
+                      'FitToWidth='       + 'no' + '&' +
+                      'PaperWidth='       + '58';
+        }
         
         // 【革新的枚数印刷システム】sessionStorageによる永続化方式
         
@@ -5102,12 +5281,13 @@ function restoreContentFromHistory(item) {
         
         // テンプレート選択を復元
         if (selectedTsTicketTemplate) {
-            const templateImages = document.querySelectorAll('.template-image');
-            templateImages.forEach(t => t.classList.remove('selected'));
+            const templateItems = document.querySelectorAll('.template-item');
+            templateItems.forEach(t => t.classList.remove('selected'));
             
-            const selectedImage = document.querySelector(`.template-image[data-template="${selectedTsTicketTemplate}"]`);
-            if (selectedImage) {
-                selectedImage.classList.add('selected');
+            const selectedItem = document.querySelector(`[data-template="${selectedTsTicketTemplate}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
+                showTsTicketPreview();
             }
         }
         
@@ -5194,12 +5374,13 @@ function restoreContentFromQROnly(qrData) {
         
         // テンプレート選択を復元
         if (selectedTsTicketTemplate) {
-            const templateImages = document.querySelectorAll('.template-image');
-            templateImages.forEach(t => t.classList.remove('selected'));
+            const templateItems = document.querySelectorAll('.template-item');
+            templateItems.forEach(t => t.classList.remove('selected'));
             
-            const selectedImage = document.querySelector(`.template-image[data-template="${selectedTsTicketTemplate}"]`);
-            if (selectedImage) {
-                selectedImage.classList.add('selected');
+            const selectedItem = document.querySelector(`[data-template="${selectedTsTicketTemplate}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
+                showTsTicketPreview();
             }
         }
         
