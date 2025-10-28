@@ -2072,14 +2072,27 @@ function loadHistoryList() {
                     }, 100);
                 } else if (item.type === 'receipt') {
                     showSection('receipt');
-                    document.getElementById('receiptCompanyName').value = item.companyName || '';
-                    document.getElementById('receiptMemo').value = item.memo || '';
+                    
+                    // 領収書データを復元
+                    const receiptCompanyName = document.getElementById('receiptCompanyName');
+                    const receiptMemo = document.getElementById('receiptMemo');
+                    
+                    receiptCompanyName.value = item.companyName || '';
+                    receiptMemo.value = item.memo || '';
+                    
+                    // 小文字オプションの状態を復元
+                    receiptSmallTextEnabled = item.smallTextEnabled || false;
+                    const smallTextBtn = document.getElementById('receiptSmallTextBtn');
+                    if (smallTextBtn) {
+                        smallTextBtn.classList.toggle('selected', receiptSmallTextEnabled);
+                    }
+                    
                     // 印刷ボタンの状態を更新
-                    const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
-                    const receiptPrintWithoutMemo = document.getElementById('receiptPrintWithoutMemo');
-                    const hasCompanyName = item.companyName && item.companyName.trim() !== '';
-                    receiptPrintWithMemo.classList.toggle('disabled', !hasCompanyName);
-                    receiptPrintWithoutMemo.classList.toggle('disabled', !hasCompanyName);
+                    setTimeout(() => {
+                        updateReceiptPrintButtons();
+                    }, 50);
+                    
+                    console.log('領収書履歴復元完了:', item.companyName);
                 } else {
                     showSection('text');
                     document.getElementById('textInput').value = item.data;
@@ -2745,15 +2758,15 @@ function executeReceiptPrint(withMemo) {
     
     // フォントサイズ設定（テキスト印刷と同じ）
     const textFontSize = 37;  // テキスト用のフォントサイズ
-    const companyNameFontSize = 40; // 宛名専用のフォントサイズ（40px）
+    const labelFontSize = 37; // "宛名は" のフォントサイズ（通常）
+    const companyNameFontSize = 40; // 宛名専用のフォントサイズ
     const dateFontSize = 50;  // 日付・時刻用のフォントサイズ
     
     // 領収書のテキスト内容を構築
     let receiptLines = [];
     receiptLines.push('領収書');
     receiptLines.push('');
-    receiptLines.push('宛名は');
-    receiptLines.push(`「${companyName}」`);
+    // 宛名は別々に描画するため、ここでは入れない
     receiptLines.push('こちらでお願い致します。');
     
     // 小文字オプションが選択されている場合のみ追加
@@ -2783,17 +2796,16 @@ function executeReceiptPrint(withMemo) {
     // テキストの行数から高さを計算
     const lines = printText.split('\n');
     const lineHeight = textFontSize * 1.2;
-    const companyLineHeight = companyNameFontSize * 1.2; // 宛名行の高さ
+    const companyLineHeight = Math.max(labelFontSize, companyNameFontSize) * 1.2; // 宛名行の高さ
     let textHeight = 0;
     
-    // 各行の高さを個別に計算
+    // 各行の高さを計算
     for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('「') && lines[i].endsWith('」')) {
-            textHeight += companyLineHeight; // 宛名行（「」で囲まれた行）は大きいフォントサイズ
-        } else {
-            textHeight += lineHeight; // それ以外は通常サイズ
-        }
+        textHeight += lineHeight;
     }
+    
+    // 宛名行のスペースを追加（「宛名は」と宛名が同じ行）
+    textHeight += companyLineHeight;
     
     // 日付・時刻のスペースを追加（常に有効）
     const dateLineHeight = dateFontSize * 1.2;
@@ -2818,20 +2830,42 @@ function executeReceiptPrint(withMemo) {
     // 真ん中の位置を正確に計算（テキスト印刷と同じ）
     const exactCenterX = Math.round(canvasWidth / 2) - 50; // -50 テキストの左右調整
     
-    // テキストを描画（上部余白を小さく、宛名行は大きいフォントで）
+    // テキストを描画（上部余白を小さく）
     let yPos = 30; // 上余白を30pxに調整
+    ctx.font = `${textFontSize}px Arial, sans-serif`;
+    
     for (let i = 0; i < lines.length; i++) {
-        // 宛名行（「」で囲まれた行）の場合は大きいフォントサイズを使用
-        if (lines[i].startsWith('「') && lines[i].endsWith('」')) {
-            ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
-            ctx.fillText(lines[i], exactCenterX, yPos);
-            yPos += companyLineHeight;
-        } else {
-            ctx.font = `${textFontSize}px Arial, sans-serif`;
-            ctx.fillText(lines[i], exactCenterX, yPos);
-            yPos += lineHeight;
-        }
+        ctx.fillText(lines[i], exactCenterX, yPos);
+        yPos += lineHeight;
     }
+    
+    // 宛名行を描画（「宛名は」と宛名を横並び、中央揃え）
+    const labelText = '宛名は';
+    const companyText = `「${companyName}」`;
+    
+    // フォント設定
+    ctx.font = `${labelFontSize}px Arial, sans-serif`;
+    const labelWidth = ctx.measureText(labelText).width;
+    
+    ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
+    const companyWidth = ctx.measureText(companyText).width;
+    
+    // 全体の幅を計算
+    const totalWidth = labelWidth + companyWidth;
+    const startX = exactCenterX - totalWidth / 2;
+    
+    // 「宛名は」を描画（通常サイズ）
+    ctx.font = `${labelFontSize}px Arial, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText(labelText, startX, yPos);
+    
+    // 宛名を描画（大きいサイズ、右隣）
+    ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
+    ctx.fillText(companyText, startX + labelWidth, yPos);
+    
+    // 中央揃えに戻す
+    ctx.textAlign = 'center';
+    yPos += companyLineHeight;
     
     // QRコードを生成して左側に配置（テキスト印刷と同じ方式）
     let qrCodeCanvas = null;
@@ -4642,9 +4676,10 @@ function restoreContentFromHistory(item) {
             smallTextBtn.classList.toggle('selected', receiptSmallTextEnabled);
         }
         
-        // 入力イベントを発火させてボタンの状態を更新
-        receiptCompanyName.dispatchEvent(new Event('input', { bubbles: true }));
-        receiptMemo.dispatchEvent(new Event('input', { bubbles: true }));
+        // 印刷ボタンの状態を更新
+        setTimeout(() => {
+            updateReceiptPrintButtons();
+        }, 50);
         
         console.log('=== 領収書QR復元完了 ===');
     } else {
@@ -4694,9 +4729,10 @@ function restoreContentFromQROnly(qrData) {
             smallTextBtn.classList.toggle('selected', receiptSmallTextEnabled);
         }
         
-        // 入力イベントを発火させてボタンの状態を更新
-        receiptCompanyName.dispatchEvent(new Event('input', { bubbles: true }));
-        receiptMemo.dispatchEvent(new Event('input', { bubbles: true }));
+        // 印刷ボタンの状態を更新
+        setTimeout(() => {
+            updateReceiptPrintButtons();
+        }, 50);
         
         alert('QRコードから領収書情報を復元しました！');
     } else {
