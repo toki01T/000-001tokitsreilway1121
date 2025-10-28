@@ -2079,11 +2079,13 @@ function loadHistoryList() {
                         const companyNameInput = document.getElementById('receiptCompanyName');
                         const memoInput = document.getElementById('receiptMemo');
                         const printBtn = document.getElementById('receiptPrintBtn');
+                        const smallTextBtn = document.getElementById('receiptSmallTextBtn');
                         
                         console.log('📋 要素取得:', {
                             companyNameInput: companyNameInput ? 'OK' : 'NG',
                             memoInput: memoInput ? 'OK' : 'NG',
-                            printBtn: printBtn ? 'OK' : 'NG'
+                            printBtn: printBtn ? 'OK' : 'NG',
+                            smallTextBtn: smallTextBtn ? 'OK' : 'NG'
                         });
                         
                         if (companyNameInput) {
@@ -2096,11 +2098,17 @@ function loadHistoryList() {
                         }
                         
                         // 小文字オプションの復元
-                        const smallTextCheckbox = document.getElementById('receiptSmallTextCheckbox');
-                        if (smallTextCheckbox) {
-                            smallTextCheckbox.checked = Boolean(item.smallTextEnabled);
-                            receiptSmallTextEnabled = Boolean(item.smallTextEnabled);
-                            console.log('📋 小文字オプション:', receiptSmallTextEnabled);
+                        const shouldEnableSmallText = Boolean(item.smallTextEnabled);
+                        receiptSmallTextEnabled = shouldEnableSmallText;
+                        
+                        if (smallTextBtn) {
+                            if (shouldEnableSmallText) {
+                                smallTextBtn.classList.add('selected');
+                                console.log('📋 小文字オプション: 有効 (selectedクラス追加)');
+                            } else {
+                                smallTextBtn.classList.remove('selected');
+                                console.log('📋 小文字オプション: 無効 (selectedクラス削除)');
+                            }
                         }
                         
                         // 印刷ボタンの状態を更新
@@ -2122,7 +2130,7 @@ function loadHistoryList() {
                             console.log('📋 ボタンクラス:', printBtn.className);
                         }
                         
-                        console.log('✅ 領収書履歴復元完了 - 宛名:', item.companyName, 'メモ:', item.memo);
+                        console.log('✅ 領収書履歴復元完了 - 宛名:', item.companyName, 'メモ:', item.memo, '小文字:', shouldEnableSmallText);
                     }, 100);
                 } else {
                     showSection('text');
@@ -2789,7 +2797,7 @@ function executeReceiptPrint(withMemo) {
     
     // フォントサイズ設定（テキスト印刷と同じ）
     const textFontSize = 37;  // テキスト用のフォントサイズ
-    const companyNameFontSize = 40; // 宛名専用のフォントサイズ
+    const companyNameFontSize = 42; // 宛名専用のフォントサイズ
     const labelFontSize = 37;  // "宛名は"のフォントサイズ（通常サイズ）
     const dateFontSize = 50;  // 日付・時刻用のフォントサイズ
     
