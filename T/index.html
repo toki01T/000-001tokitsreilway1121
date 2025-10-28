@@ -2745,7 +2745,7 @@ function executeReceiptPrint(withMemo) {
     
     // フォントサイズ設定（テキスト印刷と同じ）
     const textFontSize = 37;  // テキスト用のフォントサイズ
-    const companyNameFontSize = 40; // 宛名専用のフォントサイズ
+    const companyNameFontSize = 40; // 宛名専用のフォントサイズ（40px）
     const dateFontSize = 50;  // 日付・時刻用のフォントサイズ
     
     // 領収書のテキスト内容を構築
@@ -4646,79 +4646,7 @@ function restoreContentFromHistory(item) {
         receiptCompanyName.dispatchEvent(new Event('input', { bubbles: true }));
         receiptMemo.dispatchEvent(new Event('input', { bubbles: true }));
         
-        // QRチェックボックスの復元を段階的に確実に処理
-        console.log('=== 領収書QR復元開始 ===', 'qrPrinted:', item.qrPrinted);
-        
-        const restoreReceiptQRCheckbox = () => {
-            const receiptQrCheckbox = document.getElementById('receiptQrPrintCheckbox');
-            console.log('領収書QRチェックボックス要素:', receiptQrCheckbox);
-            
-            if (receiptQrCheckbox) {
-                const qrValue = item.qrPrinted;
-                // より確実な判定（undefinedやnullも考慮）
-                const shouldCheck = qrValue === true || qrValue === 'true' || qrValue === 1 || qrValue === '1';
-                console.log('復元判定:', qrValue, '→', shouldCheck);
-                
-                // 強制的に状態をリセット
-                receiptQrCheckbox.checked = false;
-                receiptQrCheckbox.removeAttribute('checked');
-                
-                // DOM更新を強制
-                receiptQrCheckbox.offsetHeight; // reflow強制
-                
-                // 新しい状態を設定
-                if (shouldCheck) {
-                    receiptQrCheckbox.checked = true;
-                    receiptQrCheckbox.setAttribute('checked', 'checked');
-                    receiptQrCheckbox.setAttribute('data-restored', 'true');
-                } else {
-                    receiptQrCheckbox.checked = false;
-                    receiptQrCheckbox.removeAttribute('checked');
-                    receiptQrCheckbox.removeAttribute('data-restored');
-                }
-                
-                console.log('復元後チェック状態:', receiptQrCheckbox.checked, 'shouldCheck:', shouldCheck);
-                
-                // changeイベントとinputイベントの両方を発火
-                receiptQrCheckbox.dispatchEvent(new Event('change', { bubbles: true }));
-                receiptQrCheckbox.dispatchEvent(new Event('input', { bubbles: true }));
-                
-                // 最終確認（少し時間をおいて）
-                setTimeout(() => {
-                    console.log('最終チェック状態:', receiptQrCheckbox.checked);
-                    if (receiptQrCheckbox.checked !== shouldCheck) {
-                        console.log('⚠️ 復元失敗、再試行');
-                        receiptQrCheckbox.checked = shouldCheck;
-                        if (shouldCheck) {
-                            receiptQrCheckbox.setAttribute('checked', 'checked');
-                        }
-                    }
-                    console.log('=== 領収書QR復元完了 ===');
-                    updateReceiptPrintButtonState();
-                }, 100);
-                
-                return receiptQrCheckbox.checked === shouldCheck;
-            }
-            console.log('❌ 領収書QRチェックボックスが見つかりません');
-            return false;
-        };
-        
-        // 即座に実行してから複数回試行
-        restoreReceiptQRCheckbox();
-        setTimeout(() => {
-            if (!restoreReceiptQRCheckbox()) {
-                setTimeout(() => {
-                    if (!restoreReceiptQRCheckbox()) {
-                        setTimeout(() => {
-                            restoreReceiptQRCheckbox();
-                            updateReceiptPrintButtonState();
-                        }, 150);
-                    }
-                }, 100);
-            }
-        }, 50);
-        
-        console.log('=== 領収書復元完了 ===');
+        console.log('=== 領収書QR復元完了 ===');
     } else {
         console.error('⚠️ 未対応のデータタイプ:', item.type);
         throw new Error('未対応のデータタイプです: ' + item.type);
