@@ -65,7 +65,7 @@ header {
     top: 0;
     left: 0;
     z-index: 100;
-    height: 40px;
+    height: 50px;
     display: flex;
     align-items: center;
 }
@@ -75,7 +75,7 @@ header {
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    height: 40px;
+    height: 50px;
     padding: 0 1rem;
     box-sizing: border-box;
     position: relative;
@@ -83,7 +83,7 @@ header {
 .navbar-brand {
     color: #fff;
     text-decoration: none;
-    font-size: 1.05rem;
+    font-size: 1.15rem;
     flex: 1 1 auto;
     text-align: center;
     font-weight: normal;
@@ -95,59 +95,69 @@ header {
 }
 #historyMenuBtn {
     position: absolute;
-    right: 0.5rem;
+    right: 0.75rem;
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
     border: none;
     color: #fff;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     cursor: pointer;
     z-index: 12;
     padding: 0;
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 #qrCodeBtn {
     position: absolute;
-    right: 3.5rem;
+    right: 4rem;
     top: 50%;
     transform: translateY(-50%);
     background: var(--primary-color);
     border: 2px solid #fff;
     color: #fff;
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     font-weight: bold;
     cursor: pointer;
     z-index: 12;
-    padding: 3px 6px;
+    padding: 5px 10px;
     width: auto;
     height: auto;
-    border-radius: 4px;
+    border-radius: 5px;
 }
 @media (max-width: 400px) {
+    header {
+        height: 48px;
+    }
+    .navbar {
+        height: 48px;
+        padding: 0 0.5rem;
+    }
+    .navbar-brand {
+        font-size: 1.05rem;
+    }
     #historyMenuBtn {
-        right: 0.3rem;
-        font-size: 1.3rem;
-        width: 28px;
-        height: 28px;
+        right: 0.5rem;
+        font-size: 1.6rem;
+        width: 36px;
+        height: 36px;
     }
     #qrCodeBtn {
-        right: 3rem;
-        font-size: 0.75rem;
-        padding: 2px 5px;
+        right: 3.5rem;
+        font-size: 0.85rem;
+        padding: 4px 8px;
     }
 }
 #qrCodeBtn:focus, #historyMenuBtn:focus { outline: none; }
 #historyDrawer {
     position: fixed;
     top: 0;
-    right: -350px;
-    width: 320px;
-    max-width: 90vw;
+    right: -380px;
+    width: 340px;
+    max-width: 85vw;
     height: 100vh;
     background: var(--background-color);
     color: var(--text-color);
@@ -165,13 +175,14 @@ header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem;
+    padding: 1.2rem 1rem;
     border-bottom: 1px solid var(--border-color);
     background: var(--chip-bg);
+    min-height: 60px;
 }
 #historyDrawerHeader h2 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     font-weight: bold;
 }
 #historyDrawerCloseWrap {
@@ -179,13 +190,13 @@ header {
     flex-direction: column;
     align-items: center;
     margin-left: 0.7em;
-    margin-right: -0.6em;
+    margin-right: -0.4em;
     user-select: none;
 }
 #historyDrawerClose {
     background: transparent;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.7rem;
     color: var(--primary-color);
     cursor: pointer;
     line-height: 1;
@@ -195,7 +206,7 @@ header {
 }
 #historyDrawerClose:focus { outline: none; }
 #historyDrawerCloseLabel {
-    font-size: 0.74em;
+    font-size: 0.76em;
     color: #888;
     letter-spacing: 0.03em;
     text-align: center;
@@ -209,7 +220,7 @@ header {
 #historyDrawerMenu {
     display: flex;
     gap: 0.5rem;
-    padding: 1rem;
+    padding: 1.2rem 1rem;
     border-bottom: 1px solid var(--border-color);
     background: var(--background-color);
     justify-content: center;
@@ -217,12 +228,12 @@ header {
 #modeToggleUnified {
     width: 100%;
     max-width: 320px;
-    padding: 0.4rem 1.1rem;
-    border-radius: 5px;
-    border: 1.5px solid var(--primary-color);
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    border: 2px solid var(--primary-color);
     background: var(--chip-bg);
     color: var(--primary-color);
-    font-size: 0.97rem;
+    font-size: 1.05rem;
     cursor: pointer;
     transition: background 0.2s, color 0.2s;
     text-align: center;
@@ -232,6 +243,7 @@ header {
     font-family: inherit;
     box-sizing: border-box;
     display: block;
+    font-weight: 500;
 }
 #modeToggleUnified.selected, #modeToggleUnified:active {
     background: var(--primary-color);
@@ -254,7 +266,7 @@ header {
 }
 .historyItem {
     border-bottom: 1px solid var(--border-color);
-    padding: 0.7rem 0.2rem 0.7rem 0.2rem;
+    padding: 0.9rem 0.5rem;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -286,12 +298,12 @@ header {
 }
 .historyImgThumb {
     width: auto;
-    max-width: 200px;
-    max-height: 120px;
+    max-width: 220px;
+    max-height: 140px;
     height: auto;
     object-fit: contain;
     display: block;
-    margin: 0.3em auto 0.5em auto;
+    margin: 0.4em auto 0.6em auto;
     border-radius: 8px;
     border: 1.5px solid var(--border-color);
     background: #f4f4f4;
@@ -301,76 +313,107 @@ header {
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 0.8em;
+    gap: 1em;
     width: 100%;
-    margin-bottom: 0.2em;
+    margin-bottom: 0.3em;
 }
 .historyShrinkIcon {
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    min-height: 24px;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    min-height: 26px;
     border-radius: 5px;
     background: var(--check-bg);
     border: 2.5px solid var(--check-color);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 0.1em;
-    font-size: 1.1em;
+    margin-right: 0.15em;
+    font-size: 1.15em;
     color: var(--check-color);
     font-weight: bold;
     box-sizing: border-box;
 }
 .historyShrinkIcon svg {
     display: block;
-    width: 18px;
-    height: 18px;
+    width: 19px;
+    height: 19px;
 }
 .historyMetaText {
-    font-size: 0.97em;
+    font-size: 1rem;
     color: var(--primary-color);
     text-align: center;
     display: inline-block;
     vertical-align: middle;
     white-space: nowrap;
-    padding: 0 0.1em;
+    padding: 0 0.2em;
 }
 .historyMetaCopies {
     display: inline-block;
     vertical-align: middle;
-    min-width: 2.6em;
-    padding: 0.09em 0.7em 0.09em 0.7em;
-    font-size: 0.97em;
+    min-width: 2.8em;
+    padding: 0.12em 0.8em;
+    font-size: 1rem;
     color: var(--primary-color);
     background: #00A3ED1A;
     border: 1.5px solid var(--primary-color);
     border-radius: 7px;
     text-align: center;
-    margin-left: 0.1em;
+    margin-left: 0.15em;
     font-weight: bold;
     letter-spacing: 0.04em;
 }
+.historyQrIcon {
+    display: inline-block;
+    vertical-align: middle;
+    padding: 0.15em 0.6em;
+    font-size: 0.9rem;
+    color: #fff;
+    background: var(--primary-color);
+    border-radius: 5px;
+    text-align: center;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    margin-right: 0.3em;
+}
 .historyTextPreview {
-    font-size: 1rem;
+    font-size: 1.05rem;
     color: var(--text-color);
     background: var(--chip-bg);
-    border-radius: 4px;
-    padding: 0.2rem 0.5rem;
-    max-width: 140px;
-    min-width: 40px;
+    border-radius: 5px;
+    padding: 0.3rem 0.6rem;
+    max-width: 160px;
+    min-width: 50px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    margin-bottom: 0.2rem;
+    margin-bottom: 0.3rem;
     text-align: center;
     margin-left: auto;
     margin-right: auto;
 }
+.historyReceiptRow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 0.5rem 0;
+}
+.historyReceiptInfo {
+    font-size: 1rem;
+    color: var(--text-color);
+    background: var(--chip-bg);
+    border-radius: 5px;
+    padding: 0.5rem 0.8rem;
+    max-width: 90%;
+    text-align: center;
+    line-height: 1.6;
+    margin: 0.3rem auto;
+}
 .historyCreated {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: #888;
-    margin-top: 0.1em;
+    margin-top: 0.2em;
     text-align: center;
     letter-spacing: 0.02em;
     font-family: 'Menlo', 'Consolas', monospace;
@@ -379,15 +422,16 @@ header {
 }
 .swipeDeleteBtn {
     position: absolute;
-    right: -80px;
+    right: -90px;
     top: 0;
     height: 100%;
-    width: 80px;
+    width: 90px;
     background: #ff6666;
     color: #fff;
     border: none;
     outline: none;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
+    font-weight: bold;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -425,7 +469,7 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding-top: 50px;
+    padding-top: 60px;
     padding-bottom: 50px;
     background: var(--background-color);
     color: var(--text-color);
@@ -434,29 +478,32 @@ main {
 }
 @media (max-width: 600px) {
     main {
-        padding-top: 48px;
+        padding-top: 58px;
         padding-bottom: 70px;
     }
     #historyDrawer { 
-        width: 90vw;
-        max-width: 90vw;
+        width: 85vw;
+        max-width: 85vw;
+        right: -85vw;
     }
     .historyImgThumb { max-width: 95vw; }
-    #modeToggleUnified { font-size: 0.9rem; padding: 0.3rem 0.5rem; }
+    #modeToggleUnified { font-size: 1rem; padding: 0.55rem 1rem; }
 }
 @media (max-width: 400px) {
     main {
-        padding-top: 46px;
+        padding-top: 56px;
         padding-bottom: 65px;
     }
     #historyDrawer {
-        width: 88vw;
-        max-width: 88vw;
+        width: 82vw;
+        max-width: 82vw;
+        right: -82vw;
     }
+    #modeToggleUnified { font-size: 0.95rem; padding: 0.5rem 0.9rem; }
 }
 @media (orientation: landscape) and (max-height: 500px) {
     main {
-        padding-top: 48px;
+        padding-top: 56px;
         padding-bottom: 45px;
         min-height: auto;
     }
