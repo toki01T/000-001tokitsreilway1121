@@ -2750,53 +2750,56 @@ function executeReceiptPrint(withMemo) {
     
     // 領収書のテキスト内容を構築
     let receiptLines = [];
-    receiptLines.push('領収書');
-    receiptLines.push('');
-    receiptLines.push(`宛名は 「${companyName}」`);
-    receiptLines.push('こちらでお願い致します。');
+    receiptLines.push({ text: '領収書', type: 'normal' });
+    receiptLines.push({ text: '', type: 'normal' });
+    receiptLines.push({ text: '宛名は', type: 'normal' });
+    receiptLines.push({ text: `「${companyName}」`, type: 'companyName' }); // 宛名のみ大きく
+    receiptLines.push({ text: 'こちらでお願い致します。', type: 'normal' });
     
     // 小文字オプションが選択されている場合のみ追加
     if (receiptSmallTextEnabled) {
-        receiptLines.push('(小文字でお願い致します。)');
+        receiptLines.push({ text: '(小文字でお願い致します。)', type: 'normal' });
     }
-    receiptLines.push('');
+    receiptLines.push({ text: '', type: 'normal' });
     
     if (withMemo && memo) {
-        receiptLines.push(`但し ${memo} 代として`);
-        receiptLines.push('');
+        receiptLines.push({ text: `但し ${memo} 代として`, type: 'normal' });
+        receiptLines.push({ text: '', type: 'normal' });
     }
     
-    receiptLines.push('宛名が合っておりましたら、');
-    receiptLines.push('下部の枠にボールペン又は印鑑で');
-    receiptLines.push('印を付けて下さい✔️');
-    receiptLines.push('┌───────┐');
-    receiptLines.push('│　　　　　│');
-    receiptLines.push('│　　　　　│');
-    receiptLines.push('└───────┘');
-    
-    const printText = receiptLines.join('\n');
+    receiptLines.push({ text: '宛名が合っておりましたら、', type: 'normal' });
+    receiptLines.push({ text: '下部の枠にボールペン又は印鑑で', type: 'normal' });
+    receiptLines.push({ text: '印を付けて下さい✔️', type: 'normal' });
+    receiptLines.push({ text: '┌───────┐', type: 'normal' });
+    receiptLines.push({ text: '│　　　　　│', type: 'normal' });
+    receiptLines.push({ text: '│　　　　　│', type: 'normal' });
+    receiptLines.push({ text: '└───────┘', type: 'normal' });
+    receiptLines.push({ text: '', type: 'normal' });
+    receiptLines.push({ text: 'サインをお願い致します。', type: 'normal' });
+    receiptLines.push({ text: '', type: 'normal' });
+    receiptLines.push({ text: `${currentDateTime}`, type: 'date' });
+    receiptLines.push({ text: '合同会社山一商事', type: 'normal' });
     
     ctx.font = `${textFontSize}px Arial, sans-serif`;
     ctx.fillStyle = '#000000';
     
     // テキストの行数から高さを計算
-    const lines = printText.split('\n');
     const lineHeight = textFontSize * 1.2;
     const companyLineHeight = companyNameFontSize * 1.2; // 宛名行の高さ
+    const dateLineHeight = dateFontSize * 1.2;
+    
     let textHeight = 0;
     
     // 各行の高さを個別に計算
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i].includes('宛名は')) {
+    for (let i = 0; i < receiptLines.length; i++) {
+        if (receiptLines[i].type === 'companyName') {
             textHeight += companyLineHeight; // 宛名行は大きいフォントサイズ
+        } else if (receiptLines[i].type === 'date') {
+            textHeight += dateLineHeight; // 日付行は大きいフォントサイズ
         } else {
             textHeight += lineHeight; // それ以外は通常サイズ
         }
     }
-    
-    // 日付・時刻のスペースを追加（常に有効）
-    const dateLineHeight = dateFontSize * 1.2;
-    textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
     
     // QRコード用スペースを調整（テキスト印刷と同じ）
     const qrSpaceMargin = 90; // 日付あり：90px
@@ -2817,17 +2820,25 @@ function executeReceiptPrint(withMemo) {
     // 真ん中の位置を正確に計算（テキスト印刷と同じ）
     const exactCenterX = Math.round(canvasWidth / 2) - 50; // -50 テキストの左右調整
     
-    // テキストを描画（上部余白を小さく、宛名行は大きいフォントで）
+    // テキストを描画（上部余白を小さく、タイプに応じてフォントサイズを変更）
     let yPos = 30; // 上余白を30pxに調整
-    for (let i = 0; i < lines.length; i++) {
-        // 宛名行の場合は大きいフォントサイズを使用
-        if (lines[i].includes('宛名は')) {
+    for (let i = 0; i < receiptLines.length; i++) {
+        const line = receiptLines[i];
+        
+        if (line.type === 'companyName') {
+            // 宛名行は大きいフォントサイズで描画
             ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
-            ctx.fillText(lines[i], exactCenterX, yPos);
+            ctx.fillText(line.text, exactCenterX, yPos);
             yPos += companyLineHeight;
+        } else if (line.type === 'date') {
+            // 日付行は大きいフォントサイズで描画
+            ctx.font = `${dateFontSize}px Arial, sans-serif`;
+            ctx.fillText(line.text, exactCenterX, yPos);
+            yPos += dateLineHeight;
         } else {
+            // 通常のテキストは標準フォントサイズで描画
             ctx.font = `${textFontSize}px Arial, sans-serif`;
-            ctx.fillText(lines[i], exactCenterX, yPos);
+            ctx.fillText(line.text, exactCenterX, yPos);
             yPos += lineHeight;
         }
     }
