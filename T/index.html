@@ -2074,6 +2074,14 @@ function loadHistoryList() {
                     showSection('receipt');
                     document.getElementById('receiptCompanyName').value = item.companyName || '';
                     document.getElementById('receiptMemo').value = item.memo || '';
+                    
+                    // 小文字オプションの復元
+                    receiptSmallTextEnabled = Boolean(item.smallTextEnabled);
+                    const smallTextBtn = document.getElementById('receiptSmallTextBtn');
+                    if (smallTextBtn) {
+                        smallTextBtn.classList.toggle('selected', receiptSmallTextEnabled);
+                    }
+                    
                     // 印刷ボタンの状態を更新
                     const receiptPrintWithMemo = document.getElementById('receiptPrintWithMemo');
                     const receiptPrintWithoutMemo = document.getElementById('receiptPrintWithoutMemo');
@@ -2745,15 +2753,15 @@ function executeReceiptPrint(withMemo) {
     
     // フォントサイズ設定（テキスト印刷と同じ）
     const textFontSize = 37;  // テキスト用のフォントサイズ
-    const companyNameFontSize = 55; // 宛名専用のフォントサイズ（大きく）
+    const companyNameFontSize = 40; // 宛名専用のフォントサイズ
     const dateFontSize = 50;  // 日付・時刻用のフォントサイズ
     
     // 領収書のテキスト内容を構築
     let receiptLines = [];
     receiptLines.push('領収書');
     receiptLines.push('');
-    receiptLines.push('宛名は');
-    receiptLines.push(`COMPANY_NAME:${companyName}`); // 会社名は特殊マーカー付き
+    receiptLines.push('宛名は'); // 左側に通常サイズで表示
+    receiptLines.push(`「${companyName}」`); // 右側に大きく表示
     receiptLines.push('こちらでお願い致します。');
     
     // 小文字オプションが選択されている場合のみ追加
@@ -2788,7 +2796,7 @@ function executeReceiptPrint(withMemo) {
     
     // 各行の高さを個別に計算
     for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('COMPANY_NAME:')) {
+        if (lines[i].startsWith('「') && lines[i].endsWith('」')) {
             textHeight += companyLineHeight; // 会社名行は大きいフォントサイズ
         } else {
             textHeight += lineHeight; // それ以外は通常サイズ
@@ -2812,27 +2820,24 @@ function executeReceiptPrint(withMemo) {
     
     // テキスト描画設定
     ctx.fillStyle = '#000000';
-    ctx.textAlign = 'center';
+    ctx.textAlign = 'left'; // 左寄せに変更
     ctx.textBaseline = 'top';
     
-    // 真ん中の位置を正確に計算（テキスト印刷と同じ）
-    const exactCenterX = Math.round(canvasWidth / 2) - 50; // -50 テキストの左右調整
+    // 左側の位置を計算
+    const leftMargin = 40; // 左余白
+    const companyNameLeftMargin = 100; // 会社名の左余白（右寄せ風）
     
-    // テキストを描画（上部余白を小さく、会社名のみ大きく右寄せ）
+    // テキストを描画（上部余白を小さく、会社名は大きいフォントで右寄せ）
     let yPos = 30; // 上余白を30pxに調整
     for (let i = 0; i < lines.length; i++) {
-        // 会社名行の場合は大きいフォントサイズで右寄せ
-        if (lines[i].startsWith('COMPANY_NAME:')) {
-            const displayText = lines[i].replace('COMPANY_NAME:', ''); // マーカーを削除
+        // 会社名行の場合は大きいフォントサイズを使用して右側に配置
+        if (lines[i].startsWith('「') && lines[i].endsWith('」')) {
             ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
-            ctx.textAlign = 'right'; // 右寄せ
-            const rightX = canvasWidth - 80; // 右端から80pxの位置
-            ctx.fillText(displayText, rightX, yPos);
-            ctx.textAlign = 'center'; // 元に戻す
+            ctx.fillText(lines[i], companyNameLeftMargin, yPos);
             yPos += companyLineHeight;
         } else {
             ctx.font = `${textFontSize}px Arial, sans-serif`;
-            ctx.fillText(lines[i], exactCenterX, yPos);
+            ctx.fillText(lines[i], leftMargin, yPos);
             yPos += lineHeight;
         }
     }
@@ -2851,12 +2856,6 @@ function executeReceiptPrint(withMemo) {
         created: Date.now(),
         qrPrinted: true // 常にQRコード付き
     };
-    
-    console.log('領収書履歴保存準備:', {
-        companyName: historyItem.companyName,
-        memo: historyItem.memo,
-        smallTextEnabled: historyItem.smallTextEnabled
-    });
     
     // QRデータを生成
     const qrData = generateQRData(historyItem);
@@ -4638,36 +4637,18 @@ function restoreContentFromHistory(item) {
     } else if (item.type === 'receipt') {
         showSection('receipt');
         
-        console.log('=== 領収書復元開始 ===');
-        console.log('復元データ:', {
-            companyName: item.companyName,
-            memo: item.memo,
-            smallTextEnabled: item.smallTextEnabled
-        });
-        
         // 領収書データを復元
         const receiptCompanyName = document.getElementById('receiptCompanyName');
         const receiptMemo = document.getElementById('receiptMemo');
         
-        if (!receiptCompanyName || !receiptMemo) {
-            console.error('❌ 領収書入力フィールドが見つかりません');
-            return;
-        }
-        
         receiptCompanyName.value = item.companyName || '';
         receiptMemo.value = item.memo || '';
-        
-        console.log('フィールド復元完了:', {
-            companyNameValue: receiptCompanyName.value,
-            memoValue: receiptMemo.value
-        });
         
         // 小文字オプションの状態を復元
         receiptSmallTextEnabled = item.smallTextEnabled || false;
         const smallTextBtn = document.getElementById('receiptSmallTextBtn');
         if (smallTextBtn) {
             smallTextBtn.classList.toggle('selected', receiptSmallTextEnabled);
-            console.log('小文字オプション復元:', receiptSmallTextEnabled);
         }
         
         // 入力イベントを発火させてボタンの状態を更新
