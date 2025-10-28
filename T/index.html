@@ -2071,21 +2071,59 @@ function loadHistoryList() {
                         updateSignaturePrintButtonState();
                     }, 100);
                 } else if (item.type === 'receipt') {
+                    console.log('📋 領収書履歴クリック - データ:', item);
                     showSection('receipt');
-                    document.getElementById('receiptCompanyName').value = item.companyName || '';
-                    document.getElementById('receiptMemo').value = item.memo || '';
                     
-                    // 小文字オプションの復元
-                    const smallTextCheckbox = document.getElementById('receiptSmallTextCheckbox');
-                    if (smallTextCheckbox) {
-                        smallTextCheckbox.checked = Boolean(item.smallTextEnabled);
-                        receiptSmallTextEnabled = Boolean(item.smallTextEnabled);
-                    }
-                    
-                    // 印刷ボタンの状態を更新（updateReceiptPrintButtons関数を使用）
-                    updateReceiptPrintButtons();
-                    
-                    console.log('領収書履歴復元 - 宛名:', item.companyName, 'メモ:', item.memo);
+                    // 少し遅延させて確実に復元
+                    setTimeout(() => {
+                        const companyNameInput = document.getElementById('receiptCompanyName');
+                        const memoInput = document.getElementById('receiptMemo');
+                        const printBtn = document.getElementById('receiptPrintBtn');
+                        
+                        console.log('📋 要素取得:', {
+                            companyNameInput: companyNameInput ? 'OK' : 'NG',
+                            memoInput: memoInput ? 'OK' : 'NG',
+                            printBtn: printBtn ? 'OK' : 'NG'
+                        });
+                        
+                        if (companyNameInput) {
+                            companyNameInput.value = item.companyName || '';
+                            console.log('📋 宛名設定:', companyNameInput.value);
+                        }
+                        if (memoInput) {
+                            memoInput.value = item.memo || '';
+                            console.log('📋 メモ設定:', memoInput.value);
+                        }
+                        
+                        // 小文字オプションの復元
+                        const smallTextCheckbox = document.getElementById('receiptSmallTextCheckbox');
+                        if (smallTextCheckbox) {
+                            smallTextCheckbox.checked = Boolean(item.smallTextEnabled);
+                            receiptSmallTextEnabled = Boolean(item.smallTextEnabled);
+                            console.log('📋 小文字オプション:', receiptSmallTextEnabled);
+                        }
+                        
+                        // 印刷ボタンの状態を更新
+                        const hasCompanyName = item.companyName && item.companyName.trim() !== '';
+                        const hasMemo = item.memo && item.memo.trim() !== '';
+                        
+                        console.log('📋 ボタン更新判定:', { hasCompanyName, hasMemo });
+                        
+                        if (printBtn) {
+                            if (hasCompanyName) {
+                                printBtn.classList.remove('disabled');
+                                printBtn.textContent = hasMemo ? '但し書き印刷' : '印刷';
+                                console.log('✅ 印刷ボタン有効化:', printBtn.textContent);
+                            } else {
+                                printBtn.classList.add('disabled');
+                                printBtn.textContent = '印刷';
+                                console.log('❌ 印刷ボタン無効化');
+                            }
+                            console.log('📋 ボタンクラス:', printBtn.className);
+                        }
+                        
+                        console.log('✅ 領収書履歴復元完了 - 宛名:', item.companyName, 'メモ:', item.memo);
+                    }, 100);
                 } else {
                     showSection('text');
                     document.getElementById('textInput').value = item.data;
