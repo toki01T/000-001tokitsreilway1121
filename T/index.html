@@ -2818,8 +2818,9 @@ function executeReceiptPrint(withMemo) {
         receiptLines.push(`但し ${memo} 代として`);
         receiptLines.push('');
     }
-    
-    receiptLines.push('宛名が合っておりましたら、');
+
+    receiptLines.push('領収書に宛名を記入して頂き');
+    receiptLines.push('領収書の宛名が合っておりましたら、');
     receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
     receiptLines.push('┌───────┐');
@@ -3694,7 +3695,7 @@ function printText() {
             }
             
             // 日付行
-            const dateText = `${year}年 ${month}月${day}日`;
+            const dateText = `${year}年${month}月${day}日`;
             ctx.fillText(dateText, dateTimeX, yPos);
             yPos += dateLineHeight;
             
@@ -4777,3 +4778,4 @@ function restoreContentFromQROnly(qrData) {
 </script>
 </body>
 </html>
+
