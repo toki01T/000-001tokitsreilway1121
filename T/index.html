@@ -2696,7 +2696,7 @@ function executeSignaturePrint() {
                 let yPos = signatureY + signatureHeight + 5; // 縮小されたサインの下
                 
                 // 日付行
-                const dateText = `${year}年 ${month}月${day}日`;
+                const dateText = `${year}年${month}月${day}日`;
                 compositeCtx.fillText(dateText, dateTimeX, yPos);
                 yPos += fontSize * 1.2;
                 
@@ -2820,7 +2820,7 @@ function executeReceiptPrint(withMemo) {
     }
 
     receiptLines.push('領収書に宛名を記入して頂き');
-    receiptLines.push('領収書の宛名が合っておりましたら、');
+    receiptLines.push('領収書の宛名が合っておりましたら');
     receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
     receiptLines.push('┌───────┐');
@@ -2951,7 +2951,7 @@ function executeReceiptPrint(withMemo) {
     const dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
     
     // 日付行
-    const dateText = `${year}年 ${month}月${day}日`;
+    const dateText = `${year}年${month}月${day}日`;
     ctx.fillText(dateText, dateTimeX, yPos);
     yPos += dateLineHeight;
     
@@ -3385,7 +3385,7 @@ function sendToPrintAssist(event) {
                         let yPos = imgY + finalImgHeight + 10; // 画像の下
                         
                         // 日付行
-                        const dateText = `${year}年 ${month}月${day}日`;
+                        const dateText = `${year}年${month}月${day}日`;
                         compositeCtx.fillText(dateText, dateTimeX, yPos);
                         yPos += fontSize * 1.2;
                         
@@ -4778,4 +4778,5 @@ function restoreContentFromQROnly(qrData) {
 </script>
 </body>
 </html>
+
 
