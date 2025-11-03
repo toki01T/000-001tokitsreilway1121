@@ -2819,14 +2819,13 @@ function executeReceiptPrint(withMemo) {
         receiptLines.push('');
     }
 
-    receiptLines.push('領収書に宛名を記入して頂き');
     receiptLines.push('領収書に｢toki｣を記入して頂き');
     receiptLines.push('宛名が合っておりましたら');
     receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
     receiptLines.push('┌───────┐');
-    receiptLines.push('│　　　　　│');
-    receiptLines.push('│　　　　　│');
+    receiptLines.push('│　　　 　　│');
+    receiptLines.push('│　　　　 　│');
     receiptLines.push('└───────┘');
     
     const printText = receiptLines.join('\n');
@@ -4779,4 +4778,5 @@ function restoreContentFromQROnly(qrData) {
 </script>
 </body>
 </html>
+
 
