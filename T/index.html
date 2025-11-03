@@ -1001,123 +1001,13 @@ main {
     text-align: center;
 }
 
-.ticket-form-container {
-    width: 100%;
-    max-width: min(400px, 90vw);
-    margin: 1.5rem auto;
-    padding: clamp(1rem, 3vw, 1.5rem);
-    background: var(--chip-bg);
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.ticket-serial-display,
-.ticket-date-display {
-    margin: 1rem 0;
-    text-align: center;
-}
-
-.ticket-serial-display label,
-.ticket-date-display label {
-    display: block;
-    font-size: clamp(0.9rem, 2vw, 1rem);
-    font-weight: bold;
-    color: var(--text-color);
-    margin-bottom: 0.5rem;
-}
-
-.ticket-serial-display div,
-.ticket-date-display div {
-    font-size: clamp(1.2rem, 3vw, 1.5rem);
-    font-weight: bold;
-    color: var(--primary-color);
-    background: var(--background-color);
-    padding: clamp(0.5rem, 2vw, 0.8rem);
-    border-radius: 8px;
-    border: 2px solid var(--primary-color);
-}
-
-.ticket-input-group {
-    margin: 1.5rem 0;
-    text-align: left;
-}
-
-.ticket-input-group label {
-    display: block;
-    font-size: clamp(0.9rem, 2vw, 1rem);
-    font-weight: bold;
-    color: var(--text-color);
-    margin-bottom: 0.5rem;
-}
-
-.ticket-input-group input[type="file"] {
-    width: 100%;
-    padding: clamp(0.5rem, 1.5vw, 0.6rem);
-    font-size: clamp(0.85rem, 2vw, 0.95rem);
-    border: 2px solid var(--input-border);
-    border-radius: 8px;
-    background: var(--input-bg);
-    color: var(--input-text);
-    cursor: pointer;
-}
-
-.ticket-input-group input[type="file"]:focus {
-    outline: none;
-    border-color: var(--primary-color);
-}
-
-#ticketLogoPreview,
-#ticketIllustPreview {
-    margin-top: 0.5rem;
-    text-align: center;
-}
-
 #ticketLogoPreview img,
 #ticketIllustPreview img {
     max-width: 100%;
     max-height: 150px;
     border-radius: 8px;
     border: 2px solid var(--border-color);
-}
-
-.ticket-buttons-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: clamp(0.5rem, 2vw, 1rem);
-    margin-top: 1.5rem;
-}
-
-.ticket-print-btn {
-    padding: clamp(0.6rem, 2vw, 0.8rem) clamp(1.5rem, 4vw, 2rem);
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: clamp(0.9rem, 2.2vw, 1rem);
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.ticket-print-btn:hover {
-    background: var(--primary-hover);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.ticket-print-btn:active {
-    transform: translateY(1px);
-}
-
-@media (max-width: 500px) {
-    .ticket-form-container {
-        padding: 1rem;
-    }
-    
-    .ticket-input-group {
-        margin: 1rem 0;
-    }
+    margin-top: 0.5rem;
 }
 
 /* テキスト入力セクション用のスタイル */
@@ -1445,28 +1335,35 @@ footer p {
             </form>
         </section>
         <section id="ticketSection" style="display:none;">
-            <div class="ticket-form-container">
-                <div class="ticket-serial-display">
-                    <label>連番</label>
-                    <div id="ticketSerialNumber">01001</div>
+            <div style="max-width:400px; margin:0 auto; padding:1rem;">
+                <div style="background:#f8f9fa; padding:1rem; border-radius:8px; margin-bottom:1rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                        <div style="flex:1; text-align:center;">
+                            <div style="font-size:0.9rem; color:#666; margin-bottom:0.3rem;">連番</div>
+                            <div id="ticketSerialNumber" style="font-size:1.5rem; font-weight:bold; color:#00A3ED;">01001</div>
+                        </div>
+                        <div style="flex:1; text-align:center;">
+                            <div style="font-size:0.9rem; color:#666; margin-bottom:0.3rem;">日付</div>
+                            <div id="ticketDateDisplay" style="font-size:1rem; font-weight:bold; color:#00A3ED;"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="ticket-date-display">
-                    <label>日付</label>
-                    <div id="ticketDateDisplay"></div>
+                
+                <div style="margin:1.5rem 0;">
+                    <label style="display:block; font-size:0.95rem; font-weight:bold; margin-bottom:0.5rem; color:#222;">ロゴ画像</label>
+                    <input type="file" id="ticketLogoUpload" accept="image/jpeg, image/png" style="width:100%; padding:0.5rem; font-size:0.9rem; border:2px solid #ccc; border-radius:5px; background:#fff;" />
+                    <div id="ticketLogoPreview" style="margin-top:0.5rem; text-align:center;"></div>
                 </div>
-                <div class="ticket-input-group">
-                    <label for="ticketLogoUpload">ロゴ画像</label>
-                    <input type="file" id="ticketLogoUpload" accept="image/jpeg, image/png" />
-                    <div id="ticketLogoPreview"></div>
+                
+                <div style="margin:1.5rem 0;">
+                    <label style="display:block; font-size:0.95rem; font-weight:bold; margin-bottom:0.5rem; color:#222;">イラスト画像</label>
+                    <input type="file" id="ticketIllustUpload" accept="image/jpeg, image/png" style="width:100%; padding:0.5rem; font-size:0.9rem; border:2px solid #ccc; border-radius:5px; background:#fff;" />
+                    <div id="ticketIllustPreview" style="margin-top:0.5rem; text-align:center;"></div>
                 </div>
-                <div class="ticket-input-group">
-                    <label for="ticketIllustUpload">イラスト画像</label>
-                    <input type="file" id="ticketIllustUpload" accept="image/jpeg, image/png" />
-                    <div id="ticketIllustPreview"></div>
-                </div>
-                <div class="ticket-buttons-row">
-                    <button id="ticketPrintBtn" class="ticket-print-btn">発行</button>
-                    <label class="qr-print-checkbox" style="margin-left:0.5em;">
+                
+                <div style="display:flex; justify-content:center; align-items:center; gap:1rem; margin-top:2rem;">
+                    <button id="ticketPrintBtn" style="padding:0.8rem 2rem; background:#00A3ED; color:white; border:none; border-radius:8px; font-size:1rem; font-weight:bold; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">発行</button>
+                    <label class="qr-print-checkbox">
                         <input type="checkbox" id="ticketQrPrintCheckbox" title="QRコード印刷" />
                         <span class="qr-checkmark"></span>
                         <span class="qr-checkbox-label">QR</span>
