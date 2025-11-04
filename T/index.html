@@ -1553,75 +1553,44 @@ function isIOS() {
 }
 
 // 印刷URLスキーム生成関数（iOS・Android両対応）
+// ★★★ 公式Sample_JA.htmlと完全に一致させる ★★★
 function generatePrintUrl(pdfBase64, thisPage) {
-    // ★★★ 重要: base64データをそのまま渡す（encodeURIComponentは不要） ★★★
-    // 公式仕様では、Dataパラメータにはbase64データをそのまま渡す
-    const params = 
-        'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
-        'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
-        'Format=pdf' + '&' +
-        'Data=' + pdfBase64 + '&' +
-        'SelectOnError=yes' + '&' +
-        'CutType=full' + '&' +
-        'CutFeed=yes' + '&' +
-        'FitToWidth=no' + '&' +
-        'PaperWidth=58';
+    // 公式サンプルと同じURL構築（iOS/Android共通）
+    const url = 'siiprintagent://1.0/print?' +
+                'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+                'Format=pdf' + '&' +
+                'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                'SelectOnError=yes' + '&' +
+                'CutType=full' + '&' +
+                'CutFeed=yes' + '&' +
+                'FitToWidth=no' + '&' +
+                'PaperWidth=58';
     
-    if (isAndroid()) {
-        // ★★★ Android用URLスキーム ★★★
-        // 重要: AndroidとiOSでURL schemeが異なる!
-        // Android: siiurlprintagent:// (urlが入る!)
-        // パッケージ名: com.seikoinstruments.siiurlprintagent
-        const androidUrl = 'siiurlprintagent://1.0/print?' + params;
-        
-        console.log('🤖 ========== Android URL 生成 ==========');
-        console.log('🤖 Full URL:', androidUrl);
-        console.log('🤖 URL Length:', androidUrl.length);
-        console.log('🤖 Scheme:', androidUrl.split('://')[0]);
-        console.log('🤖 Data Length:', pdfBase64.length);
-        console.log('🤖 =======================================');
-        
-        return androidUrl;
-    } else {
-        // ★★★ iOS用URLスキーム ★★★
-        // iOS: siiprintagent:// (iが2つだけ!)
-        const iosUrl = 'siiprintagent://1.0/print?' + params;
-        
-        console.log('🍎 ========== iOS URL 生成 ==========');
-        console.log('🍎 URL Preview:', iosUrl.substring(0, 200) + '...');
-        console.log('🍎 ====================================');
-        
-        return iosUrl;
-    }
+    console.log('📱 ========== URL生成 ==========');
+    console.log('📱 Device:', isAndroid() ? 'Android' : 'iOS');
+    console.log('📱 Scheme:', url.split('://')[0]);
+    console.log('📱 URL Length:', url.length);
+    console.log('📱 PDF Data Length:', pdfBase64.length);
+    console.log('📱 URL Preview:', url.substring(0, 150) + '...');
+    console.log('📱 ===============================');
+    
+    return url;
 }
 
 // 印刷実行関数（iOS・Android両対応）
+// ★★★ 公式Sample_JA.htmlと完全に一致: location.href = url; ★★★
 function executePrint(printUrl) {
-    console.log('📱 印刷実行:', isAndroid() ? 'Android' : 'iOS');
-    console.log('📱 URL scheme:', printUrl.substring(0, 150) + '...');
+    console.log('📱 ========== 印刷実行 ==========');
+    console.log('📱 Device:', isAndroid() ? 'Android' : 'iOS');
+    console.log('📱 URL:', printUrl.substring(0, 200) + '...');
+    console.log('📱 実行方法: location.href (公式サンプルと同じ)');
     
-    // ★★★ 最も確実な方法: location.hrefを直接使用 ★★★
-    // 公式サンプルと同じ方法
-    try {
-        console.log('🚀 window.location.href で実行');
-        window.location.href = printUrl;
-        console.log('✅ 実行完了');
-    } catch (e) {
-        console.error('❌ エラー発生:', e);
-        
-        // フォールバック: iframeを試す
-        console.log('🔄 フォールバック: iframe方式');
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = printUrl;
-        document.body.appendChild(iframe);
-        
-        setTimeout(() => {
-            if (iframe.parentNode) {
-                document.body.removeChild(iframe);
-            }
-        }, 1000);
-    }
+    // 公式サンプルと完全に同じ実装
+    location.href = printUrl;
+    
+    console.log('✅ location.href 実行完了');
+    console.log('� ===============================');
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
 const qrCodeBtn = document.getElementById('qrCodeBtn');
