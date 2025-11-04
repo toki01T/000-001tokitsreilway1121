@@ -1579,50 +1579,19 @@ function generatePrintUrl(pdfBase64, thisPage) {
 }
 
 // 印刷実行関数（iOS・Android両対応）
-// ★★★ 公式Sample_JA.htmlと完全に一致: location.href = url; ★★★
+// ★★★ 最もシンプルで確実な実装 ★★★
 function executePrint(printUrl) {
-    console.log('📱 ========== 印刷実行 ==========');
-    console.log('📱 Device:', isAndroid() ? 'Android' : 'iOS');
-    console.log('📱 URL:', printUrl.substring(0, 200) + '...');
+    console.log('========== 印刷実行 ==========');
+    console.log('Device:', isAndroid() ? 'Android' : 'iOS');
+    console.log('URL Length:', printUrl.length);
+    console.log('Scheme:', printUrl.substring(0, 50));
     
-    if (isAndroid()) {
-        // Android専用: about:blank#blocked回避
-        console.log('Android: iframe方式で実行');
-        
-        // 非表示iframeを使用
-        const iframe = document.createElement('iframe');
-        iframe.style.width = '1px';
-        iframe.style.height = '1px';
-        iframe.style.position = 'absolute';
-        iframe.style.top = '-9999px';
-        iframe.style.left = '-9999px';
-        iframe.style.border = 'none';
-        iframe.style.visibility = 'hidden';
-        
-        document.body.appendChild(iframe);
-        console.log('iframe要素を追加');
-        
-        // わずかな遅延後にsrcを設定
-        setTimeout(() => {
-            iframe.src = printUrl;
-            console.log('iframe.src設定完了');
-            
-            // 3秒後にiframeを削除
-            setTimeout(() => {
-                if (iframe && iframe.parentNode) {
-                    document.body.removeChild(iframe);
-                    console.log('iframe削除完了');
-                }
-            }, 3000);
-        }, 100);
-        
-    } else {
-        // iOS: location.hrefを使用（公式サンプルと同じ）
-        console.log('iOS: location.href方式で実行');
-        location.href = printUrl;
-        console.log('location.href実行完了');
-    }
-    console.log('� ===============================');
+    // 最もシンプルな実装: 公式サンプルと完全に同じ
+    // iOS/Android共通でlocation.hrefを使用
+    console.log('実行: location.href = printUrl');
+    location.href = printUrl;
+    
+    console.log('===============================');
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
 const qrCodeBtn = document.getElementById('qrCodeBtn');
