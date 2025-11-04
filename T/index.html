@@ -1551,26 +1551,20 @@ function isIOS() {
 // 印刷URLスキーム生成関数（iOS・Android両対応）
 function generatePrintUrl(pdfBase64, thisPage) {
     if (isAndroid()) {
-        // ===== Android用URLスキーム =====
-        console.log('🤖 Android用URL生成開始');
+        // Android用URLスキーム: printassist://
+        // SII URL Print Agent for Android の仕様
+        const androidUrl = 'printassist://v1/print?' +
+            'back=' + encodeURIComponent(thisPage) + '&' +
+            'pdf=' + encodeURIComponent(pdfBase64) + '&' +
+            'type=pdf' + '&' +
+            'cut=full' + '&' +
+            'feed=enable';
         
-        // Android版のパラメータ構築
-        // printassist:// スキームを使用（Android版SII URL Print Agentの標準）
-        const printUrl = 'printassist://v1/print?' +
-            'back=' + encodeURIComponent(thisPage) +
-            '&pdf=' + encodeURIComponent(pdfBase64) +
-            '&type=pdf' +
-            '&cut=full' +
-            '&feed=enable';
-        
-        console.log('📱 Android URL:', printUrl.substring(0, 80) + '...');
-        console.log('📊 PDFサイズ:', pdfBase64.length, 'bytes');
-        
-        return printUrl;
-        
+        console.log('🤖 Android URL生成 (printassist):', androidUrl.substring(0, 100) + '...');
+        return androidUrl;
     } else {
-        // ===== iOS用URLスキーム =====
-        const iosParams = 
+        // iOS用URLスキーム: siiprintagent://
+        const iosUrl = 'siiprintagent://1.0/print?' +
             'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
             'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
             'Format=pdf' + '&' +
@@ -1581,29 +1575,44 @@ function generatePrintUrl(pdfBase64, thisPage) {
             'FitToWidth=no' + '&' +
             'PaperWidth=58';
         
-        return 'siiprintagent://1.0/print?' + iosParams;
+        console.log('🍎 iOS URL生成 (siiprintagent):', iosUrl.substring(0, 100) + '...');
+        return iosUrl;
     }
 }
 
-// 印刷実行関数（Android対応：最もシンプルで確実な方法）
+// 印刷実行関数（Android対応：printassist:// スキーム使用）
 function executePrint(printUrl) {
+    console.log('🖨️ 印刷実行開始:', isAndroid() ? 'Android (printassist)' : 'iOS (siiprintagent)');
+    console.log('📋 URL:', printUrl.substring(0, 150) + '...');
+    
     if (isAndroid()) {
-        // ===== Android専用実装 =====
-        console.log('🤖 Android印刷実行');
-        console.log('📱 使用URL:', printUrl);
-        
-        // Androidでは単純にlocation.hrefを使用
-        // ブラウザがURL schemeを処理し、適切なアプリを起動する
-        window.location.href = printUrl;
-        
-        console.log('✅ Android印刷コマンド送信完了');
-        
+        // Android: printassist:// スキームはlocation.hrefで直接実行
+        try {
+            window.location.href = printUrl;
+            console.log('✅ Android: location.href実行完了');
+        } catch (e) {
+            console.error('❌ Android印刷エラー:', e);
+            // フォールバック: aタグクリック
+            try {
+                const a = document.createElement('a');
+                a.href = printUrl;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => document.body.removeChild(a), 100);
+                console.log('✅ Android: aタグクリックで実行');
+            } catch (e2) {
+                console.error('❌ Android aタグクリックもエラー:', e2);
+            }
+        }
     } else {
-        // ===== iOS実装：従来通り =====
-        console.log('🍎 iOS印刷実行');
-        console.log('📱 使用URL:', printUrl.substring(0, 100) + '...');
-        window.location.href = printUrl;
-        console.log('✅ iOS印刷コマンド送信完了');
+        // iOS: siiprintagent:// スキームをlocation.hrefで実行
+        try {
+            window.location.href = printUrl;
+            console.log('✅ iOS: location.href実行完了');
+        } catch (e) {
+            console.error('❌ iOS印刷エラー:', e);
+        }
     }
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
