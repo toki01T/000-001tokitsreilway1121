@@ -1551,19 +1551,22 @@ function isIOS() {
 // 印刷URLスキーム生成関数（iOS・Android両対応）
 function generatePrintUrl(pdfBase64, thisPage) {
     if (isAndroid()) {
-        // Android用URLスキーム: printassist://
-        // SII URL Print Agent for Android の仕様
-        const androidUrl = 'printassist://v1/print?' +
+        // ★★★ Android用URLスキーム: siiprintagent:// を使用 ★★★
+        // Androidでも siiprintagent:// を使用（iOSと同じ）
+        // ただしパラメータ名が異なる
+        const androidUrl = 'siiprintagent://v1/print?' +
             'back=' + encodeURIComponent(thisPage) + '&' +
             'pdf=' + encodeURIComponent(pdfBase64) + '&' +
-            'type=pdf' + '&' +
+            'type=application/pdf' + '&' +
+            'pagewidth=58' + '&' +
             'cut=full' + '&' +
-            'feed=enable';
+            'drawer=0';
         
-        console.log('🤖 Android URL生成 (printassist):', androidUrl.substring(0, 100) + '...');
+        console.log('🤖 Android URL生成 (siiprintagent v1):', androidUrl.substring(0, 100) + '...');
+        console.log('📱 PDF data length:', pdfBase64.length);
         return androidUrl;
     } else {
-        // iOS用URLスキーム: siiprintagent://
+        // ★★★ iOS用URLスキーム: siiprintagent:// 1.0 ★★★
         const iosUrl = 'siiprintagent://1.0/print?' +
             'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
             'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
@@ -1575,43 +1578,56 @@ function generatePrintUrl(pdfBase64, thisPage) {
             'FitToWidth=no' + '&' +
             'PaperWidth=58';
         
-        console.log('🍎 iOS URL生成 (siiprintagent):', iosUrl.substring(0, 100) + '...');
+        console.log('🍎 iOS URL生成 (siiprintagent 1.0):', iosUrl.substring(0, 100) + '...');
+        console.log('📱 PDF data length:', pdfBase64.length);
         return iosUrl;
     }
 }
 
-// 印刷実行関数（Android対応：printassist:// スキーム使用）
+// 印刷実行関数（iOS・Android完全対応版）
 function executePrint(printUrl) {
-    console.log('🖨️ 印刷実行開始:', isAndroid() ? 'Android (printassist)' : 'iOS (siiprintagent)');
-    console.log('📋 URL:', printUrl.substring(0, 150) + '...');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🖨️ 印刷実行開始');
+    console.log('📱 デバイス:', isAndroid() ? 'Android' : 'iOS');
+    console.log('📋 URL Scheme:', printUrl.split('?')[0]);
+    console.log('📄 URL length:', printUrl.length);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    if (isAndroid()) {
-        // Android: printassist:// スキームはlocation.hrefで直接実行
-        try {
-            window.location.href = printUrl;
-            console.log('✅ Android: location.href実行完了');
-        } catch (e) {
-            console.error('❌ Android印刷エラー:', e);
-            // フォールバック: aタグクリック
+    // Android・iOS共通: 非表示のiframeを使用する方法（最も確実）
+    try {
+        const iframe = document.createElement('iframe');
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.style.position = 'absolute';
+        iframe.style.top = '-9999px';
+        iframe.src = printUrl;
+        
+        document.body.appendChild(iframe);
+        console.log('✅ iframe追加完了');
+        
+        // iframeを3秒後に削除
+        setTimeout(() => {
             try {
-                const a = document.createElement('a');
-                a.href = printUrl;
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => document.body.removeChild(a), 100);
-                console.log('✅ Android: aタグクリックで実行');
-            } catch (e2) {
-                console.error('❌ Android aタグクリックもエラー:', e2);
+                document.body.removeChild(iframe);
+                console.log('🗑️ iframe削除完了');
+            } catch (e) {
+                console.log('⚠️ iframe削除エラー（無視可能）:', e.message);
             }
-        }
-    } else {
-        // iOS: siiprintagent:// スキームをlocation.hrefで実行
+        }, 3000);
+        
+        console.log('✨ 印刷リクエスト送信完了 - SII URL Print Agentが起動します');
+        
+    } catch (e) {
+        console.error('❌ iframe方式エラー:', e);
+        console.log('🔄 フォールバック: location.href方式を試行');
+        
+        // フォールバック: location.href
         try {
             window.location.href = printUrl;
-            console.log('✅ iOS: location.href実行完了');
-        } catch (e) {
-            console.error('❌ iOS印刷エラー:', e);
+            console.log('✅ location.href実行完了');
+        } catch (e2) {
+            console.error('❌ location.href方式もエラー:', e2);
         }
     }
 }
