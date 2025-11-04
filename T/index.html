@@ -1541,57 +1541,49 @@ function formatDateTime(dt) {
 
 // デバイス判定関数
 function isAndroid() {
-    const result = /Android/i.test(navigator.userAgent);
-    console.log('🔍 isAndroid:', result, 'UserAgent:', navigator.userAgent);
-    return result;
+    return /Android/i.test(navigator.userAgent);
 }
 
 function isIOS() {
-    const result = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    console.log('🔍 isIOS:', result, 'UserAgent:', navigator.userAgent);
-    return result;
+    return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
 // 印刷URLスキーム生成関数（iOS・Android両対応）
-// ★★★ 公式Sample_JA.htmlと完全に一致させる ★★★
+// ★★★ 公式Sample_JA.htmlと完全に同じ実装 ★★★
 function generatePrintUrl(pdfBase64, thisPage) {
-    // 公式サンプルと同じURL構築（iOS/Android共通）
+    // 公式サンプルと完全に同じURL生成
     const url = 'siiprintagent://1.0/print?' +
                 'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
                 'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
-                'Format=pdf' + '&' +
+                'Format=' + 'pdf' + '&' +
                 'Data=' + encodeURIComponent(pdfBase64) + '&' +
-                'SelectOnError=yes' + '&' +
-                'CutType=full' + '&' +
-                'CutFeed=yes' + '&' +
-                'FitToWidth=no' + '&' +
-                'PaperWidth=58';
+                'SelectOnError=' + 'yes' + '&' +
+                'CutType=' + 'full' + '&' +
+                'CutFeed=' + 'yes' + '&' +
+                'FitToWidth=' + 'no' + '&' +
+                'PaperWidth=' + '58';
     
-    console.log('📱 ========== URL生成 ==========');
-    console.log('📱 Device:', isAndroid() ? 'Android' : 'iOS');
-    console.log('📱 Scheme:', url.split('://')[0]);
+    console.log('📱 ========== 印刷URL生成 ==========');
+    console.log('📱 デバイス:', isAndroid() ? 'Android' : 'iOS');
+    console.log('📱 URL Scheme:', url.split('://')[0]);
     console.log('📱 URL Length:', url.length);
     console.log('📱 PDF Data Length:', pdfBase64.length);
     console.log('📱 URL Preview:', url.substring(0, 150) + '...');
-    console.log('📱 ===============================');
+    console.log('📱 ====================================');
     
     return url;
 }
 
 // 印刷実行関数（iOS・Android両対応）
-// ★★★ 最もシンプルで確実な実装 ★★★
+// ★★★ 公式Sample_JA.htmlと完全に同じ実装 ★★★
 function executePrint(printUrl) {
-    console.log('========== 印刷実行 ==========');
-    console.log('Device:', isAndroid() ? 'Android' : 'iOS');
-    console.log('URL Length:', printUrl.length);
-    console.log('Scheme:', printUrl.substring(0, 50));
+    console.log('📱 ========== 印刷実行 ==========');
+    console.log('📱 デバイス:', isAndroid() ? 'Android' : 'iOS');
+    console.log('📱 実行方法: location.href (公式サンプルと同じ)');
+    console.log('📱 ================================');
     
-    // 最もシンプルな実装: 公式サンプルと完全に同じ
-    // iOS/Android共通でlocation.hrefを使用
-    console.log('実行: location.href = printUrl');
+    // 公式サンプルと完全に同じ: location.href = url;
     location.href = printUrl;
-    
-    console.log('===============================');
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
 const qrCodeBtn = document.getElementById('qrCodeBtn');
