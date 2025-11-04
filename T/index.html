@@ -1554,12 +1554,13 @@ function isIOS() {
 
 // 印刷URLスキーム生成関数（iOS・Android両対応）
 function generatePrintUrl(pdfBase64, thisPage) {
-    // 基本パラメータを構築
+    // ★★★ 重要: base64データをそのまま渡す（encodeURIComponentは不要） ★★★
+    // 公式仕様では、Dataパラメータにはbase64データをそのまま渡す
     const params = 
         'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
         'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
         'Format=pdf' + '&' +
-        'Data=' + encodeURIComponent(pdfBase64) + '&' +
+        'Data=' + pdfBase64 + '&' +
         'SelectOnError=yes' + '&' +
         'CutType=full' + '&' +
         'CutFeed=yes' + '&' +
@@ -1599,63 +1600,27 @@ function executePrint(printUrl) {
     console.log('📱 印刷実行:', isAndroid() ? 'Android' : 'iOS');
     console.log('📱 URL scheme:', printUrl.substring(0, 150) + '...');
     
-    if (isAndroid()) {
-        // Android専用の実行方法
-        console.log('🤖 Android: iframe方式で実行');
-        
-        // 方法1: 非表示のiframeを使用（Chrome/Android対応）
-        const iframe = document.createElement('iframe');
-        iframe.style.width = '0px';
-        iframe.style.height = '0px';
-        iframe.style.border = 'none';
-        iframe.style.position = 'absolute';
-        iframe.style.top = '-9999px';
-        iframe.style.left = '-9999px';
-        
-        // タイムアウトを設定してiframeを削除
-        let executed = false;
-        const timer = setTimeout(() => {
-            if (!executed) {
-                console.log('⏱️ タイムアウト: iframeを削除');
-                if (iframe.parentNode) {
-                    document.body.removeChild(iframe);
-                }
-            }
-        }, 2000);
-        
-        // iframeのロード完了時
-        iframe.onload = function() {
-            executed = true;
-            clearTimeout(timer);
-            console.log('✅ iframe onload');
-            setTimeout(() => {
-                if (iframe.parentNode) {
-                    document.body.removeChild(iframe);
-                }
-            }, 100);
-        };
-        
-        // iframeのエラー時
-        iframe.onerror = function() {
-            executed = true;
-            clearTimeout(timer);
-            console.log('⚠️ iframe onerror (正常動作の可能性あり)');
-            setTimeout(() => {
-                if (iframe.parentNode) {
-                    document.body.removeChild(iframe);
-                }
-            }, 100);
-        };
-        
-        document.body.appendChild(iframe);
-        iframe.src = printUrl;
-        
-        console.log('🤖 iframe追加完了');
-        
-    } else {
-        // iOS: 従来のlocation.hrefを使用
-        console.log('🍎 iOS: location.href方式で実行');
+    // ★★★ 最も確実な方法: location.hrefを直接使用 ★★★
+    // 公式サンプルと同じ方法
+    try {
+        console.log('🚀 window.location.href で実行');
         window.location.href = printUrl;
+        console.log('✅ 実行完了');
+    } catch (e) {
+        console.error('❌ エラー発生:', e);
+        
+        // フォールバック: iframeを試す
+        console.log('🔄 フォールバック: iframe方式');
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = printUrl;
+        document.body.appendChild(iframe);
+        
+        setTimeout(() => {
+            if (iframe.parentNode) {
+                document.body.removeChild(iframe);
+            }
+        }, 1000);
     }
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
