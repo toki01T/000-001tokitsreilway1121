@@ -993,42 +993,6 @@ main {
     }
 }
 
-/* T's券セクション用のスタイル */
-#ticketSection {
-    display: none;
-    width: 100%;
-    margin: 0 auto;
-    text-align: center;
-}
-
-.ticket-info-display {
-    display: flex;
-    justify-content: center;
-    gap: clamp(1rem, 3vw, 2rem);
-    margin: 1rem auto;
-    padding: clamp(0.8rem, 2vw, 1rem);
-    background: var(--chip-bg);
-    border-radius: 8px;
-    max-width: min(400px, 90vw);
-}
-
-.ticket-info-box {
-    text-align: center;
-    flex: 1;
-}
-
-.ticket-info-label {
-    font-size: clamp(0.85rem, 2vw, 0.95rem);
-    color: #666;
-    margin-bottom: 0.3rem;
-}
-
-.ticket-info-value {
-    font-size: clamp(1.2rem, 3vw, 1.5rem);
-    font-weight: bold;
-    color: var(--primary-color);
-}
-
 /* テキスト入力セクション用のスタイル */
 #textSection {
     display: none;
@@ -1327,7 +1291,7 @@ footer p {
             <form id="imageForm" enctype="multipart/form-data" onsubmit="sendToPrintAssist(event)">
                 <div class="file-upload">
                     <label for="imageUpload" class="file-upload-label">
-                        <span>画像</span>
+                        <span>画像・T❜s券</span>
                         <input type="file" id="imageUpload" name="image" accept="image/jpeg, image/png" onchange="previewImage(event)">
                     </label>
                 </div>
@@ -1352,43 +1316,6 @@ footer p {
                     </label>
                 </div>
             </form>
-        </section>
-        <section id="ticketSection" style="display:none;">
-            <div class="ticket-info-display">
-                <div class="ticket-info-box">
-                    <div class="ticket-info-label">連番</div>
-                    <div id="ticketSerialNumber" class="ticket-info-value">01001</div>
-                </div>
-                <div class="ticket-info-box">
-                    <div class="ticket-info-label">日付</div>
-                    <div id="ticketDateDisplay" class="ticket-info-value"></div>
-                </div>
-            </div>
-            
-            <div class="file-upload">
-                <label for="ticketLogoUpload" class="file-upload-label">
-                    <span>ロゴ画像</span>
-                    <input type="file" id="ticketLogoUpload" accept="image/jpeg, image/png" onchange="handleTicketLogoUpload(event)">
-                </label>
-            </div>
-            <div class="image-preview" id="ticketLogoPreview"></div>
-            
-            <div class="file-upload">
-                <label for="ticketIllustUpload" class="file-upload-label">
-                    <span>イラスト画像</span>
-                    <input type="file" id="ticketIllustUpload" accept="image/jpeg, image/png" onchange="handleTicketIllustUpload(event)">
-                </label>
-            </div>
-            <div class="image-preview" id="ticketIllustPreview"></div>
-            
-            <div class="print-options" style="display:flex; margin-top:1rem;">
-                <button id="ticketPrintBtn" class="disabled">発行</button>
-                <label class="qr-print-checkbox" style="margin-left:0.5em;">
-                    <input type="checkbox" id="ticketQrPrintCheckbox" title="QRコード印刷" />
-                    <span class="qr-checkmark"></span>
-                    <span class="qr-checkbox-label">QR</span>
-                </label>
-            </div>
         </section>
         <section id="textSection" style="display:none;">
             <div class="text-input-container">
@@ -1486,11 +1413,6 @@ let selectedTextChip = '';
 let selectedSignatureChip = '';
 let lastPreviewImageNaturalWidth = 0;
 let lastPreviewImageNaturalHeight = 0;
-
-// T's券関連の変数
-let currentTicketSerial = '01001';
-let ticketLogoFile = null;
-let ticketIllustFile = null;
 
 // QRコード関連の変数
 let qrScanner = null;
@@ -1630,12 +1552,17 @@ function isIOS() {
 function generatePrintUrl(pdfBase64, thisPage) {
     if (isAndroid()) {
         // Android用URLスキーム（SII URL Print Agent for Android）
-        return 'printassist://v1/print?' +
-               'back=' + encodeURIComponent(thisPage) + '&' +
-               'pdf=' + encodeURIComponent(pdfBase64) + '&' +
-               'type=pdf' + '&' +
-               'cut=full' + '&' +
-               'feed=enable';
+        // Android版も siiprintagent:// を使用（iOS版と同じURL scheme）
+        return 'siiprintagent://1.0/print?' +
+               'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+               'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+               'Format=pdf' + '&' +
+               'Data=' + encodeURIComponent(pdfBase64) + '&' +
+               'SelectOnError=yes' + '&' +
+               'CutType=full' + '&' +
+               'CutFeed=yes' + '&' +
+               'FitToWidth=no' + '&' +
+               'PaperWidth=58';
     } else {
         // iOS用URLスキーム（従来のsiiprintagent）
         return 'siiprintagent://1.0/print?' +
@@ -1658,151 +1585,13 @@ const historyList = document.getElementById('historyList');
 const modeToggleUnified = document.getElementById('modeToggleUnified');
 const historyDrawerBg = document.getElementById('historyDrawerBg');
 let currentHistoryType = 'image';
-let modeOrder = ['image', 'ts-ticket', 'text', 'signature', 'receipt'];
+let modeOrder = ['image', 'text', 'signature', 'receipt'];
 let modeNames = {
     image: '画像・T’s券',
     text: 'テキスト',
     signature: '手書き(電子サイン)',
-    receipt: '領収書宛名',
-    'ts-ticket': 'T\'s券'
+    receipt: '領収書宛名'
 };
-
-// T's券の連番を取得する関数
-async function getNextTicketSerial() {
-    try {
-        const allHistory = await getAllHistory('ts-ticket');
-        if (allHistory.length === 0) {
-            return '01001';
-        }
-        
-        // 最新の連番を取得
-        const latestSerial = allHistory
-            .map(item => parseInt(item.serialNumber || '01001', 10))
-            .reduce((max, current) => Math.max(max, current), 1000);
-        
-        const nextSerial = latestSerial + 1;
-        return String(nextSerial).padStart(5, '0');
-    } catch (error) {
-        console.error('連番取得エラー:', error);
-        return '01001';
-    }
-}
-
-// T's券の連番を更新する関数
-async function updateTicketSerial() {
-    const serial = await getNextTicketSerial();
-    currentTicketSerial = serial;
-    const serialDisplay = document.getElementById('ticketSerialNumber');
-    if (serialDisplay) {
-        serialDisplay.textContent = serial;
-    }
-}
-
-// ロゴ画像を読み込む関数（rogoフォルダから）
-async function loadDefaultLogo() {
-    const logoPreview = document.getElementById('ticketLogoPreview');
-    if (!logoPreview) return null;
-    
-    // JPGとPNGを試す
-    const extensions = ['jpg', 'png'];
-    for (const ext of extensions) {
-        try {
-            const response = await fetch(`rogo/tokiTsrailway.${ext}`);
-            if (response.ok) {
-                const blob = await response.blob();
-                const reader = new FileReader();
-                return new Promise((resolve) => {
-                    reader.onload = (e) => {
-                        logoPreview.innerHTML = `<img src="${e.target.result}" alt="ロゴ" />`;
-                        resolve(e.target.result);
-                    };
-                    reader.readAsDataURL(blob);
-                });
-            }
-        } catch (error) {
-            console.log(`ロゴ読み込みエラー (${ext}):`, error);
-        }
-    }
-    
-    // ロゴがない場合は🅃を表示
-    logoPreview.innerHTML = '<div style="font-size:3rem;padding:1rem;">🅃</div>';
-    return null;
-}
-
-// T's券のファイルアップロード処理
-function handleTicketLogoUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    ticketLogoFile = file;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const preview = document.getElementById('ticketLogoPreview');
-        if (preview) {
-            const img = new Image();
-            img.src = e.target.result;
-            img.onload = function() {
-                let containerW = Math.min(window.innerWidth * 0.98, 480);
-                let containerH = 360;
-                let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-                let displayW = Math.round(img.naturalWidth * ratio);
-                let displayH = Math.round(img.naturalHeight * ratio);
-                img.style.width = displayW + "px";
-                img.style.height = displayH + "px";
-                img.style.maxWidth = "100%";
-                img.style.maxHeight = "360px";
-                img.style.display = "block";
-                img.style.margin = "0 auto";
-            };
-            preview.innerHTML = '';
-            preview.appendChild(img);
-        }
-        updateTicketPrintButton();
-    };
-    reader.readAsDataURL(file);
-}
-
-function handleTicketIllustUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    ticketIllustFile = file;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const preview = document.getElementById('ticketIllustPreview');
-        if (preview) {
-            const img = new Image();
-            img.src = e.target.result;
-            img.onload = function() {
-                let containerW = Math.min(window.innerWidth * 0.98, 480);
-                let containerH = 360;
-                let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-                let displayW = Math.round(img.naturalWidth * ratio);
-                let displayH = Math.round(img.naturalHeight * ratio);
-                img.style.width = displayW + "px";
-                img.style.height = displayH + "px";
-                img.style.maxWidth = "100%";
-                img.style.maxHeight = "360px";
-                img.style.display = "block";
-                img.style.margin = "0 auto";
-            };
-            preview.innerHTML = '';
-            preview.appendChild(img);
-        }
-        updateTicketPrintButton();
-    };
-    reader.readAsDataURL(file);
-}
-
-// T's券の発行ボタン状態を更新
-function updateTicketPrintButton() {
-    const printBtn = document.getElementById('ticketPrintBtn');
-    if (printBtn && ticketIllustFile) {
-        printBtn.classList.remove('disabled');
-    } else if (printBtn) {
-        printBtn.classList.add('disabled');
-    }
-}
 
 // 小文字オプションの状態管理
 let receiptSmallTextEnabled = false;
@@ -1962,19 +1751,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初期状態で印刷ボタンを無効化
     updateReceiptPrintButtons();
-    
-    // T's券印刷ボタン
-    const ticketPrintBtn = document.getElementById('ticketPrintBtn');
-    if (ticketPrintBtn) {
-        ticketPrintBtn.onclick = preventDoubleTouch(() => {
-            if (!ticketPrintBtn.classList.contains('disabled')) {
-                executeTicketPrint();
-            }
-        });
-        if ('ontouchstart' in window) {
-            ticketPrintBtn.ontouchstart = ticketPrintBtn.onclick;
-        }
-    }
     
     // chipのイベント処理も改善
     const chipWith = document.getElementById('chipWith');
@@ -2189,38 +1965,6 @@ function loadHistoryList() {
                 receiptInfo.innerHTML = displayText;
                 receiptRow.appendChild(receiptInfo);
                 contentBlock.appendChild(receiptRow);
-            } else if (item.type === 'ts-ticket') {
-                const imgRow = document.createElement('div');
-                imgRow.className = 'historyImgRow';
-                const img = document.createElement('img');
-                img.className = 'historyImgThumb';
-                img.src = item.data;
-                img.onload = function() {
-                    let maxW = 200, maxH = 120;
-                    let ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
-                    img.style.width = Math.round(img.naturalWidth * ratio) + "px";
-                    img.style.height = Math.round(img.naturalHeight * ratio) + "px";
-                };
-                imgRow.appendChild(img);
-                contentBlock.appendChild(imgRow);
-                const metaRow = document.createElement('div');
-                metaRow.className = 'historyMetaRow';
-                if (item.qrPrinted) {
-                    const qrIcon = document.createElement('span');
-                    qrIcon.className = 'historyQrIcon';
-                    qrIcon.innerHTML = 'QR';
-                    qrIcon.title = 'QRコード付き';
-                    metaRow.appendChild(qrIcon);
-                }
-                const metaText = document.createElement('span');
-                metaText.className = 'historyMetaText';
-                metaText.textContent = `連番: ${item.serialNumber}`;
-                metaRow.appendChild(metaText);
-                const metaDate = document.createElement('span');
-                metaDate.className = 'historyMetaCopies';
-                metaDate.textContent = item.date || '';
-                metaRow.appendChild(metaDate);
-                contentBlock.appendChild(metaRow);
             } else {
                 const text = document.createElement('div');
                 text.className = 'historyTextPreview';
@@ -2393,30 +2137,6 @@ function loadHistoryList() {
                         
                         console.log('✅ 領収書履歴復元完了 - 宛名:', item.companyName, 'メモ:', item.memo, '小文字:', shouldEnableSmallText);
                     }, 100);
-                } else if (item.type === 'ts-ticket') {
-                    console.log('🎫 T\'s券履歴クリック - データ:', item);
-                    showSection('ts-ticket');
-                    
-                    setTimeout(() => {
-                        // 連番と日付の復元
-                        const serialDisplay = document.getElementById('ticketSerialNumber');
-                        const dateDisplay = document.getElementById('ticketDateDisplay');
-                        
-                        if (serialDisplay) {
-                            serialDisplay.textContent = item.serialNumber || '01001';
-                        }
-                        if (dateDisplay) {
-                            dateDisplay.textContent = item.date || formattedDate;
-                        }
-                        
-                        // QRコードチェックボックスの復元
-                        const qrCheckbox = document.getElementById('ticketQrPrintCheckbox');
-                        if (qrCheckbox) {
-                            qrCheckbox.checked = Boolean(item.qrPrinted);
-                        }
-                        
-                        console.log('✅ T\'s券履歴復元完了 - 連番:', item.serialNumber, 'QR:', item.qrPrinted);
-                    }, 100);
                 } else {
                     showSection('text');
                     document.getElementById('textInput').value = item.data;
@@ -2542,20 +2262,9 @@ function checkAndContinuePrinting() {
 }
 function showSection(mode) {
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
-    document.getElementById('ticketSection').style.display = (mode === 'ts-ticket') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
     document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
     document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
-    
-    // T's券モード時の初期化
-    if (mode === 'ts-ticket') {
-        updateTicketSerial();
-        loadDefaultLogo();
-        const ticketDateDisplay = document.getElementById('ticketDateDisplay');
-        if (ticketDateDisplay) {
-            ticketDateDisplay.textContent = formattedDate;
-        }
-    }
     
     // 領収書モードの時は日付・時刻選択と枚数選択を非表示
     if (mode === 'receipt') {
@@ -2992,7 +2701,7 @@ function executeSignaturePrint() {
                 let yPos = signatureY + signatureHeight + 5; // 縮小されたサインの下
                 
                 // 日付行
-                const dateText = `${year}年 ${month}月${day}日`;
+                const dateText = `${year}年${month}月${day}日`;
                 compositeCtx.fillText(dateText, dateTimeX, yPos);
                 yPos += fontSize * 1.2;
                 
@@ -3071,139 +2780,6 @@ function executeSignaturePrint() {
     }
 };
 
-// --- T's券印刷 ---
-async function executeTicketPrint() {
-    console.log('🎫 T\'s券印刷開始');
-    
-    const qrCheckbox = document.getElementById('ticketQrPrintCheckbox');
-    const includeQR = qrCheckbox ? qrCheckbox.checked : false;
-    
-    // 58mm = 686px (300DPI: 11.8px/mm)
-    const mmToPx = 11.8;
-    const widthMM = 58;
-    const widthPx = Math.round(widthMM * mmToPx);
-    
-    // 基本高さ（QRコードなしの場合）
-    let heightPx = Math.round(120 * mmToPx); // 約120mm
-    
-    // QRコードありの場合は高さを追加
-    if (includeQR) {
-        heightPx += Math.round(35 * mmToPx); // QRコード分追加
-    }
-    
-    const canvas = document.createElement('canvas');
-    canvas.width = widthPx;
-    canvas.height = heightPx;
-    const ctx = canvas.getContext('2d');
-    
-    // 背景白
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0, 0, widthPx, heightPx);
-    ctx.fillStyle = '#000';
-    
-    let yPos = 30;
-    const centerX = widthPx / 2;
-    
-    // 1. ロゴ描画（左上）
-    const logoPreview = document.getElementById('ticketLogoPreview');
-    if (logoPreview && logoPreview.querySelector('img')) {
-        const logoImg = logoPreview.querySelector('img');
-        const logoWidth = 80;
-        const logoHeight = 40;
-        ctx.drawImage(logoImg, 20, yPos, logoWidth, logoHeight);
-    } else {
-        // ロゴなし: 🅃を描画
-        ctx.font = 'bold 40px Arial';
-        ctx.fillText('🅃', 20, yPos + 35);
-    }
-    
-    // 2. 連番と日付（右上）
-    ctx.font = 'bold 18px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(currentTicketSerial, widthPx - 20, yPos + 15);
-    ctx.font = '14px Arial';
-    ctx.fillText(formattedDate, widthPx - 20, yPos + 35);
-    
-    yPos += 70;
-    
-    // 3. イラスト描画（中央）
-    const illustPreview = document.getElementById('ticketIllustPreview');
-    if (illustPreview && illustPreview.querySelector('img')) {
-        const illustImg = illustPreview.querySelector('img');
-        const illustWidth = Math.min(widthPx - 40, 300);
-        const illustHeight = 200;
-        ctx.drawImage(illustImg, (widthPx - illustWidth) / 2, yPos, illustWidth, illustHeight);
-        yPos += illustHeight + 20;
-    }
-    
-    // 4. イラストクレジット
-    ctx.font = '12px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('(イラスト: Socost (https://soco-st.com))', centerX, yPos);
-    yPos += 30;
-    
-    // 5. 店舗情報
-    ctx.font = 'bold 20px Arial';
-    ctx.fillText('とき T\'s 鉄道部　toki', centerX, yPos);
-    yPos += 25;
-    
-    ctx.font = '14px Arial';
-    ctx.fillText('〇〇〇〇年〇〇月〇〇日', centerX, yPos);
-    yPos += 20;
-    ctx.fillText('※長期間保存する場合は、コピーをお取り下さい', centerX, yPos);
-    yPos += 40;
-    
-    // 6. QRコード（オプション）
-    if (includeQR) {
-        const qrData = generateQRData({
-            type: 'ts-ticket',
-            serialNumber: currentTicketSerial,
-            date: formattedDate,
-            created: Date.now()
-        });
-        const qrCodeDataUrl = generateQRCode(qrData);
-        
-        if (qrCodeDataUrl) {
-            const qrImg = new Image();
-            qrImg.onload = () => {
-                const qrSize = Math.round(30 * mmToPx);
-                ctx.drawImage(qrImg, (widthPx - qrSize) / 2, yPos, qrSize, qrSize);
-                
-                // 印刷実行
-                finishTicketPrint(canvas, includeQR);
-            };
-            qrImg.src = qrCodeDataUrl;
-        } else {
-            finishTicketPrint(canvas, includeQR);
-        }
-    } else {
-        finishTicketPrint(canvas, includeQR);
-    }
-}
-
-function finishTicketPrint(canvas, includeQR) {
-    const pdfBase64 = canvas.toDataURL('image/jpeg', 1.0).split(',')[1];
-    const printUrl = generatePrintUrl(pdfBase64, '1');
-    
-    console.log('✅ T\'s券印刷URL生成完了');
-    window.location.href = printUrl;
-    
-    // 履歴に保存
-    addHistory({
-        id: Date.now(),
-        type: 'ts-ticket',
-        data: canvas.toDataURL('image/png'),
-        serialNumber: currentTicketSerial,
-        date: formattedDate,
-        qrPrinted: includeQR,
-        created: Date.now()
-    }).then(() => {
-        console.log('✅ T\'s券を履歴に保存');
-        // 次の連番を更新
-        updateTicketSerial();
-    });
-}
-
 // --- 領収書印刷 ---
 function executeReceiptPrint(withMemo) {
     const companyName = document.getElementById('receiptCompanyName').value.trim();
@@ -3247,13 +2823,14 @@ function executeReceiptPrint(withMemo) {
         receiptLines.push(`但し ${memo} 代として`);
         receiptLines.push('');
     }
-    
-    receiptLines.push('宛名が合っておりましたら、');
+
+    receiptLines.push('領収書に｢toki｣を記入して頂き');
+    receiptLines.push('宛名が合っておりましたら');
     receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
     receiptLines.push('┌───────┐');
     receiptLines.push('│　　　　　│');
-    receiptLines.push('│　　　　　│');
+    receiptLines.push('│　　　 　│');
     receiptLines.push('└───────┘');
     
     const printText = receiptLines.join('\n');
@@ -3379,7 +2956,7 @@ function executeReceiptPrint(withMemo) {
     const dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
     
     // 日付行
-    const dateText = `${year}年 ${month}月${day}日`;
+    const dateText = `${year}年${month}月${day}日`;
     ctx.fillText(dateText, dateTimeX, yPos);
     yPos += dateLineHeight;
     
@@ -3813,7 +3390,7 @@ function sendToPrintAssist(event) {
                         let yPos = imgY + finalImgHeight + 10; // 画像の下
                         
                         // 日付行
-                        const dateText = `${year}年 ${month}月${day}日`;
+                        const dateText = `${year}年${month}月${day}日`;
                         compositeCtx.fillText(dateText, dateTimeX, yPos);
                         yPos += fontSize * 1.2;
                         
@@ -4123,7 +3700,7 @@ function printText() {
             }
             
             // 日付行
-            const dateText = `${year}年 ${month}月${day}日`;
+            const dateText = `${year}年${month}月${day}日`;
             ctx.fillText(dateText, dateTimeX, yPos);
             yPos += dateLineHeight;
             
