@@ -1550,31 +1550,91 @@ function isIOS() {
 
 // 印刷URLスキーム生成関数（iOS・Android両対応）
 function generatePrintUrl(pdfBase64, thisPage) {
+    // 基本パラメータを構築
+    const params = 
+        'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+        'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+        'Format=pdf' + '&' +
+        'Data=' + encodeURIComponent(pdfBase64) + '&' +
+        'SelectOnError=yes' + '&' +
+        'CutType=full' + '&' +
+        'CutFeed=yes' + '&' +
+        'FitToWidth=no' + '&' +
+        'PaperWidth=58';
+    
     if (isAndroid()) {
-        // Android用URLスキーム（SII URL Print Agent for Android）
-        // Android版も siiprintagent:// を使用（iOS版と同じURL scheme）
-        return 'siiprintagent://1.0/print?' +
-               'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
-               'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
-               'Format=pdf' + '&' +
-               'Data=' + encodeURIComponent(pdfBase64) + '&' +
-               'SelectOnError=yes' + '&' +
-               'CutType=full' + '&' +
-               'CutFeed=yes' + '&' +
-               'FitToWidth=no' + '&' +
-               'PaperWidth=58';
+        // Android用URLスキーム
+        // 方法1: 標準のsiiprintagent:// スキーム
+        const standardUrl = 'siiprintagent://1.0/print?' + params;
+        
+        // 方法2: Intent URIスキーム（Android特有）
+        // intent://[path]#Intent;scheme=[scheme];package=[package];end;
+        const intentUrl = 'intent://1.0/print?' + params + 
+                         '#Intent;' +
+                         'scheme=siiprintagent;' +
+                         'package=jp.co.sii.siiprintagent;' +
+                         'end;';
+        
+        console.log('🤖 Android URL生成:', {
+            standard: standardUrl.substring(0, 100) + '...',
+            intent: intentUrl.substring(0, 100) + '...'
+        });
+        
+        // まず標準スキームを返す（executePrint内で複数の方法を試す）
+        return standardUrl;
     } else {
         // iOS用URLスキーム（従来のsiiprintagent）
-        return 'siiprintagent://1.0/print?' +
-               'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
-               'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
-               'Format=pdf' + '&' +
-               'Data=' + encodeURIComponent(pdfBase64) + '&' +
-               'SelectOnError=yes' + '&' +
-               'CutType=full' + '&' +
-               'CutFeed=yes' + '&' +
-               'FitToWidth=no' + '&' +
-               'PaperWidth=58';
+        return 'siiprintagent://1.0/print?' + params;
+    }
+}
+
+// 印刷実行関数（Android対応：about:blank#blocked回避）
+function executePrint(printUrl) {
+    if (isAndroid()) {
+        // Android: 複数の方法を試行
+        console.log('🤖 Android印刷実行開始:', printUrl.substring(0, 100) + '...');
+        
+        // 方法1: window.open()を使用（新しいウィンドウで開く）
+        try {
+            const newWindow = window.open(printUrl, '_blank');
+            if (newWindow) {
+                console.log('✅ window.open()成功');
+                setTimeout(() => newWindow.close(), 500);
+                return;
+            }
+        } catch (e) {
+            console.log('❌ window.open()失敗:', e);
+        }
+        
+        // 方法2: aタグを動的生成してクリック
+        try {
+            const a = document.createElement('a');
+            a.href = printUrl;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            console.log('✅ aタグクリック実行');
+            setTimeout(() => document.body.removeChild(a), 100);
+            return;
+        } catch (e) {
+            console.log('❌ aタグクリック失敗:', e);
+        }
+        
+        // 方法3: iframeを使用（最終手段）
+        try {
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = printUrl;
+            document.body.appendChild(iframe);
+            console.log('✅ iframe実行');
+            setTimeout(() => document.body.removeChild(iframe), 1000);
+        } catch (e) {
+            console.log('❌ iframe失敗:', e);
+        }
+    } else {
+        // iOS: 従来通りlocation.hrefを使用
+        console.log('🍎 iOS印刷実行:', printUrl.substring(0, 100) + '...');
+        window.location.href = printUrl;
     }
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
@@ -2247,7 +2307,7 @@ function checkAndContinuePrinting() {
                 console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
             }
             
-            window.location.href = nextPrintUrl;
+            executePrint(nextPrintUrl);
         } else {
             // 全印刷完了
             sessionStorage.removeItem('printJob');
@@ -2757,7 +2817,7 @@ function executeSignaturePrint() {
             }
             
             // 1枚目を印刷
-            window.location.href = printUrl;
+            executePrint(printUrl);
         };
         
         signatureImg.src = tmpCanvas.toDataURL("image/png");
@@ -3001,7 +3061,7 @@ function executeReceiptPrint(withMemo) {
     let printUrl = generatePrintUrl(pdfBase64, thisPage);
     
     // 印刷実行
-    window.location.href = printUrl;
+    executePrint(printUrl);
     
     console.log('🧾 領収書印刷が完了しました, デバイス=' + (isAndroid() ? 'Android' : 'iOS'));
 }
@@ -3450,7 +3510,7 @@ function sendToPrintAssist(event) {
                     }
                     
                     // 1枚目を印刷
-                    window.location.href = printUrlImage;
+                    executePrint(printUrlImage);
                 };
                 
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
@@ -3756,7 +3816,7 @@ function printText() {
         }
         
         // 1枚目を印刷
-        window.location.href = printUrl;
+        executePrint(printUrl);
     }
     
     // 現在の1枚を印刷（シンプル実行）
