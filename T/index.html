@@ -1541,11 +1541,15 @@ function formatDateTime(dt) {
 
 // デバイス判定関数
 function isAndroid() {
-    return /Android/i.test(navigator.userAgent);
+    const result = /Android/i.test(navigator.userAgent);
+    console.log('🔍 isAndroid:', result, 'UserAgent:', navigator.userAgent);
+    return result;
 }
 
 function isIOS() {
-    return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const result = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    console.log('🔍 isIOS:', result, 'UserAgent:', navigator.userAgent);
+    return result;
 }
 
 // 印刷URLスキーム生成関数（iOS・Android両対応）
@@ -1569,25 +1573,90 @@ function generatePrintUrl(pdfBase64, thisPage) {
         // パッケージ名: com.seikoinstruments.siiurlprintagent
         const androidUrl = 'siiurlprintagent://1.0/print?' + params;
         
-        console.log('🤖 Android URL:', androidUrl.substring(0, 120) + '...');
+        console.log('🤖 ========== Android URL 生成 ==========');
+        console.log('🤖 Full URL:', androidUrl);
+        console.log('🤖 URL Length:', androidUrl.length);
+        console.log('🤖 Scheme:', androidUrl.split('://')[0]);
+        console.log('🤖 Data Length:', pdfBase64.length);
+        console.log('🤖 =======================================');
+        
         return androidUrl;
     } else {
         // ★★★ iOS用URLスキーム ★★★
         // iOS: siiprintagent:// (iが2つだけ!)
         const iosUrl = 'siiprintagent://1.0/print?' + params;
         
-        console.log('🍎 iOS URL:', iosUrl.substring(0, 120) + '...');
+        console.log('🍎 ========== iOS URL 生成 ==========');
+        console.log('🍎 URL Preview:', iosUrl.substring(0, 200) + '...');
+        console.log('🍎 ====================================');
+        
         return iosUrl;
     }
 }
 
 // 印刷実行関数（iOS・Android両対応）
 function executePrint(printUrl) {
-    console.log('📱 印刷実行:', isAndroid() ? 'Android' : 'iOS', printUrl.substring(0, 100) + '...');
+    console.log('📱 印刷実行:', isAndroid() ? 'Android' : 'iOS');
+    console.log('📱 URL scheme:', printUrl.substring(0, 150) + '...');
     
-    // iOS・Android共通: window.location.hrefで実行
-    // 正しいURL schemeを使用していれば、これで動作する
-    window.location.href = printUrl;
+    if (isAndroid()) {
+        // Android専用の実行方法
+        console.log('🤖 Android: iframe方式で実行');
+        
+        // 方法1: 非表示のiframeを使用（Chrome/Android対応）
+        const iframe = document.createElement('iframe');
+        iframe.style.width = '0px';
+        iframe.style.height = '0px';
+        iframe.style.border = 'none';
+        iframe.style.position = 'absolute';
+        iframe.style.top = '-9999px';
+        iframe.style.left = '-9999px';
+        
+        // タイムアウトを設定してiframeを削除
+        let executed = false;
+        const timer = setTimeout(() => {
+            if (!executed) {
+                console.log('⏱️ タイムアウト: iframeを削除');
+                if (iframe.parentNode) {
+                    document.body.removeChild(iframe);
+                }
+            }
+        }, 2000);
+        
+        // iframeのロード完了時
+        iframe.onload = function() {
+            executed = true;
+            clearTimeout(timer);
+            console.log('✅ iframe onload');
+            setTimeout(() => {
+                if (iframe.parentNode) {
+                    document.body.removeChild(iframe);
+                }
+            }, 100);
+        };
+        
+        // iframeのエラー時
+        iframe.onerror = function() {
+            executed = true;
+            clearTimeout(timer);
+            console.log('⚠️ iframe onerror (正常動作の可能性あり)');
+            setTimeout(() => {
+                if (iframe.parentNode) {
+                    document.body.removeChild(iframe);
+                }
+            }, 100);
+        };
+        
+        document.body.appendChild(iframe);
+        iframe.src = printUrl;
+        
+        console.log('🤖 iframe追加完了');
+        
+    } else {
+        // iOS: 従来のlocation.hrefを使用
+        console.log('🍎 iOS: location.href方式で実行');
+        window.location.href = printUrl;
+    }
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
 const qrCodeBtn = document.getElementById('qrCodeBtn');
