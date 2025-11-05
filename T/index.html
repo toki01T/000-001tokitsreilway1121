@@ -1430,7 +1430,7 @@ let currentStream = null;
 const QR_PREFIX = 'TOKI01_';
 const QR_VERSION = 'v1.0';
 const DB_NAME = 'toki01_history';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // 連番管理用ストア追加のためバージョンアップ
 const STORE_NAME = 'history';
 function openDB() {
     return new Promise((resolve, reject) => {
@@ -1440,9 +1440,44 @@ function openDB() {
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
             }
+            // 連番管理用のストアを作成
+            if (!db.objectStoreNames.contains('receiptCounter')) {
+                db.createObjectStore('receiptCounter', { keyPath: 'id' });
+            }
         };
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
+    });
+}
+
+// 領収書連番を取得・更新する関数
+async function getNextReceiptNumber() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(['receiptCounter'], 'readwrite');
+        const store = tx.objectStore('receiptCounter');
+        const getReq = store.get('current');
+        
+        getReq.onsuccess = () => {
+            let currentNumber = getReq.result ? getReq.result.value : 0;
+            let nextNumber = currentNumber + 1;
+            
+            // 99999を超えたら00000にリセット
+            if (nextNumber > 99999) {
+                nextNumber = 1;
+            }
+            
+            // 5桁の半角数字にフォーマット
+            const formattedNumber = String(nextNumber).padStart(5, '0');
+            
+            // 更新した値を保存
+            store.put({ id: 'current', value: nextNumber });
+            
+            tx.oncomplete = () => resolve(formattedNumber);
+            tx.onerror = () => reject(tx.error);
+        };
+        
+        getReq.onerror = () => reject(getReq.error);
     });
 }
 function addHistory(item) {
@@ -1980,8 +2015,8 @@ function loadHistoryList() {
                 receiptRow.className = 'historyReceiptRow';
                 const receiptInfo = document.createElement('div');
                 receiptInfo.className = 'historyReceiptInfo';
-                // 宛名と但し書き（但し書きが無ければ宛名のみ）のみ表示
-                let displayText = `宛名: ${item.companyName}`;
+                // 連番と宛名と但し書き（但し書きが無ければ宛名のみ）を表示
+                let displayText = `No.${item.receiptNumber || '-----'} 宛名: ${item.companyName}`;
                 if (item.memo) {
                     displayText += `<br>但し書き: ${item.memo}`;
                 }
@@ -2805,7 +2840,7 @@ function executeSignaturePrint() {
 };
 
 // --- 領収書印刷 ---
-function executeReceiptPrint(withMemo) {
+async function executeReceiptPrint(withMemo) {
     const companyName = document.getElementById('receiptCompanyName').value.trim();
     const memo = document.getElementById('receiptMemo').value.trim();
     const suffix = document.getElementById('receiptSuffix').value; // ドロップダウンから接尾辞取得
@@ -2816,6 +2851,10 @@ function executeReceiptPrint(withMemo) {
     }
     
     console.log('🧾 領収書印刷を開始します', withMemo ? '(メモ付き)' : '(メモなし)');
+    
+    // 連番を取得
+    const receiptNumber = await getNextReceiptNumber();
+    console.log('📝 領収書連番:', receiptNumber);
     
     // キャンバスでテキストを画像として生成（テキスト印刷と同じ方式）
     const canvas = document.createElement('canvas');
@@ -2879,6 +2918,7 @@ function executeReceiptPrint(withMemo) {
 
     receiptLines.push('領収書に｢toki｣を記入して頂き');
     receiptLines.push('宛名が合っておりましたら');
+    receiptLines.push('ボールペンまたは印鑑で');
     receiptLines.push('印を付けて下さい✔️');
     receiptLines.push(''); // 枠の前に空行
     // 枠はCanvas APIで直接描画するため、ここには含めない
@@ -2924,7 +2964,7 @@ function executeReceiptPrint(withMemo) {
     }
     
     // 枠の高さを追加（Canvas APIで描画）
-    const stampBoxHeight = 80;
+    const stampBoxHeight = 120;
     textHeight += stampBoxHeight + 30; // 枠の高さ + 上下の余白
     
     // 日付・時刻のスペースを追加（常に有効）
@@ -2953,15 +2993,36 @@ function executeReceiptPrint(withMemo) {
     // テキストを描画（上部余白を小さく）
     let yPos = 30; // 上余白を30pxに調整
     let memoInserted = false;
+    let lineIndex = 0; // 実際の行インデックス
     
     for (let i = 0; i < lines.length; i++) {
         ctx.font = `${textFontSize}px Arial, sans-serif`;
         ctx.textAlign = 'center';
+        
+        // 「領収書」の行の場合は連番を追加
+        if (i === 0 && lines[i] === '領収書') {
+            // 「領収書」を左寄せ、連番を右寄せで描画
+            ctx.textAlign = 'left';
+            const titleX = 50; // 左端から50px
+            ctx.fillText('領収書', titleX, yPos);
+            
+            // 連番を右側に描画（半角数字）
+            ctx.textAlign = 'right';
+            const numberX = canvasWidth - 50; // 右端から50px
+            ctx.fillText(receiptNumber, numberX, yPos);
+            
+            yPos += lineHeight;
+            lineIndex++;
+            continue; // 通常描画をスキップ
+        }
+        
+        // 通常の行は中央揃えで描画
         ctx.fillText(lines[i], exactCenterX, yPos);
         yPos += lineHeight;
+        lineIndex++;
         
         // 「領収書」の次の空行の後に宛名を挿入
-        if (i === 1) { // 2行目（空行）の後
+        if (lineIndex === 2) { // 2行目（空行）の後
             if (companyNameLines.length <= 3 || (companyNameLines.length === 1 && companyNameLength <= 6)) {
                 // 6文字以内: "宛名は「XXX」" 形式で1行（中央揃え）
                 ctx.font = `${labelFontSize}px Arial, sans-serif`;
@@ -3019,14 +3080,14 @@ function executeReceiptPrint(withMemo) {
     }
     
     // 枠をCanvas APIで直接描画（罫線文字の代わり）
-    const boxWidth = 200; // 枠の幅
-    const boxHeight = 80; // 枠の高さ
+    const boxWidth = 280; // 枠の幅（大きくしました）
+    const boxHeight = 120; // 枠の高さ（大きくしました）
     const boxX = exactCenterX - boxWidth / 2; // 中央揃え
     const boxY = yPos + 10; // 現在位置から少し下
     
     // 枠を描画
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2; // 線の太さ
+    ctx.lineWidth = 3; // 線の太さ（少し太くしました）
     ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
     
     // 枠の高さ分yPosを進める
@@ -3041,6 +3102,7 @@ function executeReceiptPrint(withMemo) {
         mode: 'receipt',
         companyName: companyName,
         memo: withMemo ? memo : '',
+        receiptNumber: receiptNumber, // 連番を保存
         smallTextEnabled: receiptSmallTextEnabled, // 小文字オプションの状態を保存
         data: '', // 後で設定
         created: Date.now(),
