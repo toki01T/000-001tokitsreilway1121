@@ -2897,6 +2897,7 @@ function executeReceiptPrint(withMemo) {
     receiptLines.push('宛名が合っておりましたら');
     receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
+    receiptLines.push('');
     
     const printText = receiptLines.join('\n');
     
@@ -2991,6 +2992,19 @@ function executeReceiptPrint(withMemo) {
         }
     }
     
+    // 枠を描画（テキストではなく線で描画）
+    const boxWidth = 200;  // 枠の幅
+    const boxHeight = 60;  // 枠の高さ
+    const boxX = (canvasWidth - boxWidth) / 2;  // 中央配置
+    const boxY = yPos + 10;  // 現在位置の少し下
+    
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+    
+    // 枠の描画後、yPosを更新
+    yPos = boxY + boxHeight;
+    
     // QRコードを生成して左側に配置（テキスト印刷と同じ方式）
     let qrCodeCanvas = null;
     
@@ -3045,20 +3059,7 @@ function executeReceiptPrint(withMemo) {
     const timeText = `${hour}時${minute}分${second}秒`;
     ctx.fillText(timeText, dateTimeX, yPos);
     
-    // 枠を描画（テキストではなく線で描画）
-    yPos += dateLineHeight + 20; // 時刻の下に少しスペースを空ける
-    
-    const boxX = exactCenterX - 80; // 枠の左端位置（中央から左に80px）
-    const boxY = yPos; // 枠の上端位置
-    const boxWidth = 160; // 枠の幅
-    const boxHeight = 60; // 枠の高さ
-    
-    // 枠線を描画
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
-    
-    // キャンバスをPNGに変換（領収書は枠線を含むため高品質PNG使用）
+    // キャンバスをPNGに変換（領収書は罫線文字があるため高品質PNG使用）
     const pngDataUrl = canvas.toDataURL('image/png');
     
     // 履歴アイテムにデータを設定
@@ -4882,13 +4883,14 @@ window.addEventListener('load', function() {
     const code = urlParams.get('Code');
     const message = urlParams.get('Message');
     
-    // コールバックパラメータが存在する場合のみ処理
     if (code !== null) {
-        // Code=0 は成功、それ以外はエラー
+        // Codeパラメータが存在する場合
         if (code !== '0') {
+            // エラーコード（0以外）の場合のみアラート表示
             console.log('印刷エラー - Code:', code, 'Message:', message);
-            alert('印刷エラーが発生しました。\n\nCode: ' + code + '\nMessage: ' + decodeURIComponent(message || ''));
+            alert('印刷エラーが発生しました。\n\nCode: ' + code + '\nMessage: ' + (message ? decodeURIComponent(message) : ''));
         } else {
+            // 成功（Code=0）の場合は何も表示しない
             console.log('印刷成功 - Code:', code);
         }
         
