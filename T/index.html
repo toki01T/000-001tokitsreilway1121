@@ -1560,7 +1560,7 @@ function isIOS() {
 function generatePrintUrl(pdfBase64, thisPage) {
     console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
     
-    // コールバックURLは空文字列に設定（コールバックなし）
+    // コールバックURLを空にしてコールバックを無効化
     const url = 'siiprintagent://1.0/print?' +
                 'CallbackSuccess=' + '&' +
                 'CallbackFail=' + '&' +
@@ -2972,41 +2972,24 @@ function executeReceiptPrint(withMemo) {
         
         // 「領収書」の次の空行の後に宛名を挿入
         if (i === 1) {
-            if (needsWrap) {
-                // 6文字以上（複数行）：中央揃え
+            if (isLongName) {
+                // 4文字以上：中央揃えで複数行表示
                 ctx.textAlign = 'center';
                 
-                // "宛名は" を中央に描画
+                // "宛名は" を中央揃えで描画
                 ctx.font = `${labelFontSize}px Arial, sans-serif`;
                 ctx.fillText('宛名は', exactCenterX, yPos);
                 yPos += companyLineHeight;
                 
-                // 宛名を複数行で中央揃えで描画
+                // 宛名を複数行で中央揃え描画
                 ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
                 for (let line of companyNameLines) {
                     ctx.fillText(`「${line}」`, exactCenterX, yPos);
                     yPos += companyLineHeight;
                 }
                 
-            } else if (isLongName) {
-                // 4-5文字：左寄せ
-                ctx.textAlign = 'left';
-                const leftX = 50;
-                
-                // "宛名は" を描画
-                ctx.font = `${labelFontSize}px Arial, sans-serif`;
-                ctx.fillText('宛名は', leftX, yPos);
-                yPos += companyLineHeight;
-                
-                // 宛名を1行で描画
-                ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
-                ctx.fillText(`「${companyName}」`, leftX, yPos);
-                yPos += companyLineHeight;
-                
-                // 中央揃えに戻す
-                ctx.textAlign = 'center';
             } else {
-                // 4文字未満：中央揃え（1行）
+                // 4文字未満：1行で中央揃え
                 ctx.font = `${labelFontSize}px Arial, sans-serif`;
                 ctx.textAlign = 'left';
                 const labelX = exactCenterX - 100;
