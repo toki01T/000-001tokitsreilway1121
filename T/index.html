@@ -1380,11 +1380,11 @@ footer p {
                 </div>
                 <div class="receipt-input-group">
                     <label for="receiptMemo">但し書き</label>
-                    <div style="display: flex; gap: 10px; align-items: center;">
+                    <div style="display: flex; gap: 5px; align-items: center;">
                         <input type="text" id="receiptMemo" placeholder="" style="flex: 1;" />
-                        <select id="receiptSuffix" style="width: 80px; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px;">
-                            <option value="代として">代として</option>
-                            <option value="類として">類として</option>
+                        <select id="receiptSuffix" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background: white;">
+                            <option value="代">代</option>
+                            <option value="類">類</option>
                             <option value="">なし</option>
                         </select>
                     </div>
@@ -1556,16 +1556,16 @@ function isIOS() {
     return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-// 印刷URLスキーム生成関数（iOS・Android両対応 - Callback無効版）
+// 印刷URLスキーム生成関数（iOS・Android両対応 - test.html完全互換版）
 function generatePrintUrl(pdfBase64, thisPage) {
     console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
     
-    // Callbackを空にすることで新規タブを防ぐ
+    // test.htmlと完全に同じ方式でURL構築
     const url = 'siiprintagent://1.0/print?' +
-                'CallbackSuccess=&' +  // 空にする
-                'CallbackFail=&' +      // 空にする
+                'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
                 'Format=' + 'pdf' + '&' +
-                'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                'Data=' + encodeURIComponent(pdfBase64) + '&' +  // test.htmlと同じ
                 'SelectOnError=' + 'yes' + '&' +
                 'CutType=' + 'full' + '&' +
                 'CutFeed=' + 'yes' + '&' +
@@ -2808,7 +2808,7 @@ function executeSignaturePrint() {
 function executeReceiptPrint(withMemo) {
     const companyName = document.getElementById('receiptCompanyName').value.trim();
     const memo = document.getElementById('receiptMemo').value.trim();
-    const suffix = document.getElementById('receiptSuffix').value; // ドロップダウンから取得
+    const suffix = document.getElementById('receiptSuffix').value; // ドロップダウンから接尾辞取得
     
     if (!companyName) {
         console.log('❌ 宛名が入力されていません');
@@ -2817,7 +2817,7 @@ function executeReceiptPrint(withMemo) {
     
     console.log('🧾 領収書印刷を開始します', withMemo ? '(メモ付き)' : '(メモなし)');
     
-    // キャンバスでテキストを画像として生成
+    // キャンバスでテキストを画像として生成（テキスト印刷と同じ方式）
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
@@ -2826,53 +2826,38 @@ function executeReceiptPrint(withMemo) {
     const canvasWidth = Math.round(58 * mmToPx); // 58mm
     
     // フォントサイズ設定
-    const textFontSize = 37;  // 通常テキスト
-    const companyNameFontSize = 42; // 宛名用
+    const textFontSize = 37;  // 通常テキスト用
+    const companyNameFontSize = 42; // 宛名用（短い場合）
     const labelFontSize = 37;  // "宛名は"用
     const dateFontSize = 50;  // 日付・時刻用
     
-    // 宛名の文字数チェックと自動改行処理
+    // 宛名の文字数チェック（4文字以上で自動改行、最大11行）
     const companyNameLength = companyName.length;
     let companyNameLines = [];
     
-    if (companyNameLength <= 6) {
-        // 6文字以内：1行で表示
-        companyNameLines = [`「${companyName}」`];
+    if (companyNameLength <= 3) {
+        // 3文字以内: 1行で表示
+        companyNameLines.push(companyName);
+    } else if (companyNameLength <= 6) {
+        // 4-6文字: 1行で表示（自動調整なし）
+        companyNameLines.push(companyName);
     } else {
-        // 7文字以上：6文字ごとに改行（最大11行まで）
-        let tempName = companyName;
-        const maxLines = 11;
-        for (let i = 0; i < maxLines && tempName.length > 0; i++) {
-            if (i === 0) {
-                companyNameLines.push(`「${tempName.substring(0, 6)}`);
-                tempName = tempName.substring(6);
-            } else if (tempName.length <= 6) {
-                companyNameLines.push(`${tempName}」`);
-                tempName = '';
-            } else {
-                companyNameLines.push(tempName.substring(0, 6));
-                tempName = tempName.substring(6);
-            }
+        // 7文字以上: 6文字ごとに改行、最大11行
+        for (let i = 0; i < companyName.length && companyNameLines.length < 11; i += 6) {
+            companyNameLines.push(companyName.substring(i, i + 6));
         }
     }
     
-    // 但し書きの自動改行処理
+    // 但し書きの文字数チェック（6文字以上で自動改行）
     let memoLines = [];
     if (withMemo && memo) {
-        if (memo.length <= 6) {
-            // 6文字以内：1行で表示
-            memoLines.push(`但し ${memo} ${suffix}`);
+        if (memo.length <= 5) {
+            // 5文字以内: 1行
+            memoLines.push(memo);
         } else {
-            // 7文字以上：但し、本文、代としてを分けて表示
-            memoLines.push('但し');
-            // メモを6文字ごとに改行
-            let tempMemo = memo;
-            while (tempMemo.length > 0) {
-                memoLines.push(tempMemo.substring(0, Math.min(6, tempMemo.length)));
-                tempMemo = tempMemo.substring(6);
-            }
-            if (suffix) {
-                memoLines.push(suffix);
+            // 6文字以上: 6文字ごとに改行
+            for (let i = 0; i < memo.length; i += 6) {
+                memoLines.push(memo.substring(i, i + 6));
             }
         }
     }
@@ -2881,33 +2866,30 @@ function executeReceiptPrint(withMemo) {
     let receiptLines = [];
     receiptLines.push('領収書');
     receiptLines.push('');
-    // 宛名は別途描画
+    // 宛名は別途描画するため、ここではスペースを確保（"こちらでお願い致します。"の前）
     receiptLines.push('こちらでお願い致します。');
     
-    // 小文字オプション
+    // 小文字オプションが選択されている場合のみ追加
     if (receiptSmallTextEnabled) {
         receiptLines.push('(小文字でお願い致します。)');
     }
     receiptLines.push('');
     
-    // 但し書きを追加
-    if (memoLines.length > 0) {
-        receiptLines = receiptLines.concat(memoLines);
-        receiptLines.push('');
-    }
+    // 但し書きは別途描画するため、空行は不要
 
     receiptLines.push('領収書に｢toki｣を記入して頂き');
     receiptLines.push('宛名が合っておりましたら');
     receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
-    receiptLines.push('+----------+');
-    receiptLines.push('|          |');
-    receiptLines.push('|          |');
-    receiptLines.push('+----------+');
+    receiptLines.push('┌───────┐');
+    receiptLines.push('│　　　　　│');
+    receiptLines.push('│　　　 　│');
+    receiptLines.push('└───────┘');
     
     const printText = receiptLines.join('\n');
     
-    ctx.font = `${textFontSize}px Arial, sans-serif`;
+    // フォント設定（罫線文字対応のため）
+    ctx.font = `${textFontSize}px "MS Gothic", "Yu Gothic", sans-serif`;
     ctx.fillStyle = '#000000';
     
     // テキストの行数から高さを計算
@@ -2916,13 +2898,33 @@ function executeReceiptPrint(withMemo) {
     const companyLineHeight = companyNameFontSize * 1.2; // 宛名行の高さ
     let textHeight = 0;
     
-    // 各行の高さを個別に計算（宛名行は通常のlinesには含まれていないため、別途追加）
+    // 各行の高さを個別に計算
     for (let i = 0; i < lines.length; i++) {
         textHeight += lineHeight;
     }
     
-    // 宛名行の高さを追加（複数行対応）
-    textHeight += companyLineHeight * companyNameLines.length;
+    // 宛名行の高さを追加（文字数に応じて）
+    if (companyNameLines.length <= 3) {
+        // 3文字以内または4-6文字: "宛名は「XXX」" 形式で1行
+        textHeight += companyLineHeight;
+    } else {
+        // 7文字以上: "宛名は" + 改行された宛名
+        textHeight += labelFontSize * 1.2; // "宛名は" の行
+        textHeight += companyNameLines.length * companyLineHeight; // 宛名の各行
+    }
+    
+    // 但し書きの高さを追加
+    if (withMemo && memo) {
+        if (memoLines.length === 1) {
+            // 5文字以内: "但し XXX 代として" 形式で1行
+            textHeight += lineHeight;
+        } else {
+            // 6文字以上: "但し" + 改行されたメモ + "代として"
+            textHeight += labelFontSize * 1.2; // "但し"
+            textHeight += memoLines.length * textFontSize * 1.2; // メモの各行
+            textHeight += labelFontSize * 1.2; // "代として"
+        }
+    }
     
     // 日付・時刻のスペースを追加（常に有効）
     const dateLineHeight = dateFontSize * 1.2;
@@ -2931,7 +2933,7 @@ function executeReceiptPrint(withMemo) {
     // QRコード用スペースを調整
     const qrSpaceMargin = 90;
     
-    const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin);
+    const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
     
@@ -2949,38 +2951,69 @@ function executeReceiptPrint(withMemo) {
     
     // テキストを描画（上部余白を小さく）
     let yPos = 30; // 上余白を30pxに調整
+    let memoInserted = false;
+    
     for (let i = 0; i < lines.length; i++) {
         ctx.font = `${textFontSize}px Arial, sans-serif`;
+        ctx.textAlign = 'center';
         ctx.fillText(lines[i], exactCenterX, yPos);
         yPos += lineHeight;
         
         // 「領収書」の次の空行の後に宛名を挿入
         if (i === 1) { // 2行目（空行）の後
-            if (companyNameLines.length === 1) {
-                // 6文字以内：1行表示（中央揃え）
+            if (companyNameLines.length <= 3 || (companyNameLines.length === 1 && companyNameLength <= 6)) {
+                // 6文字以内: "宛名は「XXX」" 形式で1行（中央揃え）
                 ctx.font = `${labelFontSize}px Arial, sans-serif`;
                 ctx.textAlign = 'center';
-                ctx.fillText(`宛名は${companyNameLines[0]}`, exactCenterX, yPos);
+                const fullText = `宛名は「${companyName}」`;
+                ctx.fillText(fullText, exactCenterX, yPos);
                 yPos += companyLineHeight;
             } else {
-                // 7文字以上：複数行表示（左寄せ）
+                // 7文字以上: 改行して表示
                 ctx.font = `${labelFontSize}px Arial, sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.fillText('宛名は', exactCenterX, yPos);
-                yPos += companyLineHeight;
+                yPos += labelFontSize * 1.2;
                 
-                // 宛名を左寄せで複数行描画
+                // 各行を中央揃えで描画
                 ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
-                ctx.textAlign = 'left';
-                const companyX = exactCenterX - 80; // 左寄せ位置
                 for (let j = 0; j < companyNameLines.length; j++) {
-                    ctx.fillText(companyNameLines[j], companyX, yPos);
+                    ctx.fillText(`「${companyNameLines[j]}」`, exactCenterX, yPos);
                     yPos += companyLineHeight;
                 }
             }
-            
-            // 次の行のために中央揃えに戻す
-            ctx.textAlign = 'center';
+        }
+        
+        // 小文字オプションの後に但し書きを挿入
+        if (!memoInserted && withMemo && memo && i >= 3) {
+            if (memoLines.length === 1) {
+                // 5文字以内: "但し XXX 代として" 形式で1行（中央揃え）
+                ctx.font = `${textFontSize}px Arial, sans-serif`;
+                ctx.textAlign = 'center';
+                const memoText = suffix ? `但し ${memo} ${suffix}として` : `但し ${memo}`;
+                ctx.fillText(memoText, exactCenterX, yPos);
+                yPos += lineHeight;
+            } else {
+                // 6文字以上: 改行して表示（中央揃え）
+                ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText('但し', exactCenterX, yPos);
+                yPos += labelFontSize * 1.2;
+                
+                // 各行を中央揃えで描画
+                ctx.font = `${textFontSize}px Arial, sans-serif`;
+                for (let j = 0; j < memoLines.length; j++) {
+                    ctx.fillText(memoLines[j], exactCenterX, yPos);
+                    yPos += textFontSize * 1.2;
+                }
+                
+                // "代として"
+                if (suffix) {
+                    ctx.fillText(`${suffix}として`, exactCenterX, yPos);
+                    yPos += labelFontSize * 1.2;
+                }
+            }
+            memoInserted = true;
         }
     }
     
