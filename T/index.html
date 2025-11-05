@@ -1560,10 +1560,10 @@ function isIOS() {
 function generatePrintUrl(pdfBase64, thisPage) {
     console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
     
-    // コールバックURLを空にしてコールバックを無効化
+    // コールバックURLに現在のページを設定（test.htmlと同じ）
     const url = 'siiprintagent://1.0/print?' +
-                'CallbackSuccess=' + '&' +
-                'CallbackFail=' + '&' +
+                'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
                 'Format=' + 'pdf' + '&' +
                 'Data=' + encodeURIComponent(pdfBase64) + '&' +
                 'SelectOnError=' + 'yes' + '&' +
@@ -2898,11 +2898,11 @@ function executeReceiptPrint(withMemo) {
     receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
     
-    // 罫線は等幅フォント(Courier)で描画
-    receiptLines.push('+----------+');
-    receiptLines.push('|          |');
-    receiptLines.push('|          |');
-    receiptLines.push('+----------+');
+    // 罫線は後でcanvasで描画（テキストとしては空行のみ追加）
+    receiptLines.push('');
+    receiptLines.push('');
+    receiptLines.push('');
+    receiptLines.push('');
     
     const printText = receiptLines.join('\n');
     
@@ -2946,50 +2946,44 @@ function executeReceiptPrint(withMemo) {
     
     // テキスト描画設定
     ctx.fillStyle = '#000000';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
     
-    // 真ん中の位置を正確に計算
-    const exactCenterX = Math.round(canvasWidth / 2) - 50;
+    // 正確な中央位置を計算
+    const exactCenterX = Math.round(canvasWidth / 2);
     
     // テキストを描画
     let yPos = 30;
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         
-        // 罫線は等幅フォントで描画
-        if (line.includes('+--') || line.includes('|')) {
-            ctx.font = `${textFontSize}px "Courier New", Courier, monospace`;
-            ctx.textAlign = 'center';
-            ctx.fillText(line, exactCenterX, yPos);
-        } else {
-            ctx.font = `${textFontSize}px Arial, sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.fillText(line, exactCenterX, yPos);
-        }
+        ctx.font = `${textFontSize}px Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(line, exactCenterX, yPos);
         
         yPos += lineHeight;
         
         // 「領収書」の次の空行の後に宛名を挿入
         if (i === 1) {
             if (isLongName) {
-                // 4文字以上：中央揃えで複数行表示
-                ctx.textAlign = 'center';
+                // 4文字以上：左寄せ
+                ctx.textAlign = 'left';
+                const leftX = 50;
                 
-                // "宛名は" を中央揃えで描画
+                // "宛名は" を描画
                 ctx.font = `${labelFontSize}px Arial, sans-serif`;
-                ctx.fillText('宛名は', exactCenterX, yPos);
+                ctx.fillText('宛名は', leftX, yPos);
                 yPos += companyLineHeight;
                 
-                // 宛名を複数行で中央揃え描画
+                // 宛名を複数行で描画
                 ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
                 for (let line of companyNameLines) {
-                    ctx.fillText(`「${line}」`, exactCenterX, yPos);
+                    ctx.fillText(`「${line}」`, leftX, yPos);
                     yPos += companyLineHeight;
                 }
                 
+                // 中央揃えに戻す
+                ctx.textAlign = 'center';
             } else {
-                // 4文字未満：1行で中央揃え
+                // 4文字未満：中央揃え
                 ctx.font = `${labelFontSize}px Arial, sans-serif`;
                 ctx.textAlign = 'left';
                 const labelX = exactCenterX - 100;
@@ -3061,7 +3055,17 @@ function executeReceiptPrint(withMemo) {
     const timeText = `${hour}時${minute}分${second}秒`;
     ctx.fillText(timeText, dateTimeX, yPos);
     
-    // キャンバスをPNGに変換（領収書は罫線文字があるため高品質PNG使用）
+    // 枠を描画（テキストの最後の4行空白部分に長方形を描画）
+    const boxWidth = 250; // 枠の幅
+    const boxHeight = 80; // 枠の高さ
+    const boxX = exactCenterX - boxWidth / 2; // 中央配置
+    const boxY = yPos + 30; // 時刻の下に配置
+    
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3; // 枠線の太さ
+    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+    
+    // キャンバスをPNGに変換（領収書は描画枠があるため高品質PNG使用）
     const pngDataUrl = canvas.toDataURL('image/png');
     
     // 履歴アイテムにデータを設定
@@ -4878,6 +4882,29 @@ function restoreContentFromQROnly(qrData) {
         alert('このQRコードの完全なデータは履歴にありません。\n画像や手書きデータは履歴からのみ復元可能です。');
     }
 }
+
+// ページロード時にコールバックパラメータをチェック（印刷後の戻り処理）
+window.addEventListener('load', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('Code');
+    const message = urlParams.get('Message');
+    
+    // CodeパラメータがあればSII Print Agentからの戻り
+    if (code !== null) {
+        console.log('印刷コールバック - Code:', code, 'Message:', message);
+        
+        // Code=0は成功、それ以外はエラー
+        if (code !== '0') {
+            alert('印刷エラーが発生しました。\n\nCode: ' + code + '\nMessage: ' + (message ? decodeURIComponent(message) : '不明なエラー'));
+        } else {
+            console.log('✅ 印刷成功');
+        }
+        
+        // URLパラメータを削除（履歴をクリーンに保つ）
+        const cleanUrl = window.location.origin + window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+    }
+});
 </script>
 </body>
 </html>
