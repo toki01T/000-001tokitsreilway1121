@@ -1569,31 +1569,50 @@ function generatePrintUrl(pdfBase64, thisPage) {
     return printUrl;
 }
 
-// 印刷実行関数（Android/iOS統一版 - 直接実行）
+// 印刷実行関数（Android/iOS統一版 - iframe方式 v2024.11.05）
 function executePrint(printUrl) {
-    console.log('印刷実行開始');
-    console.log('デバイス:', isAndroid() ? 'Android' : 'iOS');
-    console.log('URL長:', printUrl.length, '文字');
+    console.log('🖨️ 印刷実行開始 v2024.11.05');
+    console.log('📱 デバイス:', isAndroid() ? 'Android' : 'iOS');
+    console.log('📏 URL長:', printUrl.length, '文字');
+    console.log('🔗 URL先頭:', printUrl.substring(0, 150));
     
-    // Android/iOS共通: location.hrefで直接実行
-    console.log('URL Scheme直接実行開始');
-    console.log('URL先頭100文字:', printUrl.substring(0, 100));
-    
-    try {
-        // window.location.hrefで直接遷移
-        window.location.href = printUrl;
-        console.log('✅ URL Scheme実行完了');
-    } catch(e) {
-        console.error('❌ URL Scheme実行エラー:', e);
-        alert('印刷の起動に失敗しました。\nSII URL Print Agentがインストールされているか確認してください。');
+    // 既存のiframeを削除
+    const oldIframe = document.getElementById('printIframe');
+    if (oldIframe) {
+        oldIframe.remove();
+        console.log('🗑️ 既存iframe削除');
     }
     
-    // 以下は旧iOS処理（不要だが念のため残す）
-    if (false) {
-        // iOS: 直接実行
-        console.log('iOS - 直接実行');
-        window.location.href = printUrl;
-        console.log('iOS印刷実行完了');
+    // iframeを使ってURL schemeを実行（最も確実な方法）
+    const iframe = document.createElement('iframe');
+    iframe.id = 'printIframe';
+    iframe.style.display = 'none';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    iframe.style.position = 'absolute';
+    iframe.style.left = '-9999px';
+    
+    document.body.appendChild(iframe);
+    console.log('✅ iframe作成完了');
+    
+    // iframeのsrcにURL schemeを設定
+    try {
+        iframe.src = printUrl;
+        console.log('✅ iframe.src設定完了');
+        console.log('🚀 印刷アプリ起動中...');
+        
+        // 5秒後にiframeを削除
+        setTimeout(function() {
+            if (iframe && iframe.parentNode) {
+                iframe.remove();
+                console.log('🗑️ iframe自動削除完了');
+            }
+        }, 5000);
+        
+    } catch(e) {
+        console.error('❌ iframe実行エラー:', e);
+        alert('印刷の起動に失敗しました。\nSII URL Print Agentがインストールされているか確認してください。\n\nエラー: ' + e.message);
     }
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
