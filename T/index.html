@@ -3006,10 +3006,14 @@ async function executeReceiptPrint(withMemo) {
         // 「領収書」の行の場合は🅃、連番、領収書宛名を追加
         if (i === 0 && lines[i] === '領収書') {
             // 1行目: 🅃（左）と連番（右）
+            // 🅃のフォントを変更（絵文字用の高品質フォント）
+            ctx.font = `${textFontSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "MS Gothic", "Yu Gothic", sans-serif`;
             ctx.textAlign = 'left';
-            const tokiX = 37; // 🅃の位置（左端からの距離）
+            const tokiX = 40; // 🅃の位置（左端からの距離）
             ctx.fillText('🅃', tokiX, yPos);
             
+            // 連番用にフォントを戻す
+            ctx.font = `${textFontSize}px "MS Gothic", "Yu Gothic", sans-serif`;
             // 連番を右側に描画（全角数字）
             ctx.textAlign = 'right';
             const numberX = canvasWidth - 120; // 連番の位置（変更しない）
@@ -3019,7 +3023,7 @@ async function executeReceiptPrint(withMemo) {
             
             // 2行目: 「領収書宛名」を左寄せで描画
             ctx.textAlign = 'left';
-            const receiptTitleX = 37; // 領収書宛名の位置（左端からの距離、調整可能）
+            const receiptTitleX = 40; // 領収書宛名の位置（左端からの距離、調整可能）
             ctx.fillText('領収書宛名', receiptTitleX, yPos);
             
             yPos += lineHeight;
