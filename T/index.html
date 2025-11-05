@@ -3003,12 +3003,12 @@ async function executeReceiptPrint(withMemo) {
         if (i === 0 && lines[i] === '領収書') {
             // 「領収書」と連番を1行にバランスよく配置
             ctx.textAlign = 'left';
-            const titleX = 100; // 左側の位置を調整
+            const titleX = 40; // 左側の位置を調整
             ctx.fillText('領収書', titleX, yPos);
             
             // 連番を右側に描画（半角数字）
             ctx.textAlign = 'right';
-            const numberX = canvasWidth - 100; // 右側の位置を調整
+            const numberX = canvasWidth - 130; // 右側の位置を調整
             ctx.fillText(receiptNumber, numberX, yPos);
             
             yPos += lineHeight;
