@@ -3119,8 +3119,8 @@ async function executeReceiptPrint(withMemo) {
         type: 'receipt',
         mode: 'receipt',
         companyName: companyName,
-        memo: withMemo ? memo : '',
-        suffix: suffix, // 接尾辞を保存（代/類/なし）
+        memo: (withMemo && memo) ? memo : '', // memoが空なら空文字
+        suffix: (withMemo && memo) ? suffix : '', // memoが空なら接尾辞も空
         receiptNumber: receiptNumber, // 連番を保存
         smallTextEnabled: receiptSmallTextEnabled, // 小文字オプションの状態を保存
         data: '', // 後で設定
