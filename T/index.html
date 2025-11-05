@@ -2881,10 +2881,11 @@ function executeReceiptPrint(withMemo) {
     receiptLines.push('宛名が合っておりましたら');
     receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
-    receiptLines.push('┌───────┐');
-    receiptLines.push('│　　　　　│');
-    receiptLines.push('│　　　 　│');
-    receiptLines.push('└───────┘');
+    // 枠はCanvas APIで直接描画するため、ここでは空行のみ追加
+    receiptLines.push('');
+    receiptLines.push('');
+    receiptLines.push('');
+    receiptLines.push('');
     
     const printText = receiptLines.join('\n');
     
@@ -3016,6 +3017,24 @@ function executeReceiptPrint(withMemo) {
             memoInserted = true;
         }
     }
+    
+    // 枠をCanvas APIで直接描画（罫線文字の代わり）
+    const boxWidth = 280; // 枠の幅
+    const boxHeight = 80; // 枠の高さ
+    const boxX = exactCenterX - boxWidth / 2; // 中央揃え
+    const boxY = yPos; // 最後のテキストの下
+    
+    // 枠を描画（太い線）
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3; // 線の太さ
+    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+    
+    // 内側に薄い線を追加（二重枠効果）
+    ctx.lineWidth = 1;
+    ctx.strokeRect(boxX + 5, boxY + 5, boxWidth - 10, boxHeight - 10);
+    
+    // 枠の分の高さを追加
+    yPos += boxHeight + 20;
     
     // QRコードを生成して左側に配置（テキスト印刷と同じ方式）
     let qrCodeCanvas = null;
