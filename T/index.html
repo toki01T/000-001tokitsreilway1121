@@ -2932,9 +2932,9 @@ function executeReceiptPrint(withMemo) {
     textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
     
     // QRコード用スペースを調整
-    const qrSpaceMargin = 150; // QRコード + 枠のスペースを確保
+    const qrSpaceMargin = 90;
     
-    const canvasHeight = Math.round(textHeight + 30 + qrSpaceMargin); // 上部余白削減 + QRコード余白
+    const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
     
@@ -2950,8 +2950,8 @@ function executeReceiptPrint(withMemo) {
     // 真ん中の位置を正確に計算（テキスト印刷と同じ）
     const exactCenterX = Math.round(canvasWidth / 2) - 50; // -50 テキストの左右調整
     
-    // テキストを描画（上部余白を削減）
-    let yPos = 15; // 上余白を15pxに削減
+    // テキストを描画（上部余白を小さく）
+    let yPos = 30; // 上余白を30pxに調整
     let memoInserted = false;
     
     for (let i = 0; i < lines.length; i++) {
@@ -3019,10 +3019,11 @@ function executeReceiptPrint(withMemo) {
     }
     
     // 枠をCanvas APIで直接描画（罫線文字の代わり）
-    const boxWidth = 280; // 枠の幅
-    const boxHeight = 120; // 枠の高さ（拡大）
+    // 上部の余白を利用して枠を大きくする
+    const boxWidth = 300; // 枠の幅を拡大
+    const boxHeight = 140; // 枠の高さを拡大
     const boxX = exactCenterX - boxWidth / 2; // 中央揃え
-    const boxY = yPos + 5; // 最後のテキストの少し下
+    const boxY = 50; // 上部余白を活用して枠を上に配置
     
     // 枠を描画（太い線）
     ctx.strokeStyle = '#000000';
@@ -3033,8 +3034,8 @@ function executeReceiptPrint(withMemo) {
     ctx.lineWidth = 1;
     ctx.strokeRect(boxX + 5, boxY + 5, boxWidth - 10, boxHeight - 10);
     
-    // 枠の分の高さを追加
-    yPos += boxHeight + 15;
+    // 枠の分の高さを追加（yPosを枠の下に移動）
+    yPos = boxY + boxHeight + 20;
     
     // QRコードを生成して左側に配置（テキスト印刷と同じ方式）
     let qrCodeCanvas = null;
@@ -3089,10 +3090,6 @@ function executeReceiptPrint(withMemo) {
     // 時刻行
     const timeText = `${hour}時${minute}分${second}秒`;
     ctx.fillText(timeText, dateTimeX, yPos);
-    yPos += dateLineHeight;
-    
-    // QRコード描画後の空白を追加（印刷時の余白確保）
-    yPos += 30;
     
     // キャンバスをPNGに変換（領収書は罫線文字があるため高品質PNG使用）
     const pngDataUrl = canvas.toDataURL('image/png');
