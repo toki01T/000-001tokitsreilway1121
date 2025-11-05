@@ -3018,9 +3018,12 @@ function executeReceiptPrint(withMemo) {
         }
     }
     
+    // 上部の空白を減らす
+    yPos += 10;
+    
     // 枠をCanvas APIで直接描画（罫線文字の代わり）
     const boxWidth = 280; // 枠の幅
-    const boxHeight = 80; // 枠の高さ
+    const boxHeight = 150; // 枠の高さ（大きく）
     const boxX = exactCenterX - boxWidth / 2; // 中央揃え
     const boxY = yPos; // 最後のテキストの下
     
@@ -3034,7 +3037,7 @@ function executeReceiptPrint(withMemo) {
     ctx.strokeRect(boxX + 5, boxY + 5, boxWidth - 10, boxHeight - 10);
     
     // 枠の分の高さを追加
-    yPos += boxHeight + 20;
+    yPos += boxHeight + 10;
     
     // QRコードを生成して左側に配置（テキスト印刷と同じ方式）
     let qrCodeCanvas = null;
