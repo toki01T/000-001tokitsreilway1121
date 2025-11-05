@@ -2908,7 +2908,7 @@ async function executeReceiptPrint(withMemo) {
     
     // 領収書のテキスト内容を構築
     let receiptLines = [];
-    receiptLines.push('領収書');
+    receiptLines.push('領収書宛名');
     receiptLines.push('');
     // 宛名は別途描画するため、ここではスペースを確保（"こちらでお願い致します。"の前）
     receiptLines.push('こちらでお願い致します。');
@@ -3008,12 +3008,12 @@ async function executeReceiptPrint(withMemo) {
         if (i === 0 && lines[i] === '領収書') {
             // 「領収書」を左寄せ、連番を右寄せで描画
             ctx.textAlign = 'left';
-            const titleX = 40; // 左端から40px
+            const titleX = 37; // 左端から40px
             ctx.fillText('領収書', titleX, yPos);
             
             // 連番を右側に描画（全角数字）
             ctx.textAlign = 'right';
-            const numberX = canvasWidth - 40; // 右端から40px
+            const numberX = canvasWidth - 120; // 右端から40px
             ctx.fillText(receiptNumber, numberX, yPos);
             
             yPos += lineHeight;
