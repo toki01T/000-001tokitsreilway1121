@@ -1599,12 +1599,82 @@ function executePrint(printUrl) {
         // ポップアップ
         const popup = document.createElement('div');
         popup.id = 'androidPrintPopup';
-        popup.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:30px 20px;border-radius:15px;box-shadow:0 8px 30px rgba(0,0,0,0.3);z-index:10000;max-width:85%;text-align:center;';
-        popup.innerHTML = '<div style="color:#333;font-size:20px;font-weight:bold;margin-bottom:15px;">印刷準備完了</div><div style="color:#666;font-size:14px;margin-bottom:25px;line-height:1.6;">下のボタンをタップして<br>SII URL Print Agentを起動</div><a href="' + printUrl + '" style="display:inline-block;background:#00A3ED;color:#fff;padding:16px 45px;border-radius:10px;text-decoration:none;font-size:17px;font-weight:bold;margin-bottom:15px;">印刷を開始</a><div><button onclick="document.getElementById(\'androidPrintPopup\').remove();document.getElementById(\'androidPrintOverlay\').remove();" style="background:#e0e0e0;color:#666;border:none;padding:12px 35px;border-radius:8px;font-size:14px;">キャンセル</button></div>';
+        popup.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:30px 20px;border-radius:15px;box-shadow:0 8px 30px rgba(0,0,0,0.3);z-index:10000;max-width:85%;text-align:center;max-height:90vh;overflow-y:auto;';
+        
+        // URLの先頭部分を取得（デバッグ用）
+        const urlPreview = printUrl.substring(0, 100);
+        const urlLength = printUrl.length;
+        
+        // タイトル
+        const title = document.createElement('div');
+        title.style.cssText = 'color:#333;font-size:20px;font-weight:bold;margin-bottom:15px;';
+        title.textContent = '📱 印刷準備完了';
+        
+        // 説明文
+        const desc = document.createElement('div');
+        desc.style.cssText = 'color:#666;font-size:14px;margin-bottom:20px;line-height:1.6;';
+        desc.innerHTML = '下のボタンをタップして<br>SII URL Print Agentを起動';
+        
+        // 印刷リンク（重要: setAttributeでhrefを設定）
+        const printLink = document.createElement('a');
+        printLink.id = 'androidPrintLink';
+        printLink.setAttribute('href', printUrl);  // ← ここが重要!
+        printLink.style.cssText = 'display:inline-block;background:#00A3ED;color:#fff;padding:16px 45px;border-radius:10px;text-decoration:none;font-size:17px;font-weight:bold;margin-bottom:15px;box-shadow:0 3px 8px rgba(0,163,237,0.4);';
+        printLink.textContent = '🖨️ 印刷を開始';
+        
+        // キャンセルボタン
+        const cancelDiv = document.createElement('div');
+        cancelDiv.style.cssText = 'margin-bottom:15px;';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.style.cssText = 'background:#e0e0e0;color:#666;border:none;padding:12px 35px;border-radius:8px;font-size:14px;cursor:pointer;';
+        cancelBtn.textContent = 'キャンセル';
+        cancelBtn.onclick = function() {
+            document.getElementById('androidPrintPopup').remove();
+            document.getElementById('androidPrintOverlay').remove();
+        };
+        cancelDiv.appendChild(cancelBtn);
+        
+        // デバッグ情報
+        const details = document.createElement('details');
+        details.style.cssText = 'margin-top:20px;text-align:left;background:#f5f5f5;padding:10px;border-radius:8px;';
+        const summary = document.createElement('summary');
+        summary.style.cssText = 'cursor:pointer;color:#666;font-size:12px;font-weight:bold;';
+        summary.textContent = '🔍 デバッグ情報';
+        const debugInfo = document.createElement('div');
+        debugInfo.style.cssText = 'margin-top:10px;font-size:11px;color:#333;word-break:break-all;line-height:1.4;';
+        debugInfo.innerHTML = '<strong>URL長:</strong> ' + urlLength + ' 文字<br><strong>URL先頭:</strong><br>' + urlPreview + '...';
+        details.appendChild(summary);
+        details.appendChild(debugInfo);
+        
+        // ポップアップに要素を追加
+        popup.appendChild(title);
+        popup.appendChild(desc);
+        popup.appendChild(printLink);
+        popup.appendChild(cancelDiv);
+        popup.appendChild(details);
         
         document.body.appendChild(overlay);
         document.body.appendChild(popup);
+        
+        // 印刷リンクにクリックイベントを追加（デバッグ用）
+        printLink.addEventListener('click', function(e) {
+            console.log('🔵 印刷リンクがクリックされました');
+            console.log('🔗 遷移先URL:', printUrl.substring(0, 100) + '...');
+            console.log('📊 URL全長:', printUrl.length);
+            console.log('🔗 完全なURL:', printUrl);
+            
+            // 3秒後にポップアップを自動的に閉じる
+            setTimeout(() => {
+                const p = document.getElementById('androidPrintPopup');
+                const o = document.getElementById('androidPrintOverlay');
+                if(p) p.remove();
+                if(o) o.remove();
+                console.log('✅ ポップアップを自動クローズ');
+            }, 3000);
+        });
+        
         console.log('Android印刷ボタン表示完了');
+        console.log('URL先頭100文字:', urlPreview);
         
     } else {
         // iOS: 直接実行
