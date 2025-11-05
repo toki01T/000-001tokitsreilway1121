@@ -1569,50 +1569,44 @@ function generatePrintUrl(pdfBase64, thisPage) {
     return printUrl;
 }
 
-// 印刷実行関数（Android/iOS統一版 - iframe方式 v2024.11.05）
+// グローバル変数: 印刷用ウィンドウ
+let printWindow = null;
+
+// 印刷実行関数（Android/iOS統一版 - ウィンドウ事前オープン方式 v2024.11.05-2）
 function executePrint(printUrl) {
-    console.log('🖨️ 印刷実行開始 v2024.11.05');
+    console.log('🖨️ 印刷実行開始 v2024.11.05-2');
     console.log('📱 デバイス:', isAndroid() ? 'Android' : 'iOS');
     console.log('📏 URL長:', printUrl.length, '文字');
     console.log('🔗 URL先頭:', printUrl.substring(0, 150));
     
-    // 既存のiframeを削除
-    const oldIframe = document.getElementById('printIframe');
-    if (oldIframe) {
-        oldIframe.remove();
-        console.log('🗑️ 既存iframe削除');
+    if (!printWindow || printWindow.closed) {
+        console.error('❌ 印刷ウィンドウが開かれていません');
+        alert('印刷の起動に失敗しました。\nもう一度お試しください。');
+        return;
     }
     
-    // iframeを使ってURL schemeを実行（最も確実な方法）
-    const iframe = document.createElement('iframe');
-    iframe.id = 'printIframe';
-    iframe.style.display = 'none';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = 'none';
-    iframe.style.position = 'absolute';
-    iframe.style.left = '-9999px';
-    
-    document.body.appendChild(iframe);
-    console.log('✅ iframe作成完了');
-    
-    // iframeのsrcにURL schemeを設定
     try {
-        iframe.src = printUrl;
-        console.log('✅ iframe.src設定完了');
+        // 事前に開いたウィンドウのlocationを変更
+        printWindow.location.href = printUrl;
+        console.log('✅ 印刷ウィンドウにURL設定完了');
         console.log('🚀 印刷アプリ起動中...');
         
-        // 5秒後にiframeを削除
+        // ウィンドウをクローズ（URL schemeが実行されるので不要）
         setTimeout(function() {
-            if (iframe && iframe.parentNode) {
-                iframe.remove();
-                console.log('🗑️ iframe自動削除完了');
+            if (printWindow && !printWindow.closed) {
+                printWindow.close();
+                console.log('🗑️ 印刷ウィンドウクローズ');
             }
-        }, 5000);
+            printWindow = null;
+        }, 1000);
         
     } catch(e) {
-        console.error('❌ iframe実行エラー:', e);
+        console.error('❌ 印刷実行エラー:', e);
         alert('印刷の起動に失敗しました。\nSII URL Print Agentがインストールされているか確認してください。\n\nエラー: ' + e.message);
+        if (printWindow && !printWindow.closed) {
+            printWindow.close();
+        }
+        printWindow = null;
     }
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
@@ -2592,6 +2586,10 @@ function executeSignaturePrint() {
     
     console.log('🖋️ 手書き印刷を開始します');
     
+    // 【重要】ブロック回避: ボタンクリック時に即座にウィンドウを開く（Android/iOS共通）
+    printWindow = window.open('about:blank', '_blank');
+    console.log('🪟 印刷用ウィンドウを事前オープン(手書き)');
+    
     const qrPrintEnabled = document.getElementById('signatureQrPrintCheckbox').checked; // 最初に取得
     const canvas = document.getElementById('signaturePad');
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
@@ -2829,6 +2827,10 @@ function executeReceiptPrint(withMemo) {
     }
     
     console.log('🧾 領収書印刷を開始します', withMemo ? '(メモ付き)' : '(メモなし)');
+    
+    // 【重要】ブロック回避: ボタンクリック時に即座にウィンドウを開く（Android/iOS共通）
+    printWindow = window.open('about:blank', '_blank');
+    console.log('🪟 印刷用ウィンドウを事前オープン');
     
     // キャンバスでテキストを画像として生成（テキスト印刷と同じ方式）
     const canvas = document.createElement('canvas');
@@ -3087,6 +3089,10 @@ function sendToPrintAssist(event) {
         usePreview = true;
     }
     if ((!file && !usePreview) || selectedChip === '') return;
+    
+    // 【重要】ブロック回避: ボタンクリック時に即座にウィンドウを開く（Android/iOS共通）
+    printWindow = window.open('about:blank', '_blank');
+    console.log('🪟 印刷用ウィンドウを事前オープン(画像)');
     
     function doPrint(base64Image) {
         const paperWidth = 58;
@@ -3589,6 +3595,11 @@ function printText() {
     const textInput = document.getElementById('textInput');
     let text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
+    
+    // 【重要】ブロック回避: ボタンクリック時に即座にウィンドウを開く（Android/iOS共通）
+    printWindow = window.open('about:blank', '_blank');
+    console.log('🪟 印刷用ウィンドウを事前オープン(テキスト)');
+    
     const qrPrintEnabled = document.getElementById('textQrPrintCheckbox').checked; // 最初に取得
     text = toZenkaku(text);
     const paperWidth = 58;
