@@ -1580,32 +1580,50 @@ function generatePrintUrl(pdfBase64, thisPage) {
     }
 }
 
-// 印刷実行関数（Android対応：Intent URI使用）
+// 印刷実行関数（Android対応：about:blank#blocked完全回避）
 function executePrint(printUrl) {
+    console.log('🖨️ 印刷実行開始 - デバイス:', isAndroid() ? 'Android' : 'iOS');
+    console.log('📱 URL (最初の200文字):', printUrl.substring(0, 200) + '...');
+    
     if (isAndroid()) {
-        // Android: Intent URIの場合はlocation.hrefが最適
-        console.log('🤖 Android印刷実行 (Intent URI)');
-        console.log('📱 URL (最初の200文字):', printUrl.substring(0, 200) + '...');
+        // Android: iframeを使用した確実な方法
+        console.log('🤖 Android - iframe方式を使用');
         
-        try {
-            // Intent URIはlocation.hrefで直接実行
-            window.location.href = printUrl;
-            console.log('✅ Intent URI実行完了');
-        } catch (e) {
-            console.error('❌ Intent URI実行失敗:', e);
-            
-            // フォールバック: window.open()を試行
-            try {
-                console.log('🔄 フォールバック: window.open()を試行');
-                window.open(printUrl, '_blank');
-            } catch (e2) {
-                console.error('❌ window.open()も失敗:', e2);
-            }
+        // 既存のiframeがあれば削除
+        const existingIframe = document.getElementById('printIframe');
+        if (existingIframe) {
+            existingIframe.parentNode.removeChild(existingIframe);
         }
+        
+        // 新しいiframeを作成
+        const iframe = document.createElement('iframe');
+        iframe.id = 'printIframe';
+        iframe.style.display = 'none';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        iframe.style.position = 'absolute';
+        
+        // iframeをbodyに追加してからsrcを設定
+        document.body.appendChild(iframe);
+        
+        // 少し遅延させてからURLを設定（確実に実行するため）
+        setTimeout(() => {
+            iframe.src = printUrl;
+            console.log('✅ iframe.src設定完了');
+            
+            // 3秒後にiframeを削除
+            setTimeout(() => {
+                if (iframe && iframe.parentNode) {
+                    iframe.parentNode.removeChild(iframe);
+                    console.log('🗑️ iframeを削除');
+                }
+            }, 3000);
+        }, 100);
+        
     } else {
         // iOS: 従来通りlocation.hrefを使用
-        console.log('🍎 iOS印刷実行');
-        console.log('📱 URL (最初の200文字):', printUrl.substring(0, 200) + '...');
+        console.log('🍎 iOS - location.href方式を使用');
         window.location.href = printUrl;
         console.log('✅ iOS URL scheme実行完了');
     }
