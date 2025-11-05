@@ -1380,7 +1380,14 @@ footer p {
                 </div>
                 <div class="receipt-input-group">
                     <label for="receiptMemo">但し書き</label>
-                    <input type="text" id="receiptMemo" placeholder="" />
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <input type="text" id="receiptMemo" placeholder="" style="flex: 1;" />
+                        <select id="receiptSuffix" style="padding: 10px; font-size: 14px; border: 1px solid #ddd; border-radius: 5px; background: white;">
+                            <option value="代として">代として</option>
+                            <option value="類として">類として</option>
+                            <option value="">なし</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="receipt-buttons-row">
                     <button id="receiptSmallTextBtn" class="receipt-option-btn" onclick="toggleSmallTextOption()">
@@ -1439,13 +1446,14 @@ function openDB() {
     });
 }
 function addHistory(item) {
-    // console.log('=== 履歴追加処理開始 ===');
-    // console.log('追加データ:', item);
+    console.log('=== 履歴追加処理開始 ===');
+    console.log('追加データtype:', item.type, 'mode:', item.mode);
+    console.log('呼び出し元:', new Error().stack.split('\n')[2]); // スタックトレース
     
     // 管理番号が未設定の場合は生成
     if (!item.managementId) {
         item.managementId = generateQRData(item);
-        // console.log('管理番号を生成:', item.managementId);
+        console.log('管理番号を生成:', item.managementId);
     }
     
     // 必須データの確認
@@ -1550,26 +1558,49 @@ function isIOS() {
 
 // 印刷URLスキーム生成関数（iOS・Android両対応）
 function generatePrintUrl(pdfBase64, thisPage) {
-    if (isAndroid()) {
-        // Android用URLスキーム（SII URL Print Agent for Android）
-        return 'printassist://v1/print?' +
-               'back=' + encodeURIComponent(thisPage) + '&' +
-               'pdf=' + encodeURIComponent(pdfBase64) + '&' +
-               'type=pdf' + '&' +
-               'cut=full' + '&' +
-               'feed=enable';
-    } else {
-        // iOS用URLスキーム（従来のsiiprintagent）
-        return 'siiprintagent://1.0/print?' +
-               'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
-               'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
-               'Format=pdf' + '&' +
-               'Data=' + encodeURIComponent(pdfBase64) + '&' +
-               'SelectOnError=yes' + '&' +
-               'CutType=full' + '&' +
-               'CutFeed=yes' + '&' +
-               'FitToWidth=no' + '&' +
-               'PaperWidth=58';
+    console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
+    
+    // コールバックURLには現在のページ + クエリパラメータを設定
+    const baseUrl = thisPage.split('?')[0]; // クエリパラメータを除去
+    const callbackUrl = baseUrl + '?printCallback=true';
+    
+    const url = 'siiprintagent://1.0/print?' +
+                'CallbackSuccess=' + encodeURIComponent(callbackUrl) + '&' +
+                'CallbackFail=' + encodeURIComponent(callbackUrl) + '&' +
+                'Format=' + 'pdf' + '&' +
+                'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                'SelectOnError=' + 'yes' + '&' +
+                'CutType=' + 'full' + '&' +
+                'CutFeed=' + 'yes' + '&' +
+                'FitToWidth=' + 'no' + '&' +
+                'PaperWidth=' + '58';
+    
+    console.log('📊 最終URL長:', url.length, '文字');
+    console.log('🔗 URL先頭150文字:', url.substring(0, 150) + '...');
+    
+    // URLサイズ警告（2MB以上の場合）
+    if (url.length > 2000000) {
+        console.warn('⚠️ 警告: URL長が2MB以上です。印刷に失敗する可能性があります。');
+        console.warn('� データサイズ:', Math.round(url.length / 1024 / 1024 * 100) / 100, 'MB');
+    }
+    
+    return url;
+}
+
+// 印刷実行関数（Android/iOS統一版）
+function executePrint(printUrl) {
+    try {
+        // test.htmlと同じ方式で直接実行
+        location.href = printUrl;
+        
+    } catch(e) {
+        console.error('❌ 印刷実行エラー:', e);
+        console.error('❌ エラー詳細:', {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        });
+        alert('印刷の起動に失敗しました。\nSII URL Print Agentがインストールされているか確認してください。\n\nエラー: ' + e.message);
     }
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
@@ -2182,6 +2213,15 @@ function updateTime() {
     setTimeout(updateTime, 1000);
 }
 window.onload = function() {
+    // 印刷コールバックのクエリパラメータをチェック
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('printCallback')) {
+        // コールバックパラメータがある場合、URLから削除して履歴を置き換える
+        console.log('🔄 印刷コールバック検出: パラメータをクリーンアップします');
+        const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+    }
+    
     displayDate();
     updateTime();
     setModeToggle(currentHistoryType);
@@ -2242,7 +2282,7 @@ function checkAndContinuePrinting() {
                 console.log(`${job.type}印刷完了: 全${job.totalCopies}枚`);
             }
             
-            window.location.href = nextPrintUrl;
+            executePrint(nextPrintUrl);
         } else {
             // 全印刷完了
             sessionStorage.removeItem('printJob');
@@ -2705,8 +2745,8 @@ function executeSignaturePrint() {
                 compositeCtx.fillText(timeText, dateTimeX, yPos);
             }
             
-            // 合成キャンバスをPNGデータURLに変換
-            const compositeDataUrl = compositeCanvas.toDataURL('image/png');
+            // 合成キャンバスをJPEGに変換（サイズ削減のため品質70%）
+            const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.70);
             
             // jsPDFを使用してPDFを生成
             const { jsPDF } = window.jspdf;
@@ -2715,15 +2755,16 @@ function executeSignaturePrint() {
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
-                format: [58, pdfHeight]
+                format: [58, pdfHeight],
+                compress: true  // PDF圧縮を有効化
             });
             
             // PDFの設定を直接操作
             pdf.internal.pageSize.width = 58;
             pdf.internal.pageSize.height = pdfHeight;
             
-            // 合成画像をPDFに追加
-            pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+            // 合成画像をJPEGとしてPDFに追加（PNGより軽量）
+            pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, 58, pdfHeight);
             
             // PDFをBase64形式で取得
             const pdfBase64 = pdf.output('datauristring').split(',')[1];
@@ -2752,7 +2793,7 @@ function executeSignaturePrint() {
             }
             
             // 1枚目を印刷
-            window.location.href = printUrl;
+            executePrint(printUrl);
         };
         
         signatureImg.src = tmpCanvas.toDataURL("image/png");
@@ -2779,6 +2820,7 @@ function executeSignaturePrint() {
 function executeReceiptPrint(withMemo) {
     const companyName = document.getElementById('receiptCompanyName').value.trim();
     const memo = document.getElementById('receiptMemo').value.trim();
+    const suffix = document.getElementById('receiptSuffix').value; // ドロップダウンの値
     
     if (!companyName) {
         console.log('❌ 宛名が入力されていません');
@@ -2787,7 +2829,7 @@ function executeReceiptPrint(withMemo) {
     
     console.log('🧾 領収書印刷を開始します', withMemo ? '(メモ付き)' : '(メモなし)');
     
-    // キャンバスでテキストを画像として生成（テキスト印刷と同じ方式）
+    // キャンバスでテキストを画像として生成
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
@@ -2795,27 +2837,71 @@ function executeReceiptPrint(withMemo) {
     const mmToPx = 11.8; // 1mm = 11.8px（300DPI換算）
     const canvasWidth = Math.round(58 * mmToPx); // 58mm
     
-    // フォントサイズ設定（テキスト印刷と同じ）
-    const textFontSize = 37;  // テキスト用のフォントサイズ
-    const companyNameFontSize = 42; // 宛名専用のフォントサイズ
-    const labelFontSize = 37;  // "宛名は"のフォントサイズ（通常サイズ）
-    const dateFontSize = 50;  // 日付・時刻用のフォントサイズ
+    // フォントサイズ設定
+    const textFontSize = 37;
+    const companyNameFontSize = 42;
+    const labelFontSize = 37;
+    const dateFontSize = 50;
+    
+    // 宛名の文字数チェック（全角1文字=1、半角1文字=0.5でカウント）
+    const companyNameLength = Array.from(companyName).reduce((sum, char) => {
+        return sum + (char.match(/[^\x01-\x7E\xA1-\xDF]/) ? 1 : 0.5);
+    }, 0);
+    
+    // 4文字以上は左寄せ、6文字以上は自動改行（最大11行）
+    const isLongName = companyNameLength >= 4;
+    const needsWrap = companyNameLength >= 6;
+    
+    // 宛名を6文字ごとに改行（最大11行まで）
+    let companyNameLines = [];
+    if (needsWrap) {
+        let currentLine = '';
+        let currentLength = 0;
+        for (let char of companyName) {
+            const charLength = char.match(/[^\x01-\x7E\xA1-\xDF]/) ? 1 : 0.5;
+            if (currentLength + charLength > 6 && currentLine) {
+                companyNameLines.push(currentLine);
+                currentLine = char;
+                currentLength = charLength;
+                if (companyNameLines.length >= 11) break; // 最大11行
+            } else {
+                currentLine += char;
+                currentLength += charLength;
+            }
+        }
+        if (currentLine && companyNameLines.length < 11) {
+            companyNameLines.push(currentLine);
+        }
+    } else {
+        companyNameLines = [companyName];
+    }
     
     // 領収書のテキスト内容を構築
     let receiptLines = [];
     receiptLines.push('領収書');
     receiptLines.push('');
-    // 宛名は特別扱いで別に描画するため、ここには含めない
     receiptLines.push('こちらでお願い致します。');
     
-    // 小文字オプションが選択されている場合のみ追加
     if (receiptSmallTextEnabled) {
         receiptLines.push('(小文字でお願い致します。)');
     }
     receiptLines.push('');
     
+    // 但し書き処理（6文字以上で改行）
     if (withMemo && memo) {
-        receiptLines.push(`但し ${memo} 代として`);
+        const memoLength = Array.from(memo).reduce((sum, char) => {
+            return sum + (char.match(/[^\x01-\x7E\xA1-\xDF]/) ? 1 : 0.5);
+        }, 0);
+        
+        if (memoLength >= 6) {
+            // 6文字以上：改行
+            receiptLines.push('但し');
+            receiptLines.push(memo);
+            if (suffix) receiptLines.push(suffix);
+        } else {
+            // 6文字未満：1行
+            receiptLines.push(`但し ${memo} ${suffix}`);
+        }
         receiptLines.push('');
     }
 
@@ -2823,10 +2909,12 @@ function executeReceiptPrint(withMemo) {
     receiptLines.push('宛名が合っておりましたら');
     receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
-    receiptLines.push('┌───────┐');
-    receiptLines.push('│　　　　　│');
-    receiptLines.push('│　　　 　│');
-    receiptLines.push('└───────┘');
+    
+    // 罫線は等幅フォント(Courier)で描画
+    receiptLines.push('+----------+');
+    receiptLines.push('|          |');
+    receiptLines.push('|          |');
+    receiptLines.push('+----------+');
     
     const printText = receiptLines.join('\n');
     
@@ -2836,16 +2924,22 @@ function executeReceiptPrint(withMemo) {
     // テキストの行数から高さを計算
     const lines = printText.split('\n');
     const lineHeight = textFontSize * 1.2;
-    const companyLineHeight = companyNameFontSize * 1.2; // 宛名行の高さ
+    const companyLineHeight = companyNameFontSize * 1.2;
     let textHeight = 0;
     
-    // 各行の高さを個別に計算（宛名行は通常のlinesには含まれていないため、別途追加）
+    // 各行の高さを個別に計算
     for (let i = 0; i < lines.length; i++) {
         textHeight += lineHeight;
     }
     
-    // 宛名行の高さを追加（"宛名は" + 宛名の2行分）
-    textHeight += companyLineHeight; // 宛名行
+    // 宛名行の高さを追加
+    if (isLongName) {
+        // 4文字以上：「宛名は」+ 宛名の行数
+        textHeight += companyLineHeight * (1 + companyNameLines.length);
+    } else {
+        // 4文字未満：1行のみ
+        textHeight += companyLineHeight;
+    }
     
     // 日付・時刻のスペースを追加（常に有効）
     const dateLineHeight = dateFontSize * 1.2;
@@ -2864,44 +2958,76 @@ function executeReceiptPrint(withMemo) {
     
     // テキスト描画設定
     ctx.fillStyle = '#000000';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    
-    // 真ん中の位置を正確に計算（テキスト印刷と同じ）
-    const exactCenterX = Math.round(canvasWidth / 2) - 50; // -50 テキストの左右調整
-    
-    // テキストを描画（上部余白を小さく）
-    let yPos = 30; // 上余白を30pxに調整
+    // テキストを描画
+    let yPos = 30;
     for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
         ctx.font = `${textFontSize}px Arial, sans-serif`;
-        ctx.fillText(lines[i], exactCenterX, yPos);
+        ctx.textAlign = 'center';
+        ctx.fillText(line, exactCenterX, yPos);
+        
+        yPos += lineHeight;
+            ctx.font = `${textFontSize}px Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText(line, exactCenterX, yPos);
+        }
+        
         yPos += lineHeight;
         
         // 「領収書」の次の空行の後に宛名を挿入
-        if (i === 1) { // 2行目（空行）の後
-            // "宛名は" を左寄せで描画
-            ctx.font = `${labelFontSize}px Arial, sans-serif`;
-            ctx.textAlign = 'left';
-            const labelX = exactCenterX - 100; // 左寄せ位置
-            ctx.fillText('宛名は', labelX, yPos);
-            
-            // 宛名を中央揃えで "宛名は" の右隣に配置
-            ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
-            ctx.textAlign = 'left';
-            
-            // "宛名は"の幅を測定
-            ctx.font = `${labelFontSize}px Arial, sans-serif`;
-            const labelWidth = ctx.measureText('宛名は').width;
-            
-            // 宛名を "宛名は" の右隣に配置
-            const companyX = labelX + labelWidth + 10; // 10pxの間隔
-            ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
-            ctx.fillText(`「${companyName}」`, companyX, yPos - 3); // -3で上下位置を微調整
-            
-            yPos += companyLineHeight;
-            
-            // 次の行のために中央揃えに戻す
-            ctx.textAlign = 'center';
+        if (i === 1) {
+            if (isLongName) {
+                // 4文字以上：左寄せまたは中央揃え
+                if (needsWrap) {
+                    // 6文字以上（改行あり）：中央揃え
+                    ctx.textAlign = 'center';
+                    
+                    // "宛名は" を描画
+                    ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                    ctx.fillText('宛名は', exactCenterX, yPos);
+                    yPos += companyLineHeight;
+                    
+                    // 宛名を複数行で中央揃え
+                    ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
+                    for (let line of companyNameLines) {
+                        ctx.fillText(`「${line}」`, exactCenterX, yPos);
+                        yPos += companyLineHeight;
+                    }
+                } else {
+                    // 4-5文字（改行なし）：左寄せ
+                    ctx.textAlign = 'left';
+                    const leftX = 50;
+                    
+                    // "宛名は" を描画
+                    ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                    ctx.fillText('宛名は', leftX, yPos);
+                    yPos += companyLineHeight;
+                    
+                    // 宛名を描画
+                    ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
+                    ctx.fillText(`「${companyName}」`, leftX, yPos);
+                    yPos += companyLineHeight;
+                }
+                
+                // 中央揃えに戻す
+                ctx.textAlign = 'center';
+            } else {
+                // 4文字未満：中央揃え
+                ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                ctx.textAlign = 'left';
+                const labelX = exactCenterX - 100;
+                ctx.fillText('宛名は', labelX, yPos);
+                
+                ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                const labelWidth = ctx.measureText('宛名は').width;
+                
+                ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
+                ctx.fillText(`「${companyName}」`, labelX + labelWidth + 10, yPos - 3);
+                
+                yPos += companyLineHeight;
+                ctx.textAlign = 'center';
+            }
         }
     }
     
@@ -2959,7 +3085,7 @@ function executeReceiptPrint(withMemo) {
     const timeText = `${hour}時${minute}分${second}秒`;
     ctx.fillText(timeText, dateTimeX, yPos);
     
-    // キャンバスをPNGデータURLに変換
+    // キャンバスをPNGに変換（領収書は罫線文字があるため高品質PNG使用）
     const pngDataUrl = canvas.toDataURL('image/png');
     
     // 履歴アイテムにデータを設定
@@ -2977,14 +3103,15 @@ function executeReceiptPrint(withMemo) {
     const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: [58, pdfHeight]
+        format: [58, pdfHeight],
+        compress: true  // PDF圧縮を有効化
     });
     
     // PDFの設定を直接操作
     pdf.internal.pageSize.width = 58;
     pdf.internal.pageSize.height = pdfHeight;
     
-    // PNG画像をPDFに追加（位置調整なし、フルサイズ）
+    // PNG画像をPDFに追加（領収書は罫線文字保持のためPNG使用）
     pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
     
     // PDFをBase64形式で取得
@@ -2996,7 +3123,7 @@ function executeReceiptPrint(withMemo) {
     let printUrl = generatePrintUrl(pdfBase64, thisPage);
     
     // 印刷実行
-    window.location.href = printUrl;
+    executePrint(printUrl);
     
     console.log('🧾 領収書印刷が完了しました, デバイス=' + (isAndroid() ? 'Android' : 'iOS'));
 }
@@ -3395,11 +3522,8 @@ function sendToPrintAssist(event) {
                         yPos += 50; // 日付有り印刷の下部余白を50px追加
                     }
                     
-                    // 合成キャンバスを高品質PNGデータURLに変換
-                    const compositeDataUrl = compositeCanvas.toDataURL('image/png', 1.0);
-                    
-                    // さらに画質を向上させるため、中間的にJPEGでも作成
-                    const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.95);
+                    // 合成キャンバスをJPEGに変換（サイズ削減のため品質70%）
+                    const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.70);
                     
                     // jsPDFを使用してPDFを生成
                     const { jsPDF } = window.jspdf;
@@ -3408,15 +3532,16 @@ function sendToPrintAssist(event) {
                     const pdf = new jsPDF({
                         orientation: 'portrait',
                         unit: 'mm',
-                        format: [58, pdfHeight]
+                        format: [58, pdfHeight],
+                        compress: true  // PDF圧縮を有効化
                     });
                     
                     // PDFの設定を直接操作
                     pdf.internal.pageSize.width = 58;
                     pdf.internal.pageSize.height = pdfHeight;
                     
-                    // 合成画像をPDFに追加
-                    pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+                    // 合成画像をJPEGとしてPDFに追加（PNGより軽量）
+                    pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, 58, pdfHeight);
                     
                     // PDFをBase64形式で取得
                     const pdfBase64 = pdf.output('datauristring').split(',')[1];
@@ -3445,7 +3570,7 @@ function sendToPrintAssist(event) {
                     }
                     
                     // 1枚目を印刷
-                    window.location.href = printUrlImage;
+                    executePrint(printUrlImage);
                 };
                 
                 uploadedImg.src = 'data:image/png;base64,' + base64Image;
@@ -3546,6 +3671,7 @@ function printText() {
     const textInput = document.getElementById('textInput');
     let text = textInput.value;
     if (text.trim() === '' || selectedTextChip === '') return;
+    
     const qrPrintEnabled = document.getElementById('textQrPrintCheckbox').checked; // 最初に取得
     text = toZenkaku(text);
     const paperWidth = 58;
@@ -3704,8 +3830,8 @@ function printText() {
             ctx.fillText(timeText, dateTimeX, yPos);
         }
         
-        // キャンバスをPNGデータURLに変換
-        const pngDataUrl = canvas.toDataURL('image/png');
+        // キャンバスをJPEGに変換（サイズ削減のため品質70%）
+        const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.70);
         
         // jsPDFを使用してPDFを生成
         const { jsPDF } = window.jspdf;
@@ -3714,15 +3840,16 @@ function printText() {
         const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
-            format: [58, pdfHeight]
+            format: [58, pdfHeight],
+            compress: true  // PDF圧縮を有効化
         });
         
         // PDFの設定を直接操作
         pdf.internal.pageSize.width = 58;
         pdf.internal.pageSize.height = pdfHeight;
         
-        // PNG画像をPDFに追加（位置調整なし、フルサイズ）
-        pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+        // JPEG画像をPDFに追加（PNGより軽量）
+        pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, 58, pdfHeight);
         
         // PDFをBase64形式で取得
         const pdfBase64 = pdf.output('datauristring').split(',')[1];
@@ -3751,7 +3878,7 @@ function printText() {
         }
         
         // 1枚目を印刷
-        window.location.href = printUrl;
+        executePrint(printUrl);
     }
     
     // 現在の1枚を印刷（シンプル実行）
