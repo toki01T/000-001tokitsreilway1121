@@ -2879,12 +2879,9 @@ function executeReceiptPrint(withMemo) {
 
     receiptLines.push('領収書に｢toki｣を記入して頂き');
     receiptLines.push('宛名が合っておりましたら');
-    receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
-    // 枠はCanvas APIで描画するため、ここでは空行のみ追加
-    receiptLines.push(''); // 枠用のスペース1行目
-    receiptLines.push(''); // 枠用のスペース2行目
-    receiptLines.push(''); // 枠用のスペース3行目
+    receiptLines.push(''); // 枠の前に空行
+    // 枠はCanvas APIで直接描画するため、ここには含めない
     
     const printText = receiptLines.join('\n');
     
@@ -2925,6 +2922,10 @@ function executeReceiptPrint(withMemo) {
             textHeight += labelFontSize * 1.2; // "代として"
         }
     }
+    
+    // 枠の高さを追加（Canvas APIで描画）
+    const stampBoxHeight = 80;
+    textHeight += stampBoxHeight + 30; // 枠の高さ + 上下の余白
     
     // 日付・時刻のスペースを追加（常に有効）
     const dateLineHeight = dateFontSize * 1.2;
@@ -3017,18 +3018,18 @@ function executeReceiptPrint(withMemo) {
         }
     }
     
-    // Canvas APIで枠を描画（Unicode文字の代わりに矩形を描画）
-    const boxWidth = 250; // 枠の幅
+    // 枠をCanvas APIで直接描画（罫線文字の代わり）
+    const boxWidth = 200; // 枠の幅
     const boxHeight = 80; // 枠の高さ
-    const boxX = exactCenterX - boxWidth / 2; // 中央に配置
-    const boxY = yPos + 10; // 現在のY位置から少し下
+    const boxX = exactCenterX - boxWidth / 2; // 中央揃え
+    const boxY = yPos + 10; // 現在位置から少し下
     
-    // 枠の外側の線を描画
+    // 枠を描画
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3; // 線の太さ
+    ctx.lineWidth = 2; // 線の太さ
     ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
     
-    // yPosを枠の下に移動
+    // 枠の高さ分yPosを進める
     yPos = boxY + boxHeight + 20;
     
     // QRコードを生成して左側に配置（テキスト印刷と同じ方式）
