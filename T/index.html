@@ -1569,21 +1569,56 @@ function generatePrintUrl(pdfBase64, thisPage) {
     return printUrl;
 }
 
-// 印刷実行関数（Android/iOS統一版 - test.html方式 v2024.11.05-3）
+// 印刷実行関数（Android/iOS統一版 - test.html方式 + デバッグ強化版）
 function executePrint(printUrl) {
-    console.log('🖨️ 印刷実行開始 v2024.11.05-3 (test.html方式)');
+    console.log('🖨️ 印刷実行開始 (test.html方式 + デバッグ強化)');
     console.log('📱 デバイス:', isAndroid() ? 'Android' : 'iOS');
-    console.log('📏 URL長:', printUrl.length, '文字');
-    console.log('🔗 URL先頭:', printUrl.substring(0, 150));
+    console.log('� UserAgent:', navigator.userAgent);
+    console.log('�📏 URL長:', printUrl.length, '文字');
+    console.log('🔗 URL先頭100文字:', printUrl.substring(0, 100));
+    console.log('🔗 URL scheme部分:', printUrl.substring(0, 30));
+    
+    // URLの構造を確認
+    const urlParts = printUrl.split('?');
+    console.log('📍 Base URL:', urlParts[0]);
+    if (urlParts[1]) {
+        const params = urlParts[1].split('&');
+        console.log('📍 パラメータ数:', params.length);
+        params.forEach((param, idx) => {
+            const [key, value] = param.split('=');
+            if (key === 'Data') {
+                console.log(`  ${idx + 1}. ${key}=${value ? value.substring(0, 50) + '...' : '(空)'}`);
+            } else {
+                console.log(`  ${idx + 1}. ${key}=${value}`);
+            }
+        });
+    }
+    
+    // 実行前の確認アラート（デバッグ用 - 後で削除可能）
+    const confirmMsg = 
+        'デバイス: ' + (isAndroid() ? 'Android' : 'iOS') + '\n' +
+        'URL長: ' + printUrl.length + '文字\n' +
+        'URL scheme: ' + printUrl.substring(0, 30) + '\n\n' +
+        '印刷を開始しますか？';
+    
+    if (!confirm(confirmMsg)) {
+        console.log('❌ ユーザーがキャンセルしました');
+        return;
+    }
     
     try {
         // test.htmlと同じ方式: window.なしでlocation.hrefを直接実行
+        console.log('🚀 location.href実行直前...');
         location.href = printUrl;
         console.log('✅ location.href設定完了');
-        console.log('🚀 印刷アプリ起動中...');
         
     } catch(e) {
         console.error('❌ 印刷実行エラー:', e);
+        console.error('❌ エラー詳細:', {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        });
         alert('印刷の起動に失敗しました。\nSII URL Print Agentがインストールされているか確認してください。\n\nエラー: ' + e.message);
     }
 }
