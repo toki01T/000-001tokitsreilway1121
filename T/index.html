@@ -1548,30 +1548,32 @@ function isIOS() {
     return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-// 印刷URLスキーム生成関数（iOS・Android両対応 - Base64は未エンコード版）
+// 印刷URLスキーム生成関数（iOS・Android両対応 - test.html完全互換版）
 function generatePrintUrl(pdfBase64, thisPage) {
-    console.log('📊 PDF Base64長（エンコード前）:', pdfBase64.length, '文字');
+    console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
     
-    // 基本パラメータを構築（iOS・Android共通）
-    // 注意: Base64データはencodeURIComponentしない（test.htmlも同様）
-    const params = 
-        'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
-        'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
-        'Format=pdf' + '&' +
-        'Data=' + pdfBase64 + '&' +  // ← encodeURIComponent を削除!
-        'SelectOnError=yes' + '&' +
-        'CutType=full' + '&' +
-        'CutFeed=yes' + '&' +
-        'FitToWidth=no' + '&' +
-        'PaperWidth=58';
+    // test.htmlと完全に同じ方式でURL構築
+    const url = 'siiprintagent://1.0/print?' +
+                'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+                'Format=' + 'pdf' + '&' +
+                'Data=' + encodeURIComponent(pdfBase64) + '&' +  // test.htmlと同じ
+                'SelectOnError=' + 'yes' + '&' +
+                'CutType=' + 'full' + '&' +
+                'CutFeed=' + 'yes' + '&' +
+                'FitToWidth=' + 'no' + '&' +
+                'PaperWidth=' + '58';
     
-    // iOS・Android共に同じURL schemeを使用
-    const printUrl = 'siiprintagent://1.0/print?' + params;
+    console.log('📊 最終URL長:', url.length, '文字');
+    console.log('🔗 URL先頭150文字:', url.substring(0, 150) + '...');
     
-    console.log(isAndroid() ? '🤖 Android' : '🍎 iOS', 'URL生成完了');
-    console.log('📊 最終URL長:', printUrl.length, '文字');
-    console.log('🔗 URL先頭150文字:', printUrl.substring(0, 150) + '...');
-    return printUrl;
+    // URLサイズ警告（2MB以上の場合）
+    if (url.length > 2000000) {
+        console.warn('⚠️ 警告: URL長が2MB以上です。印刷に失敗する可能性があります。');
+        console.warn('� データサイズ:', Math.round(url.length / 1024 / 1024 * 100) / 100, 'MB');
+    }
+    
+    return url;
 }
 
 // 印刷実行関数（Android/iOS統一版 - test.html方式 + デバッグ強化版）
@@ -2760,8 +2762,8 @@ function executeSignaturePrint() {
                 compositeCtx.fillText(timeText, dateTimeX, yPos);
             }
             
-            // 合成キャンバスをPNGデータURLに変換
-            const compositeDataUrl = compositeCanvas.toDataURL('image/png');
+            // 合成キャンバスをJPEGに変換（サイズ削減のため品質70%）
+            const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.70);
             
             // jsPDFを使用してPDFを生成
             const { jsPDF } = window.jspdf;
@@ -2770,15 +2772,16 @@ function executeSignaturePrint() {
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
-                format: [58, pdfHeight]
+                format: [58, pdfHeight],
+                compress: true  // PDF圧縮を有効化
             });
             
             // PDFの設定を直接操作
             pdf.internal.pageSize.width = 58;
             pdf.internal.pageSize.height = pdfHeight;
             
-            // 合成画像をPDFに追加
-            pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+            // 合成画像をJPEGとしてPDFに追加（PNGより軽量）
+            pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, 58, pdfHeight);
             
             // PDFをBase64形式で取得
             const pdfBase64 = pdf.output('datauristring').split(',')[1];
@@ -3014,7 +3017,10 @@ function executeReceiptPrint(withMemo) {
     const timeText = `${hour}時${minute}分${second}秒`;
     ctx.fillText(timeText, dateTimeX, yPos);
     
-    // キャンバスをPNGデータURLに変換
+    // キャンバスをJPEGに変換（サイズ削減のため品質70%）
+    const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.70);
+    
+    // 履歴用にPNG（高品質）も保持
     const pngDataUrl = canvas.toDataURL('image/png');
     
     // 履歴アイテムにデータを設定
@@ -3032,15 +3038,16 @@ function executeReceiptPrint(withMemo) {
     const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: [58, pdfHeight]
+        format: [58, pdfHeight],
+        compress: true  // PDF圧縮を有効化
     });
     
     // PDFの設定を直接操作
     pdf.internal.pageSize.width = 58;
     pdf.internal.pageSize.height = pdfHeight;
     
-    // PNG画像をPDFに追加（位置調整なし、フルサイズ）
-    pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+    // JPEG画像をPDFに追加（PNGより軽量）
+    pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, 58, pdfHeight);
     
     // PDFをBase64形式で取得
     const pdfBase64 = pdf.output('datauristring').split(',')[1];
@@ -3450,11 +3457,8 @@ function sendToPrintAssist(event) {
                         yPos += 50; // 日付有り印刷の下部余白を50px追加
                     }
                     
-                    // 合成キャンバスを高品質PNGデータURLに変換
-                    const compositeDataUrl = compositeCanvas.toDataURL('image/png', 1.0);
-                    
-                    // さらに画質を向上させるため、中間的にJPEGでも作成
-                    const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.95);
+                    // 合成キャンバスをJPEGに変換（サイズ削減のため品質70%）
+                    const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.70);
                     
                     // jsPDFを使用してPDFを生成
                     const { jsPDF } = window.jspdf;
@@ -3463,15 +3467,16 @@ function sendToPrintAssist(event) {
                     const pdf = new jsPDF({
                         orientation: 'portrait',
                         unit: 'mm',
-                        format: [58, pdfHeight]
+                        format: [58, pdfHeight],
+                        compress: true  // PDF圧縮を有効化
                     });
                     
                     // PDFの設定を直接操作
                     pdf.internal.pageSize.width = 58;
                     pdf.internal.pageSize.height = pdfHeight;
                     
-                    // 合成画像をPDFに追加
-                    pdf.addImage(compositeDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+                    // 合成画像をJPEGとしてPDFに追加（PNGより軽量）
+                    pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, 58, pdfHeight);
                     
                     // PDFをBase64形式で取得
                     const pdfBase64 = pdf.output('datauristring').split(',')[1];
@@ -3760,8 +3765,8 @@ function printText() {
             ctx.fillText(timeText, dateTimeX, yPos);
         }
         
-        // キャンバスをPNGデータURLに変換
-        const pngDataUrl = canvas.toDataURL('image/png');
+        // キャンバスをJPEGに変換（サイズ削減のため品質70%）
+        const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.70);
         
         // jsPDFを使用してPDFを生成
         const { jsPDF } = window.jspdf;
@@ -3770,15 +3775,16 @@ function printText() {
         const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
-            format: [58, pdfHeight]
+            format: [58, pdfHeight],
+            compress: true  // PDF圧縮を有効化
         });
         
         // PDFの設定を直接操作
         pdf.internal.pageSize.width = 58;
         pdf.internal.pageSize.height = pdfHeight;
         
-        // PNG画像をPDFに追加（位置調整なし、フルサイズ）
-        pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
+        // JPEG画像をPDFに追加（PNGより軽量）
+        pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, 58, pdfHeight);
         
         // PDFをBase64形式で取得
         const pdfBase64 = pdf.output('datauristring').split(',')[1];
