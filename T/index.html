@@ -1549,41 +1549,66 @@ function isIOS() {
 }
 
 // 印刷URLスキーム生成関数（iOS・Android両対応）
-// ★★★ 公式Sample_JA.htmlと完全に同じ実装 ★★★
 function generatePrintUrl(pdfBase64, thisPage) {
-    // 公式サンプルと完全に同じURL生成
-    const url = 'siiprintagent://1.0/print?' +
-                'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
-                'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
-                'Format=' + 'pdf' + '&' +
-                'Data=' + encodeURIComponent(pdfBase64) + '&' +
-                'SelectOnError=' + 'yes' + '&' +
-                'CutType=' + 'full' + '&' +
-                'CutFeed=' + 'yes' + '&' +
-                'FitToWidth=' + 'no' + '&' +
-                'PaperWidth=' + '58';
+    // 基本パラメータを構築
+    const params = 
+        'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+        'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+        'Format=pdf' + '&' +
+        'Data=' + encodeURIComponent(pdfBase64) + '&' +
+        'SelectOnError=yes' + '&' +
+        'CutType=full' + '&' +
+        'CutFeed=yes' + '&' +
+        'FitToWidth=no' + '&' +
+        'PaperWidth=58';
     
-    console.log('📱 ========== 印刷URL生成 ==========');
-    console.log('📱 デバイス:', isAndroid() ? 'Android' : 'iOS');
-    console.log('📱 URL Scheme:', url.split('://')[0]);
-    console.log('📱 URL Length:', url.length);
-    console.log('📱 PDF Data Length:', pdfBase64.length);
-    console.log('📱 URL Preview:', url.substring(0, 150) + '...');
-    console.log('📱 ====================================');
-    
-    return url;
+    if (isAndroid()) {
+        // Android用URLスキーム - Intent URIを使用
+        // 正しいパッケージ名: com.seikoinstruments.siiurlprintagent
+        const intentUrl = 'intent://1.0/print?' + params + 
+                         '#Intent;' +
+                         'scheme=siiprintagent;' +
+                         'package=com.seikoinstruments.siiurlprintagent;' +
+                         'end;';
+        
+        console.log('🤖 Android Intent URL生成 (最初の150文字):', intentUrl.substring(0, 150) + '...');
+        return intentUrl;
+    } else {
+        // iOS用URLスキーム（従来のsiiprintagent）
+        console.log('🍎 iOS URL生成');
+        return 'siiprintagent://1.0/print?' + params;
+    }
 }
 
-// 印刷実行関数（iOS・Android両対応）
-// ★★★ 公式Sample_JA.htmlと完全に同じ実装 ★★★
+// 印刷実行関数（Android対応：Intent URI使用）
 function executePrint(printUrl) {
-    console.log('📱 ========== 印刷実行 ==========');
-    console.log('📱 デバイス:', isAndroid() ? 'Android' : 'iOS');
-    console.log('📱 実行方法: location.href (公式サンプルと同じ)');
-    console.log('📱 ================================');
-    
-    // 公式サンプルと完全に同じ: location.href = url;
-    location.href = printUrl;
+    if (isAndroid()) {
+        // Android: Intent URIの場合はlocation.hrefが最適
+        console.log('🤖 Android印刷実行 (Intent URI)');
+        console.log('📱 URL (最初の200文字):', printUrl.substring(0, 200) + '...');
+        
+        try {
+            // Intent URIはlocation.hrefで直接実行
+            window.location.href = printUrl;
+            console.log('✅ Intent URI実行完了');
+        } catch (e) {
+            console.error('❌ Intent URI実行失敗:', e);
+            
+            // フォールバック: window.open()を試行
+            try {
+                console.log('🔄 フォールバック: window.open()を試行');
+                window.open(printUrl, '_blank');
+            } catch (e2) {
+                console.error('❌ window.open()も失敗:', e2);
+            }
+        }
+    } else {
+        // iOS: 従来通りlocation.hrefを使用
+        console.log('🍎 iOS印刷実行');
+        console.log('📱 URL (最初の200文字):', printUrl.substring(0, 200) + '...');
+        window.location.href = printUrl;
+        console.log('✅ iOS URL scheme実行完了');
+    }
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
 const qrCodeBtn = document.getElementById('qrCodeBtn');
@@ -2838,7 +2863,7 @@ function executeReceiptPrint(withMemo) {
     receiptLines.push('印を付けて下さい✔️');
     receiptLines.push('┌───────┐');
     receiptLines.push('│　　　　　│');
-    receiptLines.push('│　　　　　│');
+    receiptLines.push('│　　　 　│');
     receiptLines.push('└───────┘');
     
     const printText = receiptLines.join('\n');
