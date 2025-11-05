@@ -1569,31 +1569,48 @@ function generatePrintUrl(pdfBase64, thisPage) {
     return printUrl;
 }
 
-// 印刷実行関数（シンプルで確実な方式）
+// 印刷実行関数（Android完全対応版 - ユーザークリック方式）
 function executePrint(printUrl) {
-    console.log('🖨️ 印刷実行開始 - デバイス:', isAndroid() ? 'Android🤖' : 'iOS🍎');
-    console.log('📱 URL Scheme:', printUrl.substring(0, 50) + '...');
-    console.log('📊 URL全体の長さ:', printUrl.length, '文字');
+    console.log('印刷実行開始');
+    console.log('デバイス:', isAndroid() ? 'Android' : 'iOS');
+    console.log('URL長:', printUrl.length, '文字');
     
-    // iOS・Android共通: location.hrefで実行
-    try {
-        console.log('⏳ location.hrefを実行中...');
+    if (isAndroid()) {
+        // Android: ユーザーが直接クリックできるボタンを表示
+        console.log('Android - ユーザークリック方式');
+        
+        // 既存削除
+        const old = document.getElementById('androidPrintPopup');
+        if (old) old.remove();
+        const oldOv = document.getElementById('androidPrintOverlay');
+        if (oldOv) oldOv.remove();
+        
+        // オーバーレイ
+        const overlay = document.createElement('div');
+        overlay.id = 'androidPrintOverlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;';
+        overlay.onclick = function() { 
+            const p = document.getElementById('androidPrintPopup');
+            const o = document.getElementById('androidPrintOverlay');
+            if(p) p.remove();
+            if(o) o.remove();
+        };
+        
+        // ポップアップ
+        const popup = document.createElement('div');
+        popup.id = 'androidPrintPopup';
+        popup.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:30px 20px;border-radius:15px;box-shadow:0 8px 30px rgba(0,0,0,0.3);z-index:10000;max-width:85%;text-align:center;';
+        popup.innerHTML = '<div style="color:#333;font-size:20px;font-weight:bold;margin-bottom:15px;">印刷準備完了</div><div style="color:#666;font-size:14px;margin-bottom:25px;line-height:1.6;">下のボタンをタップして<br>SII URL Print Agentを起動</div><a href="' + printUrl + '" style="display:inline-block;background:#00A3ED;color:#fff;padding:16px 45px;border-radius:10px;text-decoration:none;font-size:17px;font-weight:bold;margin-bottom:15px;">印刷を開始</a><div><button onclick="document.getElementById(\'androidPrintPopup\').remove();document.getElementById(\'androidPrintOverlay\').remove();" style="background:#e0e0e0;color:#666;border:none;padding:12px 35px;border-radius:8px;font-size:14px;">キャンセル</button></div>';
+        
+        document.body.appendChild(overlay);
+        document.body.appendChild(popup);
+        console.log('Android印刷ボタン表示完了');
+        
+    } else {
+        // iOS: 直接実行
+        console.log('iOS - 直接実行');
         window.location.href = printUrl;
-        console.log('✅ location.href実行完了');
-        
-        // デバッグ用: 3秒後に現在のURLを確認
-        setTimeout(() => {
-            console.log('🔍 3秒後の現在URL:', window.location.href);
-        }, 3000);
-        
-    } catch (e) {
-        console.error('❌ 印刷実行エラー:', e);
-        console.error('❌ エラー詳細:', {
-            name: e.name,
-            message: e.message,
-            stack: e.stack
-        });
-        alert('印刷の実行に失敗しました。\n\nエラー: ' + e.message + '\n\nSII URL Print Agentアプリがインストールされ、正しく設定されているか確認してください。');
+        console.log('iOS印刷実行完了');
     }
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
