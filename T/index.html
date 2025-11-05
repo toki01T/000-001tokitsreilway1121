@@ -2925,7 +2925,6 @@ async function executeReceiptPrint(withMemo) {
     receiptLines.push('宛名が合っておりましたら');
     receiptLines.push('ボールペンまたは印鑑で');
     receiptLines.push('下部の枠に印を付けて下さい✔️');
-    receiptLines.push(''); // 枠の前に空行
     // 枠はCanvas APIで直接描画するため、ここには含めない
     
     const printText = receiptLines.join('\n');
