@@ -1380,9 +1380,9 @@ footer p {
                 </div>
                 <div class="receipt-input-group">
                     <label for="receiptMemo">但し書き</label>
-                    <div style="display: flex; gap: 8px; align-items: center;">
+                    <div style="display: flex; gap: 5px; align-items: center;">
                         <input type="text" id="receiptMemo" placeholder="" style="flex: 1;" />
-                        <select id="receiptMemoSuffix" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background: white;">
+                        <select id="receiptSuffix" style="padding: 10px; font-size: 14px; border: 1px solid #ddd; border-radius: 5px; background: white;">
                             <option value="代として">代として</option>
                             <option value="類として">類として</option>
                             <option value="">なし</option>
@@ -1556,18 +1556,14 @@ function isIOS() {
     return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-// 印刷URLスキーム生成関数（iOS・Android両対応 - test.html完全互換版）
+// 印刷URLスキーム生成関数（iOS・Android両対応）
 function generatePrintUrl(pdfBase64, thisPage) {
     console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
     
-    // コールバックURLに#printedを追加（新規タブ防止）
-    const baseUrl = thisPage.split('#')[0];
-    const callbackUrl = baseUrl + '#printed';
-    
-    // test.htmlと同じ方式でURL構築
+    // コールバックURLはabout:blankに設定（新規タブを開かないため）
     const url = 'siiprintagent://1.0/print?' +
-                'CallbackSuccess=' + encodeURIComponent(callbackUrl) + '&' +
-                'CallbackFail=' + encodeURIComponent(callbackUrl) + '&' +
+                'CallbackSuccess=' + encodeURIComponent('about:blank') + '&' +
+                'CallbackFail=' + encodeURIComponent('about:blank') + '&' +
                 'Format=' + 'pdf' + '&' +
                 'Data=' + encodeURIComponent(pdfBase64) + '&' +
                 'SelectOnError=' + 'yes' + '&' +
@@ -2812,7 +2808,7 @@ function executeSignaturePrint() {
 function executeReceiptPrint(withMemo) {
     const companyName = document.getElementById('receiptCompanyName').value.trim();
     const memo = document.getElementById('receiptMemo').value.trim();
-    const memoSuffix = document.getElementById('receiptMemoSuffix').value;
+    const suffix = document.getElementById('receiptSuffix').value; // ドロップダウンの値
     
     if (!companyName) {
         console.log('❌ 宛名が入力されていません');
@@ -2830,21 +2826,43 @@ function executeReceiptPrint(withMemo) {
     const canvasWidth = Math.round(58 * mmToPx); // 58mm
     
     // フォントサイズ設定
-    const textFontSize = 37;  // テキスト用のフォントサイズ
-    const companyNameFontSize = 42; // 宛名専用のフォントサイズ
-    const labelFontSize = 37;  // "宛名は"のフォントサイズ
-    const dateFontSize = 50;  // 日付・時刻用のフォントサイズ
+    const textFontSize = 37;
+    const companyNameFontSize = 42;
+    const labelFontSize = 37;
+    const dateFontSize = 50;
     
-    // 宛名を自動改行（6文字で改行、最大11行）
-    const companyNameLines = [];
-    const maxCharsPerLine = 6;
-    const maxLines = 11;
-    for (let i = 0; i < companyName.length && companyNameLines.length < maxLines; i += maxCharsPerLine) {
-        companyNameLines.push(companyName.substring(i, i + maxCharsPerLine));
+    // 宛名の文字数チェック（全角1文字=1、半角1文字=0.5でカウント）
+    const companyNameLength = Array.from(companyName).reduce((sum, char) => {
+        return sum + (char.match(/[^\x01-\x7E\xA1-\xDF]/) ? 1 : 0.5);
+    }, 0);
+    
+    // 4文字以上は左寄せ、6文字以上は自動改行（最大11行）
+    const isLongName = companyNameLength >= 4;
+    const needsWrap = companyNameLength >= 6;
+    
+    // 宛名を6文字ごとに改行（最大11行まで）
+    let companyNameLines = [];
+    if (needsWrap) {
+        let currentLine = '';
+        let currentLength = 0;
+        for (let char of companyName) {
+            const charLength = char.match(/[^\x01-\x7E\xA1-\xDF]/) ? 1 : 0.5;
+            if (currentLength + charLength > 6 && currentLine) {
+                companyNameLines.push(currentLine);
+                currentLine = char;
+                currentLength = charLength;
+                if (companyNameLines.length >= 11) break; // 最大11行
+            } else {
+                currentLine += char;
+                currentLength += charLength;
+            }
+        }
+        if (currentLine && companyNameLines.length < 11) {
+            companyNameLines.push(currentLine);
+        }
+    } else {
+        companyNameLines = [companyName];
     }
-    
-    // 宛名が4行以上の場合は左寄せ、それ以外は中央揃え
-    const companyNameAlign = companyNameLines.length >= 4 ? 'left' : 'center';
     
     // 領収書のテキスト内容を構築
     let receiptLines = [];
@@ -2852,21 +2870,25 @@ function executeReceiptPrint(withMemo) {
     receiptLines.push('');
     receiptLines.push('こちらでお願い致します。');
     
-    // 小文字オプションが選択されている場合のみ追加
     if (receiptSmallTextEnabled) {
         receiptLines.push('(小文字でお願い致します。)');
     }
     receiptLines.push('');
     
-    // 但し書きの処理（8文字で自動改行）
+    // 但し書き処理（6文字以上で改行）
     if (withMemo && memo) {
-        receiptLines.push('但し');
-        const maxMemoChars = 8;
-        for (let i = 0; i < memo.length; i += maxMemoChars) {
-            receiptLines.push(memo.substring(i, i + maxMemoChars));
-        }
-        if (memoSuffix) {
-            receiptLines.push(memoSuffix);
+        const memoLength = Array.from(memo).reduce((sum, char) => {
+            return sum + (char.match(/[^\x01-\x7E\xA1-\xDF]/) ? 1 : 0.5);
+        }, 0);
+        
+        if (memoLength >= 6) {
+            // 6文字以上：改行
+            receiptLines.push('但し');
+            receiptLines.push(memo);
+            if (suffix) receiptLines.push(suffix);
+        } else {
+            // 6文字未満：1行
+            receiptLines.push(`但し ${memo} ${suffix}`);
         }
         receiptLines.push('');
     }
@@ -2875,10 +2897,12 @@ function executeReceiptPrint(withMemo) {
     receiptLines.push('宛名が合っておりましたら');
     receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
-    receiptLines.push('＿＿＿＿＿＿＿＿＿');
-    receiptLines.push('｜　　　　　　　　｜');
-    receiptLines.push('｜　　　　　　　　｜');
-    receiptLines.push('￣￣￣￣￣￣￣￣￣');
+    
+    // 罫線は等幅フォント(Courier)で描画
+    receiptLines.push('+----------+');
+    receiptLines.push('|          |');
+    receiptLines.push('|          |');
+    receiptLines.push('+----------+');
     
     const printText = receiptLines.join('\n');
     
@@ -2888,25 +2912,31 @@ function executeReceiptPrint(withMemo) {
     // テキストの行数から高さを計算
     const lines = printText.split('\n');
     const lineHeight = textFontSize * 1.2;
-    const companyLineHeight = companyNameFontSize * 1.2; // 宛名行の高さ
+    const companyLineHeight = companyNameFontSize * 1.2;
     let textHeight = 0;
     
-    // 各行の高さを個別に計算（宛名行は通常のlinesには含まれていないため、別途追加）
+    // 各行の高さを個別に計算
     for (let i = 0; i < lines.length; i++) {
         textHeight += lineHeight;
     }
     
-    // 宛名行の高さを追加（宛名の行数分）
-    textHeight += companyLineHeight * companyNameLines.length;
+    // 宛名行の高さを追加
+    if (isLongName) {
+        // 4文字以上：「宛名は」+ 宛名の行数
+        textHeight += companyLineHeight * (1 + companyNameLines.length);
+    } else {
+        // 4文字未満：1行のみ
+        textHeight += companyLineHeight;
+    }
     
     // 日付・時刻のスペースを追加（常に有効）
     const dateLineHeight = dateFontSize * 1.2;
     textHeight += dateLineHeight * 2.5; // 日付2行 + 少ない余白
     
-    // QRコード用スペースを調整
-    const qrSpaceMargin = 90;
+    // QRコード用スペースを調整（テキスト印刷と同じ）
+    const qrSpaceMargin = 90; // 日付あり：90px
     
-    const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin);
+    const canvasHeight = Math.round(textHeight + 60 + qrSpaceMargin); // 上下余白調整 + QRコード余白
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
     
@@ -2920,45 +2950,63 @@ function executeReceiptPrint(withMemo) {
     ctx.textBaseline = 'top';
     
     // 真ん中の位置を正確に計算
-    const exactCenterX = Math.round(canvasWidth / 2);
+    const exactCenterX = Math.round(canvasWidth / 2) - 50;
     
     // テキストを描画
     let yPos = 30;
     for (let i = 0; i < lines.length; i++) {
-        ctx.font = `${textFontSize}px Arial, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(lines[i], exactCenterX, yPos);
+        const line = lines[i];
+        
+        // 罫線は等幅フォントで描画
+        if (line.includes('+--') || line.includes('|')) {
+            ctx.font = `${textFontSize}px "Courier New", Courier, monospace`;
+            ctx.textAlign = 'center';
+            ctx.fillText(line, exactCenterX, yPos);
+        } else {
+            ctx.font = `${textFontSize}px Arial, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.fillText(line, exactCenterX, yPos);
+        }
+        
         yPos += lineHeight;
         
         // 「領収書」の次の空行の後に宛名を挿入
-        if (i === 1) { // 2行目（空行）の後
-            // 宛名を描画
-            ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
-            
-            if (companyNameAlign === 'center') {
-                // 中央揃え（3行以下）
-                ctx.textAlign = 'center';
-                ctx.fillText('宛名は', exactCenterX, yPos);
-                yPos += companyLineHeight;
-                for (let j = 0; j < companyNameLines.length; j++) {
-                    ctx.fillText(`「${companyNameLines[j]}」`, exactCenterX, yPos);
-                    yPos += companyLineHeight;
-                }
-            } else {
-                // 左寄せ（4行以上）
-                ctx.textAlign = 'center';
-                ctx.fillText('宛名は', exactCenterX, yPos);
-                yPos += companyLineHeight;
+        if (i === 1) {
+            if (isLongName) {
+                // 4文字以上：左寄せ
                 ctx.textAlign = 'left';
-                const leftX = 80; // 左寄せ位置
-                for (let j = 0; j < companyNameLines.length; j++) {
-                    ctx.fillText(`「${companyNameLines[j]}」`, leftX, yPos);
+                const leftX = 50;
+                
+                // "宛名は" を描画
+                ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                ctx.fillText('宛名は', leftX, yPos);
+                yPos += companyLineHeight;
+                
+                // 宛名を複数行で描画
+                ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
+                for (let line of companyNameLines) {
+                    ctx.fillText(`「${line}」`, leftX, yPos);
                     yPos += companyLineHeight;
                 }
+                
+                // 中央揃えに戻す
+                ctx.textAlign = 'center';
+            } else {
+                // 4文字未満：中央揃え
+                ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                ctx.textAlign = 'left';
+                const labelX = exactCenterX - 100;
+                ctx.fillText('宛名は', labelX, yPos);
+                
+                ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                const labelWidth = ctx.measureText('宛名は').width;
+                
+                ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
+                ctx.fillText(`「${companyName}」`, labelX + labelWidth + 10, yPos - 3);
+                
+                yPos += companyLineHeight;
+                ctx.textAlign = 'center';
             }
-            
-            // 次の行のために中央揃えに戻す
-            ctx.textAlign = 'center';
         }
     }
     
