@@ -2026,7 +2026,8 @@ function loadHistoryList() {
                 let displayText = `No.${item.receiptNumber || '-----'}`;
                 displayText += `<br>宛名：${item.companyName}`;
                 
-                if (item.memo) {
+                // 但し書きが入力されている場合のみ表示
+                if (item.memo && item.memo.trim() !== '') {
                     // 接尾辞を追加（代/類/なし）
                     const suffixText = item.suffix || '代'; // デフォルトは「代」
                     displayText += `<br>但し書き：${item.memo}${suffixText}`;
@@ -2855,7 +2856,12 @@ function executeSignaturePrint() {
 async function executeReceiptPrint(withMemo) {
     const companyName = document.getElementById('receiptCompanyName').value.trim();
     const memo = document.getElementById('receiptMemo').value.trim();
-    const suffix = document.getElementById('receiptSuffix').value; // ドロップダウンから接尾辞取得
+    let suffix = document.getElementById('receiptSuffix').value; // ドロップダウンから接尾辞取得
+    
+    // 但し書きが空の場合は接尾辞を「なし」（空文字）にする
+    if (!memo || memo === '') {
+        suffix = '';
+    }
     
     if (!companyName) {
         console.log('❌ 宛名が入力されていません');
