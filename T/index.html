@@ -1560,7 +1560,7 @@ function isIOS() {
 function generatePrintUrl(pdfBase64, thisPage) {
     console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
     
-    // コールバックURLに現在のページを設定（test.htmlと同じ）
+    // test.htmlと同じ: 現在のページURLをコールバックに設定
     const url = 'siiprintagent://1.0/print?' +
                 'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
                 'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
@@ -2897,7 +2897,12 @@ function executeReceiptPrint(withMemo) {
     receiptLines.push('宛名が合っておりましたら');
     receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
-    receiptLines.push('');
+    
+    // 罫線は等幅フォント(Courier)で描画
+    receiptLines.push('+----------+');
+    receiptLines.push('|          |');
+    receiptLines.push('|          |');
+    receiptLines.push('+----------+');
     
     const printText = receiptLines.join('\n');
     
@@ -2946,7 +2951,13 @@ function executeReceiptPrint(withMemo) {
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         
-        ctx.font = `${textFontSize}px Arial, sans-serif`;
+        // 枠線は等幅フォントで描画
+        if (line.includes('+') || line.includes('|')) {
+            ctx.font = `${textFontSize}px "Courier New", Courier, monospace`;
+        } else {
+            ctx.font = `${textFontSize}px Arial, sans-serif`;
+        }
+        
         ctx.textAlign = 'center';
         ctx.fillText(line, exactCenterX, yPos);
         
@@ -2954,8 +2965,23 @@ function executeReceiptPrint(withMemo) {
         
         // 「領収書」の次の空行の後に宛名を挿入
         if (i === 1) {
-            if (isLongName) {
-                // 4文字以上：左寄せ
+            if (needsWrap) {
+                // 6行以上：完全中央揃え
+                ctx.textAlign = 'center';
+                
+                // "宛名は" を中央に描画
+                ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                ctx.fillText('宛名は', exactCenterX, yPos);
+                yPos += companyLineHeight;
+                
+                // 宛名を複数行で中央揃えで描画
+                ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
+                for (let line of companyNameLines) {
+                    ctx.fillText(`「${line}」`, exactCenterX, yPos);
+                    yPos += companyLineHeight;
+                }
+            } else if (isLongName) {
+                // 4-5文字：左寄せ
                 ctx.textAlign = 'left';
                 const leftX = 50;
                 
@@ -2964,12 +2990,10 @@ function executeReceiptPrint(withMemo) {
                 ctx.fillText('宛名は', leftX, yPos);
                 yPos += companyLineHeight;
                 
-                // 宛名を複数行で描画
+                // 宛名を描画
                 ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
-                for (let line of companyNameLines) {
-                    ctx.fillText(`「${line}」`, leftX, yPos);
-                    yPos += companyLineHeight;
-                }
+                ctx.fillText(`「${companyName}」`, leftX, yPos);
+                yPos += companyLineHeight;
                 
                 // 中央揃えに戻す
                 ctx.textAlign = 'center';
@@ -2991,19 +3015,6 @@ function executeReceiptPrint(withMemo) {
             }
         }
     }
-    
-    // 枠を描画（テキストではなく線で描画）
-    const boxWidth = 200;  // 枠の幅
-    const boxHeight = 60;  // 枠の高さ
-    const boxX = (canvasWidth - boxWidth) / 2;  // 中央配置
-    const boxY = yPos + 10;  // 現在位置の少し下
-    
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
-    
-    // 枠の描画後、yPosを更新
-    yPos = boxY + boxHeight;
     
     // QRコードを生成して左側に配置（テキスト印刷と同じ方式）
     let qrCodeCanvas = null;
@@ -4876,29 +4887,6 @@ function restoreContentFromQROnly(qrData) {
         alert('このQRコードの完全なデータは履歴にありません。\n画像や手書きデータは履歴からのみ復元可能です。');
     }
 }
-
-// ページロード時にコールバックパラメータをチェック（印刷後の戻り処理）
-window.addEventListener('load', function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('Code');
-    const message = urlParams.get('Message');
-    
-    if (code !== null) {
-        // Codeパラメータが存在する場合
-        if (code !== '0') {
-            // エラーコード（0以外）の場合のみアラート表示
-            console.log('印刷エラー - Code:', code, 'Message:', message);
-            alert('印刷エラーが発生しました。\n\nCode: ' + code + '\nMessage: ' + (message ? decodeURIComponent(message) : ''));
-        } else {
-            // 成功（Code=0）の場合は何も表示しない
-            console.log('印刷成功 - Code:', code);
-        }
-        
-        // URLパラメータを削除（履歴をクリーンに保つ）
-        const cleanUrl = window.location.origin + window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
-    }
-});
 </script>
 </body>
 </html>
