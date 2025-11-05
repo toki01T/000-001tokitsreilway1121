@@ -1548,14 +1548,17 @@ function isIOS() {
     return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-// 印刷URLスキーム生成関数（iOS・Android両対応）
+// 印刷URLスキーム生成関数（iOS・Android両対応 - Base64は未エンコード版）
 function generatePrintUrl(pdfBase64, thisPage) {
+    console.log('📊 PDF Base64長（エンコード前）:', pdfBase64.length, '文字');
+    
     // 基本パラメータを構築（iOS・Android共通）
+    // 注意: Base64データはencodeURIComponentしない（test.htmlも同様）
     const params = 
         'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
         'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
         'Format=pdf' + '&' +
-        'Data=' + encodeURIComponent(pdfBase64) + '&' +
+        'Data=' + pdfBase64 + '&' +  // ← encodeURIComponent を削除!
         'SelectOnError=yes' + '&' +
         'CutType=full' + '&' +
         'CutFeed=yes' + '&' +
@@ -1565,7 +1568,9 @@ function generatePrintUrl(pdfBase64, thisPage) {
     // iOS・Android共に同じURL schemeを使用
     const printUrl = 'siiprintagent://1.0/print?' + params;
     
-    console.log(isAndroid() ? '🤖 Android' : '🍎 iOS', 'URL生成 (最初の150文字):', printUrl.substring(0, 150) + '...');
+    console.log(isAndroid() ? '🤖 Android' : '🍎 iOS', 'URL生成完了');
+    console.log('📊 最終URL長:', printUrl.length, '文字');
+    console.log('🔗 URL先頭150文字:', printUrl.substring(0, 150) + '...');
     return printUrl;
 }
 
