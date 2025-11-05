@@ -3006,8 +3006,8 @@ async function executeReceiptPrint(withMemo) {
         // 「領収書」の行の場合は🅃、連番、領収書宛名を追加
         if (i === 0 && lines[i] === '領収書') {
             // 1行目: 🅃（左）と連番（右）
-            // 🅃のフォントを変更（Arialで絵文字をサポート）
-            ctx.font = `${textFontSize}px Arial, "Helvetica Neue", sans-serif`;
+            // 🅃のフォントを変更（太字のゴシック体）
+            ctx.font = `bold ${textFontSize}px "Hiragino Sans", "Hiragino Kaku Gothic ProN", "MS Gothic", "Yu Gothic", sans-serif`;
             ctx.textAlign = 'left';
             const tokiX = 40; // 🅃の位置（左端からの距離）
             ctx.fillText('🅃', tokiX, yPos);
