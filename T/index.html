@@ -1569,70 +1569,31 @@ function generatePrintUrl(pdfBase64, thisPage) {
     return printUrl;
 }
 
-// 印刷実行関数（Android対応：複数の方法を試行）
+// 印刷実行関数（シンプルで確実な方式）
 function executePrint(printUrl) {
-    console.log('🖨️ 印刷実行開始 - デバイス:', isAndroid() ? 'Android' : 'iOS');
-    console.log('📱 URL (最初の200文字):', printUrl.substring(0, 200) + '...');
+    console.log('🖨️ 印刷実行開始 - デバイス:', isAndroid() ? 'Android🤖' : 'iOS🍎');
+    console.log('📱 URL Scheme:', printUrl.substring(0, 50) + '...');
+    console.log('📊 URL全体の長さ:', printUrl.length, '文字');
     
-    if (isAndroid()) {
-        // Android: 複数の方法を順番に試行
-        console.log('🤖 Android - 複数方式を試行');
-        
-        let executed = false;
-        
-        // 方法1: location.assign()を試行
-        try {
-            console.log('🔵 方法1: location.assign()を試行');
-            window.location.assign(printUrl);
-            executed = true;
-            console.log('✅ location.assign()実行');
-        } catch (e) {
-            console.log('❌ location.assign()失敗:', e.message);
-        }
-        
-        // 方法2: location.hrefを試行（方法1が失敗した場合）
-        if (!executed) {
-            try {
-                console.log('🔵 方法2: location.hrefを試行');
-                window.location.href = printUrl;
-                executed = true;
-                console.log('✅ location.href実行');
-            } catch (e) {
-                console.log('❌ location.href失敗:', e.message);
-            }
-        }
-        
-        // 方法3: 非表示のaタグを作成してクリック（フォールバック）
-        if (!executed) {
-            try {
-                console.log('🔵 方法3: aタグクリックを試行');
-                const link = document.createElement('a');
-                link.href = printUrl;
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click();
-                setTimeout(() => {
-                    if (link.parentNode) {
-                        link.parentNode.removeChild(link);
-                    }
-                }, 500);
-                executed = true;
-                console.log('✅ aタグクリック実行');
-            } catch (e) {
-                console.log('❌ aタグクリック失敗:', e.message);
-            }
-        }
-        
-        if (!executed) {
-            console.error('❌ すべての方法が失敗しました');
-            alert('印刷の開始に失敗しました。SII URL Print Agentアプリがインストールされているか確認してください。');
-        }
-        
-    } else {
-        // iOS: 従来通りlocation.hrefを使用
-        console.log('🍎 iOS - location.href方式を使用');
+    // iOS・Android共通: location.hrefで実行
+    try {
+        console.log('⏳ location.hrefを実行中...');
         window.location.href = printUrl;
-        console.log('✅ iOS URL scheme実行完了');
+        console.log('✅ location.href実行完了');
+        
+        // デバッグ用: 3秒後に現在のURLを確認
+        setTimeout(() => {
+            console.log('🔍 3秒後の現在URL:', window.location.href);
+        }, 3000);
+        
+    } catch (e) {
+        console.error('❌ 印刷実行エラー:', e);
+        console.error('❌ エラー詳細:', {
+            name: e.name,
+            message: e.message,
+            stack: e.stack
+        });
+        alert('印刷の実行に失敗しました。\n\nエラー: ' + e.message + '\n\nSII URL Print Agentアプリがインストールされ、正しく設定されているか確認してください。');
     }
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
