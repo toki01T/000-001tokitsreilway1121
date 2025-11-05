@@ -1559,8 +1559,9 @@ function isIOS() {
 // 印刷URLスキーム生成関数（iOS・Android両対応）
 function generatePrintUrl(pdfBase64, thisPage) {
     console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
+    console.log('🔙 コールバックURL:', thisPage);
     
-    // コールバックURLに現在のページを設定（test.htmlと同じ）
+    // コールバックURLに現在のページを設定（パラメータなしのクリーンなURL）
     const url = 'siiprintagent://1.0/print?' +
                 'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
                 'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
@@ -1587,8 +1588,9 @@ function generatePrintUrl(pdfBase64, thisPage) {
 // 印刷実行関数（Android/iOS統一版）
 function executePrint(printUrl) {
     try {
+        console.log('🖨️ 印刷URLスキームを実行します...');
         // test.htmlと同じ方式で直接実行
-        location.href = printUrl;
+        window.location.href = printUrl;
         
     } catch(e) {
         console.error('❌ 印刷実行エラー:', e);
@@ -2757,7 +2759,8 @@ function executeSignaturePrint() {
             // PDFをBase64形式で取得
             const pdfBase64 = pdf.output('datauristring').split(',')[1];
             
-            let thisPage = window.location.href;
+            // コールバックURL（パラメータなしのクリーンなURL）
+            let thisPage = window.location.origin + window.location.pathname;
             
             // iOS/Android両対応の印刷URLを生成
             let printUrl = generatePrintUrl(pdfBase64, thisPage);
@@ -3097,7 +3100,8 @@ function executeReceiptPrint(withMemo) {
     // PDFをBase64形式で取得
     const pdfBase64 = pdf.output('datauristring').split(',')[1];
     
-    let thisPage = window.location.href;
+    // コールバックURL（パラメータなしのクリーンなURL）
+    let thisPage = window.location.origin + window.location.pathname;
     
     // iOS/Android両対応の印刷URLを生成
     let printUrl = generatePrintUrl(pdfBase64, thisPage);
@@ -3526,7 +3530,8 @@ function sendToPrintAssist(event) {
                     // PDFをBase64形式で取得
                     const pdfBase64 = pdf.output('datauristring').split(',')[1];
                     
-                    let thisPage = window.location.href;
+                    // コールバックURL（パラメータなしのクリーンなURL）
+                    let thisPage = window.location.origin + window.location.pathname;
                     
                     // iOS/Android両対応の印刷URLを生成
                     let printUrlImage = generatePrintUrl(pdfBase64, thisPage);
@@ -3834,7 +3839,8 @@ function printText() {
         // PDFをBase64形式で取得
         const pdfBase64 = pdf.output('datauristring').split(',')[1];
         
-        let thisPage = window.location.href;
+        // コールバックURL（パラメータなしのクリーンなURL）
+        let thisPage = window.location.origin + window.location.pathname;
         
         // iOS/Android両対応の印刷URLを生成
         let printUrl = generatePrintUrl(pdfBase64, thisPage);
