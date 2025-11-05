@@ -1439,13 +1439,14 @@ function openDB() {
     });
 }
 function addHistory(item) {
-    // console.log('=== 履歴追加処理開始 ===');
-    // console.log('追加データ:', item);
+    console.log('=== 履歴追加処理開始 ===');
+    console.log('追加データtype:', item.type, 'mode:', item.mode);
+    console.log('呼び出し元:', new Error().stack.split('\n')[2]); // スタックトレース
     
     // 管理番号が未設定の場合は生成
     if (!item.managementId) {
         item.managementId = generateQRData(item);
-        // console.log('管理番号を生成:', item.managementId);
+        console.log('管理番号を生成:', item.managementId);
     }
     
     // 必須データの確認
@@ -1576,48 +1577,11 @@ function generatePrintUrl(pdfBase64, thisPage) {
     return url;
 }
 
-// 印刷実行関数（Android/iOS統一版 - test.html方式 + デバッグ強化版）
+// 印刷実行関数（Android/iOS統一版）
 function executePrint(printUrl) {
-    console.log('🖨️ 印刷実行開始 (test.html方式 + デバッグ強化)');
-    console.log('📱 デバイス:', isAndroid() ? 'Android' : 'iOS');
-    console.log('� UserAgent:', navigator.userAgent);
-    console.log('�📏 URL長:', printUrl.length, '文字');
-    console.log('🔗 URL先頭100文字:', printUrl.substring(0, 100));
-    console.log('🔗 URL scheme部分:', printUrl.substring(0, 30));
-    
-    // URLの構造を確認
-    const urlParts = printUrl.split('?');
-    console.log('📍 Base URL:', urlParts[0]);
-    if (urlParts[1]) {
-        const params = urlParts[1].split('&');
-        console.log('📍 パラメータ数:', params.length);
-        params.forEach((param, idx) => {
-            const [key, value] = param.split('=');
-            if (key === 'Data') {
-                console.log(`  ${idx + 1}. ${key}=${value ? value.substring(0, 50) + '...' : '(空)'}`);
-            } else {
-                console.log(`  ${idx + 1}. ${key}=${value}`);
-            }
-        });
-    }
-    
-    // 実行前の確認アラート（デバッグ用 - 後で削除可能）
-    const confirmMsg = 
-        'デバイス: ' + (isAndroid() ? 'Android' : 'iOS') + '\n' +
-        'URL長: ' + printUrl.length + '文字\n' +
-        'URL scheme: ' + printUrl.substring(0, 30) + '\n\n' +
-        '印刷を開始しますか？';
-    
-    if (!confirm(confirmMsg)) {
-        console.log('❌ ユーザーがキャンセルしました');
-        return;
-    }
-    
     try {
-        // test.htmlと同じ方式: window.なしでlocation.hrefを直接実行
-        console.log('🚀 location.href実行直前...');
+        // test.htmlと同じ方式で直接実行
         location.href = printUrl;
-        console.log('✅ location.href設定完了');
         
     } catch(e) {
         console.error('❌ 印刷実行エラー:', e);
@@ -3017,10 +2981,7 @@ function executeReceiptPrint(withMemo) {
     const timeText = `${hour}時${minute}分${second}秒`;
     ctx.fillText(timeText, dateTimeX, yPos);
     
-    // キャンバスをJPEGに変換（サイズ削減のため品質70%）
-    const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.70);
-    
-    // 履歴用にPNG（高品質）も保持
+    // キャンバスをPNGに変換（領収書は罫線文字があるため高品質PNG使用）
     const pngDataUrl = canvas.toDataURL('image/png');
     
     // 履歴アイテムにデータを設定
@@ -3046,8 +3007,8 @@ function executeReceiptPrint(withMemo) {
     pdf.internal.pageSize.width = 58;
     pdf.internal.pageSize.height = pdfHeight;
     
-    // JPEG画像をPDFに追加（PNGより軽量）
-    pdf.addImage(jpegDataUrl, 'JPEG', 0, 0, 58, pdfHeight);
+    // PNG画像をPDFに追加（領収書は罫線文字保持のためPNG使用）
+    pdf.addImage(pngDataUrl, 'PNG', 0, 0, 58, pdfHeight);
     
     // PDFをBase64形式で取得
     const pdfBase64 = pdf.output('datauristring').split(',')[1];
