@@ -1550,7 +1550,7 @@ function isIOS() {
 
 // 印刷URLスキーム生成関数（iOS・Android両対応）
 function generatePrintUrl(pdfBase64, thisPage) {
-    // 基本パラメータを構築
+    // 基本パラメータを構築（iOS・Android共通）
     const params = 
         'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
         'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
@@ -1562,64 +1562,71 @@ function generatePrintUrl(pdfBase64, thisPage) {
         'FitToWidth=no' + '&' +
         'PaperWidth=58';
     
-    if (isAndroid()) {
-        // Android用URLスキーム - Intent URIを使用
-        // 正しいパッケージ名: com.seikoinstruments.siiurlprintagent
-        const intentUrl = 'intent://1.0/print?' + params + 
-                         '#Intent;' +
-                         'scheme=siiprintagent;' +
-                         'package=com.seikoinstruments.siiurlprintagent;' +
-                         'end;';
-        
-        console.log('🤖 Android Intent URL生成 (最初の150文字):', intentUrl.substring(0, 150) + '...');
-        return intentUrl;
-    } else {
-        // iOS用URLスキーム（従来のsiiprintagent）
-        console.log('🍎 iOS URL生成');
-        return 'siiprintagent://1.0/print?' + params;
-    }
+    // iOS・Android共に同じURL schemeを使用
+    const printUrl = 'siiprintagent://1.0/print?' + params;
+    
+    console.log(isAndroid() ? '🤖 Android' : '🍎 iOS', 'URL生成 (最初の150文字):', printUrl.substring(0, 150) + '...');
+    return printUrl;
 }
 
-// 印刷実行関数（Android対応：about:blank#blocked完全回避）
+// 印刷実行関数（Android対応：複数の方法を試行）
 function executePrint(printUrl) {
     console.log('🖨️ 印刷実行開始 - デバイス:', isAndroid() ? 'Android' : 'iOS');
     console.log('📱 URL (最初の200文字):', printUrl.substring(0, 200) + '...');
     
     if (isAndroid()) {
-        // Android: iframeを使用した確実な方法
-        console.log('🤖 Android - iframe方式を使用');
+        // Android: 複数の方法を順番に試行
+        console.log('🤖 Android - 複数方式を試行');
         
-        // 既存のiframeがあれば削除
-        const existingIframe = document.getElementById('printIframe');
-        if (existingIframe) {
-            existingIframe.parentNode.removeChild(existingIframe);
+        let executed = false;
+        
+        // 方法1: location.assign()を試行
+        try {
+            console.log('🔵 方法1: location.assign()を試行');
+            window.location.assign(printUrl);
+            executed = true;
+            console.log('✅ location.assign()実行');
+        } catch (e) {
+            console.log('❌ location.assign()失敗:', e.message);
         }
         
-        // 新しいiframeを作成
-        const iframe = document.createElement('iframe');
-        iframe.id = 'printIframe';
-        iframe.style.display = 'none';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        iframe.style.position = 'absolute';
+        // 方法2: location.hrefを試行（方法1が失敗した場合）
+        if (!executed) {
+            try {
+                console.log('🔵 方法2: location.hrefを試行');
+                window.location.href = printUrl;
+                executed = true;
+                console.log('✅ location.href実行');
+            } catch (e) {
+                console.log('❌ location.href失敗:', e.message);
+            }
+        }
         
-        // iframeをbodyに追加してからsrcを設定
-        document.body.appendChild(iframe);
+        // 方法3: 非表示のaタグを作成してクリック（フォールバック）
+        if (!executed) {
+            try {
+                console.log('🔵 方法3: aタグクリックを試行');
+                const link = document.createElement('a');
+                link.href = printUrl;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                setTimeout(() => {
+                    if (link.parentNode) {
+                        link.parentNode.removeChild(link);
+                    }
+                }, 500);
+                executed = true;
+                console.log('✅ aタグクリック実行');
+            } catch (e) {
+                console.log('❌ aタグクリック失敗:', e.message);
+            }
+        }
         
-        // 少し遅延させてからURLを設定（確実に実行するため）
-        setTimeout(() => {
-            iframe.src = printUrl;
-            console.log('✅ iframe.src設定完了');
-            
-            // 3秒後にiframeを削除
-            setTimeout(() => {
-                if (iframe && iframe.parentNode) {
-                    iframe.parentNode.removeChild(iframe);
-                    console.log('🗑️ iframeを削除');
-                }
-            }, 3000);
-        }, 100);
+        if (!executed) {
+            console.error('❌ すべての方法が失敗しました');
+            alert('印刷の開始に失敗しました。SII URL Print Agentアプリがインストールされているか確認してください。');
+        }
         
     } else {
         // iOS: 従来通りlocation.hrefを使用
