@@ -2020,11 +2020,18 @@ function loadHistoryList() {
                 receiptRow.className = 'historyReceiptRow';
                 const receiptInfo = document.createElement('div');
                 receiptInfo.className = 'historyReceiptInfo';
-                // 連番と宛名と但し書き（但し書きが無ければ宛名のみ）を表示
-                let displayText = `No.${item.receiptNumber || '-----'} 宛名: ${item.companyName}`;
+                receiptInfo.style.textAlign = 'center'; // 中央揃え
+                
+                // 連番、宛名、但し書きを改行して表示
+                let displayText = `No.${item.receiptNumber || '-----'}`;
+                displayText += `<br>宛名：${item.companyName}`;
+                
                 if (item.memo) {
-                    displayText += `<br>但し書き: ${item.memo}`;
+                    // 接尾辞を追加（代/類/なし）
+                    const suffixText = item.suffix || '代'; // デフォルトは「代」
+                    displayText += `<br>但し書き：${item.memo}${suffixText}`;
                 }
+                
                 receiptInfo.innerHTML = displayText;
                 receiptRow.appendChild(receiptInfo);
                 contentBlock.appendChild(receiptRow);
@@ -3107,6 +3114,7 @@ async function executeReceiptPrint(withMemo) {
         mode: 'receipt',
         companyName: companyName,
         memo: withMemo ? memo : '',
+        suffix: suffix, // 接尾辞を保存（代/類/なし）
         receiptNumber: receiptNumber, // 連番を保存
         smallTextEnabled: receiptSmallTextEnabled, // 小文字オプションの状態を保存
         data: '', // 後で設定
