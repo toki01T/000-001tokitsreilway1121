@@ -2881,11 +2881,10 @@ function executeReceiptPrint(withMemo) {
     receiptLines.push('宛名が合っておりましたら');
     receiptLines.push('下部の枠にボールペン又は印鑑で');
     receiptLines.push('印を付けて下さい✔️');
-    // 枠はCanvas APIで直接描画するため、ここでは空行のみ追加
-    receiptLines.push('');
-    receiptLines.push('');
-    receiptLines.push('');
-    receiptLines.push('');
+    // 枠はCanvas APIで描画するため、ここでは空行のみ追加
+    receiptLines.push(''); // 枠用のスペース1行目
+    receiptLines.push(''); // 枠用のスペース2行目
+    receiptLines.push(''); // 枠用のスペース3行目
     
     const printText = receiptLines.join('\n');
     
@@ -3018,23 +3017,19 @@ function executeReceiptPrint(withMemo) {
         }
     }
     
-    // 枠をCanvas APIで直接描画（罫線文字の代わり）
-    const boxWidth = 320; // 枠の幅（280→320に拡大）
-    const boxHeight = 120; // 枠の高さ（80→120に拡大）
-    const boxX = exactCenterX - boxWidth / 2; // 中央揃え
-    const boxY = yPos; // 最後のテキストの下
+    // Canvas APIで枠を描画（Unicode文字の代わりに矩形を描画）
+    const boxWidth = 250; // 枠の幅
+    const boxHeight = 80; // 枠の高さ
+    const boxX = exactCenterX - boxWidth / 2; // 中央に配置
+    const boxY = yPos + 10; // 現在のY位置から少し下
     
-    // 枠を描画（太い線）
+    // 枠の外側の線を描画
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 3; // 線の太さ
     ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
     
-    // 内側に薄い線を追加（二重枠効果）
-    ctx.lineWidth = 1;
-    ctx.strokeRect(boxX + 5, boxY + 5, boxWidth - 10, boxHeight - 10);
-    
-    // 枠の分の高さを追加
-    yPos += boxHeight + 20;
+    // yPosを枠の下に移動
+    yPos = boxY + boxHeight + 20;
     
     // QRコードを生成して左側に配置（テキスト印刷と同じ方式）
     let qrCodeCanvas = null;
