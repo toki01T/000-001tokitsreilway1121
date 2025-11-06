@@ -50,15 +50,11 @@ html, body {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
 }
 body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
 }
 header {
     width: 100%;
@@ -1571,23 +1567,12 @@ function addHistory(item) {
             
             getAllReq.onsuccess = () => {
                 const existingItems = getAllReq.result;
-                
-                // 領収書の場合は連番で重複チェック
-                let duplicate;
-                if (item.type === 'receipt' && item.receiptNumber) {
-                    duplicate = existingItems.find(existing => 
-                        existing.type === 'receipt' && 
-                        existing.receiptNumber === item.receiptNumber
-                    );
-                } else {
-                    // その他の場合はmanagementIdで重複チェック
-                    duplicate = existingItems.find(existing => 
-                        existing.managementId === item.managementId
-                    );
-                }
+                const duplicate = existingItems.find(existing => 
+                    existing.managementId === item.managementId
+                );
                 
                 if (duplicate) {
-                    console.warn('⚠️ 重複した履歴を検出しました。追加をスキップします:', item.type === 'receipt' ? item.receiptNumber : item.managementId);
+                    console.warn('⚠️ 重複した履歴を検出しました。追加をスキップします:', item.managementId);
                     resolve(duplicate.id); // 既存のIDを返す
                 } else {
                     // 重複がない場合は追加処理を実行
@@ -3207,39 +3192,42 @@ async function executeReceiptPrint(withMemo) {
             }
         }
         
-        // 小文字オプションの後に但し書きを挿入
-        if (!memoInserted && withMemo && memo && i >= 3) {
-            ctx.font = `${textFontSize}px Arial, sans-serif`;
-            ctx.textAlign = 'center';
-            
-            if (memoFormat === 'short') {
-                // 6文字以内: 但し ○○○○○○ 代として形式（1行、中央揃え）
-                const suffixText = suffix ? ` ${suffix}として` : '';
-                ctx.fillText(`但し ${memo}${suffixText}`, exactCenterX, yPos);
-                yPos += textFontSize * 1.2;
-            } else {
-                // 7文字以上: 但し改行○○○○○○○○○○○○○○○改行代として形式（3行、中央揃え）
-                ctx.font = `${labelFontSize}px Arial, sans-serif`;
-                ctx.fillText('但し', exactCenterX, yPos);
-                yPos += labelFontSize * 1.2;
-                
+        // 小文字オプションの後に但し書きと金額を挿入
+        if (!memoInserted && i >= 3) {
+            // 但し書きがある場合は表示
+            if (withMemo && memo) {
                 ctx.font = `${textFontSize}px Arial, sans-serif`;
-                ctx.fillText(memo, exactCenterX, yPos);
-                yPos += textFontSize * 1.2;
+                ctx.textAlign = 'center';
                 
-                ctx.font = `${labelFontSize}px Arial, sans-serif`;
-                const suffixText = suffix ? `${suffix}として` : '';
-                if (suffixText) {
-                    ctx.fillText(suffixText, exactCenterX, yPos);
+                if (memoFormat === 'short') {
+                    // 6文字以内: 但し ○○○○○○ 代として形式（1行、中央揃え）
+                    const suffixText = suffix ? ` ${suffix}として` : '';
+                    ctx.fillText(`但し ${memo}${suffixText}`, exactCenterX, yPos);
+                    yPos += textFontSize * 1.2;
+                } else {
+                    // 7文字以上: 但し改行○○○○○○○○○○○○○○○改行代として形式（3行、中央揃え）
+                    ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                    ctx.fillText('但し', exactCenterX, yPos);
                     yPos += labelFontSize * 1.2;
+                    
+                    ctx.font = `${textFontSize}px Arial, sans-serif`;
+                    ctx.fillText(memo, exactCenterX, yPos);
+                    yPos += textFontSize * 1.2;
+                    
+                    ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                    const suffixText = suffix ? `${suffix}として` : '';
+                    if (suffixText) {
+                        ctx.fillText(suffixText, exactCenterX, yPos);
+                        yPos += labelFontSize * 1.2;
+                    }
                 }
             }
             
-            // 金額を描画（但し書きの有無に関わらず表示）
+            // 金額を描画（但し書きの有無に関わらず、金額が入力されていれば表示）
             if (amount && !amountInserted) {
-                yPos += 10; // 但し書きとの間隔
+                yPos += 10; // 前の要素との間隔
                 
-                // 「金額」を左揃えで描画（宛名の位置を参考）
+                // 「金額」を左揃えで描画
                 const leftAlignX = 30; // 左側の位置（領収書宛名と同じ位置）
                 ctx.font = `${labelFontSize}px Arial, sans-serif`;
                 ctx.textAlign = 'left';
@@ -3277,6 +3265,7 @@ async function executeReceiptPrint(withMemo) {
     let qrCodeCanvas = null;
     
     // 履歴アイテムを先に作成
+    const timestamp = Date.now();
     const historyItem = {
         type: 'receipt',
         mode: 'receipt',
@@ -3286,8 +3275,9 @@ async function executeReceiptPrint(withMemo) {
         amount: amount || '', // 金額を保存
         receiptNumber: receiptNumber, // 連番を保存
         smallTextEnabled: receiptSmallTextEnabled, // 小文字オプションの状態を保存
+        managementId: `receipt_${timestamp}_${Math.random().toString(36).substr(2, 9)}`, // 一意のID
         data: '', // 後で設定
-        created: Date.now(),
+        created: timestamp,
         qrPrinted: true // 常にQRコード付き
     };
     
