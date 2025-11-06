@@ -1659,6 +1659,26 @@ function isIOS() {
     return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+// テンキー関数（グローバルスコープ）
+function addReceiptAmount(digit) {
+    const amountInput = document.getElementById('receiptAmount');
+    if (!amountInput) return;
+    
+    const currentValue = amountInput.value.replace(/,/g, ''); // カンマを除去
+    const newValue = currentValue + digit;
+    
+    // 数値に変換してカンマ区切りで表示
+    const numValue = parseInt(newValue) || 0;
+    amountInput.value = numValue.toLocaleString('ja-JP');
+}
+
+function clearReceiptAmount() {
+    const amountInput = document.getElementById('receiptAmount');
+    if (!amountInput) return;
+    
+    amountInput.value = '';
+}
+
 // 印刷URLスキーム生成関数（iOS・Android両対応 - test.html完全互換版）
 function generatePrintUrl(pdfBase64, thisPage) {
     console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
@@ -1884,22 +1904,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初期状態で印刷ボタンを無効化
     updateReceiptPrintButtons();
-    
-    // テンキー関数
-    function addReceiptAmount(digit) {
-        const amountInput = document.getElementById('receiptAmount');
-        const currentValue = amountInput.value.replace(/,/g, ''); // カンマを除去
-        const newValue = currentValue + digit;
-        
-        // 数値に変換してカンマ区切りで表示
-        const numValue = parseInt(newValue) || 0;
-        amountInput.value = numValue.toLocaleString('ja-JP');
-    }
-    
-    function clearReceiptAmount() {
-        const amountInput = document.getElementById('receiptAmount');
-        amountInput.value = '';
-    }
     
     // chipのイベント処理も改善
     const chipWith = document.getElementById('chipWith');
