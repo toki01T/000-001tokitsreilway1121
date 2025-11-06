@@ -1474,6 +1474,10 @@ let qrScanner = null;
 let flashlightEnabled = false;
 let currentStream = null;
 
+// 領収書印刷の重複防止用変数
+let lastReceiptPrintId = null;
+let lastReceiptPrintTime = 0;
+
 // 独自QRコード生成用の変数
 const QR_PREFIX = 'TOKI01_';
 const QR_VERSION = 'v1.0';
@@ -1871,9 +1875,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 executeReceiptPrint(hasMemo); // メモの有無に応じて印刷
             }
         });
-        if ('ontouchstart' in window) {
-            receiptPrintBtn.ontouchstart = receiptPrintBtn.onclick;
-        }
+        // ontouchstartは削除（preventDoubleTouchで既に処理されているため不要）
     }
     
     // 領収書フォームの入力監視
@@ -3012,6 +3014,19 @@ async function executeReceiptPrint(withMemo) {
         return;
     }
     
+    // 重複印刷防止: 同じ内容で3秒以内の印刷をブロック
+    const currentPrintId = `${companyName}_${memo}_${suffix}_${amount}`;
+    const currentTime = Date.now();
+    
+    if (lastReceiptPrintId === currentPrintId && (currentTime - lastReceiptPrintTime) < 3000) {
+        console.warn('⚠️ 重複印刷を検出しました。3秒以内の同じ内容の印刷はスキップされます。');
+        return;
+    }
+    
+    // 最後の印刷情報を更新
+    lastReceiptPrintId = currentPrintId;
+    lastReceiptPrintTime = currentTime;
+    
     console.log('🧾 領収書印刷を開始します', withMemo ? '(メモ付き)' : '(メモなし)');
     
     // 連番を取得
@@ -3275,6 +3290,10 @@ async function executeReceiptPrint(withMemo) {
     
     // 履歴アイテムを先に作成
     const timestamp = Date.now();
+    // 内容ベースの一意なIDを生成（重複防止のため）
+    const contentHash = `${companyName}_${memo}_${suffix}_${amount}_${receiptNumber}_${receiptSmallTextEnabled}`.replace(/\s/g, '');
+    const managementId = `receipt_${timestamp}_${contentHash.substring(0, 20)}`;
+    
     const historyItem = {
         type: 'receipt',
         mode: 'receipt',
@@ -3284,7 +3303,7 @@ async function executeReceiptPrint(withMemo) {
         amount: amount || '', // 金額を保存
         receiptNumber: receiptNumber, // 連番を保存
         smallTextEnabled: receiptSmallTextEnabled, // 小文字オプションの状態を保存
-        managementId: `receipt_${timestamp}_${Math.random().toString(36).substr(2, 9)}`, // 一意のID
+        managementId: managementId, // 内容ベースの一意のID
         data: '', // 後で設定
         created: timestamp,
         qrPrinted: true // 常にQRコード付き
