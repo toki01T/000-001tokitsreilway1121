@@ -3046,7 +3046,7 @@ async function executeReceiptPrint(withMemo) {
             // 1行目: 「領収書宛名」（左）と連番（右）
             ctx.font = `${textFontSize}px "MS Gothic", "Yu Gothic", sans-serif`;
             ctx.textAlign = 'left';
-            const receiptTitleX = 34; // 領収書宛名の位置（左端からの距離、調整可能）
+            const receiptTitleX = 30; // 領収書宛名の位置（左端からの距離、調整可能）
             ctx.fillText('領収書宛名', receiptTitleX, yPos);
             
             // 連番を右側に描画（全角数字）
