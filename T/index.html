@@ -826,6 +826,8 @@ main {
     width: 100%;
     margin: 0 auto;
     text-align: center;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .receipt-form-container {
@@ -838,6 +840,8 @@ main {
     max-width: min(450px, 92vw);
     padding: 0 0.5rem;
     box-sizing: border-box;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .receipt-input-group {
@@ -1412,7 +1416,7 @@ footer p {
                 <div class="receipt-input-group">
                     <label for="receiptAmount">金額</label>
                     <div style="position: relative;">
-                        <input type="text" id="receiptAmount" placeholder="金額を入力" readonly style="font-size: 18px; text-align: right; padding-right: 30px;" />
+                        <input type="text" id="receiptAmount" placeholder="" readonly style="font-size: 18px; text-align: right; padding-right: 30px;" />
                         <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 18px; pointer-events: none;">円</span>
                     </div>
                 </div>
@@ -1667,8 +1671,15 @@ function addReceiptAmount(digit) {
     const currentValue = amountInput.value.replace(/,/g, ''); // カンマを除去
     const newValue = currentValue + digit;
     
-    // 数値に変換してカンマ区切りで表示
+    // 数値に変換
     const numValue = parseInt(newValue) || 0;
+    
+    // 999万円を超える場合は入力を無効にする
+    if (numValue > 9990000) {
+        return; // 入力を無視
+    }
+    
+    // カンマ区切りで表示
     amountInput.value = numValue.toLocaleString('ja-JP');
 }
 
@@ -3207,8 +3218,8 @@ async function executeReceiptPrint(withMemo) {
                 }
             }
             
-            // 但し書きの直後に金額を描画（メモがある場合のみ）
-            if (amount) {
+            // 金額を描画（但し書きの有無に関わらず表示）
+            if (amount && !amountInserted) {
                 yPos += 10; // 但し書きとの間隔
                 
                 // 「金額」を左揃えで描画（宛名の位置を参考）
@@ -3228,26 +3239,6 @@ async function executeReceiptPrint(withMemo) {
             }
             
             memoInserted = true;
-        }
-        
-        // 金額を描画（但し書きがない場合で、まだ金額が挿入されていない場合）
-        if (!amountInserted && amount && i >= 3 && lines[i].includes('こちらでお願い致します')) {
-            yPos += 10; // 前の行との間隔
-            
-            // 「金額」を左揃えで描画
-            const leftAlignX = 100; // 左側の位置
-            ctx.font = `${labelFontSize}px Arial, sans-serif`;
-            ctx.textAlign = 'left';
-            ctx.fillText('金額', leftAlignX, yPos);
-            
-            // 「¥○○○○円」を右揃えで描画
-            const rightAlignX = canvasWidth - 100; // 右側の位置
-            ctx.font = `${dateFontSize}px Arial, sans-serif`;
-            ctx.textAlign = 'right';
-            ctx.fillText(`¥${amount}円`, rightAlignX, yPos);
-            
-            yPos += dateFontSize * 1.2;
-            amountInserted = true;
         }
     }
     
