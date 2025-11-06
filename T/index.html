@@ -1823,9 +1823,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (receiptCompanyName) {
         receiptCompanyName.addEventListener('input', updateReceiptPrintButtons);
+        // 宛名の文字数制限を強制（14文字まで）
+        receiptCompanyName.addEventListener('input', function() {
+            if (this.value.length > 14) {
+                this.value = this.value.substring(0, 14);
+            }
+        });
     }
     if (receiptMemo) {
         receiptMemo.addEventListener('input', updateReceiptPrintButtons);
+        // 但し書きの文字数制限を強制（15文字まで）
+        receiptMemo.addEventListener('input', function() {
+            if (this.value.length > 15) {
+                this.value = this.value.substring(0, 15);
+            }
+        });
     }
     
     // 初期状態で印刷ボタンを無効化
