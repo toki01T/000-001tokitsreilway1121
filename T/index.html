@@ -1823,10 +1823,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (receiptCompanyName) {
         receiptCompanyName.addEventListener('input', updateReceiptPrintButtons);
-        // 宛名の文字数制限を強制（14文字まで）
+        // 宛名の文字数制限を強制（13文字まで）
         receiptCompanyName.addEventListener('input', function() {
-            if (this.value.length > 14) {
-                this.value = this.value.substring(0, 14);
+            if (this.value.length > 13) {
+                this.value = this.value.substring(0, 13);
             }
         });
     }
