@@ -1648,7 +1648,7 @@ function generatePrintUrl(pdfBase64, thisPage) {
 // 印刷実行関数（test.html完全互換版）
 function executePrint(printUrl) {
     try {
-        // test.htmlと完全に同じ方式
+        // test.htmlと完全に同じ実装
         location.href = printUrl;
         
     } catch(e) {
@@ -2922,33 +2922,41 @@ async function executeReceiptPrint(withMemo) {
     const labelFontSize = 37;  // "宛名は"用
     const dateFontSize = 50;  // 日付・時刻用
     
-    // 宛名の文字数チェック（最大15行、10行以降は表示形式変更）
+    // 宛名の文字数チェック（最大15行、10行で表示方法変更）
     const companyNameLength = companyName.length;
     let companyNameLines = [];
-    let isCompanyNameOver10Lines = false; // 10行以上フラグ
+    let isCompanyNameLong = false; // 10行以上かどうか
     
-    // 6文字ごとに改行、最大15行（90文字）
-    for (let i = 0; i < companyName.length && companyNameLines.length < 15; i += 6) {
-        companyNameLines.push(companyName.substring(i, i + 6));
-    }
-    
-    // 10行以上の場合はフラグを立てる
-    if (companyNameLines.length >= 10) {
-        isCompanyNameOver10Lines = true;
-    }
-    
-    // 但し書きの文字数チェック（最大15行、6行以降は表示形式変更）
-    let memoLines = [];
-    let isMemoOver6Lines = false; // 6行以上フラグ
-    if (withMemo && memo) {
-        // 6文字ごとに改行、最大15行（90文字）
-        for (let i = 0; i < memo.length && memoLines.length < 15; i += 6) {
-            memoLines.push(memo.substring(i, i + 6));
+    if (companyNameLength <= 60) {
+        // 10行以内（6文字×10行=60文字）: 「宛名は「XXX」」形式
+        for (let i = 0; i < companyName.length && companyNameLines.length < 10; i += 6) {
+            companyNameLines.push(companyName.substring(i, i + 6));
         }
-        
-        // 6行以上の場合はフラグを立てる
-        if (memoLines.length >= 6) {
-            isMemoOver6Lines = true;
+        isCompanyNameLong = false;
+    } else {
+        // 10行以上（61文字以上）: 「宛名は」を別行に、最大15行
+        for (let i = 0; i < companyName.length && companyNameLines.length < 15; i += 6) {
+            companyNameLines.push(companyName.substring(i, i + 6));
+        }
+        isCompanyNameLong = true;
+    }
+    
+    // 但し書きの文字数チェック（最大15行、6行で表示方法変更）
+    let memoLines = [];
+    let isMemoLong = false; // 6行以上かどうか
+    if (withMemo && memo) {
+        if (memo.length <= 36) {
+            // 6行以内（6文字×6行=36文字）: 「但し XXX 代として」形式
+            for (let i = 0; i < memo.length && memoLines.length < 6; i += 6) {
+                memoLines.push(memo.substring(i, i + 6));
+            }
+            isMemoLong = false;
+        } else {
+            // 6行以上（37文字以上）: 「但し」を別行に、最大15行
+            for (let i = 0; i < memo.length && memoLines.length < 15; i += 6) {
+                memoLines.push(memo.substring(i, i + 6));
+            }
+            isMemoLong = true;
         }
     }
     
@@ -2990,29 +2998,40 @@ async function executeReceiptPrint(withMemo) {
         textHeight += lineHeight;
     }
     
-    // 宛名行の高さを追加
-    if (isCompanyNameOver10Lines) {
-        // 10行以上: "宛名は" 中央 + 改行された宛名
-        textHeight += labelFontSize * 1.2; // "宛名は" の行（中央）
-        textHeight += companyNameLines.length * companyLineHeight; // 宛名の各行
+    // 宛名行の高さを追加（10行以内/10行以上で分岐）
+    if (!isCompanyNameLong) {
+        // 10行以内: "宛名は「XXX」" 形式
+        if (companyNameLines.length === 1) {
+            textHeight += companyLineHeight; // 1行
+        } else {
+            textHeight += labelFontSize * 1.2; // "宛名は「"
+            textHeight += companyNameLines.length * companyLineHeight; // 各行
+        }
     } else {
-        // 10行未満: "宛名は「XXX」" 形式
-        textHeight += labelFontSize * 1.2; // "宛名は「" の行
+        // 10行以上: 「宛名は」別行 + 「XXX」+ 「こちらでお願い致します！」
+        textHeight += labelFontSize * 1.2; // "宛名は" の行（中央揃え）
+        textHeight += companyLineHeight; // 「"の行
         textHeight += companyNameLines.length * companyLineHeight; // 宛名の各行
+        textHeight += companyLineHeight; // 」の行
+        textHeight += labelFontSize * 1.2; // "こちらでお願い致します！" の行（中央揃え）
     }
     
-    // 但し書きの高さを追加
+    // 但し書きの高さを追加（6行以内/6行以上で分岐）
     if (withMemo && memo) {
-        if (isMemoOver6Lines) {
-            // 6行以上: "但し" 中央 + 改行されたメモ + "代として" 中央
-            textHeight += labelFontSize * 1.2; // "但し"（中央）
-            textHeight += memoLines.length * textFontSize * 1.2; // メモの各行
-            textHeight += labelFontSize * 1.2; // "代として"（中央）
+        if (!isMemoLong) {
+            // 6行以内: "但し XXX 代として" 形式
+            if (memoLines.length === 1) {
+                textHeight += lineHeight; // 1行
+            } else {
+                textHeight += labelFontSize * 1.2; // "但し" の行
+                textHeight += memoLines.length * textFontSize * 1.2; // メモの各行
+                textHeight += labelFontSize * 1.2; // "代として" の行
+            }
         } else {
-            // 6行未満: "但し XXX 代として" 1行形式
-            textHeight += labelFontSize * 1.2; // "但し " の行
+            // 6行以上: 「但し」別行（中央揃え） + メモ + 「代として」（中央揃え）
+            textHeight += labelFontSize * 1.2; // "但し" の行（中央揃え）
             textHeight += memoLines.length * textFontSize * 1.2; // メモの各行
-            textHeight += labelFontSize * 1.2; // " 代として"
+            textHeight += labelFontSize * 1.2; // "代として" の行（中央揃え）
         }
     }
     
@@ -3080,21 +3099,49 @@ async function executeReceiptPrint(withMemo) {
             ctx.font = `${labelFontSize}px Arial, sans-serif`;
             ctx.textAlign = 'center';
             
-            if (isCompanyNameOver10Lines) {
-                // 10行以上: "宛名は" 中央配置 + 改行 + 「宛名」
+            if (!isCompanyNameLong) {
+                // 10行以内: 宛名は「XXX」こちらでお願い致します！
+                if (companyNameLines.length === 1) {
+                    // 1行の場合
+                    ctx.fillText(`宛名は「${companyName}」`, exactCenterX, yPos);
+                    yPos += companyLineHeight;
+                } else {
+                    // 複数行の場合
+                    ctx.fillText('宛名は「', exactCenterX, yPos);
+                    yPos += labelFontSize * 1.2;
+                    
+                    ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
+                    for (let j = 0; j < companyNameLines.length; j++) {
+                        ctx.fillText(companyNameLines[j], exactCenterX, yPos);
+                        yPos += companyLineHeight;
+                    }
+                    
+                    ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                    ctx.fillText('」', exactCenterX, yPos);
+                    yPos += companyLineHeight;
+                    
+                    ctx.fillText('こちらでお願い致します！', exactCenterX, yPos);
+                    yPos += labelFontSize * 1.2;
+                }
+            } else {
+                // 10行以上: 「宛名は」改行「XXX」改行「こちらでお願い致します！」
                 ctx.fillText('宛名は', exactCenterX, yPos);
                 yPos += labelFontSize * 1.2;
                 
-                // 各行を中央揃えで描画（「」付き）
+                ctx.fillText('「', exactCenterX, yPos);
+                yPos += companyLineHeight;
+                
                 ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
                 for (let j = 0; j < companyNameLines.length; j++) {
-                    ctx.fillText(`「${companyNameLines[j]}」`, exactCenterX, yPos);
+                    ctx.fillText(companyNameLines[j], exactCenterX, yPos);
                     yPos += companyLineHeight;
                 }
-            } else {
-                // 10行未満: "宛名は「XXX」" 形式（中央揃え）
-                const fullText = `宛名は「${companyName}」`;
-                ctx.fillText(fullText, exactCenterX, yPos);
+                
+                ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                ctx.fillText('」', exactCenterX, yPos);
+                yPos += companyLineHeight;
+                
+                ctx.fillText('こちらでお願い致します！', exactCenterX, yPos);
                 yPos += labelFontSize * 1.2;
             }
         }
@@ -3104,29 +3151,49 @@ async function executeReceiptPrint(withMemo) {
             ctx.font = `${labelFontSize}px Arial, sans-serif`;
             ctx.textAlign = 'center';
             
-            if (isMemoOver6Lines) {
-                // 6行以上: "但し" 中央配置 + 改行 + メモ + 改行 + "代として" 中央配置
+            if (!isMemoLong) {
+                // 6行以内: 但し XXX 代として
+                if (memoLines.length === 1) {
+                    // 1行の場合
+                    const memoText = suffix ? `但し ${memo} ${suffix}として` : `但し ${memo}`;
+                    ctx.fillText(memoText, exactCenterX, yPos);
+                    yPos += lineHeight;
+                } else {
+                    // 複数行の場合
+                    ctx.fillText('但し', exactCenterX, yPos);
+                    yPos += labelFontSize * 1.2;
+                    
+                    ctx.font = `${textFontSize}px Arial, sans-serif`;
+                    for (let j = 0; j < memoLines.length; j++) {
+                        ctx.fillText(memoLines[j], exactCenterX, yPos);
+                        yPos += textFontSize * 1.2;
+                    }
+                    
+                    ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                    const suffixText = suffix ? `${suffix}として` : '';
+                    if (suffixText) {
+                        ctx.fillText(suffixText, exactCenterX, yPos);
+                        yPos += labelFontSize * 1.2;
+                    }
+                }
+            } else {
+                // 6行以上: 「但し」改行 メモ 改行「代として」
                 ctx.fillText('但し', exactCenterX, yPos);
                 yPos += labelFontSize * 1.2;
                 
-                // 各行を中央揃えで描画
                 ctx.font = `${textFontSize}px Arial, sans-serif`;
                 for (let j = 0; j < memoLines.length; j++) {
                     ctx.fillText(memoLines[j], exactCenterX, yPos);
                     yPos += textFontSize * 1.2;
                 }
                 
-                // "代として" 中央配置
+                // "代として" (中央揃え)
                 ctx.font = `${labelFontSize}px Arial, sans-serif`;
-                if (suffix) {
-                    ctx.fillText(`${suffix}として`, exactCenterX, yPos);
+                const suffixText = suffix ? `${suffix}として` : '';
+                if (suffixText) {
+                    ctx.fillText(suffixText, exactCenterX, yPos);
                     yPos += labelFontSize * 1.2;
                 }
-            } else {
-                // 6行未満: "但し XXX 代として" 形式（中央揃え）
-                const memoText = suffix ? `但し ${memo} ${suffix}として` : `但し ${memo}`;
-                ctx.fillText(memoText, exactCenterX, yPos);
-                yPos += labelFontSize * 1.2;
             }
             memoInserted = true;
         }
