@@ -50,11 +50,15 @@ html, body {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 header {
     width: 100%;
@@ -460,6 +464,8 @@ main {
     color: var(--text-color);
     box-sizing: border-box;
     overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 @media (max-width: 600px) {
     main {
@@ -1565,12 +1571,23 @@ function addHistory(item) {
             
             getAllReq.onsuccess = () => {
                 const existingItems = getAllReq.result;
-                const duplicate = existingItems.find(existing => 
-                    existing.managementId === item.managementId
-                );
+                
+                // 領収書の場合は連番で重複チェック
+                let duplicate;
+                if (item.type === 'receipt' && item.receiptNumber) {
+                    duplicate = existingItems.find(existing => 
+                        existing.type === 'receipt' && 
+                        existing.receiptNumber === item.receiptNumber
+                    );
+                } else {
+                    // その他の場合はmanagementIdで重複チェック
+                    duplicate = existingItems.find(existing => 
+                        existing.managementId === item.managementId
+                    );
+                }
                 
                 if (duplicate) {
-                    console.warn('⚠️ 重複した履歴を検出しました。追加をスキップします:', item.managementId);
+                    console.warn('⚠️ 重複した履歴を検出しました。追加をスキップします:', item.type === 'receipt' ? item.receiptNumber : item.managementId);
                     resolve(duplicate.id); // 既存のIDを返す
                 } else {
                     // 重複がない場合は追加処理を実行
