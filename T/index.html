@@ -1621,16 +1621,12 @@ function isIOS() {
 function generatePrintUrl(pdfBase64, thisPage) {
     console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
     
-    // AndroidとiOSでコールバックURLを分ける
-    // Androidは about:blank を使用（新規タブを開かない）
-    const callbackUrl = isAndroid() ? 'about:blank' : thisPage;
-    
-    // test.htmlと完全に同じ方式でURL構築
+    // test.htmlと完全に同じ方式でURL構築（AndroidもiOSも同じ）
     const url = 'siiprintagent://1.0/print?' +
-                'CallbackSuccess=' + encodeURIComponent(callbackUrl) + '&' +
-                'CallbackFail=' + encodeURIComponent(callbackUrl) + '&' +
+                'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
                 'Format=' + 'pdf' + '&' +
-                'Data=' + encodeURIComponent(pdfBase64) + '&' +  // test.htmlと同じ
+                'Data=' + encodeURIComponent(pdfBase64) + '&' +
                 'SelectOnError=' + 'yes' + '&' +
                 'CutType=' + 'full' + '&' +
                 'CutFeed=' + 'yes' + '&' +
@@ -1649,36 +1645,14 @@ function generatePrintUrl(pdfBase64, thisPage) {
     return url;
 }
 
-// 印刷実行関数（Android/iOS統一版）
+// 印刷実行関数（test.html完全互換版）
 function executePrint(printUrl) {
     try {
-        // Androidの場合、印刷後に元のページに戻る処理を追加
-        if (isAndroid()) {
-            // 現在のURLを保存
-            const currentUrl = window.location.href;
-            
-            // 印刷実行
-            location.href = printUrl;
-            
-            // 短時間後に元のページに戻る（印刷アプリが起動するまで待つ）
-            setTimeout(() => {
-                // about:blankまたは印刷アプリから戻ってきた場合、元のページに戻す
-                if (window.location.href !== currentUrl) {
-                    window.location.href = currentUrl;
-                }
-            }, 500); // 500ms後に戻る
-        } else {
-            // iOSの場合は通常通り
-            location.href = printUrl;
-        }
+        // test.htmlと完全に同じ方式で実行
+        location.href = printUrl;
         
     } catch(e) {
         console.error('❌ 印刷実行エラー:', e);
-        console.error('❌ エラー詳細:', {
-            name: e.name,
-            message: e.message,
-            stack: e.stack
-        });
         alert('印刷の起動に失敗しました。\nSII URL Print Agentがインストールされているか確認してください。\n\nエラー: ' + e.message);
     }
 }
@@ -2307,6 +2281,17 @@ function updateTime() {
     setTimeout(updateTime, 1000);
 }
 window.onload = function() {
+    // test.htmlと同じエラーハンドリング（印刷エラー時のクエリパラメータチェック）
+    let query = location.search;
+    let code = query.match(/Code=([^&#]*)/);
+    let message = query.match(/Message=([^&#]*)/);
+    if (code) {
+        // 印刷エラーが発生した場合
+        alert(`印刷エラー\n\nCode = ${decodeURIComponent(code[1])}\nMessage = ${decodeURIComponent(message[1])}`);
+        // クエリパラメータを削除してページをリロード
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    
     displayDate();
     updateTime();
     setModeToggle(currentHistoryType);
