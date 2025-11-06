@@ -507,26 +507,45 @@ main {
     margin: 0 auto;
 }
 
-/* 画像選択セクション - 中央配置 */
+/* 各セクションの配置設定 */
 #imageSection,
-.image-selection {
+#textSection,
+#signatureSection {
     min-height: calc(100vh - 110px);
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    width: 100%;
 }
+
+#receiptSection {
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+}
+
 @media (max-width: 600px) {
     .section-content {
         max-width: 92vw;
         padding: 0 0.75rem;
+    }
+    #imageSection,
+    #textSection,
+    #signatureSection {
+        min-height: calc(100vh - 128px);
     }
 }
 @media (max-width: 400px) {
     .section-content {
         max-width: 90vw;
         padding: 0 0.5rem;
+    }
+    #imageSection,
+    #textSection,
+    #signatureSection {
+        min-height: calc(100vh - 121px);
     }
 }
 .print-options {
@@ -689,15 +708,6 @@ main {
     width: 100%;
     margin: 0 auto;
     text-align: center;
-    min-height: calc(100vh - 110px);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-
-#signatureSection[style*="display: none"] {
-    display: none !important;
 }
 .signature-pad-container {
     margin: 1.2rem auto 0.7rem auto;
@@ -844,6 +854,16 @@ main {
 }
 .clear-button:hover {
     background-color: var(--primary-hover);
+}
+
+/* 日付・時刻の表示 */
+#dateDisplay,
+#timeDisplay {
+    text-align: center;
+    font-size: 1rem;
+    color: var(--text-color);
+    margin: 0.3rem 0;
+    width: 100%;
 }
 
 /* 領収書セクション用のスタイル */
@@ -1048,15 +1068,6 @@ main {
     width: 100%;
     margin: 0 auto;
     text-align: center;
-    min-height: calc(100vh - 110px);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-}
-
-#textSection[style*="display: none"] {
-    display: none !important;
 }
 
 footer {
