@@ -969,6 +969,26 @@ main {
     transform: none;
 }
 
+.keypad-btn {
+    padding: 15px;
+    font-size: 20px;
+    font-weight: bold;
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.keypad-btn:hover {
+    background: #e0e0e0;
+    transform: scale(1.05);
+}
+
+.keypad-btn:active {
+    transform: scale(0.95);
+}
+
 @media (max-width: 500px) {
     .receipt-input-group input[type="text"] {
         font-size: 0.95rem;
@@ -1376,7 +1396,7 @@ footer p {
             <div class="receipt-form-container">
                 <div class="receipt-input-group">
                     <label for="receiptCompanyName">宛名</label>
-                    <input type="text" id="receiptCompanyName" placeholder="" maxlength="14" />
+                    <input type="text" id="receiptCompanyName" placeholder="" maxlength="12" />
                 </div>
                 <div class="receipt-input-group">
                     <label for="receiptMemo">但し書き</label>
@@ -1388,6 +1408,28 @@ footer p {
                             <option value="">なし</option>
                         </select>
                     </div>
+                </div>
+                <div class="receipt-input-group">
+                    <label for="receiptAmount">金額</label>
+                    <div style="position: relative;">
+                        <input type="text" id="receiptAmount" placeholder="金額を入力" readonly style="font-size: 18px; text-align: right; padding-right: 30px;" />
+                        <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 18px; pointer-events: none;">円</span>
+                    </div>
+                </div>
+                <!-- テンキー -->
+                <div id="receiptKeypad" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px;">
+                    <button class="keypad-btn" onclick="addReceiptAmount('1')">1</button>
+                    <button class="keypad-btn" onclick="addReceiptAmount('2')">2</button>
+                    <button class="keypad-btn" onclick="addReceiptAmount('3')">3</button>
+                    <button class="keypad-btn" onclick="addReceiptAmount('4')">4</button>
+                    <button class="keypad-btn" onclick="addReceiptAmount('5')">5</button>
+                    <button class="keypad-btn" onclick="addReceiptAmount('6')">6</button>
+                    <button class="keypad-btn" onclick="addReceiptAmount('7')">7</button>
+                    <button class="keypad-btn" onclick="addReceiptAmount('8')">8</button>
+                    <button class="keypad-btn" onclick="addReceiptAmount('9')">9</button>
+                    <button class="keypad-btn" onclick="addReceiptAmount('00')">00</button>
+                    <button class="keypad-btn" onclick="addReceiptAmount('0')">0</button>
+                    <button class="keypad-btn" onclick="clearReceiptAmount()" style="background: #ff5252; color: white;">C</button>
                 </div>
                 <div class="receipt-buttons-row">
                     <button id="receiptSmallTextBtn" class="receipt-option-btn" onclick="toggleSmallTextOption()">
@@ -1843,6 +1885,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初期状態で印刷ボタンを無効化
     updateReceiptPrintButtons();
     
+    // テンキー関数
+    function addReceiptAmount(digit) {
+        const amountInput = document.getElementById('receiptAmount');
+        const currentValue = amountInput.value.replace(/,/g, ''); // カンマを除去
+        const newValue = currentValue + digit;
+        
+        // 数値に変換してカンマ区切りで表示
+        const numValue = parseInt(newValue) || 0;
+        amountInput.value = numValue.toLocaleString('ja-JP');
+    }
+    
+    function clearReceiptAmount() {
+        const amountInput = document.getElementById('receiptAmount');
+        amountInput.value = '';
+    }
+    
     // chipのイベント処理も改善
     const chipWith = document.getElementById('chipWith');
     const chipWithout = document.getElementById('chipWithout');
@@ -2050,7 +2108,7 @@ function loadHistoryList() {
                 receiptInfo.className = 'historyReceiptInfo';
                 receiptInfo.style.textAlign = 'center'; // 中央揃え
                 
-                // 連番、宛名、但し書きを改行して表示
+                // 連番、宛名、但し書き、金額を改行して表示
                 let displayText = `No.${item.receiptNumber || '-----'}`;
                 displayText += `<br>宛名：${item.companyName}`;
                 
@@ -2059,6 +2117,11 @@ function loadHistoryList() {
                     // 接尾辞を追加（代/類/なし）
                     const suffixText = item.suffix || '代'; // デフォルトは「代」
                     displayText += `<br>但し書き：${item.memo}${suffixText}`;
+                }
+                
+                // 金額が入力されている場合のみ表示
+                if (item.amount && item.amount.trim() !== '') {
+                    displayText += `<br>金額：¥${item.amount}円`;
                 }
                 
                 receiptInfo.innerHTML = displayText;
@@ -2199,6 +2262,13 @@ function loadHistoryList() {
                         if (memoInput) {
                             memoInput.value = item.memo || '';
                             console.log('📋 メモ設定:', memoInput.value);
+                        }
+                        
+                        // 金額の復元
+                        const amountInput = document.getElementById('receiptAmount');
+                        if (amountInput) {
+                            amountInput.value = item.amount || '';
+                            console.log('📋 金額設定:', amountInput.value);
                         }
                         
                         // 接尾辞の復元
@@ -2903,6 +2973,8 @@ async function executeReceiptPrint(withMemo) {
     const companyName = document.getElementById('receiptCompanyName').value.trim();
     const memo = document.getElementById('receiptMemo').value.trim();
     let suffix = document.getElementById('receiptSuffix').value; // ドロップダウンから接尾辞取得
+    const amountInput = document.getElementById('receiptAmount');
+    const amount = amountInput ? amountInput.value.trim() : '';
     
     // 但し書きが空の場合は接尾辞を「なし」（空文字）にする
     if (!memo || memo === '') {
@@ -3017,6 +3089,11 @@ async function executeReceiptPrint(withMemo) {
         }
     }
     
+    // 金額の高さを追加
+    if (amount) {
+        textHeight += dateFontSize * 1.2; // 金額行の高さ
+    }
+    
     // 枠の高さを追加（Canvas APIで描画）
     const stampBoxHeight = 120;
     textHeight += stampBoxHeight + 30; // 枠の高さ + 上下の余白
@@ -3128,6 +3205,14 @@ async function executeReceiptPrint(withMemo) {
         }
     }
     
+    // 金額を描画（但し書きの下）
+    if (amount) {
+        ctx.font = `${dateFontSize}px Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(`¥${amount}円`, exactCenterX, yPos);
+        yPos += dateFontSize * 1.2;
+    }
+    
     // 枠をCanvas APIで直接描画（罫線文字の代わり）
     const boxWidth = 280; // 枠の幅（大きくしました）
     const boxHeight = 120; // 枠の高さ（大きくしました）
@@ -3152,6 +3237,7 @@ async function executeReceiptPrint(withMemo) {
         companyName: companyName,
         memo: (withMemo && memo) ? memo : '', // memoが空なら空文字
         suffix: (withMemo && memo) ? suffix : '', // memoが空なら接尾辞も空
+        amount: amount || '', // 金額を保存
         receiptNumber: receiptNumber, // 連番を保存
         smallTextEnabled: receiptSmallTextEnabled, // 小文字オプションの状態を保存
         data: '', // 後で設定
@@ -4957,9 +5043,13 @@ function restoreContentFromHistory(item) {
         // 領収書データを復元
         const receiptCompanyName = document.getElementById('receiptCompanyName');
         const receiptMemo = document.getElementById('receiptMemo');
+        const receiptAmount = document.getElementById('receiptAmount');
         
         receiptCompanyName.value = item.companyName || '';
         receiptMemo.value = item.memo || '';
+        if (receiptAmount) {
+            receiptAmount.value = item.amount || '';
+        }
         
         // 小文字オプションの状態を復元
         receiptSmallTextEnabled = item.smallTextEnabled || false;
@@ -5009,9 +5099,13 @@ function restoreContentFromQROnly(qrData) {
         // 領収書データを復元
         const receiptCompanyName = document.getElementById('receiptCompanyName');
         const receiptMemo = document.getElementById('receiptMemo');
+        const receiptAmount = document.getElementById('receiptAmount');
         
         receiptCompanyName.value = qrData.companyName || '';
         receiptMemo.value = qrData.memo || '';
+        if (receiptAmount) {
+            receiptAmount.value = qrData.amount || '';
+        }
         
         // 小文字オプションの状態を復元
         receiptSmallTextEnabled = qrData.smallTextEnabled || false;
