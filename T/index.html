@@ -451,13 +451,12 @@ header {
 main {
     flex: 1;
     min-height: 100vh;
-    height: auto;
     width: 100%;
     max-width: 100vw;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     padding-top: 60px;
     padding-bottom: 50px;
     background: var(--background-color);
@@ -504,10 +503,10 @@ main {
     justify-content: center;
     width: 100%;
     max-width: min(500px, 95vw);
+    min-height: calc(100vh - 110px);
     padding: 0 clamp(0.5rem, 2vw, 1rem);
     box-sizing: border-box;
-    margin: auto;
-    min-height: calc(100vh - 110px);
+    margin: 0 auto;
 }
 @media (max-width: 600px) {
     .section-content {
@@ -2475,6 +2474,18 @@ function showSection(mode) {
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
     document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
     document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
+    
+    // section-contentの配置を調整（領収書は上部、それ以外は中央）
+    const sectionContent = document.querySelector('.section-content');
+    if (sectionContent) {
+        if (mode === 'receipt') {
+            sectionContent.style.justifyContent = 'flex-start';
+            sectionContent.style.minHeight = 'auto';
+        } else {
+            sectionContent.style.justifyContent = 'center';
+            sectionContent.style.minHeight = 'calc(100vh - 110px)';
+        }
+    }
     
     // 領収書モードの時は日付・時刻選択と枚数選択を非表示
     if (mode === 'receipt') {
