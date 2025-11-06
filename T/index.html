@@ -1522,26 +1522,41 @@ function addHistory(item) {
     
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            const store = tx.objectStore(STORE_NAME);
-            const addReq = store.add(item);
+            // まず重複チェック（managementIdで確認）
+            const checkTx = db.transaction(STORE_NAME, 'readonly');
+            const checkStore = checkTx.objectStore(STORE_NAME);
+            const getAllReq = checkStore.getAll();
             
-            addReq.onsuccess = () => {
-                console.log('✅ 履歴をデータベースに保存完了');
-                resolve();
+            getAllReq.onsuccess = () => {
+                const existingItems = getAllReq.result;
+                const isDuplicate = existingItems.some(existing => 
+                    existing.managementId === item.managementId
+                );
+                
+                if (isDuplicate) {
+                    console.warn('⚠️ 同じmanagementIdの履歴が既に存在します。追加をスキップ:', item.managementId);
+                    resolve(); // エラーではなく正常終了扱い
+                    return;
+                }
+                
+                // 重複がない場合のみ追加
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                const addReq = store.add(item);
+                
+                addReq.onsuccess = () => {
+                    console.log('✅ 履歴をデータベースに保存完了');
+                    resolve();
+                };
+                
+                addReq.onerror = (event) => {
+                    console.error('❌ 履歴保存エラー:', event.target.error);
+                    reject(event.target.error);
+                };
             };
             
-            addReq.onerror = (event) => {
-                console.error('❌ 履歴保存エラー:', event.target.error);
-                reject(event.target.error);
-            };
-            
-            tx.oncomplete = () => {
-                console.log('✅ トランザクション完了');
-            };
-            
-            tx.onerror = (event) => {
-                console.error('❌ トランザクションエラー:', event.target.error);
+            getAllReq.onerror = (event) => {
+                console.error('❌ 重複チェックエラー:', event.target.error);
                 reject(event.target.error);
             };
         });
@@ -1596,16 +1611,14 @@ function isIOS() {
     return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-// 印刷URLスキーム生成関数（iOS・Android両対応 - test.html完全互換版）
+// 印刷URLスキーム生成関数（iOS・Android両対応 - Callback不要版）
 function generatePrintUrl(pdfBase64, thisPage) {
     console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
     
-    // test.htmlと完全に同じ方式でURL構築
+    // Callbackを削除してAndroidフリーズ・新規タブ問題を解決
     const url = 'siiprintagent://1.0/print?' +
-                'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
-                'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
                 'Format=' + 'pdf' + '&' +
-                'Data=' + encodeURIComponent(pdfBase64) + '&' +  // test.htmlと同じ
+                'Data=' + pdfBase64 + '&' +  // Base64はエンコードしない（重要！）
                 'SelectOnError=' + 'yes' + '&' +
                 'CutType=' + 'full' + '&' +
                 'CutFeed=' + 'yes' + '&' +
