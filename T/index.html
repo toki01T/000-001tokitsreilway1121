@@ -1622,7 +1622,8 @@ function generatePrintUrl(pdfBase64, thisPage) {
     console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
     
     // AndroidとiOSでコールバックURLを分ける
-    const callbackUrl = isAndroid() ? '' : thisPage; // Androidは空、iOSは現在のページ
+    // Androidは about:blank を使用（新規タブを開かない）
+    const callbackUrl = isAndroid() ? 'about:blank' : thisPage;
     
     // test.htmlと完全に同じ方式でURL構築
     const url = 'siiprintagent://1.0/print?' +
@@ -1651,8 +1652,25 @@ function generatePrintUrl(pdfBase64, thisPage) {
 // 印刷実行関数（Android/iOS統一版）
 function executePrint(printUrl) {
     try {
-        // test.htmlと同じ方式で直接実行
-        location.href = printUrl;
+        // Androidの場合、印刷後に元のページに戻る処理を追加
+        if (isAndroid()) {
+            // 現在のURLを保存
+            const currentUrl = window.location.href;
+            
+            // 印刷実行
+            location.href = printUrl;
+            
+            // 短時間後に元のページに戻る（印刷アプリが起動するまで待つ）
+            setTimeout(() => {
+                // about:blankまたは印刷アプリから戻ってきた場合、元のページに戻す
+                if (window.location.href !== currentUrl) {
+                    window.location.href = currentUrl;
+                }
+            }, 500); // 500ms後に戻る
+        } else {
+            // iOSの場合は通常通り
+            location.href = printUrl;
+        }
         
     } catch(e) {
         console.error('❌ 印刷実行エラー:', e);
