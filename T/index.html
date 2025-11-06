@@ -500,13 +500,22 @@ main {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     width: 100%;
     max-width: min(500px, 95vw);
-    min-height: calc(100vh - 110px);
     padding: 0 clamp(0.5rem, 2vw, 1rem);
     box-sizing: border-box;
     margin: 0 auto;
+}
+
+/* 画像選択セクション - 中央配置 */
+#imageSection,
+.image-selection {
+    min-height: calc(100vh - 110px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
 }
 @media (max-width: 600px) {
     .section-content {
@@ -680,6 +689,15 @@ main {
     width: 100%;
     margin: 0 auto;
     text-align: center;
+    min-height: calc(100vh - 110px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#signatureSection[style*="display: none"] {
+    display: none !important;
 }
 .signature-pad-container {
     margin: 1.2rem auto 0.7rem auto;
@@ -1030,6 +1048,15 @@ main {
     width: 100%;
     margin: 0 auto;
     text-align: center;
+    min-height: calc(100vh - 110px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#textSection[style*="display: none"] {
+    display: none !important;
 }
 
 footer {
@@ -2474,18 +2501,6 @@ function showSection(mode) {
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
     document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
     document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
-    
-    // section-contentの配置を調整（領収書は上部、それ以外は中央）
-    const sectionContent = document.querySelector('.section-content');
-    if (sectionContent) {
-        if (mode === 'receipt') {
-            sectionContent.style.justifyContent = 'flex-start';
-            sectionContent.style.minHeight = 'auto';
-        } else {
-            sectionContent.style.justifyContent = 'center';
-            sectionContent.style.minHeight = 'calc(100vh - 110px)';
-        }
-    }
     
     // 領収書モードの時は日付・時刻選択と枚数選択を非表示
     if (mode === 'receipt') {
