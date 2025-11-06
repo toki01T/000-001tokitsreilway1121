@@ -3218,7 +3218,7 @@ async function executeReceiptPrint(withMemo) {
                 ctx.fillText('金額', leftAlignX, yPos);
                 
                 // 「¥○○○○円」を右揃えで描画
-                const rightAlignX = canvasWidth - 115; // 右側の位置
+                const rightAlignX = canvasWidth - 120; // 右側の位置
                 ctx.font = `${dateFontSize}px Arial, sans-serif`;
                 ctx.textAlign = 'right';
                 ctx.fillText(`¥${amount}円`, rightAlignX, yPos);
