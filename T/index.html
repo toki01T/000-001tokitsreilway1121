@@ -50,13 +50,14 @@ html, body {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
-    overflow: visible;
 }
 body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    position: relative;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
     -webkit-overflow-scrolling: touch;
 }
 header {
@@ -450,12 +451,13 @@ header {
 }
 main {
     flex: 1;
+    min-height: 100vh;
     width: 100%;
     max-width: 100vw;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     padding-top: 60px;
     padding-bottom: 50px;
     background: var(--background-color);
@@ -464,6 +466,7 @@ main {
     overflow-x: hidden;
     overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
     position: relative;
 }
 @media (max-width: 600px) {
@@ -499,13 +502,11 @@ main {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
     width: 100%;
     max-width: min(500px, 95vw);
     padding: 0 clamp(0.5rem, 2vw, 1rem);
     box-sizing: border-box;
     margin: 0 auto;
-    min-height: calc(100vh - 110px);
 }
 @media (max-width: 600px) {
     .section-content {
@@ -827,38 +828,35 @@ main {
     background-color: var(--primary-hover);
 }
 
-/* 全セクション共通スタイル */
-section {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    min-height: calc(100vh - 110px);
-}
-
 /* 領収書セクション用のスタイル */
 #receiptSection {
     display: none;
     width: 100%;
     margin: 0 auto;
     text-align: center;
-    overflow: visible;
-    justify-content: flex-start;
-    padding-top: 1rem;
-    min-height: auto;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    max-height: calc(100vh - 110px);
+    overscroll-behavior: contain;
+    position: relative;
 }
 
 .receipt-form-container {
-    margin: 0 auto;
+    margin: 1rem auto;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 1rem;
     width: 100%;
     max-width: min(450px, 92vw);
-    padding: 0 0.5rem 1rem 0.5rem;
+    padding: 0 0.5rem;
     box-sizing: border-box;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    max-height: calc(100vh - 140px);
+    overscroll-behavior: contain;
 }
 
 .receipt-input-group {
@@ -877,16 +875,6 @@ section {
     text-align: center;
 }
 
-/* 日付・時刻表示 */
-#dateDisplay, #timeDisplay {
-    text-align: center;
-    font-size: clamp(0.9rem, 2.5vw, 1.1rem);
-    color: var(--text-color);
-    margin: 0.5rem auto;
-    width: 100%;
-    max-width: min(450px, 92vw);
-}
-
 .receipt-input-group input[type="text"] {
     width: 100%;
     max-width: min(350px, 88vw);
@@ -900,6 +888,9 @@ section {
     color: var(--input-text);
     box-sizing: border-box;
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    -webkit-user-select: text;
+    user-select: text;
+    touch-action: manipulation;
 }
 
 .receipt-input-group input[type="text"]:focus {
