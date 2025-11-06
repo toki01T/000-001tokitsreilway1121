@@ -3128,6 +3128,7 @@ async function executeReceiptPrint(withMemo) {
     // テキストを描画（上部余白を小さく）
     let yPos = 30; // 上余白を30pxに調整
     let memoInserted = false;
+    let amountInserted = false;
     let lineIndex = 0; // 実際の行インデックス
     
     for (let i = 0; i < lines.length; i++) {
@@ -3205,16 +3206,49 @@ async function executeReceiptPrint(withMemo) {
                     yPos += labelFontSize * 1.2;
                 }
             }
+            
+            // 但し書きの直後に金額を描画（メモがある場合のみ）
+            if (amount) {
+                yPos += 10; // 但し書きとの間隔
+                
+                // 「金額」を左揃えで描画（宛名の位置を参考）
+                const leftAlignX = 100; // 左側の位置（宛名と同じ位置）
+                ctx.font = `${labelFontSize}px Arial, sans-serif`;
+                ctx.textAlign = 'left';
+                ctx.fillText('金額', leftAlignX, yPos);
+                
+                // 「¥○○○○円」を右揃えで描画
+                const rightAlignX = canvasWidth - 100; // 右側の位置
+                ctx.font = `${dateFontSize}px Arial, sans-serif`;
+                ctx.textAlign = 'right';
+                ctx.fillText(`¥${amount}円`, rightAlignX, yPos);
+                
+                yPos += dateFontSize * 1.2;
+                amountInserted = true;
+            }
+            
             memoInserted = true;
         }
-    }
-    
-    // 金額を描画（但し書きの下）
-    if (amount) {
-        ctx.font = `${dateFontSize}px Arial, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(`¥${amount}円`, exactCenterX, yPos);
-        yPos += dateFontSize * 1.2;
+        
+        // 金額を描画（但し書きがない場合で、まだ金額が挿入されていない場合）
+        if (!amountInserted && amount && i >= 3 && lines[i].includes('こちらでお願い致します')) {
+            yPos += 10; // 前の行との間隔
+            
+            // 「金額」を左揃えで描画
+            const leftAlignX = 100; // 左側の位置
+            ctx.font = `${labelFontSize}px Arial, sans-serif`;
+            ctx.textAlign = 'left';
+            ctx.fillText('金額', leftAlignX, yPos);
+            
+            // 「¥○○○○円」を右揃えで描画
+            const rightAlignX = canvasWidth - 100; // 右側の位置
+            ctx.font = `${dateFontSize}px Arial, sans-serif`;
+            ctx.textAlign = 'right';
+            ctx.fillText(`¥${amount}円`, rightAlignX, yPos);
+            
+            yPos += dateFontSize * 1.2;
+            amountInserted = true;
+        }
     }
     
     // 枠をCanvas APIで直接描画（罫線文字の代わり）
