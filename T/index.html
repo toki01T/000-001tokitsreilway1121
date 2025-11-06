@@ -1376,12 +1376,12 @@ footer p {
             <div class="receipt-form-container">
                 <div class="receipt-input-group">
                     <label for="receiptCompanyName">宛名</label>
-                    <input type="text" id="receiptCompanyName" placeholder="" />
+                    <input type="text" id="receiptCompanyName" placeholder="" maxlength="14" />
                 </div>
                 <div class="receipt-input-group">
                     <label for="receiptMemo">但し書き</label>
                     <div style="display: flex; gap: 5px; align-items: center;">
-                        <input type="text" id="receiptMemo" placeholder="" style="flex: 1;" />
+                        <input type="text" id="receiptMemo" placeholder="" style="flex: 1;" maxlength="15" />
                         <select id="receiptSuffix" style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; background: white;">
                             <option value="代">代</option>
                             <option value="類">類</option>
@@ -2918,33 +2918,29 @@ async function executeReceiptPrint(withMemo) {
     
     // フォントサイズ設定
     const textFontSize = 37;  // 通常テキスト用
-    const companyNameFontSize = 42; // 宛名用（短い場合）
+    const companyNameFontSize = 42; // 宛名用
     const labelFontSize = 37;  // "宛名は"用
     const dateFontSize = 50;  // 日付・時刻用
     
-    // 宛名の文字数チェック（最大15文字、10文字で表示変更）
+    // 宛名の文字数チェック（最大14文字、9文字で表示変更）
     const companyNameLength = companyName.length;
-    let companyNameText = companyName.substring(0, 15); // 最大15文字
     let companyNameFormat = ''; // 'short' or 'long'
     
-    // 10文字以内か10文字以上かで表示形式を決定
-    if (companyNameLength <= 10) {
-        companyNameFormat = 'short'; // 宛名は「○○○」形式
+    // 9文字以内か10文字以上かで表示形式を決定
+    if (companyNameLength <= 9) {
+        companyNameFormat = 'short'; // 宛名は「○○○○○○○○○」形式（1行）
     } else {
-        companyNameFormat = 'long'; // 宛名は改行して「○○○」形式
+        companyNameFormat = 'long'; // 宛名は改行して「○○○○○○○○○○○○○○」形式（2行）
     }
     
     // 但し書きの文字数チェック（最大15文字、6文字で表示変更）
-    let memoText = '';
     let memoFormat = ''; // 'short' or 'long'
     if (withMemo && memo) {
-        memoText = memo.substring(0, 15); // 最大15文字
-        
-        // 6文字以内か6文字以上かで表示形式を決定
+        // 6文字以内か7文字以上かで表示形式を決定
         if (memo.length <= 6) {
-            memoFormat = 'short'; // 但し ○○○ として
+            memoFormat = 'short'; // 但し ○○○○○○ として
         } else {
-            memoFormat = 'long'; // 但し改行○○○改行として
+            memoFormat = 'long'; // 但し改行○○○○○○○○○○○○○○○改行として
         }
     }
     
@@ -2986,25 +2982,25 @@ async function executeReceiptPrint(withMemo) {
         textHeight += lineHeight;
     }
     
-    // 宛名行の高さを追加（新仕様：10文字以内/10文字以上）
+    // 宛名行の高さを追加（新仕様：9文字以内/10文字以上）
     if (companyNameFormat === 'short') {
-        // 10文字以内: 宛名は「○○○」形式（1行）
-        textHeight += companyNameFontSize * 1.2; // 宛名1行分
+        // 9文字以内: 宛名は「○○○○○○○○○」形式（1行）
+        textHeight += companyLineHeight * 1.2; // 1行分
     } else {
-        // 10文字以上: 宛名は + 改行 + 「○○○」（2行）
+        // 10文字以上: 宛名は改行して「○○○○○○○○○○○○○○」形式（3行）
         textHeight += labelFontSize * 1.2; // "宛名は"
-        textHeight += companyNameFontSize * 1.2; // 「○○○」1行分
+        textHeight += companyLineHeight * 1.2; // 「宛名内容」
     }
     
-    // 但し書きの高さを追加（新仕様：6文字以内/6文字以上）
+    // 但し書きの高さを追加（新仕様：6文字以内/7文字以上）
     if (withMemo && memo) {
         if (memoFormat === 'short') {
-            // 6文字以内: 但し ○○○ として形式（1行）
-            textHeight += textFontSize * 1.2; // メモ1行分
+            // 6文字以内: 但し ○○○○○○ として形式（1行）
+            textHeight += textFontSize * 1.2; // 1行分
         } else {
-            // 6文字以上: 但し + 改行 + ○○○ + 改行 + として（3行）
+            // 7文字以上: 但し改行○○○○○○○○○○○○○○○改行として（3行）
             textHeight += labelFontSize * 1.2; // "但し"
-            textHeight += textFontSize * 1.2; // メモ1行分
+            textHeight += textFontSize * 1.2; // メモ内容
             textHeight += labelFontSize * 1.2; // "代として"
         }
     }
@@ -3050,7 +3046,7 @@ async function executeReceiptPrint(withMemo) {
             // 1行目: 「領収書宛名」（左）と連番（右）
             ctx.font = `${textFontSize}px "MS Gothic", "Yu Gothic", sans-serif`;
             ctx.textAlign = 'left';
-            const receiptTitleX = 36; // 領収書宛名の位置（左端からの距離、調整可能）
+            const receiptTitleX = 34; // 領収書宛名の位置（左端からの距離、調整可能）
             ctx.fillText('領収書宛名', receiptTitleX, yPos);
             
             // 連番を右側に描画（全角数字）
@@ -3070,45 +3066,43 @@ async function executeReceiptPrint(withMemo) {
         
         // 「領収書宛名+連番」の次の空行の後に宛名を挿入
         if (lineIndex === 2) { // 2行目（空行）の後
+            ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
             ctx.textAlign = 'center';
             
             if (companyNameFormat === 'short') {
-                // 10文字以内: 宛名は｢○○○○○○○○○○｣形式（1行）
-                ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
-                ctx.fillText(`宛名は｢${companyNameText}｣`, exactCenterX, yPos);
-                yPos += companyNameFontSize * 1.2;
-                
+                // 9文字以内: 宛名は「○○○○○○○○○」形式（1行）
+                ctx.fillText(`宛名は「${companyName}」`, exactCenterX, yPos);
+                yPos += companyLineHeight * 1.2;
             } else {
-                // 10文字以上: 宛名は改行｢○○○○○○○○○○○○○○○｣形式（2行）
+                // 10文字以上: 宛名は改行「○○○○○○○○○○○○○○」形式（2行）
                 ctx.font = `${labelFontSize}px Arial, sans-serif`;
                 ctx.fillText('宛名は', exactCenterX, yPos);
                 yPos += labelFontSize * 1.2;
                 
                 ctx.font = `${companyNameFontSize}px Arial, sans-serif`;
-                ctx.fillText(`｢${companyNameText}｣`, exactCenterX, yPos);
-                yPos += companyNameFontSize * 1.2;
+                ctx.fillText(`「${companyName}」`, exactCenterX, yPos);
+                yPos += companyLineHeight * 1.2;
             }
         }
         
         // 小文字オプションの後に但し書きを挿入
         if (!memoInserted && withMemo && memo && i >= 3) {
+            ctx.font = `${textFontSize}px Arial, sans-serif`;
             ctx.textAlign = 'center';
             
             if (memoFormat === 'short') {
                 // 6文字以内: 但し ○○○○○○ 代として形式（1行、中央揃え）
-                ctx.font = `${textFontSize}px Arial, sans-serif`;
                 const suffixText = suffix ? ` ${suffix}として` : '';
-                ctx.fillText(`但し ${memoText}${suffixText}`, exactCenterX, yPos);
+                ctx.fillText(`但し ${memo}${suffixText}`, exactCenterX, yPos);
                 yPos += textFontSize * 1.2;
-                
             } else {
-                // 6文字以上: 但し改行○○○○○○○○○○○○○○○改行代として形式（3行、中央揃え）
+                // 7文字以上: 但し改行○○○○○○○○○○○○○○○改行代として形式（3行、中央揃え）
                 ctx.font = `${labelFontSize}px Arial, sans-serif`;
                 ctx.fillText('但し', exactCenterX, yPos);
                 yPos += labelFontSize * 1.2;
                 
                 ctx.font = `${textFontSize}px Arial, sans-serif`;
-                ctx.fillText(memoText, exactCenterX, yPos);
+                ctx.fillText(memo, exactCenterX, yPos);
                 yPos += textFontSize * 1.2;
                 
                 ctx.font = `${labelFontSize}px Arial, sans-serif`;
