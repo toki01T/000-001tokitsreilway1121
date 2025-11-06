@@ -1510,55 +1510,61 @@ function addHistory(item) {
         item.created = Date.now();
     }
     
-    // console.log('✅ 履歴データ準備完了:', {
-    //     id: item.id,
-    //     type: item.type,
-    //     managementId: item.managementId,
-    //     hasData: !!item.data,
-    //     qrPrinted: item.qrPrinted,
-    //     qrPrintedType: typeof item.qrPrinted,
-    //     created: new Date(item.created).toLocaleString()
-    // });
-    
+    // 重複チェック：同じmanagementIdが既に存在するか確認
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
-            // まず重複チェック（managementIdで確認）
-            const checkTx = db.transaction(STORE_NAME, 'readonly');
-            const checkStore = checkTx.objectStore(STORE_NAME);
-            const getAllReq = checkStore.getAll();
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const getAllReq = store.getAll();
             
             getAllReq.onsuccess = () => {
                 const existingItems = getAllReq.result;
-                const isDuplicate = existingItems.some(existing => 
+                const duplicate = existingItems.find(existing => 
                     existing.managementId === item.managementId
                 );
                 
-                if (isDuplicate) {
-                    console.warn('⚠️ 同じmanagementIdの履歴が既に存在します。追加をスキップ:', item.managementId);
-                    resolve(); // エラーではなく正常終了扱い
-                    return;
+                if (duplicate) {
+                    console.warn('⚠️ 重複した履歴を検出しました。追加をスキップします:', item.managementId);
+                    resolve(duplicate.id); // 既存のIDを返す
+                } else {
+                    // 重複がない場合は追加処理を実行
+                    resolve(null);
                 }
-                
-                // 重複がない場合のみ追加
+            };
+            
+            getAllReq.onerror = () => reject(getAllReq.error);
+        });
+    }).then(duplicateId => {
+        if (duplicateId) {
+            return duplicateId; // 重複の場合は既存のIDを返す
+        }
+        
+        // 重複がない場合は通常の追加処理
+        return openDB().then(db => {
+            return new Promise((resolve, reject) => {
                 const tx = db.transaction(STORE_NAME, 'readwrite');
                 const store = tx.objectStore(STORE_NAME);
                 const addReq = store.add(item);
-                
-                addReq.onsuccess = () => {
-                    console.log('✅ 履歴をデータベースに保存完了');
-                    resolve();
-                };
-                
-                addReq.onerror = (event) => {
-                    console.error('❌ 履歴保存エラー:', event.target.error);
-                    reject(event.target.error);
-                };
+            
+            addReq.onsuccess = () => {
+                console.log('✅ 履歴をデータベースに保存完了');
+                resolve();
             };
             
-            getAllReq.onerror = (event) => {
-                console.error('❌ 重複チェックエラー:', event.target.error);
+            addReq.onerror = (event) => {
+                console.error('❌ 履歴保存エラー:', event.target.error);
                 reject(event.target.error);
             };
+            
+            tx.oncomplete = () => {
+                console.log('✅ トランザクション完了');
+            };
+            
+            tx.onerror = (event) => {
+                console.error('❌ トランザクションエラー:', event.target.error);
+                reject(event.target.error);
+            };
+            });
         });
     }).catch(error => {
         console.error('❌ addHistory全体エラー:', error);
@@ -1611,14 +1617,19 @@ function isIOS() {
     return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-// 印刷URLスキーム生成関数（iOS・Android両対応 - Callback不要版）
+// 印刷URLスキーム生成関数（iOS・Android両対応 - test.html完全互換版）
 function generatePrintUrl(pdfBase64, thisPage) {
     console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
     
-    // Callbackを削除してAndroidフリーズ・新規タブ問題を解決
+    // AndroidとiOSでコールバックURLを分ける
+    const callbackUrl = isAndroid() ? '' : thisPage; // Androidは空、iOSは現在のページ
+    
+    // test.htmlと完全に同じ方式でURL構築
     const url = 'siiprintagent://1.0/print?' +
+                'CallbackSuccess=' + encodeURIComponent(callbackUrl) + '&' +
+                'CallbackFail=' + encodeURIComponent(callbackUrl) + '&' +
                 'Format=' + 'pdf' + '&' +
-                'Data=' + pdfBase64 + '&' +  // Base64はエンコードしない（重要！）
+                'Data=' + encodeURIComponent(pdfBase64) + '&' +  // test.htmlと同じ
                 'SelectOnError=' + 'yes' + '&' +
                 'CutType=' + 'full' + '&' +
                 'CutFeed=' + 'yes' + '&' +
@@ -2184,6 +2195,13 @@ function loadHistoryList() {
                         if (memoInput) {
                             memoInput.value = item.memo || '';
                             console.log('📋 メモ設定:', memoInput.value);
+                        }
+                        
+                        // 接尾辞の復元
+                        const suffixSelect = document.getElementById('receiptSuffix');
+                        if (suffixSelect && item.suffix !== undefined) {
+                            suffixSelect.value = item.suffix;
+                            console.log('📋 接尾辞設定:', item.suffix);
                         }
                         
                         // 小文字オプションの復元
@@ -3270,7 +3288,21 @@ function sendToPrintAssist(event) {
     function doPrint(base64Image) {
         const paperWidth = 58;
         let img = new window.Image();
+        
+        // タイムアウト処理を追加（Androidフリーズ対策）
+        let imageLoadTimeout = setTimeout(() => {
+            console.error('❌ 画像読み込みタイムアウト（10秒）');
+            alert('画像の読み込みに時間がかかりすぎています。画像サイズを小さくしてください。');
+        }, 10000); // 10秒でタイムアウト
+        
+        img.onerror = function() {
+            clearTimeout(imageLoadTimeout);
+            console.error('❌ 画像読み込みエラー');
+            alert('画像の読み込みに失敗しました。');
+        };
+        
         img.onload = function() {
+            clearTimeout(imageLoadTimeout); // タイムアウトをクリア
             let origW = img.naturalWidth;
             let origH = img.naturalHeight;
             let ratio = Math.min(paperWidth / origW, 1);
