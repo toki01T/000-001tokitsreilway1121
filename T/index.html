@@ -1410,36 +1410,38 @@ footer p {
         </section>
         <section id="ticketSection" style="display:none;">
             <div class="ticket-container">
-                <div class="ticket-grid">
-                    <div class="ticket-item" data-ticket="1">
-                        <img src="ken/25125.png" alt="券1" />
+                <div class="ticket-grid" id="ticketGrid">
+                    <div class="ticket-item" data-ticket="1" data-image="ken/ken1.png">
+                        <img src="ken/ken1.png" alt="券1" onerror="this.parentElement.style.display='none'" />
                     </div>
-                    <div class="ticket-item" data-ticket="2">
-                        <img src="ken/25125.png" alt="券2" />
+                    <div class="ticket-item" data-ticket="2" data-image="ken/ken2.png">
+                        <img src="ken/ken2.png" alt="券2" onerror="this.parentElement.style.display='none'" />
                     </div>
-                    <div class="ticket-item" data-ticket="3">
-                        <img src="ken/25125.png" alt="券3" />
+                    <div class="ticket-item" data-ticket="3" data-image="ken/ken3.png">
+                        <img src="ken/ken3.png" alt="券3" onerror="this.parentElement.style.display='none'" />
                     </div>
-                    <div class="ticket-item" data-ticket="4">
-                        <img src="ken/25125.png" alt="券4" />
+                    <div class="ticket-item" data-ticket="4" data-image="ken/ken4.png">
+                        <img src="ken/ken4.png" alt="券4" onerror="this.parentElement.style.display='none'" />
                     </div>
-                    <div class="ticket-item" data-ticket="5">
-                        <img src="ken/25125.png" alt="券5" />
+                    <div class="ticket-item" data-ticket="5" data-image="ken/ken5.png">
+                        <img src="ken/ken5.png" alt="券5" onerror="this.parentElement.style.display='none'" />
                     </div>
-                    <div class="ticket-item" data-ticket="6">
-                        <img src="ken/25125.png" alt="券6" />
+                    <div class="ticket-item" data-ticket="6" data-image="ken/ken6.png">
+                        <img src="ken/ken6.png" alt="券6" onerror="this.parentElement.style.display='none'" />
                     </div>
-                    <div class="ticket-item" data-ticket="7">
-                        <img src="ken/25125.png" alt="券7" />
+                    <div class="ticket-item" data-ticket="7" data-image="ken/ken7.png">
+                        <img src="ken/ken7.png" alt="券7" onerror="this.parentElement.style.display='none'" />
                     </div>
-                    <div class="ticket-item" data-ticket="8">
-                        <img src="ken/25125.png" alt="券8" />
+                    <div class="ticket-item" data-ticket="8" data-image="ken/ken8.png">
+                        <img src="ken/ken8.png" alt="券8" onerror="this.parentElement.style.display='none'" />
                     </div>
-                    <div class="ticket-item" data-ticket="9">
-                        <img src="ken/25125.png" alt="券9" />
+                    <div class="ticket-item" data-ticket="9" data-image="ken/ken9.png">
+                        <img src="ken/ken9.png" alt="券9" onerror="this.parentElement.style.display='none'" />
                     </div>
                 </div>
             </div>
+            <!-- テンプレート合成用のキャンバス（非表示） -->
+            <canvas id="ticketCanvas" style="display:none;"></canvas>
         </section>
         <section id="textSection" style="display:none;">
             <div class="text-input-container">
@@ -2527,18 +2529,124 @@ window.onload = function() {
 
 // T's券画像の初期化
 function initTicketImages() {
-    const ticketItems = document.querySelectorAll('.ticket-item img');
-    ticketItems.forEach((img, index) => {
-        img.onerror = function() {
-            console.error(`T's券画像の読み込み失敗: ${img.src}`);
-            // 画像が読み込めない場合は代替テキストを表示
-            const parent = img.parentElement;
-            parent.innerHTML = `<div style="color: #888; font-size: 0.8rem; text-align: center;">画像${index + 1}</div>`;
-        };
+    const ticketItems = document.querySelectorAll('.ticket-item');
+    ticketItems.forEach((item, index) => {
+        const img = item.querySelector('img');
+        
+        // 画像読み込みエラー時の処理（onerrorは既にHTMLに設定済み）
         img.onload = function() {
             console.log(`T's券画像読み込み成功: ${img.src}`);
+            // 画像が正常に読み込まれたら表示
+            item.style.display = 'flex';
         };
+        
+        // クリックイベントを追加
+        item.addEventListener('click', function() {
+            const imagePath = this.getAttribute('data-image');
+            const ticketNumber = this.getAttribute('data-ticket');
+            console.log(`T's券${ticketNumber}がクリックされました`);
+            
+            // テンプレートに画像を合成して印刷
+            composeAndPrintTicket(imagePath, ticketNumber);
+        });
     });
+}
+
+// T's券をテンプレートに合成して印刷する関数
+async function composeAndPrintTicket(imagePath, ticketNumber) {
+    console.log(`T's券合成開始: ${imagePath}`);
+    
+    const canvas = document.getElementById('ticketCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // テンプレート画像を読み込み
+    const templateImg = new Image();
+    templateImg.crossOrigin = 'anonymous';
+    
+    templateImg.onload = function() {
+        // キャンバスサイズをテンプレートに合わせる
+        canvas.width = templateImg.width;
+        canvas.height = templateImg.height;
+        
+        // テンプレートを描画
+        ctx.drawImage(templateImg, 0, 0);
+        
+        // 選択された画像を読み込み
+        const selectedImg = new Image();
+        selectedImg.crossOrigin = 'anonymous';
+        
+        selectedImg.onload = function() {
+            // 画像を適切な位置とサイズで描画（調整が必要な場合は座標を変更）
+            // ここでは中央に配置する例
+            const x = (canvas.width - selectedImg.width) / 2;
+            const y = (canvas.height - selectedImg.height) / 2;
+            ctx.drawImage(selectedImg, x, y);
+            
+            // Canvasを画像に変換
+            const composedImage = canvas.toDataURL('image/jpeg', 0.95);
+            
+            // 印刷処理を実行
+            printTicketImage(composedImage, ticketNumber);
+        };
+        
+        selectedImg.onerror = function() {
+            console.error('選択画像の読み込み失敗:', imagePath);
+            alert('画像の読み込みに失敗しました');
+        };
+        
+        selectedImg.src = imagePath;
+    };
+    
+    templateImg.onerror = function() {
+        console.error('テンプレート画像の読み込み失敗');
+        alert('テンプレートの読み込みに失敗しました');
+    };
+    
+    templateImg.src = 'ken/T\'s券templete.jpg';
+}
+
+// 合成したT's券を印刷する関数
+function printTicketImage(imageData, ticketNumber) {
+    console.log(`T's券${ticketNumber}印刷準備中...`);
+    
+    // jsPDFで印刷用PDFを生成
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [58, 100] // 58mm幅、高さは調整可能
+    });
+    
+    // 画像をPDFに追加
+    pdf.addImage(imageData, 'JPEG', 0, 0, 58, 100);
+    
+    // PDFをBase64形式で取得
+    const pdfBase64 = pdf.output('datauristring').split(',')[1];
+    const thisPage = window.location.href;
+    
+    // 印刷URLを生成
+    const printUrl = generatePrintUrl(pdfBase64, thisPage);
+    
+    // 印刷実行
+    executePrint(printUrl);
+    
+    // 履歴に追加
+    const timestamp = Date.now();
+    const historyItem = {
+        type: 'ticket',
+        mode: 'ticket',
+        data: imageData,
+        ticketNumber: ticketNumber,
+        managementId: `ticket_${timestamp}_${ticketNumber}`,
+        created: timestamp,
+        qrPrinted: false
+    };
+    
+    addHistory(historyItem).then(() => {
+        console.log('T\'s券履歴保存完了:', historyItem.managementId);
+    });
+    
+    console.log(`T's券${ticketNumber}印刷完了`);
 }
 
 // 枚数印刷の続行をチェックする関数
