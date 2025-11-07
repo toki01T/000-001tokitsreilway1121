@@ -1019,6 +1019,71 @@ main.receipt-mode {
     }
 }
 
+/* T's券セクションのスタイル */
+#ticketSection {
+    display: none;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.ticket-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.ticket-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(10px, 2vw, 15px);
+    padding: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.ticket-item {
+    aspect-ratio: 1;
+    border: 2px solid var(--input-border);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--input-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.ticket-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    border-color: var(--primary-color);
+}
+
+.ticket-item:active {
+    transform: translateY(-2px);
+}
+
+.ticket-item img {
+    width: 90%;
+    height: 90%;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+@media (max-width: 600px) {
+    .ticket-container {
+        padding: 0.5rem;
+    }
+    
+    .ticket-grid {
+        gap: clamp(8px, 1.5vw, 12px);
+    }
+}
+
 /* テキスト入力セクション用のスタイル */
 #textSection {
     display: none;
@@ -1286,7 +1351,7 @@ footer p {
         </div>
     </div>
     <div id="historyDrawerMenu">
-        <button id="modeToggleUnified" class="selected">画像・T’s券</button>
+        <button id="modeToggleUnified" class="selected">画像</button>
     </div>
     <div id="historyList"></div>
 </div>
@@ -1317,7 +1382,7 @@ footer p {
             <form id="imageForm" enctype="multipart/form-data" onsubmit="sendToPrintAssist(event)">
                 <div class="file-upload">
                     <label for="imageUpload" class="file-upload-label">
-                        <span>画像・T❜s券</span>
+                        <span>画像選択</span>
                         <input type="file" id="imageUpload" name="image" accept="image/jpeg, image/png" onchange="previewImage(event)">
                     </label>
                 </div>
@@ -1342,6 +1407,50 @@ footer p {
                     </label>
                 </div>
             </form>
+        </section>
+        <section id="ticketSection" style="display:none;">
+            <div class="ticket-container">
+                <div class="ticket-grid">
+                    <div class="ticket-item" data-ticket="1" style="display:none;">
+                        <img src="ken/ken1.png" alt="券1" />
+                    </div>
+                    <div class="ticket-item" data-ticket="2" style="display:none;">
+                        <img src="ken/ken2.png" alt="券2" />
+                    </div>
+                    <div class="ticket-item" data-ticket="3" style="display:none;">
+                        <img src="ken/ken3.png" alt="券3" />
+                    </div>
+                    <div class="ticket-item" data-ticket="4" style="display:none;">
+                        <img src="ken/ken4.png" alt="券4" />
+                    </div>
+                    <div class="ticket-item" data-ticket="5" style="display:none;">
+                        <img src="ken/ken5.png" alt="券5" />
+                    </div>
+                    <div class="ticket-item" data-ticket="6" style="display:none;">
+                        <img src="ken/ken6.png" alt="券6" />
+                    </div>
+                    <div class="ticket-item" data-ticket="7" style="display:none;">
+                        <img src="ken/ken7.png" alt="券7" />
+                    </div>
+                    <div class="ticket-item" data-ticket="8" style="display:none;">
+                        <img src="ken/ken8.png" alt="券8" />
+                    </div>
+                    <div class="ticket-item" data-ticket="9" style="display:none;">
+                        <img src="ken/ken9.png" alt="券9" />
+                    </div>
+                </div>
+                <!-- テンプレートプレビュー -->
+                <div id="ticketPreview" style="display:none; margin-top: 2rem;">
+                    <h3 style="text-align: center; margin-bottom: 1rem;">プレビュー</h3>
+                    <div style="position: relative; max-width: 100%; margin: 0 auto;">
+                        <canvas id="ticketCanvas" style="width: 100%; border: 2px solid var(--input-border); border-radius: 8px;"></canvas>
+                    </div>
+                    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
+                        <button id="ticketPrintBtn" class="receipt-print-btn">発行</button>
+                        <button id="ticketCancelBtn" class="receipt-option-btn">キャンセル</button>
+                    </div>
+                </div>
+            </div>
         </section>
         <section id="textSection" style="display:none;">
             <div class="text-input-container">
@@ -1743,9 +1852,10 @@ const historyList = document.getElementById('historyList');
 const modeToggleUnified = document.getElementById('modeToggleUnified');
 const historyDrawerBg = document.getElementById('historyDrawerBg');
 let currentHistoryType = 'image';
-let modeOrder = ['image', 'text', 'signature', 'receipt'];
+let modeOrder = ['image', 'ticket', 'text', 'signature', 'receipt'];
 let modeNames = {
-    image: '画像・T’s券',
+    image: '画像',
+    ticket: 'T\'s券',
     text: 'テキスト',
     signature: '手書き(電子サイン)',
     receipt: '領収書宛名'
@@ -1876,6 +1986,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         // ontouchstartは削除（preventDoubleTouchで既に処理されているため不要）
+    }
+    
+    // T's券ボタンのイベントハンドラー
+    const ticketPrintBtn = document.getElementById('ticketPrintBtn');
+    const ticketCancelBtn = document.getElementById('ticketCancelBtn');
+    
+    if (ticketPrintBtn) {
+        ticketPrintBtn.onclick = preventDoubleTouch(() => {
+            executeTicketPrint();
+        });
+    }
+    
+    if (ticketCancelBtn) {
+        ticketCancelBtn.onclick = preventDoubleTouch(() => {
+            cancelTicketPreview();
+        });
     }
     
     // 領収書フォームの入力監視
@@ -2419,9 +2545,149 @@ window.onload = function() {
         }
     }, 2000);
     
+    // T's券画像の読み込みチェック
+    initTicketImages();
+    
     // 【枚数印刷の自動続行システム】
     checkAndContinuePrinting();
 };
+
+// T's券画像の初期化
+function initTicketImages() {
+    const ticketItems = document.querySelectorAll('.ticket-item');
+    
+    ticketItems.forEach((item, index) => {
+        const img = item.querySelector('img');
+        
+        // 画像読み込み成功時：アイテムを表示
+        img.onload = function() {
+            console.log(`T's券画像読み込み成功: ${img.src}`);
+            item.style.display = 'flex'; // 画像が読み込めたら表示
+        };
+        
+        // 画像読み込み失敗時：アイテムを非表示のまま
+        img.onerror = function() {
+            console.warn(`T's券画像の読み込み失敗: ${img.src}`);
+            item.style.display = 'none'; // 画像が読み込めなければ非表示
+        };
+        
+        // クリックイベント：テンプレートに貼り付け
+        item.addEventListener('click', function() {
+            if (img.complete && img.naturalHeight !== 0) {
+                createTicketWithTemplate(img.src, index + 1);
+            }
+        });
+    });
+}
+
+// テンプレートに画像を貼り付けてプレビュー表示
+function createTicketWithTemplate(selectedImageSrc, ticketNumber) {
+    console.log(`券${ticketNumber}が選択されました: ${selectedImageSrc}`);
+    
+    const canvas = document.getElementById('ticketCanvas');
+    const ctx = canvas.getContext('2d');
+    const preview = document.getElementById('ticketPreview');
+    const grid = document.querySelector('.ticket-grid');
+    
+    // テンプレート画像を読み込み
+    const templateImg = new Image();
+    templateImg.onload = function() {
+        // キャンバスサイズをテンプレートに合わせる
+        canvas.width = templateImg.width;
+        canvas.height = templateImg.height;
+        
+        // テンプレートを描画
+        ctx.drawImage(templateImg, 0, 0);
+        
+        // 選択された画像を読み込み
+        const selectedImg = new Image();
+        selectedImg.onload = function() {
+            // 選択された画像をテンプレート上に配置
+            // ※配置位置とサイズは後で調整可能
+            const x = canvas.width * 0.1; // 左から10%の位置
+            const y = canvas.height * 0.2; // 上から20%の位置
+            const width = canvas.width * 0.8; // 幅80%
+            const height = canvas.height * 0.6; // 高さ60%
+            
+            ctx.drawImage(selectedImg, x, y, width, height);
+            
+            // グリッドを非表示、プレビューを表示
+            grid.style.display = 'none';
+            preview.style.display = 'block';
+        };
+        selectedImg.src = selectedImageSrc;
+    };
+    templateImg.onerror = function() {
+        console.error('テンプレート画像の読み込みに失敗しました');
+        alert('テンプレート画像が見つかりません');
+    };
+    templateImg.src = 'ken/T\'s券templete.jpg';
+}
+
+// T's券プレビューをキャンセル
+function cancelTicketPreview() {
+    const preview = document.getElementById('ticketPreview');
+    const grid = document.querySelector('.ticket-grid');
+    
+    preview.style.display = 'none';
+    grid.style.display = 'grid';
+    
+    console.log('T\'s券プレビューをキャンセルしました');
+}
+
+// T's券を印刷
+function executeTicketPrint() {
+    const canvas = document.getElementById('ticketCanvas');
+    
+    if (!canvas) {
+        console.error('キャンバスが見つかりません');
+        return;
+    }
+    
+    console.log('🎫 T\'s券印刷を開始します');
+    
+    // キャンバスをPNGに変換
+    const pngDataUrl = canvas.toDataURL('image/png');
+    
+    // jsPDFを使用してPDFを生成
+    const { jsPDF } = window.jspdf;
+    
+    // 用紙サイズを58mm × 適切な高さに設定
+    const mmToPx = 11.8;
+    const paperWidth = 58;
+    const aspectRatio = canvas.height / canvas.width;
+    const paperHeight = Math.round(paperWidth * aspectRatio);
+    
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [paperWidth, paperHeight],
+        compress: true
+    });
+    
+    // PDF設定
+    pdf.internal.pageSize.width = paperWidth;
+    pdf.internal.pageSize.height = paperHeight;
+    
+    // PNG画像をPDFに追加
+    pdf.addImage(pngDataUrl, 'PNG', 0, 0, paperWidth, paperHeight);
+    
+    // PDFをBase64形式で取得
+    const pdfBase64 = pdf.output('datauristring').split(',')[1];
+    
+    let thisPage = window.location.href;
+    
+    // iOS/Android両対応の印刷URLを生成
+    let printUrl = generatePrintUrl(pdfBase64, thisPage);
+    
+    // 印刷実行
+    executePrint(printUrl);
+    
+    console.log('🎫 T\'s券印刷が完了しました');
+    
+    // プレビューを閉じる
+    cancelTicketPreview();
+}
 
 // 枚数印刷の続行をチェックする関数
 function checkAndContinuePrinting() {
@@ -2470,6 +2736,7 @@ function showSection(mode) {
     const mainElement = document.querySelector('main');
     
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
+    document.getElementById('ticketSection').style.display = (mode === 'ticket') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
     document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
     document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
@@ -2481,8 +2748,8 @@ function showSection(mode) {
         mainElement.classList.remove('receipt-mode');
     }
     
-    // 領収書モードの時は日付・時刻選択と枚数選択を非表示
-    if (mode === 'receipt') {
+    // 領収書・T's券モードの時は日付・時刻選択と枚数選択を非表示
+    if (mode === 'receipt' || mode === 'ticket') {
         // 日付・時刻選択を非表示
         const dateTimeChoices = document.querySelectorAll('#dateTimeChoice, #textDateTimeChoice, #signatureDateTimeChoice');
         dateTimeChoices.forEach(element => {
