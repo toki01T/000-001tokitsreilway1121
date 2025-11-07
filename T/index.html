@@ -1286,7 +1286,7 @@ footer p {
         </div>
     </div>
     <div id="historyDrawerMenu">
-        <button id="modeToggleUnified" class="selected">画像・T’s券</button>
+        <button id="modeToggleUnified" class="selected">画像</button>
     </div>
     <div id="historyList"></div>
 </div>
@@ -1317,7 +1317,7 @@ footer p {
             <form id="imageForm" enctype="multipart/form-data" onsubmit="sendToPrintAssist(event)">
                 <div class="file-upload">
                     <label for="imageUpload" class="file-upload-label">
-                        <span>画像・T❜s券</span>
+                        <span>画像選択</span>
                         <input type="file" id="imageUpload" name="image" accept="image/jpeg, image/png" onchange="previewImage(event)">
                     </label>
                 </div>
@@ -1342,6 +1342,12 @@ footer p {
                     </label>
                 </div>
             </form>
+        </section>
+        <section id="ticketSection" style="display:none;">
+            <div class="ticket-container">
+                <h2 style="text-align: center; margin-bottom: 1rem;">T's券発券</h2>
+                <p style="text-align: center; color: #666; margin-bottom: 2rem;">準備中...</p>
+            </div>
         </section>
         <section id="textSection" style="display:none;">
             <div class="text-input-container">
@@ -1743,9 +1749,10 @@ const historyList = document.getElementById('historyList');
 const modeToggleUnified = document.getElementById('modeToggleUnified');
 const historyDrawerBg = document.getElementById('historyDrawerBg');
 let currentHistoryType = 'image';
-let modeOrder = ['image', 'text', 'signature', 'receipt'];
+let modeOrder = ['image', 'ticket', 'text', 'signature', 'receipt'];
 let modeNames = {
-    image: '画像・T’s券',
+    image: '画像',
+    ticket: 'T\'s券',
     text: 'テキスト',
     signature: '手書き(電子サイン)',
     receipt: '領収書宛名'
@@ -2470,6 +2477,7 @@ function showSection(mode) {
     const mainElement = document.querySelector('main');
     
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
+    document.getElementById('ticketSection').style.display = (mode === 'ticket') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
     document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
     document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
@@ -2481,8 +2489,8 @@ function showSection(mode) {
         mainElement.classList.remove('receipt-mode');
     }
     
-    // 領収書モードの時は日付・時刻選択と枚数選択を非表示
-    if (mode === 'receipt') {
+    // 領収書・T's券モードの時は日付・時刻選択と枚数選択を非表示
+    if (mode === 'receipt' || mode === 'ticket') {
         // 日付・時刻選択を非表示
         const dateTimeChoices = document.querySelectorAll('#dateTimeChoice, #textDateTimeChoice, #signatureDateTimeChoice');
         dateTimeChoices.forEach(element => {
