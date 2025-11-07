@@ -1019,71 +1019,6 @@ main.receipt-mode {
     }
 }
 
-/* T's券セクションのスタイル */
-#ticketSection {
-    display: none;
-    width: 100%;
-    margin: 0 auto;
-}
-
-.ticket-container {
-    width: 100%;
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 1rem;
-    box-sizing: border-box;
-}
-
-.ticket-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: clamp(10px, 2vw, 15px);
-    padding: 0;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.ticket-item {
-    aspect-ratio: 1;
-    border: 2px solid var(--input-border);
-    border-radius: 12px;
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background: var(--input-bg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-}
-
-.ticket-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    border-color: var(--primary-color);
-}
-
-.ticket-item:active {
-    transform: translateY(-2px);
-}
-
-.ticket-item img {
-    width: 90%;
-    height: 90%;
-    object-fit: contain;
-    pointer-events: none;
-}
-
-@media (max-width: 600px) {
-    .ticket-container {
-        padding: 0.5rem;
-    }
-    
-    .ticket-grid {
-        gap: clamp(8px, 1.5vw, 12px);
-    }
-}
-
 /* テキスト入力セクション用のスタイル */
 #textSection {
     display: none;
@@ -1351,7 +1286,7 @@ footer p {
         </div>
     </div>
     <div id="historyDrawerMenu">
-        <button id="modeToggleUnified" class="selected">画像</button>
+        <button id="modeToggleUnified" class="selected">画像・T’s券</button>
     </div>
     <div id="historyList"></div>
 </div>
@@ -1382,7 +1317,7 @@ footer p {
             <form id="imageForm" enctype="multipart/form-data" onsubmit="sendToPrintAssist(event)">
                 <div class="file-upload">
                     <label for="imageUpload" class="file-upload-label">
-                        <span>画像選択</span>
+                        <span>画像・T❜s券</span>
                         <input type="file" id="imageUpload" name="image" accept="image/jpeg, image/png" onchange="previewImage(event)">
                     </label>
                 </div>
@@ -1407,41 +1342,6 @@ footer p {
                     </label>
                 </div>
             </form>
-        </section>
-        <section id="ticketSection" style="display:none;">
-            <div class="ticket-container">
-                <div class="ticket-grid" id="ticketGrid">
-                    <div class="ticket-item" data-ticket="1" data-image="ken/ken1.png">
-                        <img src="ken/ken1.png" alt="券1" onerror="this.parentElement.style.display='none'" />
-                    </div>
-                    <div class="ticket-item" data-ticket="2" data-image="ken/ken2.png">
-                        <img src="ken/ken2.png" alt="券2" onerror="this.parentElement.style.display='none'" />
-                    </div>
-                    <div class="ticket-item" data-ticket="3" data-image="ken/ken3.png">
-                        <img src="ken/ken3.png" alt="券3" onerror="this.parentElement.style.display='none'" />
-                    </div>
-                    <div class="ticket-item" data-ticket="4" data-image="ken/ken4.png">
-                        <img src="ken/ken4.png" alt="券4" onerror="this.parentElement.style.display='none'" />
-                    </div>
-                    <div class="ticket-item" data-ticket="5" data-image="ken/ken5.png">
-                        <img src="ken/ken5.png" alt="券5" onerror="this.parentElement.style.display='none'" />
-                    </div>
-                    <div class="ticket-item" data-ticket="6" data-image="ken/ken6.png">
-                        <img src="ken/ken6.png" alt="券6" onerror="this.parentElement.style.display='none'" />
-                    </div>
-                    <div class="ticket-item" data-ticket="7" data-image="ken/ken7.png">
-                        <img src="ken/ken7.png" alt="券7" onerror="this.parentElement.style.display='none'" />
-                    </div>
-                    <div class="ticket-item" data-ticket="8" data-image="ken/ken8.png">
-                        <img src="ken/ken8.png" alt="券8" onerror="this.parentElement.style.display='none'" />
-                    </div>
-                    <div class="ticket-item" data-ticket="9" data-image="ken/ken9.png">
-                        <img src="ken/ken9.png" alt="券9" onerror="this.parentElement.style.display='none'" />
-                    </div>
-                </div>
-            </div>
-            <!-- テンプレート合成用のキャンバス（非表示） -->
-            <canvas id="ticketCanvas" style="display:none;"></canvas>
         </section>
         <section id="textSection" style="display:none;">
             <div class="text-input-container">
@@ -1843,10 +1743,9 @@ const historyList = document.getElementById('historyList');
 const modeToggleUnified = document.getElementById('modeToggleUnified');
 const historyDrawerBg = document.getElementById('historyDrawerBg');
 let currentHistoryType = 'image';
-let modeOrder = ['image', 'ticket', 'text', 'signature', 'receipt'];
+let modeOrder = ['image', 'text', 'signature', 'receipt'];
 let modeNames = {
-    image: '画像',
-    ticket: 'T\'s券',
+    image: '画像・T’s券',
     text: 'テキスト',
     signature: '手書き(電子サイン)',
     receipt: '領収書宛名'
@@ -2520,134 +2419,9 @@ window.onload = function() {
         }
     }, 2000);
     
-    // T's券画像の読み込みチェック
-    initTicketImages();
-    
     // 【枚数印刷の自動続行システム】
     checkAndContinuePrinting();
 };
-
-// T's券画像の初期化
-function initTicketImages() {
-    const ticketItems = document.querySelectorAll('.ticket-item');
-    ticketItems.forEach((item, index) => {
-        const img = item.querySelector('img');
-        
-        // 画像読み込みエラー時の処理（onerrorは既にHTMLに設定済み）
-        img.onload = function() {
-            console.log(`T's券画像読み込み成功: ${img.src}`);
-            // 画像が正常に読み込まれたら表示
-            item.style.display = 'flex';
-        };
-        
-        // クリックイベントを追加
-        item.addEventListener('click', function() {
-            const imagePath = this.getAttribute('data-image');
-            const ticketNumber = this.getAttribute('data-ticket');
-            console.log(`T's券${ticketNumber}がクリックされました`);
-            
-            // テンプレートに画像を合成して印刷
-            composeAndPrintTicket(imagePath, ticketNumber);
-        });
-    });
-}
-
-// T's券をテンプレートに合成して印刷する関数
-async function composeAndPrintTicket(imagePath, ticketNumber) {
-    console.log(`T's券合成開始: ${imagePath}`);
-    
-    const canvas = document.getElementById('ticketCanvas');
-    const ctx = canvas.getContext('2d');
-    
-    // テンプレート画像を読み込み
-    const templateImg = new Image();
-    templateImg.crossOrigin = 'anonymous';
-    
-    templateImg.onload = function() {
-        // キャンバスサイズをテンプレートに合わせる
-        canvas.width = templateImg.width;
-        canvas.height = templateImg.height;
-        
-        // テンプレートを描画
-        ctx.drawImage(templateImg, 0, 0);
-        
-        // 選択された画像を読み込み
-        const selectedImg = new Image();
-        selectedImg.crossOrigin = 'anonymous';
-        
-        selectedImg.onload = function() {
-            // 画像を適切な位置とサイズで描画（調整が必要な場合は座標を変更）
-            // ここでは中央に配置する例
-            const x = (canvas.width - selectedImg.width) / 2;
-            const y = (canvas.height - selectedImg.height) / 2;
-            ctx.drawImage(selectedImg, x, y);
-            
-            // Canvasを画像に変換
-            const composedImage = canvas.toDataURL('image/jpeg', 0.95);
-            
-            // 印刷処理を実行
-            printTicketImage(composedImage, ticketNumber);
-        };
-        
-        selectedImg.onerror = function() {
-            console.error('選択画像の読み込み失敗:', imagePath);
-            alert('画像の読み込みに失敗しました');
-        };
-        
-        selectedImg.src = imagePath;
-    };
-    
-    templateImg.onerror = function() {
-        console.error('テンプレート画像の読み込み失敗');
-        alert('テンプレートの読み込みに失敗しました');
-    };
-    
-    templateImg.src = 'ken/T\'s券templete.jpg';
-}
-
-// 合成したT's券を印刷する関数
-function printTicketImage(imageData, ticketNumber) {
-    console.log(`T's券${ticketNumber}印刷準備中...`);
-    
-    // jsPDFで印刷用PDFを生成
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [58, 100] // 58mm幅、高さは調整可能
-    });
-    
-    // 画像をPDFに追加
-    pdf.addImage(imageData, 'JPEG', 0, 0, 58, 100);
-    
-    // PDFをBase64形式で取得
-    const pdfBase64 = pdf.output('datauristring').split(',')[1];
-    const thisPage = window.location.href;
-    
-    // 印刷URLを生成
-    const printUrl = generatePrintUrl(pdfBase64, thisPage);
-    
-    // 印刷実行
-    executePrint(printUrl);
-    
-    // 履歴に追加
-    const timestamp = Date.now();
-    const historyItem = {
-        type: 'ticket',
-        mode: 'ticket',
-        data: imageData,
-        ticketNumber: ticketNumber,
-        managementId: `ticket_${timestamp}_${ticketNumber}`,
-        created: timestamp,
-        qrPrinted: false
-    };
-    
-    addHistory(historyItem).then(() => {
-        console.log('T\'s券履歴保存完了:', historyItem.managementId);
-    });
-    
-    console.log(`T's券${ticketNumber}印刷完了`);
-}
 
 // 枚数印刷の続行をチェックする関数
 function checkAndContinuePrinting() {
@@ -2696,7 +2470,6 @@ function showSection(mode) {
     const mainElement = document.querySelector('main');
     
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
-    document.getElementById('ticketSection').style.display = (mode === 'ticket') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
     document.getElementById('signatureSection').style.display = (mode === 'signature') ? 'block' : 'none';
     document.getElementById('receiptSection').style.display = (mode === 'receipt') ? 'block' : 'none';
@@ -2708,8 +2481,8 @@ function showSection(mode) {
         mainElement.classList.remove('receipt-mode');
     }
     
-    // 領収書・T's券モードの時は日付・時刻選択と枚数選択を非表示
-    if (mode === 'receipt' || mode === 'ticket') {
+    // 領収書モードの時は日付・時刻選択と枚数選択を非表示
+    if (mode === 'receipt') {
         // 日付・時刻選択を非表示
         const dateTimeChoices = document.querySelectorAll('#dateTimeChoice, #textDateTimeChoice, #signatureDateTimeChoice');
         dateTimeChoices.forEach(element => {
