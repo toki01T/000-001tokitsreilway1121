@@ -1034,27 +1034,13 @@ main.receipt-mode {
     box-sizing: border-box;
 }
 
-.ticket-header {
-    text-align: center;
-    padding: 1.5rem 0 1rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 10px 10px 0 0;
-    margin-bottom: 1.5rem;
-}
-
-.ticket-header h2 {
-    margin: 0;
-    font-size: 1.8rem;
-    font-weight: bold;
-}
-
 .ticket-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin-bottom: 2rem;
-    padding: 0 10px;
+    gap: clamp(10px, 2vw, 15px);
+    padding: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .ticket-item {
@@ -1068,6 +1054,7 @@ main.receipt-mode {
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
 }
 
 .ticket-item:hover {
@@ -1087,39 +1074,13 @@ main.receipt-mode {
     pointer-events: none;
 }
 
-.ticket-text-card {
-    padding: 10px;
-    text-align: center;
-    font-size: 0.75rem;
-    line-height: 1.3;
-    color: var(--text-color);
-}
-
-.ticket-footer {
-    text-align: center;
-    padding: 1.5rem 0;
-    color: #888;
-    font-size: 0.85rem;
-    border-top: 1px solid var(--input-border);
-}
-
-.ticket-footer p {
-    margin: 0;
-}
-
 @media (max-width: 600px) {
+    .ticket-container {
+        padding: 0.5rem;
+    }
+    
     .ticket-grid {
-        gap: 10px;
-        padding: 0 5px;
-    }
-    
-    .ticket-header h2 {
-        font-size: 1.5rem;
-    }
-    
-    .ticket-text-card {
-        font-size: 0.65rem;
-        padding: 8px;
+        gap: clamp(8px, 1.5vw, 12px);
     }
 }
 
@@ -1449,9 +1410,6 @@ footer p {
         </section>
         <section id="ticketSection" style="display:none;">
             <div class="ticket-container">
-                <div class="ticket-header">
-                    <h2>toki01 t's</h2>
-                </div>
                 <div class="ticket-grid">
                     <div class="ticket-item" data-ticket="1">
                         <img src="ken/25125.png" alt="券1" />
@@ -1480,9 +1438,6 @@ footer p {
                     <div class="ticket-item" data-ticket="9">
                         <img src="ken/25125.png" alt="券9" />
                     </div>
-                </div>
-                <div class="ticket-footer">
-                    <p>© 2025 とき T's 鉄道部 toki</p>
                 </div>
             </div>
         </section>
