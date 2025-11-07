@@ -1019,6 +1019,110 @@ main.receipt-mode {
     }
 }
 
+/* T's券セクションのスタイル */
+#ticketSection {
+    display: none;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.ticket-container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 1rem;
+    box-sizing: border-box;
+}
+
+.ticket-header {
+    text-align: center;
+    padding: 1.5rem 0 1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0;
+    margin-bottom: 1.5rem;
+}
+
+.ticket-header h2 {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: bold;
+}
+
+.ticket-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 2rem;
+    padding: 0 10px;
+}
+
+.ticket-item {
+    aspect-ratio: 1;
+    border: 2px solid var(--input-border);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: var(--input-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ticket-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    border-color: var(--primary-color);
+}
+
+.ticket-item:active {
+    transform: translateY(-2px);
+}
+
+.ticket-item img {
+    width: 90%;
+    height: 90%;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+.ticket-text-card {
+    padding: 10px;
+    text-align: center;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    color: var(--text-color);
+}
+
+.ticket-footer {
+    text-align: center;
+    padding: 1.5rem 0;
+    color: #888;
+    font-size: 0.85rem;
+    border-top: 1px solid var(--input-border);
+}
+
+.ticket-footer p {
+    margin: 0;
+}
+
+@media (max-width: 600px) {
+    .ticket-grid {
+        gap: 10px;
+        padding: 0 5px;
+    }
+    
+    .ticket-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .ticket-text-card {
+        font-size: 0.65rem;
+        padding: 8px;
+    }
+}
+
 /* テキスト入力セクション用のスタイル */
 #textSection {
     display: none;
@@ -1345,8 +1449,41 @@ footer p {
         </section>
         <section id="ticketSection" style="display:none;">
             <div class="ticket-container">
-                <h2 style="text-align: center; margin-bottom: 1rem;">T's券発券</h2>
-                <p style="text-align: center; color: #666; margin-bottom: 2rem;">準備中...</p>
+                <div class="ticket-header">
+                    <h2>toki01 t's</h2>
+                </div>
+                <div class="ticket-grid">
+                    <div class="ticket-item" data-ticket="1">
+                        <img src="ken/25125.png" alt="券1" />
+                    </div>
+                    <div class="ticket-item" data-ticket="2">
+                        <img src="ken/25125.png" alt="券2" />
+                    </div>
+                    <div class="ticket-item" data-ticket="3">
+                        <img src="ken/25125.png" alt="券3" />
+                    </div>
+                    <div class="ticket-item" data-ticket="4">
+                        <img src="ken/25125.png" alt="券4" />
+                    </div>
+                    <div class="ticket-item" data-ticket="5">
+                        <img src="ken/25125.png" alt="券5" />
+                    </div>
+                    <div class="ticket-item" data-ticket="6">
+                        <img src="ken/25125.png" alt="券6" />
+                    </div>
+                    <div class="ticket-item" data-ticket="7">
+                        <img src="ken/25125.png" alt="券7" />
+                    </div>
+                    <div class="ticket-item" data-ticket="8">
+                        <img src="ken/25125.png" alt="券8" />
+                    </div>
+                    <div class="ticket-item" data-ticket="9">
+                        <img src="ken/25125.png" alt="券9" />
+                    </div>
+                </div>
+                <div class="ticket-footer">
+                    <p>© 2025 とき T's 鉄道部 toki</p>
+                </div>
             </div>
         </section>
         <section id="textSection" style="display:none;">
@@ -2426,9 +2563,28 @@ window.onload = function() {
         }
     }, 2000);
     
+    // T's券画像の読み込みチェック
+    initTicketImages();
+    
     // 【枚数印刷の自動続行システム】
     checkAndContinuePrinting();
 };
+
+// T's券画像の初期化
+function initTicketImages() {
+    const ticketItems = document.querySelectorAll('.ticket-item img');
+    ticketItems.forEach((img, index) => {
+        img.onerror = function() {
+            console.error(`T's券画像の読み込み失敗: ${img.src}`);
+            // 画像が読み込めない場合は代替テキストを表示
+            const parent = img.parentElement;
+            parent.innerHTML = `<div style="color: #888; font-size: 0.8rem; text-align: center;">画像${index + 1}</div>`;
+        };
+        img.onload = function() {
+            console.log(`T's券画像読み込み成功: ${img.src}`);
+        };
+    });
+}
 
 // 枚数印刷の続行をチェックする関数
 function checkAndContinuePrinting() {
