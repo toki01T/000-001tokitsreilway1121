@@ -463,8 +463,9 @@ main {
 }
 main.receipt-mode {
     justify-content: flex-start;
-    overflow-y: hidden; /* main自体はスクロールしない */
-    padding-bottom: 50px; /* フッター分のスペースを確保 */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    max-height: 100vh;
 }
 @media (max-width: 600px) {
     main {
@@ -831,7 +832,6 @@ main.receipt-mode {
     width: 100%;
     margin: 0 auto;
     text-align: center;
-    max-height: calc(100vh - 110px); /* ヘッダー(60px) + フッター(50px) を除いた高さ */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
@@ -844,7 +844,8 @@ main.receipt-mode {
     gap: 1rem;
     width: 100%;
     max-width: min(450px, 92vw);
-    padding: 0 0.5rem 1rem;
+    padding: 0 0.5rem;
+    padding-bottom: 80px; /* フッター分のスペースを確保（50px + 30px余白） */
     box-sizing: border-box;
 }
 
@@ -918,6 +919,7 @@ main.receipt-mode {
     align-items: center;
     gap: clamp(0.5rem, 2vw, 1rem);
     margin-top: 1.5rem;
+    margin-bottom: 1rem;
     width: 100%;
     max-width: min(350px, 90vw);
     flex-wrap: wrap;
@@ -1007,6 +1009,7 @@ main.receipt-mode {
     .receipt-buttons-row {
         flex-direction: column;
         gap: 0.8rem;
+        margin-bottom: 1.5rem;
     }
     
     .receipt-option-btn,
@@ -1018,6 +1021,10 @@ main.receipt-mode {
     .receipt-option-btn {
         font-size: 0.8rem;
         padding: 0.5rem 0.8rem;
+    }
+    
+    .receipt-form-container {
+        padding-bottom: 90px; /* モバイルではより多くのスペースを確保 */
     }
 }
 
