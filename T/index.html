@@ -462,12 +462,14 @@ main {
     overflow-x: hidden;
 }
 main.receipt-mode {
+    flex: 0 1 auto; /* flexの自動拡張を無効化 */
+    min-height: auto;
     justify-content: flex-start;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 80px; /* フッター分のスペースを確保 */
-    height: calc(100vh - 60px); /* ヘッダー分を引いた高さに固定 */
-    max-height: calc(100vh - 60px);
+    padding-bottom: 1rem;
+    height: auto;
+    max-height: calc(100vh - 60px - 50px); /* ヘッダーとフッター分を引く */
 }
 @media (max-width: 600px) {
     main {
@@ -1000,21 +1002,6 @@ main.receipt-mode {
     transform: scale(0.95);
 }
 
-/* 領収書モード用フッター */
-.receipt-footer {
-    width: 100%;
-    padding: 16px 0;
-    margin-top: 20px;
-    text-align: center;
-    background-color: var(--footer-bg);
-}
-
-.receipt-footer p {
-    margin: 0;
-    color: var(--primary-color);
-    font-size: 14px;
-}
-
 @media (max-width: 500px) {
     .receipt-input-group input[type="text"] {
         font-size: 0.95rem;
@@ -1057,6 +1044,7 @@ footer {
     text-align: center;
     z-index: 100; /* 他の要素との重なりを制御 */
     pointer-events: none; /* フッター自体はクリックを通す */
+    flex-shrink: 0; /* フッターが縮まないようにする */
 }
 
 footer p {
@@ -1462,10 +1450,6 @@ footer p {
                         <span class="option-text">(小文字でお願い致します。)</span>
                     </button>
                     <button id="receiptPrintBtn" class="receipt-print-btn disabled">印刷</button>
-                </div>
-                <!-- 領収書モード用フッター -->
-                <div class="receipt-footer">
-                    <p>&copy; 2025 とき T's 鉄道部 toki</p>
                 </div>
             </div>
         </section>
@@ -2502,17 +2486,19 @@ function showSection(mode) {
     // 領収書モードの時はスクロール可能にし、その他は中央固定
     if (mode === 'receipt') {
         mainElement.classList.add('receipt-mode');
-        // 通常のフッターを非表示（領収書セクション内のフッターを使用）
+        // フッターを通常のフローに配置（印刷ボタンの下）
         if (footerElement) {
-            footerElement.style.display = 'none';
+            footerElement.style.position = 'static';
+            footerElement.style.pointerEvents = 'auto';
+            footerElement.style.marginTop = '0';
         }
     } else {
         mainElement.classList.remove('receipt-mode');
-        // 通常のフッターを表示（画面下部に固定）
+        // フッターを画面下部に固定
         if (footerElement) {
-            footerElement.style.display = 'block';
             footerElement.style.position = 'fixed';
             footerElement.style.pointerEvents = 'none';
+            footerElement.style.marginTop = '';
         }
     }
     
