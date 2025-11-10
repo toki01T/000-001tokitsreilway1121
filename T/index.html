@@ -846,7 +846,7 @@ main.receipt-mode {
     max-height: calc(100vh - 120px); /* ヘッダー(60px) + フッター(60px) の高さを引く */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 56px; /* 1.5cm (約56px) の余白 */
+    padding-bottom: 1rem;
 }
 
 .receipt-form-container {
@@ -857,7 +857,7 @@ main.receipt-mode {
     gap: 1rem;
     width: 100%;
     max-width: min(450px, 92vw);
-    padding: 0 0.5rem 0;
+    padding: 0 0.5rem 76px; /* 下部に2cm(76px)の余白を追加 */
     box-sizing: border-box;
 }
 
