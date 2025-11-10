@@ -2496,6 +2496,17 @@ function showSection(mode) {
         mainElement.classList.remove('receipt-mode');
     }
     
+    // 日付・時刻表示の制御（領収書モードでは非表示）
+    const dateDisplay = document.getElementById('dateDisplay');
+    const timeDisplay = document.getElementById('timeDisplay');
+    if (mode === 'receipt') {
+        if (dateDisplay) dateDisplay.style.display = 'none';
+        if (timeDisplay) timeDisplay.style.display = 'none';
+    } else {
+        if (dateDisplay) dateDisplay.style.display = 'block';
+        if (timeDisplay) timeDisplay.style.display = 'block';
+    }
+    
     // 領収書モードの時は日付・時刻選択と枚数選択を非表示
     if (mode === 'receipt') {
         // 日付・時刻選択を非表示
