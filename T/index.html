@@ -464,7 +464,9 @@ main {
 main.receipt-mode {
     justify-content: flex-start;
     overflow-y: hidden; /* mainのスクロールを無効化 */
-    padding-bottom: 60px; /* footerの高さ分の余白を確保 */
+    padding-top: 60px;
+    padding-bottom: 60px; /* footerの高さ分 */
+    min-height: 100vh;
 }
 @media (max-width: 600px) {
     main {
@@ -472,10 +474,10 @@ main.receipt-mode {
         padding-bottom: 70px;
     }
     main.receipt-mode {
-        padding-bottom: 70px;
+        padding-bottom: 0; /* フッター分のpaddingは不要 */
     }
     #receiptSection {
-        max-height: calc(100vh - 128px); /* モバイル用: ヘッダー(58px) + フッター(70px) */
+        height: calc(100vh - 128px); /* モバイル用: ヘッダー(58px) + フッター(70px) */
     }
     #historyDrawer { 
         width: 310px;
@@ -490,10 +492,10 @@ main.receipt-mode {
         padding-bottom: 65px;
     }
     main.receipt-mode {
-        padding-bottom: 65px;
+        padding-bottom: 0; /* フッター分のpaddingは不要 */
     }
     #receiptSection {
-        max-height: calc(100vh - 121px); /* 小画面用: ヘッダー(56px) + フッター(65px) */
+        height: calc(100vh - 121px); /* 小画面用: ヘッダー(56px) + フッター(65px) */
     }
     #historyDrawer {
         width: 290px;
@@ -841,24 +843,26 @@ main.receipt-mode {
 #receiptSection {
     display: none;
     width: 100%;
+    height: calc(100vh - 120px); /* ヘッダー(60px) + フッター(60px) の高さを引く */
     margin: 0 auto;
     text-align: center;
-    max-height: calc(100vh - 120px); /* ヘッダー(60px) + フッター(60px) の高さを引く */
     overflow-y: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 1rem;
+    position: relative;
 }
 
 .receipt-form-container {
-    margin: 1rem auto;
+    margin: 0 auto;
+    padding: 1rem 0.5rem 2rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 1rem;
     width: 100%;
     max-width: min(450px, 92vw);
-    padding: 0 0.5rem 1rem;
     box-sizing: border-box;
+    min-height: 100%;
 }
 
 .receipt-input-group {
