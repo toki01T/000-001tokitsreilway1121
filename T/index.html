@@ -463,16 +463,16 @@ main {
 }
 main.receipt-mode {
     justify-content: flex-start;
-    height: calc(100vh - 60px - 50px); /* ヘッダーとフッターを除いた高さ */
-    overflow-y: hidden; /* main自体はスクロールしない */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 80px; /* フッター分のスペースを確保 */
+    height: calc(100vh - 60px); /* ヘッダー分を引いた高さに固定 */
+    max-height: calc(100vh - 60px);
 }
 @media (max-width: 600px) {
     main {
         padding-top: 58px;
         padding-bottom: 70px;
-    }
-    main.receipt-mode {
-        height: calc(100vh - 58px - 70px);
     }
     #historyDrawer { 
         width: 310px;
@@ -486,9 +486,6 @@ main.receipt-mode {
         padding-top: 56px;
         padding-bottom: 65px;
     }
-    main.receipt-mode {
-        height: calc(100vh - 56px - 65px);
-    }
     #historyDrawer {
         width: 290px;
         max-width: 80vw;
@@ -499,9 +496,6 @@ main.receipt-mode {
         padding-top: 58px;
         padding-bottom: 45px;
         min-height: auto;
-    }
-    main.receipt-mode {
-        height: calc(100vh - 58px - 45px);
     }
 }
 .section-content {
@@ -838,22 +832,22 @@ main.receipt-mode {
 #receiptSection {
     display: none;
     width: 100%;
-    height: 100%;
     margin: 0 auto;
     text-align: center;
+    flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
 
 .receipt-form-container {
-    margin: 1rem auto;
+    margin: 1rem auto 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 1rem;
     width: 100%;
     max-width: min(450px, 92vw);
-    padding: 0 0.5rem 2rem;
+    padding: 0 0.5rem 1rem;
     box-sizing: border-box;
 }
 
@@ -1048,6 +1042,13 @@ footer {
     text-align: center;
     z-index: 100; /* 他の要素との重なりを制御 */
     pointer-events: none; /* フッター自体はクリックを通す */
+}
+
+/* 領収書モードの時はフッターを印刷ボタンの下に配置 */
+main.receipt-mode ~ footer {
+    position: relative;
+    pointer-events: auto;
+    margin-top: auto;
 }
 
 footer p {
@@ -2479,6 +2480,7 @@ function checkAndContinuePrinting() {
 }
 function showSection(mode) {
     const mainElement = document.querySelector('main');
+    const footerElement = document.querySelector('footer');
     
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
     document.getElementById('textSection').style.display = (mode === 'text') ? 'block' : 'none';
@@ -2488,8 +2490,18 @@ function showSection(mode) {
     // 領収書モードの時はスクロール可能にし、その他は中央固定
     if (mode === 'receipt') {
         mainElement.classList.add('receipt-mode');
+        // フッターを通常のフローに配置（印刷ボタンの下）
+        if (footerElement) {
+            footerElement.style.position = 'relative';
+            footerElement.style.pointerEvents = 'auto';
+        }
     } else {
         mainElement.classList.remove('receipt-mode');
+        // フッターを画面下部に固定
+        if (footerElement) {
+            footerElement.style.position = 'fixed';
+            footerElement.style.pointerEvents = 'none';
+        }
     }
     
     // 領収書モードの時は日付・時刻選択と枚数選択を非表示
