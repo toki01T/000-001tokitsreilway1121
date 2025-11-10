@@ -463,13 +463,16 @@ main {
 }
 main.receipt-mode {
     justify-content: flex-start;
-    overflow-y: hidden;
-    height: 100vh;
+    height: calc(100vh - 60px - 50px); /* ヘッダーとフッターを除いた高さ */
+    overflow-y: hidden; /* main自体はスクロールしない */
 }
 @media (max-width: 600px) {
     main {
         padding-top: 58px;
         padding-bottom: 70px;
+    }
+    main.receipt-mode {
+        height: calc(100vh - 58px - 70px);
     }
     #historyDrawer { 
         width: 310px;
@@ -483,6 +486,9 @@ main.receipt-mode {
         padding-top: 56px;
         padding-bottom: 65px;
     }
+    main.receipt-mode {
+        height: calc(100vh - 56px - 65px);
+    }
     #historyDrawer {
         width: 290px;
         max-width: 80vw;
@@ -493,6 +499,9 @@ main.receipt-mode {
         padding-top: 58px;
         padding-bottom: 45px;
         min-height: auto;
+    }
+    main.receipt-mode {
+        height: calc(100vh - 58px - 45px);
     }
 }
 .section-content {
@@ -834,7 +843,6 @@ main.receipt-mode {
     text-align: center;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    position: relative;
 }
 
 .receipt-form-container {
@@ -847,9 +855,6 @@ main.receipt-mode {
     max-width: min(450px, 92vw);
     padding: 0 0.5rem 2rem;
     box-sizing: border-box;
-    max-height: calc(100vh - 120px);
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
 }
 
 .receipt-input-group {
@@ -2483,18 +2488,8 @@ function showSection(mode) {
     // 領収書モードの時はスクロール可能にし、その他は中央固定
     if (mode === 'receipt') {
         mainElement.classList.add('receipt-mode');
-        // 日付・時刻表示を非表示
-        const dateDisplay = document.getElementById('dateDisplay');
-        const timeDisplay = document.getElementById('timeDisplay');
-        if (dateDisplay) dateDisplay.style.display = 'none';
-        if (timeDisplay) timeDisplay.style.display = 'none';
     } else {
         mainElement.classList.remove('receipt-mode');
-        // 日付・時刻表示を表示
-        const dateDisplay = document.getElementById('dateDisplay');
-        const timeDisplay = document.getElementById('timeDisplay');
-        if (dateDisplay) dateDisplay.style.display = 'block';
-        if (timeDisplay) timeDisplay.style.display = 'block';
     }
     
     // 領収書モードの時は日付・時刻選択と枚数選択を非表示
