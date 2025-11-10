@@ -1000,6 +1000,21 @@ main.receipt-mode {
     transform: scale(0.95);
 }
 
+/* 領収書モード用フッター */
+.receipt-footer {
+    width: 100%;
+    padding: 16px 0;
+    margin-top: 20px;
+    text-align: center;
+    background-color: var(--footer-bg);
+}
+
+.receipt-footer p {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 14px;
+}
+
 @media (max-width: 500px) {
     .receipt-input-group input[type="text"] {
         font-size: 0.95rem;
@@ -1042,13 +1057,6 @@ footer {
     text-align: center;
     z-index: 100; /* 他の要素との重なりを制御 */
     pointer-events: none; /* フッター自体はクリックを通す */
-}
-
-/* 領収書モードの時はフッターを印刷ボタンの下に配置 */
-main.receipt-mode ~ footer {
-    position: relative;
-    pointer-events: auto;
-    margin-top: auto;
 }
 
 footer p {
@@ -1454,6 +1462,10 @@ footer p {
                         <span class="option-text">(小文字でお願い致します。)</span>
                     </button>
                     <button id="receiptPrintBtn" class="receipt-print-btn disabled">印刷</button>
+                </div>
+                <!-- 領収書モード用フッター -->
+                <div class="receipt-footer">
+                    <p>&copy; 2025 とき T's 鉄道部 toki</p>
                 </div>
             </div>
         </section>
@@ -2490,15 +2502,15 @@ function showSection(mode) {
     // 領収書モードの時はスクロール可能にし、その他は中央固定
     if (mode === 'receipt') {
         mainElement.classList.add('receipt-mode');
-        // フッターを通常のフローに配置（印刷ボタンの下）
+        // 通常のフッターを非表示（領収書セクション内のフッターを使用）
         if (footerElement) {
-            footerElement.style.position = 'relative';
-            footerElement.style.pointerEvents = 'auto';
+            footerElement.style.display = 'none';
         }
     } else {
         mainElement.classList.remove('receipt-mode');
-        // フッターを画面下部に固定
+        // 通常のフッターを表示（画面下部に固定）
         if (footerElement) {
+            footerElement.style.display = 'block';
             footerElement.style.position = 'fixed';
             footerElement.style.pointerEvents = 'none';
         }
