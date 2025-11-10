@@ -2666,7 +2666,7 @@ function updateTicketTemplate() {
     
     // テンプレート画像を読み込み
     const templateImg = new Image();
-    templateImg.src = 'ken/T\'s券templete.jpg';
+    templateImg.src = "ken/T's券templete.jpg";
     
     templateImg.onload = function() {
         // キャンバスサイズをテンプレートに合わせる
@@ -2719,7 +2719,8 @@ function updateTicketTemplate() {
     
     templateImg.onerror = function() {
         console.error('テンプレート画像の読み込みに失敗しました');
-        alert('テンプレート画像が見つかりません: ken/T\'s券templete.jpg');
+        console.error('パス:', templateImg.src);
+        alert("テンプレート画像が見つかりません: ken/T's券templete.jpg\n\nファイルが存在するか確認してください。");
     };
 }
 
