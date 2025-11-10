@@ -463,7 +463,8 @@ main {
 }
 main.receipt-mode {
     justify-content: flex-start;
-    overflow-y: hidden; /* メインのスクロールを無効化 */
+    overflow-y: hidden;
+    height: 100vh;
 }
 @media (max-width: 600px) {
     main {
@@ -828,18 +829,12 @@ main.receipt-mode {
 #receiptSection {
     display: none;
     width: 100%;
+    height: 100%;
     margin: 0 auto;
     text-align: center;
-    max-height: calc(100vh - 120px); /* ヘッダーとフッター分を除く */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 1rem;
-}
-
-/* 領収書モード時に日付・時刻表示を非表示 */
-main.receipt-mode #dateDisplay,
-main.receipt-mode #timeDisplay {
-    display: none;
+    position: relative;
 }
 
 .receipt-form-container {
@@ -850,8 +845,11 @@ main.receipt-mode #timeDisplay {
     gap: 1rem;
     width: 100%;
     max-width: min(450px, 92vw);
-    padding: 0 0.5rem 0;
+    padding: 0 0.5rem 2rem;
     box-sizing: border-box;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .receipt-input-group {
@@ -2485,8 +2483,18 @@ function showSection(mode) {
     // 領収書モードの時はスクロール可能にし、その他は中央固定
     if (mode === 'receipt') {
         mainElement.classList.add('receipt-mode');
+        // 日付・時刻表示を非表示
+        const dateDisplay = document.getElementById('dateDisplay');
+        const timeDisplay = document.getElementById('timeDisplay');
+        if (dateDisplay) dateDisplay.style.display = 'none';
+        if (timeDisplay) timeDisplay.style.display = 'none';
     } else {
         mainElement.classList.remove('receipt-mode');
+        // 日付・時刻表示を表示
+        const dateDisplay = document.getElementById('dateDisplay');
+        const timeDisplay = document.getElementById('timeDisplay');
+        if (dateDisplay) dateDisplay.style.display = 'block';
+        if (timeDisplay) timeDisplay.style.display = 'block';
     }
     
     // 領収書モードの時は日付・時刻選択と枚数選択を非表示
