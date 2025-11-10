@@ -465,6 +465,7 @@ main.receipt-mode {
     justify-content: flex-start;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: 0;
 }
 @media (max-width: 600px) {
     main {
@@ -831,7 +832,8 @@ main.receipt-mode {
     width: 100%;
     margin: 0 auto;
     text-align: center;
-    min-height: 100%;
+    min-height: auto;
+    max-height: fit-content;
 }
 
 .receipt-form-container {
@@ -842,7 +844,7 @@ main.receipt-mode {
     gap: 1rem;
     width: 100%;
     max-width: min(450px, 92vw);
-    padding: 0 0.5rem 2rem;
+    padding: 0 0.5rem 0;
     box-sizing: border-box;
 }
 
@@ -916,6 +918,7 @@ main.receipt-mode {
     align-items: center;
     gap: clamp(0.5rem, 2vw, 1rem);
     margin-top: 1.5rem;
+    margin-bottom: 1rem;
     width: 100%;
     max-width: min(350px, 90vw);
     flex-wrap: wrap;
