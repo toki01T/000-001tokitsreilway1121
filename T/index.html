@@ -1067,11 +1067,22 @@ main.receipt-mode {
     transform: translateY(-2px);
 }
 
+.ticket-item.selected {
+    border-color: var(--primary-color);
+    border-width: 3px;
+    box-shadow: 0 0 15px rgba(0, 163, 237, 0.5);
+    background: rgba(0, 163, 237, 0.1);
+}
+
 .ticket-item img {
     width: 90%;
     height: 90%;
     object-fit: contain;
     pointer-events: none;
+}
+
+.ticket-text-inputs {
+    padding: 1rem 0;
 }
 
 @media (max-width: 600px) {
@@ -1410,17 +1421,36 @@ footer p {
         </section>
         <section id="ticketSection" style="display:none;">
             <div class="ticket-container">
+                <!-- アイコングリッド -->
                 <div class="ticket-grid" id="ticketGrid">
                     <!-- 画像は動的に読み込まれます -->
                 </div>
+                
+                <!-- テキスト入力エリア -->
+                <div class="ticket-text-inputs" style="margin-top: 1.5rem; display: none;" id="ticketTextInputs">
+                    <div class="receipt-input-group">
+                        <label for="ticketText1">テキスト1</label>
+                        <input type="text" id="ticketText1" placeholder="テキストを入力" maxlength="30" />
+                    </div>
+                    <div class="receipt-input-group">
+                        <label for="ticketText2">テキスト2</label>
+                        <input type="text" id="ticketText2" placeholder="テキストを入力" maxlength="30" />
+                    </div>
+                    <div class="receipt-input-group">
+                        <label for="ticketText3">テキスト3</label>
+                        <input type="text" id="ticketText3" placeholder="テキストを入力" maxlength="30" />
+                    </div>
+                </div>
+                
                 <!-- テンプレートプレビューエリア -->
                 <div id="ticketTemplatePreview" style="display:none; margin-top: 2rem;">
                     <h3 style="text-align: center; margin-bottom: 1rem;">プレビュー</h3>
                     <div style="position: relative; max-width: 100%; margin: 0 auto;">
                         <canvas id="ticketCanvas" style="width: 100%; border: 2px solid var(--input-border); border-radius: 8px;"></canvas>
                     </div>
-                    <div style="text-align: center; margin-top: 1rem;">
-                        <button id="ticketPrintBtn" class="receipt-print-btn" style="max-width: 300px;">印刷</button>
+                    <div style="text-align: center; margin-top: 1rem; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button id="ticketUpdateBtn" class="receipt-option-btn" style="max-width: 150px;">更新</button>
+                        <button id="ticketPrintBtn" class="receipt-print-btn" style="max-width: 150px;">印刷</button>
                     </div>
                 </div>
             </div>
@@ -2516,69 +2546,123 @@ function initTicketImages() {
 
 // T's券画像を動的に読み込む
 let ticketImagesLoaded = false;
+let loadedTicketImages = []; // 読み込まれた画像パスを保存
+
 function loadTicketImages() {
     if (ticketImagesLoaded) return;
     
     const ticketGrid = document.getElementById('ticketGrid');
     if (!ticketGrid) return;
     
-    // kenフォルダ内の画像ファイル名リスト
-    const imageFiles = [
-        'ken/ken1.png',
-        'ken/ken2.png',
-        'ken/ken3.png',
-        'ken/ken4.png',
-        'ken/ken5.png',
-        'ken/ken6.png',
-        'ken/ken7.png',
-        'ken/ken8.png',
-        'ken/ken9.png',
-        'ken/25125.png'
-    ];
+    // 01.jpg/png形式とken1.png形式の両方に対応
+    const possibleFormats = [];
+    
+    // 01-99の画像を試行
+    for (let i = 1; i <= 99; i++) {
+        const num = i.toString().padStart(2, '0'); // 01, 02, ...
+        possibleFormats.push(`ken/${num}.jpg`);
+        possibleFormats.push(`ken/${num}.png`);
+        possibleFormats.push(`ken/${num}.jpeg`);
+    }
+    
+    // 旧形式も追加（後方互換性）
+    for (let i = 1; i <= 20; i++) {
+        possibleFormats.push(`ken/ken${i}.png`);
+        possibleFormats.push(`ken/ken${i}.jpg`);
+    }
     
     ticketGrid.innerHTML = ''; // 既存の内容をクリア
+    loadedTicketImages = []; // リセット
     
-    imageFiles.forEach((imagePath, index) => {
+    let loadedCount = 0;
+    let checkedCount = 0;
+    const totalToCheck = possibleFormats.length;
+    
+    possibleFormats.forEach((imagePath, index) => {
         const img = new Image();
         img.src = imagePath;
         
         img.onload = function() {
-            const ticketItem = document.createElement('div');
-            ticketItem.className = 'ticket-item';
-            ticketItem.setAttribute('data-ticket', index + 1);
-            ticketItem.setAttribute('data-image', imagePath);
+            // 既に同じ画像が読み込まれていないかチェック
+            if (!loadedTicketImages.includes(imagePath)) {
+                loadedTicketImages.push(imagePath);
+                
+                const ticketItem = document.createElement('div');
+                ticketItem.className = 'ticket-item ticket-icon';
+                ticketItem.setAttribute('data-ticket', loadedCount + 1);
+                ticketItem.setAttribute('data-image', imagePath);
+                
+                // アイコン表示（画像のサムネイル）
+                const imgElement = document.createElement('img');
+                imgElement.src = imagePath;
+                imgElement.alt = `券${loadedCount + 1}`;
+                imgElement.style.width = '100%';
+                imgElement.style.height = '100%';
+                imgElement.style.objectFit = 'contain';
+                
+                ticketItem.appendChild(imgElement);
+                ticketGrid.appendChild(ticketItem);
+                
+                // クリックイベントを追加
+                ticketItem.addEventListener('click', function() {
+                    selectTicketImage(imagePath);
+                    // 選択状態を表示
+                    document.querySelectorAll('.ticket-item').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                    ticketItem.classList.add('selected');
+                });
+                
+                loadedCount++;
+                console.log(`T's券画像読み込み成功 [${loadedCount}]: ${imagePath}`);
+            }
             
-            const imgElement = document.createElement('img');
-            imgElement.src = imagePath;
-            imgElement.alt = `券${index + 1}`;
-            
-            ticketItem.appendChild(imgElement);
-            ticketGrid.appendChild(ticketItem);
-            
-            // クリックイベントを追加
-            ticketItem.addEventListener('click', function() {
-                selectTicketImage(imagePath);
-            });
-            
-            console.log(`T's券画像読み込み成功: ${imagePath}`);
+            checkedCount++;
+            if (checkedCount === totalToCheck) {
+                console.log(`T's券画像読み込み完了: ${loadedCount}個の画像`);
+                if (loadedCount > 0) {
+                    // テキスト入力エリアを表示
+                    document.getElementById('ticketTextInputs').style.display = 'block';
+                }
+            }
         };
         
         img.onerror = function() {
-            console.warn(`T's券画像の読み込み失敗: ${imagePath}`);
-            // 画像が読み込めない場合は表示しない（枠も非表示）
+            checkedCount++;
+            // エラーは表示しない（存在しないファイルは無視）
         };
     });
     
     ticketImagesLoaded = true;
 }
 
+// 選択された画像パスを保存
+let selectedTicketImagePath = null;
+
 // T's券画像を選択してテンプレートに合成
 function selectTicketImage(imagePath) {
     console.log('選択された画像:', imagePath);
+    selectedTicketImagePath = imagePath;
+    
+    // テンプレートを更新
+    updateTicketTemplate();
+}
+
+// T's券テンプレートを更新（画像＋文字）
+function updateTicketTemplate() {
+    if (!selectedTicketImagePath) {
+        console.warn('画像が選択されていません');
+        return;
+    }
     
     const canvas = document.getElementById('ticketCanvas');
     const ctx = canvas.getContext('2d');
     const previewArea = document.getElementById('ticketTemplatePreview');
+    
+    // テキスト取得
+    const text1 = document.getElementById('ticketText1').value.trim();
+    const text2 = document.getElementById('ticketText2').value.trim();
+    const text3 = document.getElementById('ticketText3').value.trim();
     
     // テンプレート画像を読み込み
     const templateImg = new Image();
@@ -2594,16 +2678,33 @@ function selectTicketImage(imagePath) {
         
         // 選択した画像を読み込み
         const selectedImg = new Image();
-        selectedImg.src = imagePath;
+        selectedImg.src = selectedTicketImagePath;
         
         selectedImg.onload = function() {
-            // 画像を中央に配置（サイズと位置は調整可能）
-            const imgWidth = templateImg.width * 0.6; // テンプレートの60%の幅
+            // 画像を上部に配置（位置とサイズは調整可能）
+            const imgWidth = templateImg.width * 0.7; // テンプレートの70%の幅
             const imgHeight = (selectedImg.height / selectedImg.width) * imgWidth;
             const x = (templateImg.width - imgWidth) / 2;
-            const y = (templateImg.height - imgHeight) / 2;
+            const y = templateImg.height * 0.15; // 上から15%の位置
             
             ctx.drawImage(selectedImg, x, y, imgWidth, imgHeight);
+            
+            // テキストを描画（領収書宛名と同じスタイル）
+            ctx.font = 'bold 48px Arial, sans-serif';
+            ctx.fillStyle = '#000000';
+            ctx.textAlign = 'center';
+            
+            const textStartY = y + imgHeight + 60; // 画像の下から開始
+            
+            if (text1) {
+                ctx.fillText(text1, templateImg.width / 2, textStartY);
+            }
+            if (text2) {
+                ctx.fillText(text2, templateImg.width / 2, textStartY + 60);
+            }
+            if (text3) {
+                ctx.fillText(text3, templateImg.width / 2, textStartY + 120);
+            }
             
             // プレビューエリアを表示
             previewArea.style.display = 'block';
@@ -2622,14 +2723,37 @@ function selectTicketImage(imagePath) {
     };
 }
 
-// T's券印刷ボタンのイベント
+// T's券印刷・更新ボタンのイベント
 document.addEventListener('DOMContentLoaded', function() {
     const ticketPrintBtn = document.getElementById('ticketPrintBtn');
+    const ticketUpdateBtn = document.getElementById('ticketUpdateBtn');
+    
     if (ticketPrintBtn) {
         ticketPrintBtn.addEventListener('click', function() {
             printTicket();
         });
     }
+    
+    if (ticketUpdateBtn) {
+        ticketUpdateBtn.addEventListener('click', function() {
+            updateTicketTemplate();
+        });
+    }
+    
+    // テキスト入力時にリアルタイム更新
+    const text1 = document.getElementById('ticketText1');
+    const text2 = document.getElementById('ticketText2');
+    const text3 = document.getElementById('ticketText3');
+    
+    if (text1) text1.addEventListener('input', function() {
+        if (selectedTicketImagePath) updateTicketTemplate();
+    });
+    if (text2) text2.addEventListener('input', function() {
+        if (selectedTicketImagePath) updateTicketTemplate();
+    });
+    if (text3) text3.addEventListener('input', function() {
+        if (selectedTicketImagePath) updateTicketTemplate();
+    });
 });
 
 // T's券を印刷
