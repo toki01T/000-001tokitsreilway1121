@@ -1770,25 +1770,24 @@ function generatePrintUrl(pdfBase64, thisPage) {
         // Epson TM-P20用URLスキーム (tmprintassistant://)
         
         if (selectedPrinter === 'epson') {
-            // パターン1: tmprintassistant://print?host=BT:&data=<Base64>
+            // パターン1: tmprintassistant://print?host=local&data=<Base64>
             url = 'tmprintassistant://print?' + 
-                  'host=BT:&' +
+                  'host=local&' +
                   'data=' + pdfBase64;
-            console.log('🖨️ Epsonパターン1: tmprintassistant://print (host=BT: + Base64そのまま)');
+            console.log('🖨️ Epsonパターン1: tmprintassistant://print (host=local + Base64そのまま)');
             
         } else if (selectedPrinter === 'epson2') {
-            // パターン2: tmprintassistant://print?host=BT:&data=<URLエンコード>
+            // パターン2: tmprintassistant://print?data=<Base64> (hostパラメータなし)
             url = 'tmprintassistant://print?' + 
-                  'host=BT:&' +
-                  'data=' + encodeURIComponent(pdfBase64);
-            console.log('🖨️ Epsonパターン2: tmprintassistant://print (host=BT: + URLエンコード)');
+                  'data=' + pdfBase64;
+            console.log('🖨️ Epsonパターン2: tmprintassistant://print (hostなし + Base64そのまま)');
             
         } else if (selectedPrinter === 'epson3') {
-            // パターン3: tmprintassistant://print?host=&data=<Base64> (host空欄)
+            // パターン3: tmprintassistant://print?host=default&data=<Base64>
             url = 'tmprintassistant://print?' + 
-                  'host=&' +
+                  'host=default&' +
                   'data=' + pdfBase64;
-            console.log('🖨️ Epsonパターン3: tmprintassistant://print (host空欄 + Base64そのまま)');
+            console.log('🖨️ Epsonパターン3: tmprintassistant://print (host=default + Base64そのまま)');
         }
         
         console.log('スキーム:', url.split('?')[0]);
