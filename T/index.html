@@ -111,24 +111,6 @@ header {
     align-items: center;
     justify-content: center;
 }
-#settingsBtn {
-    position: absolute;
-    left: 0.8rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: transparent;
-    border: none;
-    color: #fff;
-    font-size: 1.5rem;
-    cursor: pointer;
-    z-index: 12;
-    padding: 0;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
 #qrCodeBtn {
     position: absolute;
     right: 4rem;
@@ -1306,7 +1288,6 @@ footer p {
 <header>
     <div class="navbar">
         <a class="navbar-brand" href="#">toki01Ⓣ</a>
-        <button id="settingsBtn" title="設定">⚙️</button>
         <button id="qrCodeBtn" title="QRコード読み取り">QR</button>
         <button id="historyMenuBtn" title="履歴"><span>&#9776;</span></button>
     </div>
@@ -1325,32 +1306,6 @@ footer p {
     <div id="historyList"></div>
 </div>
 <div id="historyDrawerBg"></div>
-
-<!-- 設定モーダル -->
-<div id="settingsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10001;">
-    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--background-color); padding: 2rem; border-radius: 10px; max-width: 400px; width: 90%;">
-        <h2 style="margin: 0 0 1.5rem 0; color: var(--text-color); font-size: 1.3rem;">プリンター設定</h2>
-        <div style="margin-bottom: 1.5rem;">
-            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-color); font-weight: bold;">プリンター選択</label>
-            <select id="printerSelect" style="width: 100%; padding: 0.8rem; font-size: 1rem; border: 2px solid var(--input-border); border-radius: 5px; background: var(--input-bg); color: var(--input-text);">
-                <option value="sii">SII MP-B20 (SII URL Print Agent)</option>
-                <option value="epson">Epson TM-P20 (TM Print Assist - epsontmprint://)</option>
-                <option value="epson2">Epson TM-P20 (試用2 - epos-print://)</option>
-                <option value="epson3">Epson TM-P20 (試用3 - epsontmprint:// URLエンコード)</option>
-            </select>
-        </div>
-        <div style="margin-bottom: 1rem; padding: 0.8rem; background: rgba(0,163,237,0.1); border-radius: 5px; font-size: 0.85rem; color: var(--text-color);">
-            <strong>📝 注意事項:</strong><br>
-            • SII MP-B20: 「SII URL Print Agent」アプリが必要<br>
-            • Epson TM-P20: 「Epson TM Print Assist」アプリが必要<br>
-            • プリンターとのBluetooth接続を事前に確認してください
-        </div>
-        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-            <button id="settingsCancelBtn" style="padding: 0.8rem 1.5rem; font-size: 1rem; border: 2px solid var(--primary-color); background: transparent; color: var(--primary-color); border-radius: 5px; cursor: pointer;">キャンセル</button>
-            <button id="settingsSaveBtn" style="padding: 0.8rem 1.5rem; font-size: 1rem; border: none; background: var(--primary-color); color: #fff; border-radius: 5px; cursor: pointer;">保存</button>
-        </div>
-    </div>
-</div>
 
 <!-- QRコードリーダーモーダル -->
 <div id="qrReaderModal">
@@ -1537,9 +1492,6 @@ let currentStream = null;
 // 領収書印刷の重複防止用変数
 let lastReceiptPrintId = null;
 let lastReceiptPrintTime = 0;
-
-// プリンター設定
-let selectedPrinter = localStorage.getItem('selectedPrinter') || 'sii'; // デフォルトはSII
 
 // 独自QRコード生成用の変数
 const QR_PREFIX = 'TOKI01_';
@@ -1762,81 +1714,40 @@ function clearReceiptAmount() {
 // 印刷URLスキーム生成関数（iOS・Android両対応 - test.html完全互換版）
 function generatePrintUrl(pdfBase64, thisPage) {
     console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
-    console.log('🖨️ 選択プリンター:', selectedPrinter === 'sii' ? 'SII MP-B20' : 'Epson TM-P20');
     
-    let url;
-    
-    if (selectedPrinter === 'epson' || selectedPrinter === 'epson2' || selectedPrinter === 'epson3') {
-        // Epson TM-P20用URLスキーム (tmprintassistant://)
-        
-        if (selectedPrinter === 'epson') {
-            // パターン1: tmprintassistant://select?data=<Base64>
-            // selectアクションでプリンター選択画面を表示
-            url = 'tmprintassistant://select?' + 
-                  'data=' + pdfBase64;
-            console.log('🖨️ Epsonパターン1: tmprintassistant://select (プリンター選択画面表示)');
-            
-        } else if (selectedPrinter === 'epson2') {
-            // パターン2: tmprintassistant://print (dataのみ、hostなし)
-            url = 'tmprintassistant://print?' + 
-                  'data=' + pdfBase64;
-            console.log('🖨️ Epsonパターン2: tmprintassistant://print (dataのみ、hostパラメータなし)');
-            
-        } else if (selectedPrinter === 'epson3') {
-            // パターン3: tmprintassistant://print?host=AUTO&data=<Base64>
-            // AUTO指定で自動選択
-            url = 'tmprintassistant://print?' + 
-                  'host=AUTO&' +
-                  'data=' + pdfBase64;
-            console.log('🖨️ Epsonパターン3: tmprintassistant://print (host=AUTO 自動選択)');
-        }
-        
-        console.log('スキーム:', url.split('?')[0]);
-        console.log('データ形式: PDF (Base64)');
-    } else {
-        // SII MP-B20用URLスキーム (siiprintagent://) - デフォルト
-        url = 'siiprintagent://1.0/print?' +
-              'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
-              'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
-              'Format=' + 'pdf' + '&' +
-              'Data=' + encodeURIComponent(pdfBase64) + '&' +
-              'SelectOnError=' + 'yes' + '&' +
-              'CutType=' + 'full' + '&' +
-              'CutFeed=' + 'yes' + '&' +
-              'FitToWidth=' + 'no' + '&' +
-              'PaperWidth=' + '58';
-        
-        console.log('🖨️ SII MP-B20用URLスキーム使用');
-    }
+    // test.htmlと完全に同じ方式でURL構築（AndroidもiOSも同じ）
+    const url = 'siiprintagent://1.0/print?' +
+                'CallbackSuccess=' + encodeURIComponent(thisPage) + '&' +
+                'CallbackFail=' + encodeURIComponent(thisPage) + '&' +
+                'Format=' + 'pdf' + '&' +
+                'Data=' + encodeURIComponent(pdfBase64) + '&' +
+                'SelectOnError=' + 'yes' + '&' +
+                'CutType=' + 'full' + '&' +
+                'CutFeed=' + 'yes' + '&' +
+                'FitToWidth=' + 'no' + '&' +
+                'PaperWidth=' + '58';
     
     console.log('📊 最終URL長:', url.length, '文字');
-    console.log('🔗 URLスキーム部分:', url.substring(0, 150) + '...');
-    console.log('🔗 完全なURL（最初の500文字）:', url.substring(0, 500) + '...');
+    console.log('🔗 URL先頭150文字:', url.substring(0, 150) + '...');
     
     // URLサイズ警告（2MB以上の場合）
     if (url.length > 2000000) {
         console.warn('⚠️ 警告: URL長が2MB以上です。印刷に失敗する可能性があります。');
-        console.warn('📏 データサイズ:', Math.round(url.length / 1024 / 1024 * 100) / 100, 'MB');
+        console.warn('� データサイズ:', Math.round(url.length / 1024 / 1024 * 100) / 100, 'MB');
     }
     
     return url;
 }
 
-// 印刷実行関数
+// 印刷実行関数（test.html完全互換版）
 function executePrint(printUrl) {
     try {
-        console.log('🚀 印刷を実行します...');
-        
-        let printerInfo = 'SII MP-B20';
-        if (selectedPrinter.startsWith('epson')) printerInfo = 'Epson TM-P20';
-        console.log('📱 使用プリンター:', printerInfo);
-        
+        // test.htmlと完全に同じ実装
         location.href = printUrl;
         
     } catch(e) {
         console.error('❌ 印刷実行エラー:', e);
-        const appName = selectedPrinter === 'sii' ? 'SII URL Print Agent' : 'Epson TM Print Assist';
-        alert(`印刷の起動に失敗しました。\n${appName}がインストールされているか確認してください。\n\nエラー: ${e.message}`);
+        alert('印刷の起動に失敗しました。\nSII URL Print Agentがインストールされているか確認してください。\n\nエラー: ' + e.message);
     }
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
@@ -2070,48 +1981,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         updateSignaturePrintButtonState();
     }, 1000);
-    
-    // 設定ボタンのイベントハンドラー
-    const settingsBtn = document.getElementById('settingsBtn');
-    const settingsModal = document.getElementById('settingsModal');
-    const settingsCancelBtn = document.getElementById('settingsCancelBtn');
-    const settingsSaveBtn = document.getElementById('settingsSaveBtn');
-    const printerSelect = document.getElementById('printerSelect');
-    
-    if (settingsBtn) {
-        settingsBtn.onclick = preventDoubleTouch(() => {
-            printerSelect.value = selectedPrinter;
-            settingsModal.style.display = 'flex';
-        });
-    }
-    
-    if (settingsCancelBtn) {
-        settingsCancelBtn.onclick = preventDoubleTouch(() => {
-            settingsModal.style.display = 'none';
-        });
-    }
-    
-    if (settingsSaveBtn) {
-        settingsSaveBtn.onclick = preventDoubleTouch(() => {
-            selectedPrinter = printerSelect.value;
-            localStorage.setItem('selectedPrinter', selectedPrinter);
-            settingsModal.style.display = 'none';
-            
-            let printerName = 'SII MP-B20';
-            if (selectedPrinter === 'epson') printerName = 'Epson TM-P20 (epsontmprint://)';
-            else if (selectedPrinter === 'epson2') printerName = 'Epson TM-P20 (epos-print://)';
-            else if (selectedPrinter === 'epson3') printerName = 'Epson TM-P20 (epsontmprint:// URLエンコード)';
-            
-            alert(`プリンター設定を保存しました\n\n選択プリンター: ${printerName}`);
-        });
-    }
-    
-    // 設定モーダルの背景クリックで閉じる
-    settingsModal.onclick = (e) => {
-        if (e.target === settingsModal) {
-            settingsModal.style.display = 'none';
-        }
-    };
 });
 historyDrawerBg.onclick = (e) => {
     if (historyDrawer.classList.contains('open')) {
