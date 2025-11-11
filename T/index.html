@@ -1337,6 +1337,12 @@ footer p {
                 <option value="epson">Epson TM-P20 (TM Print Assist)</option>
             </select>
         </div>
+        <div style="margin-bottom: 1rem; padding: 0.8rem; background: rgba(0,163,237,0.1); border-radius: 5px; font-size: 0.85rem; color: var(--text-color);">
+            <strong>📝 注意事項:</strong><br>
+            • SII MP-B20: 「SII URL Print Agent」アプリが必要<br>
+            • Epson TM-P20: 「Epson TM Print Assist」アプリが必要<br>
+            • プリンターとのBluetooth接続を事前に確認してください
+        </div>
         <div style="display: flex; gap: 1rem; justify-content: flex-end;">
             <button id="settingsCancelBtn" style="padding: 0.8rem 1.5rem; font-size: 1rem; border: 2px solid var(--primary-color); background: transparent; color: var(--primary-color); border-radius: 5px; cursor: pointer;">キャンセル</button>
             <button id="settingsSaveBtn" style="padding: 0.8rem 1.5rem; font-size: 1rem; border: none; background: var(--primary-color); color: #fff; border-radius: 5px; cursor: pointer;">保存</button>
@@ -1759,11 +1765,14 @@ function generatePrintUrl(pdfBase64, thisPage) {
     let url;
     
     if (selectedPrinter === 'epson') {
-        // Epson TM-P20用URLスキーム (epos-print://)
-        url = 'epos-print://?devtype=bt&' +
-              'printwidth=384&' +
-              'paperwidth=58&' +
-              'base64=' + encodeURIComponent(pdfBase64);
+        // Epson TM-P20用URLスキーム (Epson TM Print Assistant)
+        // 公式ドキュメント: XML形式またはPDFの印刷データをURLスキームで受け取る
+        // Base64エンコードされたPDFデータを渡す (encodeURIComponentは不要)
+        url = 'epsontmprint://?data=' + pdfBase64 + '&type=pdf';
+        
+        console.log('🖨️ Epson TM-P20用URLスキーム使用');
+        console.log('スキーム: epsontmprint://');
+        console.log('データ形式: PDF (Base64)');
     } else {
         // SII MP-B20用URLスキーム (siiprintagent://) - デフォルト
         url = 'siiprintagent://1.0/print?' +
@@ -1776,10 +1785,13 @@ function generatePrintUrl(pdfBase64, thisPage) {
               'CutFeed=' + 'yes' + '&' +
               'FitToWidth=' + 'no' + '&' +
               'PaperWidth=' + '58';
+        
+        console.log('🖨️ SII MP-B20用URLスキーム使用');
     }
     
     console.log('📊 最終URL長:', url.length, '文字');
-    console.log('🔗 URL先頭150文字:', url.substring(0, 150) + '...');
+    console.log('🔗 URLスキーム部分:', url.substring(0, 150) + '...');
+    console.log('🔗 完全なURL（最初の500文字）:', url.substring(0, 500) + '...');
     
     // URLサイズ警告（2MB以上の場合）
     if (url.length > 2000000) {
@@ -1790,15 +1802,18 @@ function generatePrintUrl(pdfBase64, thisPage) {
     return url;
 }
 
-// 印刷実行関数（test.html完全互換版）
+// 印刷実行関数
 function executePrint(printUrl) {
     try {
-        // test.htmlと完全に同じ実装
+        console.log('🚀 印刷を実行します...');
+        console.log('📱 使用プリンター:', selectedPrinter === 'sii' ? 'SII MP-B20' : 'Epson TM-P20');
+        
         location.href = printUrl;
         
     } catch(e) {
         console.error('❌ 印刷実行エラー:', e);
-        alert('印刷の起動に失敗しました。\nSII URL Print Agentがインストールされているか確認してください。\n\nエラー: ' + e.message);
+        const appName = selectedPrinter === 'sii' ? 'SII URL Print Agent' : 'Epson TM Print Assist';
+        alert(`印刷の起動に失敗しました。\n${appName}がインストールされているか確認してください。\n\nエラー: ${e.message}`);
     }
 }
 const historyMenuBtn = document.getElementById('historyMenuBtn');
