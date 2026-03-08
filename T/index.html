@@ -1638,18 +1638,39 @@ function addHistory(item) {
         throw error;
     });
 }
-function getAllHistory(typeFilter = null) {
+function getAllHistory(typeFilter = null, options = {}) {
+    const { limit = null } = options;
+    const normalizedLimit = Number.isFinite(limit) && limit > 0
+        ? Math.floor(limit)
+        : null;
+
     return openDB().then(db => {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readonly');
             const store = tx.objectStore(STORE_NAME);
-            const req = store.getAll();
+            const req = store.openCursor(null, 'prev');
+            const result = [];
+
             req.onsuccess = () => {
-                let result = req.result.reverse();
-                if (typeFilter) result = result.filter(x => x.type === typeFilter);
-                resolve(result);
+                const cursor = req.result;
+                if (!cursor) {
+                    resolve(result);
+                    return;
+                }
+
+                const value = cursor.value;
+                if (!typeFilter || value.type === typeFilter) {
+                    result.push(value);
+                    if (normalizedLimit && result.length >= normalizedLimit) {
+                        resolve(result);
+                        return;
+                    }
+                }
+
+                cursor.continue();
             };
             req.onerror = () => reject(req.error);
+            tx.onerror = () => reject(tx.error);
         });
     });
 }
@@ -1765,6 +1786,7 @@ let modeNames = {
     signature: '手書き(電子サイン)',
     receipt: '領収書宛名'
 };
+const HISTORY_LIST_RENDER_LIMIT = 40;
 
 // 小文字オプションの状態管理
 let receiptSmallTextEnabled = false;
@@ -1811,8 +1833,10 @@ modeToggleUnified.onclick = preventDoubleTouch(() => {
     let nextIdx = (idx + 1) % modeOrder.length;
     currentHistoryType = modeOrder[nextIdx];
     setModeToggle(currentHistoryType);
-    loadHistoryList();
-    toggleMode(currentHistoryType);
+    if (historyDrawer.classList.contains('open')) {
+        loadHistoryList();
+    }
+    toggleMode(currentHistoryType, { keepHistoryDrawerOpen: true });
 });
 
 historyMenuBtn.onclick = preventDoubleTouch(() => { 
@@ -1828,6 +1852,7 @@ qrCodeBtn.onclick = preventDoubleTouch(() => {
 historyDrawerClose.onclick = preventDoubleTouch(() => { 
     historyDrawer.classList.remove('open'); 
     historyDrawerBg.style.display = 'none'; 
+    historyList.innerHTML = '';
 });
 
 // タッチイベントも同時に追加
@@ -1986,14 +2011,33 @@ historyDrawerBg.onclick = (e) => {
     if (historyDrawer.classList.contains('open')) {
         historyDrawer.classList.remove('open');
         historyDrawerBg.style.display = 'none';
+        historyList.innerHTML = '';
     }
 };
+let isHistoryListLoading = false;
+let hasPendingHistoryListReload = false;
+
 function loadHistoryList() {
-    getAllHistory(currentHistoryType).then(list => {
+    if (isHistoryListLoading) {
+        hasPendingHistoryListReload = true;
+        return Promise.resolve();
+    }
+
+    isHistoryListLoading = true;
+    const shouldRenderThumbnails = !!historyDrawer?.classList?.contains('open');
+    const historyLimit = shouldRenderThumbnails ? HISTORY_LIST_RENDER_LIMIT : 1;
+
+    return getAllHistory(currentHistoryType, { limit: historyLimit }).then(list => {
+        const renderList = Array.isArray(list) ? list : [];
         // 履歴リストを完全にクリア（二重表示防止）
         historyList.innerHTML = '';
+
+        if (!shouldRenderThumbnails) {
+            window.historyItems = renderList;
+            return;
+        }
         
-        if (!list.length) {
+        if (!renderList.length) {
             historyList.innerHTML = '<div style="color:#888; text-align:center;">履歴がありません</div>';
             let spacer = document.createElement('div');
             spacer.className = 'historyListSpacer';
@@ -2005,7 +2049,7 @@ function loadHistoryList() {
         const addedIds = new Set();
         
         let swipedId = null;
-        for (const item of list) {
+        for (const item of renderList) {
             // 既に追加済みの場合はスキップ
             if (addedIds.has(item.id)) {
                 console.warn('重複した履歴IDを検出:', item.id);
@@ -2383,6 +2427,17 @@ function loadHistoryList() {
         let spacer = document.createElement('div');
         spacer.className = 'historyListSpacer';
         historyList.appendChild(spacer);
+        window.historyItems = renderList;
+    }).catch((error) => {
+        console.error('❌ loadHistoryListエラー:', error);
+    }).finally(() => {
+        isHistoryListLoading = false;
+        if (hasPendingHistoryListReload) {
+            hasPendingHistoryListReload = false;
+            setTimeout(() => {
+                loadHistoryList();
+            }, 0);
+        }
     });
 }
 function displayDate() {
@@ -2481,7 +2536,7 @@ function checkAndContinuePrinting() {
         setTimeout(checkAndContinuePrinting, remainingTime);
     }
 }
-function showSection(mode) {
+function showSection(mode, options = {}) {
     const mainElement = document.querySelector('main');
     
     document.getElementById('imageSection').style.display = (mode === 'image') ? 'block' : 'none';
@@ -2565,8 +2620,8 @@ function showSection(mode) {
         setTimeout(function(){initSignaturePad();}, 50);
     }
 }
-function toggleMode(mode) {
-    showSection(mode);
+function toggleMode(mode, options = {}) {
+    showSection(mode, options);
 }
 function previewImage(event) {
     const file = event.target.files[0];
@@ -3509,25 +3564,42 @@ function sendToPrintAssist(event) {
                 const uploadedImg = new Image();
                 uploadedImg.crossOrigin = 'anonymous'; // 画像品質向上
                 uploadedImg.onload = function() {
+                    const referenceOverlayWidth = Math.round(58 * 11.8);
+                    const overlayScale = Math.max(0.56, Math.min(1, canvasWidth / referenceOverlayWidth));
+                    const overlayDateFontSize = Math.max(34, Math.round(60 * overlayScale));
+                    const overlayQrSize = Math.max(100, Math.round(180 * overlayScale));
+                    const overlayQrX = Math.max(16, Math.round(25 * overlayScale));
+                    const overlayDateOffsetXWithQr = Math.max(68, Math.round(110 * overlayScale));
+                    const overlayGapWithQr = Math.max(8, Math.round(20 * overlayScale));
+                    const overlayGapWithoutDateQr = Math.max(20, Math.round(40 * overlayScale));
+                    const overlayDateBottomGap = Math.max(24, Math.round(50 * overlayScale));
+                    const imageBottomMarginReference = (isDateTimeEnabled && qrPrintEnabled)
+                        ? 204
+                        : (!isDateTimeEnabled && qrPrintEnabled)
+                            ? 230
+                            : (isDateTimeEnabled && !qrPrintEnabled)
+                                ? 200
+                                : 190;
+
                     // 日付・時刻の高さを計算
                     let dateTimeHeight = 0;
                     if (isDateTimeEnabled) {
-                        const fontSize = 50; // 50px
-                        dateTimeHeight = fontSize * 2.5; // 2行 + 余白
+                        dateTimeHeight = 10 + (qrPrintEnabled ? overlayGapWithQr : 0) + overlayDateFontSize * 1.2 + overlayDateFontSize * 1.2;
                     }
                     
-                    // 画像のサイズを58mm幅に合わせて計算
-                    const maxImgWidth = canvasWidth - -35; // 左右余白を除く
+                    // 画像のサイズをキャンバス幅の92%に制限（左右に余白を確保）
+                    const maxImgWidth = Math.round(canvasWidth * 0.92);
                     const imgRatio = uploadedImg.naturalHeight / uploadedImg.naturalWidth;
                     const finalImgWidth = Math.min(maxImgWidth, uploadedImg.naturalWidth);
                     const finalImgHeight = finalImgWidth * imgRatio;
                     
                     // 全体の高さを計算（画像用の余白設定）
-                    const imageTopMargin = -50; // 画像用上余白
-                    const imageBottomMargin = 13; // 画像用下余白
-                    const dateBottomMargin = 40; // 日付有り印刷の追加下部余白
-                    const qrSpaceMargin = qrPrintEnabled ? (selectedChip === 'with' ? 65 : 110) : 0; // QRコード用余白（日付ありは65px、なしは110px）
-                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin + dateBottomMargin + qrSpaceMargin;
+                    const imageTopMargin = 30; // 画像用上余白
+                    const imageBottomMargin = Math.max(
+                        Math.round(imageBottomMarginReference * overlayScale),
+                        Math.round(96 * overlayScale)
+                    );
+                    const totalHeight = imageTopMargin + finalImgHeight + dateTimeHeight + imageBottomMargin;
                     
                     compositeCanvas.width = canvasWidth;
                     compositeCanvas.height = totalHeight;
@@ -3575,15 +3647,15 @@ function sendToPrintAssist(event) {
                             
                             qrCodeCanvas = generateQRCode(qrData);
                             if (qrCodeCanvas) {
-                                const qrSize = 150; // QRコードのサイズをさらに大きく設定（120→150）
-                                const qrX = 30; // 左端から30pxの位置
+                                const qrSize = overlayQrSize;
+                                const qrX = overlayQrX;
                                 let qrY;
                                 if (isDateTimeEnabled) {
                                     // 日付・時刻ありの場合：日付・時刻の左側に配置
-                                    qrY = imgY + finalImgHeight + 20; // 画像の下、日付の横
+                                    qrY = imgY + finalImgHeight + overlayGapWithQr;
                                 } else {
                                     // 日付・時刻なしの場合：画像の下部左側（印刷範囲内に調整）
-                                    qrY = Math.max(imgY + finalImgHeight - qrSize + 10, imgY + finalImgHeight + 10);
+                                    qrY = Math.max(imgY + finalImgHeight - qrSize + overlayGapWithoutDateQr, imgY + finalImgHeight + overlayGapWithoutDateQr);
                                 }
                                 // console.log('QRコード描画位置:', qrX, qrY, qrSize);
                                 compositeCtx.drawImage(qrCodeCanvas, qrX, qrY, qrSize, qrSize);
@@ -3794,7 +3866,7 @@ function sendToPrintAssist(event) {
                         const minute = now.getMinutes();
                         const second = now.getSeconds();
                         
-                        const fontSize = 50;// 50px
+                        const fontSize = overlayDateFontSize;
                         compositeCtx.fillStyle = '#000000';
                         compositeCtx.font = `${fontSize}px Arial, sans-serif`;
                         compositeCtx.textAlign = 'center';
@@ -3803,16 +3875,19 @@ function sendToPrintAssist(event) {
                         // QRコード印刷の有無で位置を調整
                         let dateTimeX;
                         // 現在のチェックボックス状態を直接確認
-                        const currentQrEnabled = document.getElementById('qrPrintCheckbox').checked;
+                        const currentQrEnabled = qrPrintEnabled;
                         if (currentQrEnabled) {
                             // QRコード印刷ありの場合：QRコードの右側に配置
-                            dateTimeX = Math.round(canvasWidth / 2) + 40; // 中央より右に40px移動
+                            dateTimeX = Math.round(canvasWidth / 2) + overlayDateOffsetXWithQr;
                         } else {
                             // QRコード印刷なしの場合：中央に配置
-                            dateTimeX = Math.round(canvasWidth / 2) - 40; // 画面中央
+                            dateTimeX = Math.round(canvasWidth / 2);
                         }
                         
                         let yPos = imgY + finalImgHeight + 10; // 画像の下
+                        if (currentQrEnabled) {
+                            yPos += overlayGapWithQr;
+                        }
                         
                         // 日付行
                         const dateText = `${year}年${month}月${day}日`;
@@ -3822,7 +3897,7 @@ function sendToPrintAssist(event) {
                         // 時刻行
                         const timeText = `${hour}時${minute}分${second}秒`;
                         compositeCtx.fillText(timeText, dateTimeX, yPos);
-                        yPos += 50; // 日付有り印刷の下部余白を50px追加
+                        yPos += overlayDateBottomGap;
                     }
                     
                     // 合成キャンバスをJPEGに変換（サイズ削減のため品質70%）
