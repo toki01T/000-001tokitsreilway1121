@@ -1283,6 +1283,149 @@ footer p {
     cursor: default;
 }
 </style>
+<style id="webCssSyncOverride">
+@font-face {
+    font-family: 'MobileKanji';
+    src: url('Fonts/mobile_kanji_jp.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+html, body {
+    background-color: rgb(232, 245, 253);
+    overflow: hidden;
+}
+
+header {
+    background-color: rgb(102, 178, 242);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    height: 78px;
+}
+
+.navbar {
+    height: 78px;
+}
+
+.navbar-brand {
+    font-size: 1.4rem;
+    font-weight: 600;
+    line-height: 1.1;
+    white-space: normal;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.05rem;
+    font-family: inherit;
+    touch-action: manipulation;
+}
+
+#historyMenuBtn {
+    z-index: 120;
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+}
+
+#qrCodeBtn {
+    background: rgba(255,255,255,0.2);
+    z-index: 120;
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0,0,0,0.1);
+}
+
+@media (max-width: 400px) {
+    header {
+        height: 58px;
+    }
+    .navbar {
+        height: 58px;
+    }
+    .navbar-brand {
+        font-size: 1.15rem;
+        gap: 0;
+    }
+}
+
+#historyDrawerClose {
+    color: rgb(102, 178, 242);
+}
+
+#modeToggleUnified {
+    border-radius: 18px;
+    border: 2.5px solid rgb(102, 178, 242);
+    background: #fff;
+    color: rgb(102, 178, 242);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+#modeToggleUnified.selected,
+#modeToggleUnified:active {
+    background: rgb(102, 178, 242);
+    color: #fff;
+}
+
+#historyList {
+    -webkit-overflow-scrolling: touch;
+}
+
+#historyDrawerBg {
+    pointer-events: none;
+}
+
+#historyDrawer.open + #historyDrawerBg {
+    pointer-events: auto;
+}
+
+main {
+    padding-top: 78px;
+    background: transparent;
+    overflow: hidden;
+}
+
+main.receipt-mode {
+    justify-content: flex-start;
+    overflow-y: hidden;
+    padding-bottom: 60px;
+}
+
+@media (max-width: 600px) {
+    main {
+        padding-top: 78px;
+        padding-bottom: 70px;
+    }
+    main.receipt-mode {
+        padding-bottom: 70px;
+    }
+    #receiptSection {
+        max-height: calc(100vh - 167px);
+    }
+}
+
+@media (max-width: 400px) {
+    main {
+        padding-top: 78px;
+        padding-bottom: 65px;
+    }
+    main.receipt-mode {
+        padding-bottom: 65px;
+    }
+    #receiptSection {
+        max-height: calc(100vh - 142px);
+    }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+    main {
+        padding-top: 78px;
+        padding-bottom: 45px;
+    }
+}
+</style>
 </head>
 <body>
 <header>
