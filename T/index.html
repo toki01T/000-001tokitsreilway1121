@@ -646,6 +646,28 @@ main.menu-mode {
     align-items: center;
     gap: clamp(1.2rem, 4vw, 2rem);
     box-sizing: border-box;
+    position: relative;
+}
+
+.main-menu-hidden-hotspot {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 0px);
+    left: 0;
+    width: 80px;
+    height: 44px;
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    z-index: 4;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.main-menu-hidden-hotspot:focus,
+.main-menu-hidden-hotspot:focus-visible,
+.main-menu-hidden-hotspot:active {
+    outline: none;
+    box-shadow: none;
 }
 
 .menu-grid {
@@ -1917,6 +1939,10 @@ main.receipt-mode {
     background: #fff;
 }
 
+.ticket-upload-input {
+    display: none;
+}
+
 .ticket-refresh-btn {
     padding: 10px 14px;
     background: rgb(102, 178, 242);
@@ -1967,6 +1993,13 @@ main.receipt-mode {
 .ticket-template-btn.selected {
     border-color: rgb(0, 133, 255);
     box-shadow: 0 0 0 3px rgba(0, 133, 255, 0.25);
+}
+
+.ticket-template-btn.is-empty {
+    background-image: none !important;
+    color: rgb(102, 178, 242);
+    font-weight: 700;
+    border-style: dashed;
 }
 
 .ticket-preview {
@@ -2409,6 +2442,7 @@ body.has-bottom-nav main {
 </div>
 <main class="menu-mode">
     <section id="mainMenuSection" class="main-menu">
+        <button type="button" id="mainMenuHiddenHotspot" class="main-menu-hidden-hotspot" aria-label="隠しボタン" tabindex="-1"></button>
         <div class="menu-grid">
             <button type="button" class="menu-card" data-mode-target="image">
                 <span class="menu-card-icon" aria-hidden="true">
@@ -2548,6 +2582,22 @@ body.has-bottom-nav main {
         <section id="ticketSection" style="display:none;">
             <div class="ticket-template-container">
                 <div id="ticketSelectScreen">
+                    <div class="ticket-upload-row">
+                        <label for="ticketTemplateSlotSelect">テンプレ配置</label>
+                        <select id="ticketTemplateSlotSelect">
+                            <option value="1">1番</option>
+                            <option value="2">2番</option>
+                            <option value="3">3番</option>
+                            <option value="4">4番</option>
+                            <option value="5">5番</option>
+                            <option value="6">6番</option>
+                            <option value="7">7番</option>
+                            <option value="8">8番</option>
+                            <option value="9">9番</option>
+                        </select>
+                        <button type="button" id="ticketTemplateUploadBtn" class="ticket-refresh-btn">画像選択</button>
+                    </div>
+                    <input type="file" id="ticketTemplateUploadInput" class="ticket-upload-input" accept="image/jpeg, image/png, image/webp" />
                     <div class="ticket-template-grid" id="ticketTemplateGrid">
                         <!-- テンプレートボタンは動的に生成 -->
                     </div>
@@ -4430,6 +4480,77 @@ function initBackButton() {
     console.log('✅✅✅ 戻るボタンの設定完了！');
 }
 
+const HIDDEN_MENU_REQUIRED_TAPS = 3;
+const HIDDEN_MENU_TAP_INTERVAL_MS = 900;
+let hiddenMenuTapCount = 0;
+let hiddenMenuTapTimer = null;
+
+function resetHiddenMenuTapState() {
+    hiddenMenuTapCount = 0;
+    if (hiddenMenuTapTimer) {
+        clearTimeout(hiddenMenuTapTimer);
+        hiddenMenuTapTimer = null;
+    }
+}
+
+function activateWebHiddenMenu() {
+    if (window.webkit?.messageHandlers?.playSound) {
+        window.webkit.messageHandlers.playSound.postMessage({ type: 'tap' });
+    }
+
+    let savedPasscode = '0000';
+    try {
+        const storedPasscode = localStorage.getItem('appPassword');
+        const fallbackPasscode = localStorage.getItem('app_passcode');
+        const resolvedPasscode = storedPasscode || fallbackPasscode;
+        if (resolvedPasscode && String(resolvedPasscode).trim()) {
+            savedPasscode = String(resolvedPasscode).trim();
+        }
+    } catch (error) {
+        console.warn('パスコード読込に失敗:', error);
+    }
+
+    const enteredPasscode = window.prompt('暗証番号を入力してください');
+    if (enteredPasscode === null) {
+        return;
+    }
+
+    if (String(enteredPasscode).trim() !== savedPasscode) {
+        alert('暗証番号が正しくありません');
+        return;
+    }
+
+    showSection('ticket');
+    showTicketSelectScreen();
+}
+
+function handleMainMenuHiddenTap(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    if (!document.body?.classList?.contains('is-menu-view')) {
+        resetHiddenMenuTapState();
+        return;
+    }
+
+    hiddenMenuTapCount += 1;
+    if (hiddenMenuTapTimer) {
+        clearTimeout(hiddenMenuTapTimer);
+    }
+
+    if (hiddenMenuTapCount >= HIDDEN_MENU_REQUIRED_TAPS) {
+        resetHiddenMenuTapState();
+        activateWebHiddenMenu();
+        return;
+    }
+
+    hiddenMenuTapTimer = setTimeout(() => {
+        resetHiddenMenuTapState();
+    }, HIDDEN_MENU_TAP_INTERVAL_MS);
+}
+
 function setupMainMenuNavigation() {
     console.log('🚀 setupMainMenuNavigation() を開始');
     
@@ -4482,28 +4603,12 @@ function setupMainMenuNavigation() {
         card.dataset.navInit = 'true';
     });
 
-    // 画像プレビュー（隠しボタン）
-    const imagePreview = document.getElementById('imagePreviewContainer');
-    if (imagePreview && !imagePreview.dataset.navInit) {
-        const imagePreviewHandler = preventDoubleTouch((e) => {
-            if (e.target.tagName !== 'IMG' && e.target.id !== 'imagePreviewContainer') {
-                return;
-            }
-            if (!document.body?.classList.contains('is-menu-view')) {
-                console.log('⏭️ 隠しボタンはメインメニュー表示時のみ有効');
-                return;
-            }
-            console.log('✅ 画像プレビュークリック (隠しボタン)');
-            e.preventDefault();
-            e.stopPropagation();
-            if (window.webkit?.messageHandlers?.playSound) {
-                window.webkit.messageHandlers.playSound.postMessage({ type: 'tap' });
-            }
-            returnToMainMenu('hiddenImage');
-        });
-        imagePreview.addEventListener('click', imagePreviewHandler, false);
-        imagePreview.addEventListener('touchend', imagePreviewHandler, false);
-        imagePreview.dataset.navInit = 'true';
+    // メインメニュー左上の隠しボタン（高速3タップ）
+    const hiddenHotspot = document.getElementById('mainMenuHiddenHotspot');
+    if (hiddenHotspot && !hiddenHotspot.dataset.navInit) {
+        hiddenHotspot.addEventListener('click', handleMainMenuHiddenTap, false);
+        hiddenHotspot.addEventListener('touchend', handleMainMenuHiddenTap, false);
+        hiddenHotspot.dataset.navInit = 'true';
     }
     
     console.log('🎉 setupMainMenuNavigation() 完了');
@@ -6068,6 +6173,9 @@ function showSection(mode, options = {}) {
     }
     
     const isMenu = mode === 'menu';
+    if (!isMenu) {
+        resetHiddenMenuTapState();
+    }
     
     // 【モード切替時にスクロール位置をリセット】
     // メインメニュー以外のモードに切り替える時だけスクロールをリセット
@@ -10370,13 +10478,159 @@ let selectedTicketTemplate = '1';
 let ticketLogoMode = 'logo'; // 'logo' or 'text'
 let ticketUploadedTemplates = [];
 let selectedTicketIllustration = null;
+const TICKET_TEMPLATE_SLOT_COUNT = 9;
+const TICKET_CREDIT_MAX_LENGTH = 23;
+const TICKET_CREDIT_URL_MAX_LENGTH = 120;
+
+function clampTicketTemplateIndex(value) {
+    const parsed = parseInt(value, 10);
+    if (!Number.isFinite(parsed)) {
+        return 0;
+    }
+    return Math.max(0, Math.min(TICKET_TEMPLATE_SLOT_COUNT - 1, parsed - 1));
+}
+
+function normalizeTicketTemplateEntry(entry, fallbackName = 'デフォルト') {
+    if (!entry || typeof entry !== 'object') {
+        return null;
+    }
+
+    const imageData = typeof entry.imageData === 'string' ? entry.imageData.trim() : '';
+    if (!imageData) {
+        return null;
+    }
+
+    const name = limitTicketText(entry.name || fallbackName, 30) || fallbackName;
+    const credit = limitTicketText(entry.credit || '', TICKET_CREDIT_MAX_LENGTH);
+    const creditUrl = toHalfWidthUrl(entry.creditUrl || '').trim().slice(0, TICKET_CREDIT_URL_MAX_LENGTH);
+
+    return {
+        name,
+        imageData,
+        credit,
+        creditUrl,
+        logoMode: entry.logoMode === 'text' ? 'text' : 'logo'
+    };
+}
+
+function normalizeTicketTemplates(rawTemplates) {
+    const normalized = new Array(TICKET_TEMPLATE_SLOT_COUNT).fill(null);
+    if (!Array.isArray(rawTemplates)) {
+        return normalized;
+    }
+
+    const length = Math.min(rawTemplates.length, TICKET_TEMPLATE_SLOT_COUNT);
+    for (let index = 0; index < length; index += 1) {
+        normalized[index] = normalizeTicketTemplateEntry(rawTemplates[index], `テンプレート${index + 1}`);
+    }
+    return normalized;
+}
+
+function saveTicketUploadedTemplates() {
+    try {
+        localStorage.setItem('ticketUploadedTemplates', JSON.stringify(ticketUploadedTemplates));
+    } catch (error) {
+        console.warn('ticketUploadedTemplatesの保存に失敗:', error);
+    }
+}
+
+function getSelectedTicketSlotIndex() {
+    const slotSelect = document.getElementById('ticketTemplateSlotSelect');
+    const fallbackValue = selectedTicketTemplate || '1';
+    const value = slotSelect?.value || fallbackValue;
+    return clampTicketTemplateIndex(value);
+}
+
+function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        if (!file) {
+            reject(new Error('ファイルが指定されていません'));
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = typeof reader.result === 'string' ? reader.result : '';
+            if (!result) {
+                reject(new Error('画像データの読込に失敗しました'));
+                return;
+            }
+            resolve(result);
+        };
+        reader.onerror = () => reject(new Error('画像データの読込に失敗しました'));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function handleTicketTemplateUploadChange(event) {
+    const input = event?.target;
+    const file = input?.files?.[0];
+    if (!file) {
+        return;
+    }
+
+    if (!file.type || !file.type.startsWith('image/')) {
+        alert('画像ファイルを選択してください');
+        if (input) input.value = '';
+        return;
+    }
+
+    const slotIndex = getSelectedTicketSlotIndex();
+    const slotNumber = slotIndex + 1;
+
+    const existingTemplate = normalizeTicketTemplateEntry(ticketUploadedTemplates[slotIndex], `テンプレート${slotNumber}`);
+    if (existingTemplate && !window.confirm(`テンプレート${slotNumber}番を上書きしますか？`)) {
+        if (input) input.value = '';
+        return;
+    }
+
+    try {
+        const imageData = await readFileAsDataUrl(file);
+        const creditInput = window.prompt('イラスト名（任意・23文字まで）', existingTemplate?.credit || '');
+        const creditUrlInput = window.prompt('イラストURL（任意）', existingTemplate?.creditUrl || '');
+
+        ticketUploadedTemplates = normalizeTicketTemplates(ticketUploadedTemplates);
+        ticketUploadedTemplates[slotIndex] = {
+            name: limitTicketText(file.name || `テンプレート${slotNumber}`, 30) || `テンプレート${slotNumber}`,
+            imageData,
+            credit: limitTicketText(creditInput || '', TICKET_CREDIT_MAX_LENGTH),
+            creditUrl: toHalfWidthUrl(creditUrlInput || '').trim().slice(0, TICKET_CREDIT_URL_MAX_LENGTH),
+            logoMode: 'logo'
+        };
+
+        saveTicketUploadedTemplates();
+        if (Array.isArray(window.__nativeTicketTemplates)) {
+            window.__nativeTicketTemplates = ticketUploadedTemplates;
+        }
+
+        selectedTicketTemplate = String(slotNumber);
+        selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
+        updateTicketGridThumbnails();
+        updateTicketSerialPreview();
+        updateTicketPrintButtonState();
+        showTicketDetailScreen();
+        await renderTicketPreview();
+
+        const ticketPrintOptions = document.getElementById('ticketPrintOptions');
+        if (ticketPrintOptions) {
+            ticketPrintOptions.style.display = 'flex';
+        }
+    } catch (error) {
+        console.error('T\'s券テンプレートのアップロードに失敗:', error);
+        alert('テンプレート画像の読み込みに失敗しました');
+    } finally {
+        if (input) {
+            input.value = '';
+        }
+    }
+}
 
 // T's券テンプレートをlocalStorageから再読み込みする関数
 function reloadTicketTemplates() {
     try {
         const nativeTemplates = Array.isArray(window.__nativeTicketTemplates) ? window.__nativeTicketTemplates : null;
         if (nativeTemplates && nativeTemplates.length > 0) {
-            ticketUploadedTemplates = nativeTemplates;
+            ticketUploadedTemplates = normalizeTicketTemplates(nativeTemplates);
             console.log('✅ T\'s券テンプレートをNativeメモリから再読み込みしました:', ticketUploadedTemplates.length, '件');
             updateTicketGridThumbnails();
             selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
@@ -10385,21 +10639,18 @@ function reloadTicketTemplates() {
         }
 
         const stored = localStorage.getItem('ticketUploadedTemplates');
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed)) {
-                ticketUploadedTemplates = parsed;
-                console.log('✅ T\'s券テンプレートを再読み込みしました:', ticketUploadedTemplates.length, '件');
-                // グリッドを更新
-                updateTicketGridThumbnails();
-                // イラストを再解決
-                selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
-                // シリアルプレビューを更新
-                updateTicketSerialPreview();
-            }
-        }
+        const parsed = stored ? JSON.parse(stored) : [];
+        ticketUploadedTemplates = normalizeTicketTemplates(parsed);
+        console.log('✅ T\'s券テンプレートを再読み込みしました:', ticketUploadedTemplates.length, '件');
+        updateTicketGridThumbnails();
+        selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
+        updateTicketSerialPreview();
     } catch (e) {
         console.warn('⚠️ T\'s券テンプレートの再読み込みに失敗:', e);
+        ticketUploadedTemplates = normalizeTicketTemplates([]);
+        updateTicketGridThumbnails();
+        selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
+        updateTicketSerialPreview();
     }
 }
 
@@ -10605,7 +10856,9 @@ function initTicketTemplateSelector() {
             console.warn('ticketUploadedTemplatesの読み込みに失敗:', e);
         }
     }
-    ticketUploadedTemplates = Array.isArray(parsed) ? parsed : [];
+    ticketUploadedTemplates = normalizeTicketTemplates(parsed);
+    const selectedIndex = clampTicketTemplateIndex(selectedTicketTemplate);
+    selectedTicketTemplate = String(selectedIndex + 1);
     // 現在のテンプレートに合わせてイラストを再解決
     selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
     updateTicketGridThumbnails();
@@ -10630,9 +10883,9 @@ function updateTicketSerialPreview() {
 }
 
 function resolveTicketIllustration(templateId) {
-    const idx = Math.max(0, (parseInt(templateId, 10) || 1) - 1);
-    if (ticketUploadedTemplates[idx]) {
-        const tpl = ticketUploadedTemplates[idx];
+    const idx = clampTicketTemplateIndex(templateId);
+    const tpl = normalizeTicketTemplateEntry(ticketUploadedTemplates[idx], `テンプレート${idx + 1}`);
+    if (tpl) {
         return {
             name: tpl.name || 'デフォルト',
             imageData: tpl.imageData,
@@ -10646,74 +10899,82 @@ function resolveTicketIllustration(templateId) {
 function updateTicketGridThumbnails() {
     const grid = document.getElementById('ticketTemplateGrid');
     if (!grid) return;
-    
-    // 現在のボタンを全て削除
+
+    ticketUploadedTemplates = normalizeTicketTemplates(ticketUploadedTemplates);
+    const selectedIndex = clampTicketTemplateIndex(selectedTicketTemplate);
+    selectedTicketTemplate = String(selectedIndex + 1);
+
     grid.innerHTML = '';
-    
-    // テンプレートが空の場合でも最低1つのボタンを生成
-    if (!ticketUploadedTemplates || ticketUploadedTemplates.length === 0) {
-        console.log('📋 T\'s券テンプレート未登録 - デフォルトテンプレートを初期化');
-        // 空配列でも最低1つのデフォルトエントリを用意
-        ticketUploadedTemplates = [{
-            name: 'デフォルト',
-            imageData: '1.png',
-            credit: '',
-            creditUrl: '',
-            logoMode: 'logo'
-        }];
-        // localStorageにも保存
-        try {
-            localStorage.setItem('ticketUploadedTemplates', JSON.stringify(ticketUploadedTemplates));
-        } catch(e) {
-            console.warn('ticketUploadedTemplatesの保存に失敗:', e);
-        }
-    }
-    
-    // 登録済みテンプレートのみボタンを生成
-    ticketUploadedTemplates.forEach((tpl, idx) => {
+
+    for (let idx = 0; idx < TICKET_TEMPLATE_SLOT_COUNT; idx += 1) {
+        const tpl = normalizeTicketTemplateEntry(ticketUploadedTemplates[idx], `テンプレート${idx + 1}`);
+        const btn = document.createElement('button');
+        btn.className = 'ticket-template-btn';
+        btn.dataset.template = String(idx + 1);
+        btn.dataset.logomode = 'logo';
+        btn.setAttribute('aria-label', `テンプレート${idx + 1}`);
+
         if (tpl && tpl.imageData) {
-            const btn = document.createElement('button');
-            btn.className = 'ticket-template-btn';
-            btn.dataset.template = String(idx + 1);
-            btn.dataset.logomode = 'logo';
-            btn.setAttribute('aria-label', `テンプレート${idx + 1}`);
             btn.style.backgroundImage = `url(${tpl.imageData})`;
             btn.style.backgroundSize = 'cover';
             btn.style.backgroundPosition = 'center';
             btn.style.backgroundRepeat = 'no-repeat';
             btn.style.backgroundColor = '#fff';
-            
-            // クリックイベントを追加
-            btn.addEventListener('click', () => {
-                if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.playSound) {
-                    window.webkit.messageHandlers.playSound.postMessage({});
-                }
-                restoredTicketPreviewContext = null;
-                // 全てのボタンのスタイルをリセット（hover状態が残らないように）
-                document.querySelectorAll('.ticket-template-btn').forEach(b => {
-                    b.classList.remove('selected');
-                    b.blur();
-                    b.style.transform = '';
-                    b.style.boxShadow = '';
-                });
-                btn.classList.add('selected');
-                selectedTicketTemplate = btn.dataset.template;
-                ticketLogoMode = 'logo';
-                selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
-                showTicketDetailScreen();
-                renderTicketPreview();
-                const ticketPrintOptions = document.getElementById('ticketPrintOptions');
-                if (ticketPrintOptions) {
-                    ticketPrintOptions.style.display = 'flex';
-                }
-                updateTicketPrintButtonState();
-                updateTicketLogoChips();
-                updateTicketDateLabel();
-            });
-            
-            grid.appendChild(btn);
+            btn.textContent = '';
+            btn.classList.remove('is-empty');
+        } else {
+            btn.classList.add('is-empty');
+            btn.style.backgroundImage = 'none';
+            btn.style.backgroundColor = '#fff';
+            btn.textContent = `No.${idx + 1}`;
         }
-    });
+
+        if (idx === selectedIndex) {
+            btn.classList.add('selected');
+        }
+
+        btn.addEventListener('click', () => {
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.playSound) {
+                window.webkit.messageHandlers.playSound.postMessage({});
+            }
+
+            restoredTicketPreviewContext = null;
+            document.querySelectorAll('.ticket-template-btn').forEach(b => {
+                b.classList.remove('selected');
+                b.blur();
+                b.style.transform = '';
+                b.style.boxShadow = '';
+            });
+
+            btn.classList.add('selected');
+            selectedTicketTemplate = btn.dataset.template;
+            ticketLogoMode = 'logo';
+            selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
+
+            const slotSelect = document.getElementById('ticketTemplateSlotSelect');
+            if (slotSelect) {
+                slotSelect.value = selectedTicketTemplate;
+            }
+
+            showTicketDetailScreen();
+            renderTicketPreview();
+
+            const ticketPrintOptions = document.getElementById('ticketPrintOptions');
+            if (ticketPrintOptions) {
+                ticketPrintOptions.style.display = 'flex';
+            }
+
+            updateTicketPrintButtonState();
+            updateTicketLogoChips();
+        });
+
+        grid.appendChild(btn);
+    }
+
+    const slotSelect = document.getElementById('ticketTemplateSlotSelect');
+    if (slotSelect) {
+        slotSelect.value = selectedTicketTemplate;
+    }
 }
 
 async function buildTicketImage({
@@ -11034,8 +11295,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const ticketPrintOptions = document.getElementById('ticketPrintOptions');
     const ticketLogoChip = document.getElementById('ticketLogoChip');
     const ticketTChip = document.getElementById('ticketTChip');
-    const ticketSelectScreen = document.getElementById('ticketSelectScreen');
-    const ticketDetailScreen = document.getElementById('ticketDetailScreen');
+    const ticketTemplateSlotSelect = document.getElementById('ticketTemplateSlotSelect');
+    const ticketTemplateUploadBtn = document.getElementById('ticketTemplateUploadBtn');
+    const ticketTemplateUploadInput = document.getElementById('ticketTemplateUploadInput');
     
     // ロゴ/Ｔ切り替え
     if (ticketLogoChip && ticketTChip) {
@@ -11067,17 +11329,31 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
-    // 初期状態を設定
-    if (templateButtons.length > 0) {
-        templateButtons[0].classList.add('selected');
-        selectedTicketTemplate = templateButtons[0].dataset.template;
-        ticketLogoMode = 'logo';
+
+    if (ticketTemplateSlotSelect) {
+        ticketTemplateSlotSelect.addEventListener('change', () => {
+            selectedTicketTemplate = String(getSelectedTicketSlotIndex() + 1);
+            selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
+            updateTicketGridThumbnails();
+            updateTicketPrintButtonState();
+        });
     }
+
+    if (ticketTemplateUploadBtn && ticketTemplateUploadInput) {
+        ticketTemplateUploadBtn.addEventListener('click', () => {
+            ticketTemplateUploadInput.click();
+        });
+        ticketTemplateUploadInput.addEventListener('change', handleTicketTemplateUploadChange);
+    }
+    
+    ticketLogoMode = 'logo';
     if (ticketPrintOptions) {
         ticketPrintOptions.style.display = 'flex';
     }
     initTicketTemplateSelector();
+    if (ticketTemplateSlotSelect) {
+        ticketTemplateSlotSelect.value = selectedTicketTemplate;
+    }
     updateTicketLogoChips();
     updateTicketPrintButtonState();
     showTicketSelectScreen();
@@ -11106,6 +11382,7 @@ function showTicketSelectScreen() {
     const ticketSelectScreen = document.getElementById('ticketSelectScreen');
     const ticketDetailScreen = document.getElementById('ticketDetailScreen');
     const mainElement = document.querySelector('main');
+    const ticketTemplateSlotSelect = document.getElementById('ticketTemplateSlotSelect');
     if (ticketSelectScreen && ticketDetailScreen) {
         ticketSelectScreen.style.display = 'block';
         ticketDetailScreen.style.display = 'none';
@@ -11118,6 +11395,15 @@ function showTicketSelectScreen() {
             btn.style.transform = '';
             btn.style.boxShadow = '';
         });
+
+        const activeButton = ticketSelectScreen.querySelector(`.ticket-template-btn[data-template="${selectedTicketTemplate}"]`);
+        if (activeButton) {
+            activeButton.classList.add('selected');
+        }
+    }
+
+    if (ticketTemplateSlotSelect) {
+        ticketTemplateSlotSelect.value = selectedTicketTemplate;
     }
     const wasRestoredPreview = Boolean(restoredTicketPreviewContext);
     if (wasRestoredPreview) {
