@@ -1982,39 +1982,6 @@ main.receipt-mode {
     -webkit-tap-highlight-color: transparent;
 }
 
-.ticket-slot-label {
-    position: absolute;
-    top: 8px;
-    left: 8px;
-    z-index: 2;
-    padding: 2px 8px;
-    border-radius: 999px;
-    border: 1.5px solid rgba(0, 133, 255, 0.55);
-    background: rgba(255, 255, 255, 0.94);
-    color: rgb(0, 133, 255);
-    font-size: 0.72rem;
-    font-weight: 700;
-    line-height: 1.2;
-    letter-spacing: 0.03em;
-    pointer-events: none;
-}
-
-.ticket-empty-label {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 0 0.5rem;
-    color: rgb(80, 145, 198);
-    font-size: 0.86rem;
-    font-weight: 700;
-    line-height: 1.35;
-    letter-spacing: 0.02em;
-    pointer-events: none;
-}
-
 /* タッチデバイス以外でのみhover効果を適用 */
 @media (hover: hover) and (pointer: fine) {
     .ticket-template-btn:hover {
@@ -2030,7 +1997,6 @@ main.receipt-mode {
 
 .ticket-template-btn.is-empty {
     background-image: none !important;
-    background-color: #f2f7fc;
     color: rgb(102, 178, 242);
     font-weight: 700;
     border-style: dashed;
@@ -10950,19 +10916,18 @@ function updateTicketGridThumbnails() {
     for (let idx = 0; idx < TICKET_TEMPLATE_SLOT_COUNT; idx += 1) {
         const tpl = normalizeTicketTemplateEntry(ticketUploadedTemplates[idx], `テンプレート${idx + 1}`);
         if (tpl && tpl.imageData) {
-            visibleTemplates.push({ idx, tpl, isFallback: false, isEmpty: false });
+            visibleTemplates.push({ idx, tpl, isFallback: false });
         } else if (idx === selectedIndex) {
             visibleTemplates.push({
                 idx,
                 tpl: {
                     name: `テンプレート${idx + 1}`,
-                    imageData: '',
+                    imageData: '1.png',
                     credit: '',
                     creditUrl: '',
                     logoMode: 'logo'
                 },
-                isFallback: true,
-                isEmpty: true
+                isFallback: true
             });
         }
     }
@@ -10972,19 +10937,18 @@ function updateTicketGridThumbnails() {
             idx: selectedIndex,
             tpl: {
                 name: `テンプレート${selectedIndex + 1}`,
-                imageData: '',
+                imageData: '1.png',
                 credit: '',
                 creditUrl: '',
                 logoMode: 'logo'
             },
-            isFallback: true,
-            isEmpty: true
+            isFallback: true
         });
     }
 
     visibleTemplates.sort((a, b) => a.idx - b.idx);
 
-    visibleTemplates.forEach(({ idx, tpl, isFallback, isEmpty }) => {
+    visibleTemplates.forEach(({ idx, tpl, isFallback }) => {
         const slotNumber = idx + 1;
         const btn = document.createElement('button');
         btn.className = 'ticket-template-btn';
@@ -10992,35 +10956,15 @@ function updateTicketGridThumbnails() {
         btn.dataset.logomode = 'logo';
         btn.setAttribute('aria-label', `テンプレート${slotNumber}`);
 
-        if (isEmpty) {
-            btn.classList.add('is-empty');
-            btn.style.backgroundImage = 'none';
-            btn.style.backgroundColor = '#f2f7fc';
-        } else {
-            btn.style.backgroundImage = `url(${tpl.imageData})`;
-            btn.style.backgroundSize = 'cover';
-            btn.style.backgroundPosition = 'center';
-            btn.style.backgroundRepeat = 'no-repeat';
-            btn.style.backgroundColor = '#fff';
-        }
+        btn.style.backgroundImage = `url(${tpl.imageData || '1.png'})`;
+        btn.style.backgroundSize = 'cover';
+        btn.style.backgroundPosition = 'center';
+        btn.style.backgroundRepeat = 'no-repeat';
+        btn.style.backgroundColor = '#fff';
         btn.textContent = '';
 
-        const slotLabel = document.createElement('span');
-        slotLabel.className = 'ticket-slot-label';
-        slotLabel.textContent = `${slotNumber}番`;
-        btn.appendChild(slotLabel);
-
-        if (isEmpty) {
-            const emptyLabel = document.createElement('span');
-            emptyLabel.className = 'ticket-empty-label';
-            emptyLabel.textContent = '画像未登録';
-            btn.appendChild(emptyLabel);
-        }
-
         if (isFallback) {
-            btn.title = isEmpty
-                ? `テンプレート${slotNumber}番は未登録です。タップして画像を設定してください。`
-                : 'テンプレート画像が未登録のため、標準画像を表示しています';
+            btn.title = `テンプレート${slotNumber}番は未登録です。上部の「画像選択」から設定してください。`;
         }
 
         if (idx === selectedIndex) {
@@ -11046,14 +10990,6 @@ function updateTicketGridThumbnails() {
             const slotSelect = document.getElementById('ticketTemplateSlotSelect');
             if (slotSelect) {
                 slotSelect.value = selectedTicketTemplate;
-            }
-
-            if (isEmpty) {
-                const uploadInput = document.getElementById('ticketTemplateUploadInput');
-                if (uploadInput) {
-                    uploadInput.click();
-                }
-                return;
             }
 
             ticketLogoMode = 'logo';
