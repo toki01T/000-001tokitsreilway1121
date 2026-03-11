@@ -1875,6 +1875,7 @@ main.receipt-mode {
     background: rgb(232, 245, 253);
     display: flex;
     flex-direction: column;
+    pointer-events: auto;
 }
 
 .web-settings-header {
@@ -1932,6 +1933,7 @@ main.receipt-mode {
     white-space: pre-line;
     box-shadow: 0 2px 5px rgba(0,0,0,0.22);
     padding: 0.5rem;
+    pointer-events: auto;
 }
 
 .web-settings-footer {
@@ -4752,6 +4754,7 @@ function openWebSettingsPanel() {
         console.warn('⚠️ Web設定画面が見つかりません');
         return;
     }
+    setupWebSettingsPanel();
     overlay.classList.add('show');
 }
 
@@ -4888,7 +4891,7 @@ function updateWebPrinterType(printerType) {
 }
 
 function handleWebSettingsAction(action) {
-    if (window.webkit?.messageHandlers?.playSound) {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.playSound) {
         window.webkit.messageHandlers.playSound.postMessage({ type: 'tap' });
     }
 
@@ -4995,36 +4998,52 @@ function handleWebSettingsAction(action) {
 
 function setupWebSettingsPanel() {
     const overlay = document.getElementById('webSettingsOverlay');
-    if (!overlay || overlay.dataset.initialized === 'true') {
+    if (!overlay) {
         return;
     }
 
     const backButton = document.getElementById('webSettingsBackBtn');
-    if (backButton) {
-        backButton.addEventListener('click', () => {
-            if (window.webkit?.messageHandlers?.playSound) {
+    if (backButton && backButton.dataset.initialized !== 'true') {
+        const backButtonHandler = preventDoubleTouch((event) => {
+            if (event && event.type && event.type.startsWith('touch')) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.playSound) {
                 window.webkit.messageHandlers.playSound.postMessage({ type: 'tap' });
             }
             closeWebSettingsPanel();
         });
+        backButton.addEventListener('click', backButtonHandler, false);
+        backButton.addEventListener('touchend', backButtonHandler, false);
+        backButton.dataset.initialized = 'true';
     }
 
-    overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) {
-            closeWebSettingsPanel();
-        }
-    });
+    if (overlay.dataset.overlayInitialized !== 'true') {
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+                closeWebSettingsPanel();
+            }
+        });
+        overlay.dataset.overlayInitialized = 'true';
+    }
 
     const settingButtons = overlay.querySelectorAll('[data-settings-action]');
     settingButtons.forEach((button) => {
         if (button.dataset.initialized === 'true') {
             return;
         }
-        button.addEventListener('click', () => {
+        const buttonHandler = preventDoubleTouch((event) => {
+            if (event && event.type && event.type.startsWith('touch')) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
             const action = button.getAttribute('data-settings-action');
             if (!action) return;
             handleWebSettingsAction(action);
         });
+        button.addEventListener('click', buttonHandler, false);
+        button.addEventListener('touchend', buttonHandler, false);
         button.dataset.initialized = 'true';
     });
 
@@ -5032,7 +5051,7 @@ function setupWebSettingsPanel() {
 }
 
 function activateWebHiddenMenu() {
-    if (window.webkit?.messageHandlers?.playSound) {
+    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.playSound) {
         window.webkit.messageHandlers.playSound.postMessage({ type: 'tap' });
     }
 
