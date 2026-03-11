@@ -1794,6 +1794,101 @@ main.receipt-mode {
     background: rgb(90, 165, 235);
 }
 
+/* Web設定画面（アプリ版準拠） */
+.web-settings-overlay {
+    z-index: 12000;
+    background: rgba(0, 0, 0, 0.2);
+    align-items: stretch;
+    justify-content: center;
+}
+
+.web-settings-sheet {
+    width: 100%;
+    max-width: 560px;
+    min-height: 100vh;
+    background: rgb(232, 245, 253);
+    display: flex;
+    flex-direction: column;
+}
+
+.web-settings-header {
+    height: 98px;
+    background: rgb(102, 178, 242);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    position: relative;
+    padding-bottom: 15px;
+    box-sizing: border-box;
+}
+
+.web-settings-title {
+    margin: 0;
+    color: #fff;
+    font-size: 1.45rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.web-settings-back {
+    position: absolute;
+    left: 14px;
+    bottom: 10px;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #fff;
+    font-size: 1.7rem;
+    cursor: pointer;
+}
+
+.web-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    padding: 24px 24px 84px;
+    box-sizing: border-box;
+}
+
+.web-settings-btn {
+    min-height: 122px;
+    border: 2.5px solid rgb(102, 178, 242);
+    border-radius: 18px;
+    background: #fff;
+    color: rgb(102, 178, 242);
+    font-size: 1.04rem;
+    line-height: 1.35;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    white-space: pre-line;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.22);
+    padding: 0.5rem;
+}
+
+.web-settings-footer {
+    margin-top: auto;
+    width: 100%;
+    padding: 10px 0;
+    text-align: center;
+    background: rgb(217, 237, 247);
+    color: rgb(102, 178, 242);
+    font-size: 0.86rem;
+}
+
+@media (max-width: 480px) {
+    .web-settings-grid {
+        gap: 12px;
+        padding: 18px 16px 82px;
+    }
+    .web-settings-btn {
+        min-height: 108px;
+        font-size: 0.95rem;
+    }
+}
+
 @media (max-width: 600px) {
     .stamp-select-screen {
         gap: 0.8rem;
@@ -2792,6 +2887,33 @@ body.has-bottom-nav main {
             </div>
         </div>
     </div>
+
+    <!-- Web設定画面（隠しボタンから表示） -->
+    <div id="webSettingsOverlay" class="popup-overlay web-settings-overlay">
+        <div class="web-settings-sheet">
+            <div class="web-settings-header">
+                <button id="webSettingsBackBtn" class="web-settings-back" type="button" aria-label="設定を閉じる">↩︎</button>
+                <h2 class="web-settings-title">設定</h2>
+            </div>
+            <div class="web-settings-grid">
+                <button type="button" class="web-settings-btn" data-settings-action="printer">プリンター
+接続設定</button>
+                <button type="button" class="web-settings-btn" data-settings-action="screenshot">スクリーン
+ショット
+設定</button>
+                <button type="button" class="web-settings-btn" data-settings-action="volume">音量設定</button>
+                <button type="button" class="web-settings-btn" data-settings-action="password">パスワード
+変更</button>
+                <button type="button" class="web-settings-btn" data-settings-action="limit">領収書
+宛名金額
+制限解除</button>
+                <button type="button" class="web-settings-btn" data-settings-action="ticket-template">T's券
+テンプレート
+アップロード</button>
+            </div>
+            <div class="web-settings-footer">© 2026 とき T's 鉄道部 toki</div>
+        </div>
+    </div>
 </main>
 <nav id="bottomNavigationBar" aria-label="下部ナビゲーション">
     <button type="button" class="bottom-nav-btn" data-bottom-mode="image">
@@ -2898,6 +3020,25 @@ const THERMAL_PRINTER_PROFILES = {
     'MP-B20': { widthMm: 48, printableWidthMm: 48, mmToPx: 200 / 25.4, dpi: 200, fontScale: 0.9 },
     DEFAULT: { widthMm: 58, printableWidthMm: 58, mmToPx: 203 / 25.4, dpi: 203 }
 };
+
+const WEB_PRINTER_TYPE_STORAGE_KEY = 'webPrinterType';
+
+function hydrateWebPrinterType() {
+    try {
+        if (window.g_currentPrinterType) {
+            return;
+        }
+        const savedPrinterType = localStorage.getItem(WEB_PRINTER_TYPE_STORAGE_KEY);
+        if (savedPrinterType && String(savedPrinterType).trim()) {
+            window.g_currentPrinterType = String(savedPrinterType).trim();
+            console.log('🖨️ Webプリンター設定を復元:', window.g_currentPrinterType);
+        }
+    } catch (error) {
+        console.warn('⚠️ Webプリンター設定の復元に失敗:', error);
+    }
+}
+
+hydrateWebPrinterType();
 
 function normalizePrinterKey(type) {
     if (!type) return '';
@@ -4493,20 +4634,198 @@ function resetHiddenMenuTapState() {
     }
 }
 
+function closeWebSettingsPanel() {
+    const overlay = document.getElementById('webSettingsOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('show');
+}
+
+function openWebSettingsPanel() {
+    const overlay = document.getElementById('webSettingsOverlay');
+    if (!overlay) {
+        console.warn('⚠️ Web設定画面が見つかりません');
+        return;
+    }
+    overlay.classList.add('show');
+}
+
+function getSavedPasscodeForWeb() {
+    let passcode = '0000';
+    try {
+        const storedPasscode = localStorage.getItem('appPassword');
+        if (storedPasscode && String(storedPasscode).trim()) {
+            passcode = String(storedPasscode).trim();
+        }
+    } catch (error) {
+        console.warn('パスコード読込に失敗:', error);
+    }
+    return passcode;
+}
+
+function updateWebPrinterType(printerType) {
+    const resolvedType = String(printerType || '').trim();
+    if (!resolvedType) {
+        return false;
+    }
+    window.g_currentPrinterType = resolvedType;
+    try {
+        localStorage.setItem(WEB_PRINTER_TYPE_STORAGE_KEY, resolvedType);
+    } catch (error) {
+        console.warn('⚠️ Webプリンター設定の保存に失敗:', error);
+    }
+    return true;
+}
+
+function handleWebSettingsAction(action) {
+    if (window.webkit?.messageHandlers?.playSound) {
+        window.webkit.messageHandlers.playSound.postMessage({ type: 'tap' });
+    }
+
+    if (action === 'printer') {
+        const currentPrinter = (window.g_currentPrinterType || 'SM-S210i').toString();
+        const input = window.prompt(
+            'プリンター機種を入力してください。\n1: SM-S210i\n2: SM-S230i\n3: TM-P20\n4: TM-P20II\n5: TM-P80\n6: MP-B20',
+            currentPrinter
+        );
+        if (input === null) return;
+        const raw = String(input).trim();
+        const map = {
+            '1': 'SM-S210i',
+            '2': 'SM-S230i',
+            '3': 'TM-P20',
+            '4': 'TM-P20II',
+            '5': 'TM-P80',
+            '6': 'MP-B20'
+        };
+        const resolved = map[raw] || raw;
+        if (!updateWebPrinterType(resolved)) {
+            alert('プリンター機種が未入力です');
+            return;
+        }
+        alert(`プリンター機種を「${resolved}」に設定しました`);
+        return;
+    }
+
+    if (action === 'screenshot') {
+        const current = localStorage.getItem('screenshotBlocked') === 'true';
+        const next = !current;
+        const confirmed = window.confirm(`スクリーンショット設定を${next ? 'ON' : 'OFF'}にしますか？`);
+        if (!confirmed) return;
+        localStorage.setItem('screenshotBlocked', next ? 'true' : 'false');
+        alert(`スクリーンショット設定を${next ? 'ON' : 'OFF'}にしました。\n※Webブラウザでは完全な撮影防止はできません。`);
+        return;
+    }
+
+    if (action === 'volume') {
+        const currentVolume = parseInt(localStorage.getItem('tapSoundVolume') || '100', 10);
+        const input = window.prompt('操作音の音量を入力してください（0〜100）', String(Number.isNaN(currentVolume) ? 100 : currentVolume));
+        if (input === null) return;
+        const parsed = parseInt(String(input).trim(), 10);
+        if (Number.isNaN(parsed)) {
+            alert('数値で入力してください');
+            return;
+        }
+        const clamped = Math.max(0, Math.min(100, parsed));
+        localStorage.setItem('tapSoundVolume', String(clamped));
+        alert(`操作音の音量を ${clamped}% に設定しました`);
+        return;
+    }
+
+    if (action === 'password') {
+        const currentSaved = getSavedPasscodeForWeb();
+        const currentInput = window.prompt('現在の暗証番号を入力してください');
+        if (currentInput === null) return;
+        if (String(currentInput).trim() !== currentSaved) {
+            alert('現在の暗証番号が正しくありません');
+            return;
+        }
+        const newPasscode = window.prompt('新しい暗証番号を入力してください（4〜8桁の数字）');
+        if (newPasscode === null) return;
+        const normalizedNewPasscode = String(newPasscode).trim();
+        if (!/^[0-9]{4,8}$/.test(normalizedNewPasscode)) {
+            alert('暗証番号は4〜8桁の数字で入力してください');
+            return;
+        }
+        const confirmPasscode = window.prompt('確認のため、もう一度同じ暗証番号を入力してください');
+        if (confirmPasscode === null) return;
+        if (String(confirmPasscode).trim() !== normalizedNewPasscode) {
+            alert('確認用の暗証番号が一致しません');
+            return;
+        }
+        localStorage.setItem('appPassword', normalizedNewPasscode);
+        alert('暗証番号を変更しました');
+        return;
+    }
+
+    if (action === 'limit') {
+        const current = localStorage.getItem('receiptLimitRemovalEnabled') === 'true';
+        const next = !current;
+        const confirmed = window.confirm(`領収書宛名金額制限解除を${next ? 'ON' : 'OFF'}にしますか？`);
+        if (!confirmed) return;
+        localStorage.setItem('receiptLimitRemovalEnabled', next ? 'true' : 'false');
+        if (typeof window.updateReceiptPrintButtons === 'function') {
+            window.updateReceiptPrintButtons();
+        }
+        alert(`領収書宛名金額制限解除を${next ? 'ON' : 'OFF'}に設定しました`);
+        return;
+    }
+
+    if (action === 'ticket-template') {
+        closeWebSettingsPanel();
+        showSection('ticket');
+        showTicketSelectScreen();
+        const uploadInput = document.getElementById('ticketTemplateUploadInput');
+        if (uploadInput) {
+            uploadInput.click();
+        }
+        return;
+    }
+}
+
+function setupWebSettingsPanel() {
+    const overlay = document.getElementById('webSettingsOverlay');
+    if (!overlay || overlay.dataset.initialized === 'true') {
+        return;
+    }
+
+    const backButton = document.getElementById('webSettingsBackBtn');
+    if (backButton) {
+        backButton.addEventListener('click', () => {
+            if (window.webkit?.messageHandlers?.playSound) {
+                window.webkit.messageHandlers.playSound.postMessage({ type: 'tap' });
+            }
+            closeWebSettingsPanel();
+        });
+    }
+
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+            closeWebSettingsPanel();
+        }
+    });
+
+    const settingButtons = overlay.querySelectorAll('[data-settings-action]');
+    settingButtons.forEach((button) => {
+        if (button.dataset.initialized === 'true') {
+            return;
+        }
+        button.addEventListener('click', () => {
+            const action = button.getAttribute('data-settings-action');
+            if (!action) return;
+            handleWebSettingsAction(action);
+        });
+        button.dataset.initialized = 'true';
+    });
+
+    overlay.dataset.initialized = 'true';
+}
+
 function activateWebHiddenMenu() {
     if (window.webkit?.messageHandlers?.playSound) {
         window.webkit.messageHandlers.playSound.postMessage({ type: 'tap' });
     }
 
-    let savedPasscode = '0000';
-    try {
-        const storedPasscode = localStorage.getItem('appPassword');
-        if (storedPasscode && String(storedPasscode).trim()) {
-            savedPasscode = String(storedPasscode).trim();
-        }
-    } catch (error) {
-        console.warn('パスコード読込に失敗:', error);
-    }
+    const savedPasscode = getSavedPasscodeForWeb();
 
     const enteredPasscode = window.prompt('暗証番号を入力してください');
     if (enteredPasscode === null) {
@@ -4518,8 +4837,7 @@ function activateWebHiddenMenu() {
         return;
     }
 
-    showSection('ticket');
-    showTicketSelectScreen();
+    openWebSettingsPanel();
 }
 
 function handleMainMenuHiddenTap(event) {
@@ -4608,6 +4926,8 @@ function setupMainMenuNavigation() {
         hiddenHotspot.addEventListener('touchend', handleMainMenuHiddenTap, false);
         hiddenHotspot.dataset.navInit = 'true';
     }
+
+    setupWebSettingsPanel();
     
     console.log('🎉 setupMainMenuNavigation() 完了');
 }
