@@ -1982,6 +1982,39 @@ main.receipt-mode {
     -webkit-tap-highlight-color: transparent;
 }
 
+.ticket-slot-label {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 2;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(0, 133, 255, 0.55);
+    background: rgba(255, 255, 255, 0.94);
+    color: rgb(0, 133, 255);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: 0.03em;
+    pointer-events: none;
+}
+
+.ticket-empty-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 0.5rem;
+    color: rgb(80, 145, 198);
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1.35;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+}
+
 /* タッチデバイス以外でのみhover効果を適用 */
 @media (hover: hover) and (pointer: fine) {
     .ticket-template-btn:hover {
@@ -1997,6 +2030,7 @@ main.receipt-mode {
 
 .ticket-template-btn.is-empty {
     background-image: none !important;
+    background-color: #f2f7fc;
     color: rgb(102, 178, 242);
     font-weight: 700;
     border-style: dashed;
@@ -10902,46 +10936,6 @@ function resolveTicketIllustration(templateId) {
     return { name: 'デフォルト', imageData: '1.png', credit: '', creditUrl: '' };
 }
 
-function applyTicketTemplateButtonVisual(button, imageData, options = {}) {
-    if (!button) return;
-    const { isFallback = false } = options;
-    const normalizedImage = typeof imageData === 'string' ? imageData.trim() : '';
-
-    button.style.backgroundSize = 'cover';
-    button.style.backgroundPosition = 'center';
-    button.style.backgroundRepeat = 'no-repeat';
-    button.style.backgroundColor = '#fff';
-
-    if (!normalizedImage) {
-        button.style.backgroundImage = 'none';
-        button.classList.add('is-empty');
-        button.textContent = '画像選択';
-        return;
-    }
-
-    button.style.backgroundImage = `url(${normalizedImage})`;
-    button.classList.remove('is-empty');
-    button.textContent = '';
-
-    if (!isFallback) {
-        return;
-    }
-
-    const probe = new Image();
-    probe.onload = () => {
-        if (!button.isConnected) return;
-        button.classList.remove('is-empty');
-        button.textContent = '';
-    };
-    probe.onerror = () => {
-        if (!button.isConnected) return;
-        button.style.backgroundImage = 'none';
-        button.classList.add('is-empty');
-        button.textContent = '画像選択';
-    };
-    probe.src = normalizedImage;
-}
-
 function updateTicketGridThumbnails() {
     const grid = document.getElementById('ticketTemplateGrid');
     if (!grid) return;
@@ -10956,7 +10950,20 @@ function updateTicketGridThumbnails() {
     for (let idx = 0; idx < TICKET_TEMPLATE_SLOT_COUNT; idx += 1) {
         const tpl = normalizeTicketTemplateEntry(ticketUploadedTemplates[idx], `テンプレート${idx + 1}`);
         if (tpl && tpl.imageData) {
-            visibleTemplates.push({ idx, tpl, isFallback: false });
+            visibleTemplates.push({ idx, tpl, isFallback: false, isEmpty: false });
+        } else if (idx === selectedIndex) {
+            visibleTemplates.push({
+                idx,
+                tpl: {
+                    name: `テンプレート${idx + 1}`,
+                    imageData: '',
+                    credit: '',
+                    creditUrl: '',
+                    logoMode: 'logo'
+                },
+                isFallback: true,
+                isEmpty: true
+            });
         }
     }
 
@@ -10964,25 +10971,56 @@ function updateTicketGridThumbnails() {
         visibleTemplates.push({
             idx: selectedIndex,
             tpl: {
-                name: 'デフォルト',
-                imageData: '1.png',
+                name: `テンプレート${selectedIndex + 1}`,
+                imageData: '',
                 credit: '',
                 creditUrl: '',
                 logoMode: 'logo'
             },
-            isFallback: true
+            isFallback: true,
+            isEmpty: true
         });
     }
 
-    visibleTemplates.forEach(({ idx, tpl, isFallback }) => {
+    visibleTemplates.sort((a, b) => a.idx - b.idx);
+
+    visibleTemplates.forEach(({ idx, tpl, isFallback, isEmpty }) => {
+        const slotNumber = idx + 1;
         const btn = document.createElement('button');
         btn.className = 'ticket-template-btn';
-        btn.dataset.template = String(idx + 1);
+        btn.dataset.template = String(slotNumber);
         btn.dataset.logomode = 'logo';
-        btn.setAttribute('aria-label', `テンプレート${idx + 1}`);
-        applyTicketTemplateButtonVisual(btn, tpl.imageData, { isFallback });
+        btn.setAttribute('aria-label', `テンプレート${slotNumber}`);
+
+        if (isEmpty) {
+            btn.classList.add('is-empty');
+            btn.style.backgroundImage = 'none';
+            btn.style.backgroundColor = '#f2f7fc';
+        } else {
+            btn.style.backgroundImage = `url(${tpl.imageData})`;
+            btn.style.backgroundSize = 'cover';
+            btn.style.backgroundPosition = 'center';
+            btn.style.backgroundRepeat = 'no-repeat';
+            btn.style.backgroundColor = '#fff';
+        }
+        btn.textContent = '';
+
+        const slotLabel = document.createElement('span');
+        slotLabel.className = 'ticket-slot-label';
+        slotLabel.textContent = `${slotNumber}番`;
+        btn.appendChild(slotLabel);
+
+        if (isEmpty) {
+            const emptyLabel = document.createElement('span');
+            emptyLabel.className = 'ticket-empty-label';
+            emptyLabel.textContent = '画像未登録';
+            btn.appendChild(emptyLabel);
+        }
+
         if (isFallback) {
-            btn.title = 'テンプレート画像が未登録のため、標準画像を表示しています';
+            btn.title = isEmpty
+                ? `テンプレート${slotNumber}番は未登録です。タップして画像を設定してください。`
+                : 'テンプレート画像が未登録のため、標準画像を表示しています';
         }
 
         if (idx === selectedIndex) {
@@ -11004,13 +11042,22 @@ function updateTicketGridThumbnails() {
 
             btn.classList.add('selected');
             selectedTicketTemplate = btn.dataset.template;
-            ticketLogoMode = 'logo';
-            selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
 
             const slotSelect = document.getElementById('ticketTemplateSlotSelect');
             if (slotSelect) {
                 slotSelect.value = selectedTicketTemplate;
             }
+
+            if (isEmpty) {
+                const uploadInput = document.getElementById('ticketTemplateUploadInput');
+                if (uploadInput) {
+                    uploadInput.click();
+                }
+                return;
+            }
+
+            ticketLogoMode = 'logo';
+            selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
 
             showTicketDetailScreen();
             renderTicketPreview();
