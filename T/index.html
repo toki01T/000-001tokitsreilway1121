@@ -10902,6 +10902,46 @@ function resolveTicketIllustration(templateId) {
     return { name: 'デフォルト', imageData: '1.png', credit: '', creditUrl: '' };
 }
 
+function applyTicketTemplateButtonVisual(button, imageData, options = {}) {
+    if (!button) return;
+    const { isFallback = false } = options;
+    const normalizedImage = typeof imageData === 'string' ? imageData.trim() : '';
+
+    button.style.backgroundSize = 'cover';
+    button.style.backgroundPosition = 'center';
+    button.style.backgroundRepeat = 'no-repeat';
+    button.style.backgroundColor = '#fff';
+
+    if (!normalizedImage) {
+        button.style.backgroundImage = 'none';
+        button.classList.add('is-empty');
+        button.textContent = '画像選択';
+        return;
+    }
+
+    button.style.backgroundImage = `url(${normalizedImage})`;
+    button.classList.remove('is-empty');
+    button.textContent = '';
+
+    if (!isFallback) {
+        return;
+    }
+
+    const probe = new Image();
+    probe.onload = () => {
+        if (!button.isConnected) return;
+        button.classList.remove('is-empty');
+        button.textContent = '';
+    };
+    probe.onerror = () => {
+        if (!button.isConnected) return;
+        button.style.backgroundImage = 'none';
+        button.classList.add('is-empty');
+        button.textContent = '画像選択';
+    };
+    probe.src = normalizedImage;
+}
+
 function updateTicketGridThumbnails() {
     const grid = document.getElementById('ticketTemplateGrid');
     if (!grid) return;
@@ -10940,12 +10980,7 @@ function updateTicketGridThumbnails() {
         btn.dataset.template = String(idx + 1);
         btn.dataset.logomode = 'logo';
         btn.setAttribute('aria-label', `テンプレート${idx + 1}`);
-        btn.style.backgroundImage = `url(${tpl.imageData})`;
-        btn.style.backgroundSize = 'cover';
-        btn.style.backgroundPosition = 'center';
-        btn.style.backgroundRepeat = 'no-repeat';
-        btn.style.backgroundColor = '#fff';
-        btn.textContent = '';
+        applyTicketTemplateButtonVisual(btn, tpl.imageData, { isFallback });
         if (isFallback) {
             btn.title = 'テンプレート画像が未登録のため、標準画像を表示しています';
         }
