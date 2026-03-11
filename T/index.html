@@ -650,8 +650,8 @@ main.menu-mode {
 }
 
 .main-menu-hidden-hotspot {
-    position: fixed;
-    top: calc(env(safe-area-inset-top, 0px) + 0px);
+    position: absolute;
+    top: 0;
     left: 0;
     width: 80px;
     height: 44px;
@@ -4501,10 +4501,8 @@ function activateWebHiddenMenu() {
     let savedPasscode = '0000';
     try {
         const storedPasscode = localStorage.getItem('appPassword');
-        const fallbackPasscode = localStorage.getItem('app_passcode');
-        const resolvedPasscode = storedPasscode || fallbackPasscode;
-        if (resolvedPasscode && String(resolvedPasscode).trim()) {
-            savedPasscode = String(resolvedPasscode).trim();
+        if (storedPasscode && String(storedPasscode).trim()) {
+            savedPasscode = String(storedPasscode).trim();
         }
     } catch (error) {
         console.warn('パスコード読込に失敗:', error);
@@ -5873,6 +5871,14 @@ function checkAndContinuePrinting() {
                         payload.imageMeta = job.imageMeta;
                     }
                     window.webkit.messageHandlers.nativePrint.postMessage(payload);
+                } else if (job.pdfData) {
+                    const callbackUrl = job.thisPage || window.location.href;
+                    const nextPrintUrl = generatePrintUrl(job.pdfData, callbackUrl);
+                    executePrint(nextPrintUrl);
+                } else {
+                    console.warn('⚠️ Web版の複数枚印刷に必要なPDFデータがありません');
+                    sessionStorage.removeItem('printJob');
+                    return;
                 }
             } else {
                 // 従来のPDF印刷
@@ -10586,15 +10592,15 @@ async function handleTicketTemplateUploadChange(event) {
 
     try {
         const imageData = await readFileAsDataUrl(file);
-        const creditInput = window.prompt('イラスト名（任意・23文字まで）', existingTemplate?.credit || '');
-        const creditUrlInput = window.prompt('イラストURL（任意）', existingTemplate?.creditUrl || '');
+        const preservedCredit = limitTicketText(existingTemplate?.credit || '', TICKET_CREDIT_MAX_LENGTH);
+        const preservedCreditUrl = toHalfWidthUrl(existingTemplate?.creditUrl || '').trim().slice(0, TICKET_CREDIT_URL_MAX_LENGTH);
 
         ticketUploadedTemplates = normalizeTicketTemplates(ticketUploadedTemplates);
         ticketUploadedTemplates[slotIndex] = {
             name: limitTicketText(file.name || `テンプレート${slotNumber}`, 30) || `テンプレート${slotNumber}`,
             imageData,
-            credit: limitTicketText(creditInput || '', TICKET_CREDIT_MAX_LENGTH),
-            creditUrl: toHalfWidthUrl(creditUrlInput || '').trim().slice(0, TICKET_CREDIT_URL_MAX_LENGTH),
+            credit: preservedCredit,
+            creditUrl: preservedCreditUrl,
             logoMode: 'logo'
         };
 
@@ -10906,27 +10912,42 @@ function updateTicketGridThumbnails() {
 
     grid.innerHTML = '';
 
+    const visibleTemplates = [];
     for (let idx = 0; idx < TICKET_TEMPLATE_SLOT_COUNT; idx += 1) {
         const tpl = normalizeTicketTemplateEntry(ticketUploadedTemplates[idx], `テンプレート${idx + 1}`);
+        if (tpl && tpl.imageData) {
+            visibleTemplates.push({ idx, tpl, isFallback: false });
+        }
+    }
+
+    if (visibleTemplates.length === 0) {
+        visibleTemplates.push({
+            idx: selectedIndex,
+            tpl: {
+                name: 'デフォルト',
+                imageData: '1.png',
+                credit: '',
+                creditUrl: '',
+                logoMode: 'logo'
+            },
+            isFallback: true
+        });
+    }
+
+    visibleTemplates.forEach(({ idx, tpl, isFallback }) => {
         const btn = document.createElement('button');
         btn.className = 'ticket-template-btn';
         btn.dataset.template = String(idx + 1);
         btn.dataset.logomode = 'logo';
         btn.setAttribute('aria-label', `テンプレート${idx + 1}`);
-
-        if (tpl && tpl.imageData) {
-            btn.style.backgroundImage = `url(${tpl.imageData})`;
-            btn.style.backgroundSize = 'cover';
-            btn.style.backgroundPosition = 'center';
-            btn.style.backgroundRepeat = 'no-repeat';
-            btn.style.backgroundColor = '#fff';
-            btn.textContent = '';
-            btn.classList.remove('is-empty');
-        } else {
-            btn.classList.add('is-empty');
-            btn.style.backgroundImage = 'none';
-            btn.style.backgroundColor = '#fff';
-            btn.textContent = `No.${idx + 1}`;
+        btn.style.backgroundImage = `url(${tpl.imageData})`;
+        btn.style.backgroundSize = 'cover';
+        btn.style.backgroundPosition = 'center';
+        btn.style.backgroundRepeat = 'no-repeat';
+        btn.style.backgroundColor = '#fff';
+        btn.textContent = '';
+        if (isFallback) {
+            btn.title = 'テンプレート画像が未登録のため、標準画像を表示しています';
         }
 
         if (idx === selectedIndex) {
@@ -10969,7 +10990,7 @@ function updateTicketGridThumbnails() {
         });
 
         grid.appendChild(btn);
-    }
+    });
 
     const slotSelect = document.getElementById('ticketTemplateSlotSelect');
     if (slotSelect) {
@@ -11441,6 +11462,55 @@ function showTicketDetailScreen() {
     }
 }
 
+async function buildTicketPdfBase64(pngDataUrl) {
+    const jsPdfApi = window.jspdf && window.jspdf.jsPDF;
+    if (!jsPdfApi) {
+        throw new Error('jsPDFが利用できません');
+    }
+
+    const profile = typeof getThermalPrinterProfile === 'function' ? getThermalPrinterProfile() : null;
+    const outputWidthMm = profile && (profile.printableWidthMm || profile.widthMm)
+        ? (profile.printableWidthMm || profile.widthMm)
+        : 48;
+
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const widthPx = img.naturalWidth || img.width;
+                const heightPx = img.naturalHeight || img.height;
+                if (!widthPx || !heightPx) {
+                    reject(new Error('画像サイズが取得できません'));
+                    return;
+                }
+
+                const outputHeightMm = Math.max(10, (heightPx / widthPx) * outputWidthMm);
+                const pdf = new jsPdfApi({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: [outputWidthMm, outputHeightMm],
+                    compress: false
+                });
+
+                pdf.internal.pageSize.width = outputWidthMm;
+                pdf.internal.pageSize.height = outputHeightMm;
+                pdf.addImage(pngDataUrl, 'PNG', 0, 0, outputWidthMm, outputHeightMm, undefined, 'FAST');
+
+                const pdfBase64 = pdf.output('datauristring').split(',')[1];
+                if (!pdfBase64) {
+                    reject(new Error('PDFの生成に失敗しました'));
+                    return;
+                }
+                resolve(pdfBase64);
+            } catch (error) {
+                reject(error);
+            }
+        };
+        img.onerror = () => reject(new Error('PDF化対象画像の読み込みに失敗しました'));
+        img.src = pngDataUrl;
+    });
+}
+
 async function executeTicketPrint() {
     const includeDateTime = true; // デザイン仕様に合わせ常に日付あり
     const copies = parseInt(document.getElementById('ticketCopiesSelect').value);
@@ -11497,6 +11567,19 @@ async function executeTicketPrint() {
     
     // PNG画像をBase64に変換（data:image/png;base64,を除去）
     const pngBase64 = ticketImage.png.split(',')[1];
+    const hasNativePrint = Boolean(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativePrint);
+    const thisPage = window.location.href;
+    let ticketPdfBase64 = null;
+
+    if (!hasNativePrint || copies > 1) {
+        try {
+            ticketPdfBase64 = await buildTicketPdfBase64(ticketImage.png);
+        } catch (error) {
+            console.error('❌ T\'s券PDF生成エラー:', error);
+            alert('T\'s券の印刷データ生成に失敗しました');
+            return;
+        }
+    }
     
     if (copies > 1) {
         const printJob = {
@@ -11505,22 +11588,27 @@ async function executeTicketPrint() {
             currentCopy: 1,
             imageData: pngBase64,
             ticketLogoMode: ticketLogoMode,
+            pdfData: ticketPdfBase64,
+            thisPage,
             timestamp: Date.now()
         };
         sessionStorage.setItem('printJob', JSON.stringify(printJob));
     }
 
-    // 画像印刷と同じ方式でネイティブに送信
-    if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.nativePrint) {
+    // ネイティブは画像直送、WebはURLスキーム(PDF)で印刷
+    if (hasNativePrint) {
         console.log('📱 T\'s券をネイティブ印刷: ticket形式');
         window.webkit.messageHandlers.nativePrint.postMessage({
             type: 'ticket',
             data: pngBase64,
             ticketLogoMode: ticketLogoMode
         });
+    } else if (ticketPdfBase64) {
+        const printUrl = generatePrintUrl(ticketPdfBase64, thisPage);
+        console.log('🌐 T\'s券をURLスキーム印刷で実行');
+        executePrint(printUrl);
     } else {
-        console.log('🌐 Web版は未対応');
-        alert('T\'s券印刷はネイティブアプリでのみ対応しています');
+        alert('T\'s券印刷データの生成に失敗しました');
     }
 
     // 印刷完了後、選択画面に戻る
