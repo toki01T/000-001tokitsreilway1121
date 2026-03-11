@@ -200,6 +200,29 @@ header {
     user-select: none;
 }
 
+#settingsMenuBtn {
+    position: absolute;
+    left: 0.8rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 140;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(255,255,255,0.2);
+}
+
 #modeBackBtn svg {
     width: 24px;
     height: 24px;
@@ -216,6 +239,14 @@ header {
 
 body:not(.is-menu-view) #modeBackBtn {
     display: flex;
+}
+
+body.is-menu-view #settingsMenuBtn {
+    display: flex;
+}
+
+body:not(.is-menu-view) #settingsMenuBtn {
+    display: none;
 }
 
 body.is-menu-view #historyMenuBtn {
@@ -264,12 +295,18 @@ body.is-menu-view #qrCodeBtn {
         left: 0.5rem;
         border-width: 2px;
     }
+    #settingsMenuBtn {
+        width: 36px;
+        height: 36px;
+        left: 0.5rem;
+        font-size: 1.05rem;
+    }
     #modeBackBtn svg {
         width: 20px;
         height: 20px;
     }
 }
-#qrCodeBtn:focus, #historyMenuBtn:focus { outline: none; }
+#qrCodeBtn:focus, #historyMenuBtn:focus, #settingsMenuBtn:focus { outline: none; }
 #historyDrawer {
     position: fixed;
     top: 0;
@@ -2492,6 +2529,7 @@ body.has-bottom-nav main {
                 <path d="M19 12H5M12 19l-7-7 7-7"></path>
             </svg>
         </button>
+        <button id="settingsMenuBtn" type="button" title="設定" aria-label="設定を開く">⚙️</button>
         <button id="mainMenuBtn" class="navbar-brand" type="button">
             <span class="navbar-title">toki01Ⓣ</span>
             <span class="navbar-subtitle">TPOS T-0001</span>
@@ -3998,6 +4036,7 @@ window.onNativePrintResult = function(success, message) {
 };
 const historyMenuBtn = document.getElementById('historyMenuBtn');
 const qrCodeBtn = document.getElementById('qrCodeBtn');
+const settingsMenuBtn = document.getElementById('settingsMenuBtn');
 const historyDrawer = document.getElementById('historyDrawer');
 const historyDrawerClose = document.getElementById('historyDrawerClose');
 const historyList = document.getElementById('historyList');
@@ -4981,6 +5020,12 @@ historyMenuBtn.onclick = preventDoubleTouch(() => {
     loadHistoryList(); 
 });
 
+if (settingsMenuBtn) {
+    settingsMenuBtn.onclick = preventDoubleTouch(() => {
+        activateWebHiddenMenu();
+    });
+}
+
 qrCodeBtn.onclick = preventDoubleTouch(() => {
     // 操作音を再生
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.playSound) {
@@ -5003,6 +5048,9 @@ if ('ontouchstart' in window) {
     historyMenuBtn.ontouchstart = historyMenuBtn.onclick;
     qrCodeBtn.ontouchstart = qrCodeBtn.onclick;
     historyDrawerClose.ontouchstart = historyDrawerClose.onclick;
+    if (settingsMenuBtn) {
+        settingsMenuBtn.ontouchstart = settingsMenuBtn.onclick;
+    }
 }
 
 // 印刷ボタンのイベント処理も改善
