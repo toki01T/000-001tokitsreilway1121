@@ -5020,10 +5020,17 @@ historyMenuBtn.onclick = preventDoubleTouch(() => {
     loadHistoryList(); 
 });
 
-if (settingsMenuBtn) {
-    settingsMenuBtn.onclick = preventDoubleTouch(() => {
+if (settingsMenuBtn && settingsMenuBtn.dataset.navInit !== 'true') {
+    const settingsMenuHandler = preventDoubleTouch((event) => {
+        if (event && event.type && event.type.startsWith('touch')) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
         activateWebHiddenMenu();
     });
+    settingsMenuBtn.addEventListener('click', settingsMenuHandler, false);
+    settingsMenuBtn.addEventListener('touchend', settingsMenuHandler, false);
+    settingsMenuBtn.dataset.navInit = 'true';
 }
 
 qrCodeBtn.onclick = preventDoubleTouch(() => {
@@ -5048,9 +5055,6 @@ if ('ontouchstart' in window) {
     historyMenuBtn.ontouchstart = historyMenuBtn.onclick;
     qrCodeBtn.ontouchstart = qrCodeBtn.onclick;
     historyDrawerClose.ontouchstart = historyDrawerClose.onclick;
-    if (settingsMenuBtn) {
-        settingsMenuBtn.ontouchstart = settingsMenuBtn.onclick;
-    }
 }
 
 // 印刷ボタンのイベント処理も改善
