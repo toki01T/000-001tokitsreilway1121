@@ -1831,6 +1831,35 @@ main.receipt-mode {
     background: rgb(90, 165, 235);
 }
 
+.web-passcode-overlay {
+    z-index: 12100;
+}
+
+.web-passcode-container {
+    max-width: 360px;
+}
+
+.web-passcode-note {
+    margin: 0 0 0.9rem;
+    text-align: center;
+    color: #4a4a4a;
+    font-size: 0.92rem;
+}
+
+.web-passcode-input {
+    text-align: center;
+    letter-spacing: 0.2em;
+    font-size: 1.1rem;
+}
+
+.web-passcode-error {
+    min-height: 1.4em;
+    margin-top: 0.45rem;
+    color: #d93025;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
 /* Web設定画面（アプリ版準拠） */
 .web-settings-overlay {
     z-index: 12000;
@@ -2922,6 +2951,20 @@ body.has-bottom-nav main {
             <div class="popup-buttons">
                 <button class="popup-btn popup-cancel-btn" onclick="cancelDetailInput()">↩︎</button>
                 <button class="popup-btn popup-ok-btn" onclick="confirmDetailInput()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Web設定認証ポップアップ -->
+    <div id="webPasscodeOverlay" class="popup-overlay web-passcode-overlay">
+        <div class="popup-container web-passcode-container">
+            <div class="popup-header">暗証番号入力</div>
+            <p class="web-passcode-note">設定を開くには暗証番号を入力してください</p>
+            <input type="password" id="webPasscodeInput" class="popup-input web-passcode-input" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="暗証番号" autocomplete="off" />
+            <div id="webPasscodeError" class="web-passcode-error" aria-live="polite"></div>
+            <div class="popup-buttons">
+                <button type="button" id="webPasscodeCancelBtn" class="popup-btn popup-cancel-btn">閉じる</button>
+                <button type="button" id="webPasscodeSubmitBtn" class="popup-btn popup-ok-btn">OK</button>
             </div>
         </div>
     </div>
@@ -4712,6 +4755,111 @@ function openWebSettingsPanel() {
     overlay.classList.add('show');
 }
 
+function setWebPasscodeError(message) {
+    const errorElement = document.getElementById('webPasscodeError');
+    if (!errorElement) return;
+    errorElement.textContent = message || '';
+}
+
+function closeWebPasscodePanel() {
+    const overlay = document.getElementById('webPasscodeOverlay');
+    if (!overlay) {
+        return;
+    }
+    overlay.classList.remove('show');
+    const input = document.getElementById('webPasscodeInput');
+    if (input) {
+        input.value = '';
+        input.blur();
+    }
+    setWebPasscodeError('');
+}
+
+function openWebPasscodePanel() {
+    const overlay = document.getElementById('webPasscodeOverlay');
+    const input = document.getElementById('webPasscodeInput');
+    if (!overlay || !input) {
+        return false;
+    }
+    setWebPasscodeError('');
+    input.value = '';
+    overlay.classList.add('show');
+    setTimeout(() => {
+        try {
+            input.focus();
+            input.select();
+        } catch (error) {
+            console.warn('⚠️ パスコード入力欄のフォーカスに失敗:', error);
+        }
+    }, 40);
+    return true;
+}
+
+function submitWebPasscode() {
+    const input = document.getElementById('webPasscodeInput');
+    if (!input) {
+        return;
+    }
+    const enteredPasscode = String(input.value || '').trim();
+    const savedPasscode = getSavedPasscodeForWeb();
+
+    if (!enteredPasscode) {
+        setWebPasscodeError('暗証番号を入力してください');
+        input.focus();
+        return;
+    }
+
+    if (enteredPasscode !== savedPasscode) {
+        setWebPasscodeError('暗証番号が正しくありません');
+        input.value = '';
+        input.focus();
+        return;
+    }
+
+    closeWebPasscodePanel();
+    openWebSettingsPanel();
+}
+
+function setupWebPasscodePanel() {
+    const overlay = document.getElementById('webPasscodeOverlay');
+    const cancelButton = document.getElementById('webPasscodeCancelBtn');
+    const submitButton = document.getElementById('webPasscodeSubmitBtn');
+    const input = document.getElementById('webPasscodeInput');
+
+    if (!overlay || overlay.dataset.initialized === 'true') {
+        return;
+    }
+
+    if (cancelButton) {
+        cancelButton.addEventListener('click', () => {
+            closeWebPasscodePanel();
+        });
+    }
+
+    if (submitButton) {
+        submitButton.addEventListener('click', () => {
+            submitWebPasscode();
+        });
+    }
+
+    if (input) {
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                submitWebPasscode();
+            }
+        });
+    }
+
+    overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+            closeWebPasscodePanel();
+        }
+    });
+
+    overlay.dataset.initialized = 'true';
+}
+
 function getSavedPasscodeForWeb() {
     let passcode = '0000';
     try {
@@ -4888,6 +5036,10 @@ function activateWebHiddenMenu() {
         window.webkit.messageHandlers.playSound.postMessage({ type: 'tap' });
     }
 
+    if (openWebPasscodePanel()) {
+        return;
+    }
+
     const savedPasscode = getSavedPasscodeForWeb();
 
     const enteredPasscode = window.prompt('暗証番号を入力してください');
@@ -4991,6 +5143,7 @@ function setupMainMenuNavigation() {
     }
 
     setupWebSettingsPanel();
+    setupWebPasscodePanel();
     
     console.log('🎉 setupMainMenuNavigation() 完了');
 }
