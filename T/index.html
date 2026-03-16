@@ -214,7 +214,7 @@ header {
     font-size: 1.2rem;
     line-height: 1;
     cursor: pointer;
-    z-index: 140;
+    z-index: 11050;
     display: none;
     align-items: center;
     justify-content: center;
@@ -2560,7 +2560,7 @@ body.has-bottom-nav main {
                 <path d="M19 12H5M12 19l-7-7 7-7"></path>
             </svg>
         </button>
-        <button id="settingsMenuBtn" type="button" title="設定" aria-label="設定を開く">⚙️</button>
+        <button id="settingsMenuBtn" type="button" title="設定" aria-label="設定を開く" onclick="return handleSettingsButtonTap(event);" ontouchend="return handleSettingsButtonTap(event);">⚙️</button>
         <button id="mainMenuBtn" class="navbar-brand" type="button">
             <span class="navbar-title">toki01Ⓣ</span>
             <span class="navbar-subtitle">TPOS T-0001</span>
@@ -5074,6 +5074,21 @@ function activateWebHiddenMenu() {
     openWebSettingsPanel();
 }
 
+let settingsButtonLastTapAt = 0;
+function handleSettingsButtonTap(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const now = Date.now();
+    if (now - settingsButtonLastTapAt < 360) {
+        return false;
+    }
+    settingsButtonLastTapAt = now;
+    activateWebHiddenMenu();
+    return false;
+}
+
 function handleMainMenuHiddenTap(event) {
     if (event) {
         event.preventDefault();
@@ -5193,15 +5208,8 @@ historyMenuBtn.onclick = preventDoubleTouch(() => {
 });
 
 if (settingsMenuBtn && settingsMenuBtn.dataset.navInit !== 'true') {
-    const settingsMenuHandler = preventDoubleTouch((event) => {
-        if (event && event.type && event.type.startsWith('touch')) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        activateWebHiddenMenu();
-    });
-    settingsMenuBtn.addEventListener('click', settingsMenuHandler, false);
-    settingsMenuBtn.addEventListener('touchend', settingsMenuHandler, false);
+    settingsMenuBtn.addEventListener('click', handleSettingsButtonTap, false);
+    settingsMenuBtn.addEventListener('touchend', handleSettingsButtonTap, false);
     settingsMenuBtn.dataset.navInit = 'true';
 }
 
