@@ -36,10 +36,10 @@
     --receipt-form-gap: 0.3rem;
     --receipt-form-bottom-space: calc(82px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: clamp(46px, 8.4vh, 52px);
-    --receipt-keypad-gap: 7px;
-    --receipt-keypad-padding: clamp(10px, 2.6vw, 14px);
-    --receipt-keypad-font-size: clamp(19px, 4.2vw, 23px);
-    --receipt-keypad-min-height: clamp(42px, 7.2vh, 54px);
+    --receipt-keypad-gap: 6px;
+    --receipt-keypad-padding: clamp(8px, 2.2vw, 12px);
+    --receipt-keypad-font-size: clamp(16px, 3.6vw, 20px);
+    --receipt-keypad-min-height: clamp(36px, 6.4vh, 46px);
     --receipt-button-gap: clamp(0.42rem, 1.7vw, 0.8rem);
     --receipt-button-font-size: clamp(0.86rem, 2vw, 0.94rem);
     --receipt-option-font-size: clamp(0.76rem, 1.9vw, 0.84rem);
@@ -1419,7 +1419,7 @@ main.receipt-mode {
 
 #receiptKeypad {
     width: 100%;
-    max-width: min(350px, 90vw);
+    max-width: min(332px, 86vw);
     margin-top: 0.3mm !important; /* テンキーの上部マージンを縮小 */
     gap: var(--receipt-keypad-gap) !important;
 }
@@ -1429,9 +1429,9 @@ html[data-receipt-profile="compact"] {
     --receipt-form-bottom-space: calc(58px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: 46px;
     --receipt-keypad-gap: 4px;
-    --receipt-keypad-padding: 7px;
-    --receipt-keypad-font-size: 18px;
-    --receipt-keypad-min-height: 38px;
+    --receipt-keypad-padding: 6px;
+    --receipt-keypad-font-size: 16px;
+    --receipt-keypad-min-height: 35px;
     --receipt-button-gap: 0.3rem;
     --receipt-button-font-size: 0.8rem;
     --receipt-option-font-size: 0.72rem;
@@ -1450,9 +1450,9 @@ html[data-receipt-profile="ultra-compact"] {
     --receipt-form-bottom-space: calc(52px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: 42px;
     --receipt-keypad-gap: 4px;
-    --receipt-keypad-padding: 5px;
-    --receipt-keypad-font-size: 16px;
-    --receipt-keypad-min-height: 34px;
+    --receipt-keypad-padding: 4px;
+    --receipt-keypad-font-size: 15px;
+    --receipt-keypad-min-height: 32px;
     --receipt-button-gap: 0.28rem;
     --receipt-button-font-size: 0.74rem;
     --receipt-option-font-size: 0.66rem;
@@ -1492,10 +1492,10 @@ html[data-receipt-profile="iphone-16e"] {
     --receipt-form-gap: 0.2rem;
     --receipt-form-bottom-space: calc(64px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: 44px;
-    --receipt-keypad-gap: 4px;
-    --receipt-keypad-padding: 6px;
-    --receipt-keypad-font-size: 17px;
-    --receipt-keypad-min-height: 37px;
+    --receipt-keypad-gap: 3px;
+    --receipt-keypad-padding: 5px;
+    --receipt-keypad-font-size: 16px;
+    --receipt-keypad-min-height: 35px;
     --receipt-button-gap: 0.28rem;
     --receipt-button-font-size: 0.78rem;
     --receipt-option-font-size: 0.7rem;
@@ -11069,36 +11069,94 @@ let selectedTicketTemplate = '1';
 let ticketLogoMode = 'logo'; // 'logo' or 'text'
 let ticketUploadedTemplates = [];
 let selectedTicketIllustration = null;
+const DEFAULT_TICKET_TEMPLATE_IMAGES = ['1.png', '2.png', '3.png', '4.png'];
+
+function getDefaultTicketTemplateEntry(index) {
+    const safeIndex = Number.isFinite(index) ? index : 0;
+    const imageIndex = ((safeIndex % DEFAULT_TICKET_TEMPLATE_IMAGES.length) + DEFAULT_TICKET_TEMPLATE_IMAGES.length) % DEFAULT_TICKET_TEMPLATE_IMAGES.length;
+    return {
+        name: `テンプレート${safeIndex + 1}`,
+        imageData: DEFAULT_TICKET_TEMPLATE_IMAGES[imageIndex],
+        credit: '',
+        creditUrl: '',
+        logoMode: 'logo'
+    };
+}
+
+function normalizeTicketTemplateEntry(entry, fallbackName = 'デフォルト') {
+    if (!entry || typeof entry !== 'object') {
+        return null;
+    }
+
+    const imageData = typeof entry.imageData === 'string' ? entry.imageData.trim() : '';
+    if (!imageData) {
+        return null;
+    }
+
+    const name = limitTicketText(entry.name || fallbackName, 30) || fallbackName;
+    const credit = limitTicketText(entry.credit || '', 23);
+    const creditUrl = toHalfWidthUrl(entry.creditUrl || '').trim().slice(0, 120);
+
+    return {
+        name,
+        imageData,
+        credit,
+        creditUrl,
+        logoMode: entry.logoMode === 'text' ? 'text' : 'logo'
+    };
+}
+
+function normalizeTicketTemplates(rawTemplates) {
+    const raw = Array.isArray(rawTemplates) ? rawTemplates : [];
+    const length = Math.max(raw.length, DEFAULT_TICKET_TEMPLATE_IMAGES.length);
+    const normalized = new Array(length).fill(null);
+
+    for (let index = 0; index < length; index += 1) {
+        const normalizedEntry = normalizeTicketTemplateEntry(raw[index], `テンプレート${index + 1}`);
+        if (normalizedEntry) {
+            normalized[index] = normalizedEntry;
+        } else if (index < DEFAULT_TICKET_TEMPLATE_IMAGES.length) {
+            normalized[index] = getDefaultTicketTemplateEntry(index);
+        }
+    }
+
+    return normalized;
+}
+
+function saveTicketUploadedTemplates() {
+    try {
+        localStorage.setItem('ticketUploadedTemplates', JSON.stringify(ticketUploadedTemplates));
+    } catch (error) {
+        console.warn('ticketUploadedTemplatesの保存に失敗:', error);
+    }
+}
 
 // T's券テンプレートをlocalStorageから再読み込みする関数
 function reloadTicketTemplates() {
     try {
+        let parsed = [];
         const nativeTemplates = Array.isArray(window.__nativeTicketTemplates) ? window.__nativeTicketTemplates : null;
         if (nativeTemplates && nativeTemplates.length > 0) {
-            ticketUploadedTemplates = nativeTemplates;
-            console.log('✅ T\'s券テンプレートをNativeメモリから再読み込みしました:', ticketUploadedTemplates.length, '件');
-            updateTicketGridThumbnails();
-            selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
-            updateTicketSerialPreview();
-            return;
+            parsed = nativeTemplates;
+            console.log('✅ T\'s券テンプレートをNativeメモリから再読み込みしました:', parsed.length, '件');
+        } else {
+            const stored = localStorage.getItem('ticketUploadedTemplates');
+            parsed = stored ? JSON.parse(stored) : [];
+            console.log('✅ T\'s券テンプレートを再読み込みしました:', Array.isArray(parsed) ? parsed.length : 0, '件');
         }
 
-        const stored = localStorage.getItem('ticketUploadedTemplates');
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed)) {
-                ticketUploadedTemplates = parsed;
-                console.log('✅ T\'s券テンプレートを再読み込みしました:', ticketUploadedTemplates.length, '件');
-                // グリッドを更新
-                updateTicketGridThumbnails();
-                // イラストを再解決
-                selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
-                // シリアルプレビューを更新
-                updateTicketSerialPreview();
-            }
-        }
+        ticketUploadedTemplates = normalizeTicketTemplates(parsed);
+        saveTicketUploadedTemplates();
+        updateTicketGridThumbnails();
+        selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
+        updateTicketSerialPreview();
     } catch (e) {
         console.warn('⚠️ T\'s券テンプレートの再読み込みに失敗:', e);
+        ticketUploadedTemplates = normalizeTicketTemplates([]);
+        saveTicketUploadedTemplates();
+        updateTicketGridThumbnails();
+        selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
+        updateTicketSerialPreview();
     }
 }
 
@@ -11304,7 +11362,8 @@ function initTicketTemplateSelector() {
             console.warn('ticketUploadedTemplatesの読み込みに失敗:', e);
         }
     }
-    ticketUploadedTemplates = Array.isArray(parsed) ? parsed : [];
+    ticketUploadedTemplates = normalizeTicketTemplates(parsed);
+    saveTicketUploadedTemplates();
     // 現在のテンプレートに合わせてイラストを再解決
     selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
     updateTicketGridThumbnails();
@@ -11330,8 +11389,8 @@ function updateTicketSerialPreview() {
 
 function resolveTicketIllustration(templateId) {
     const idx = Math.max(0, (parseInt(templateId, 10) || 1) - 1);
-    if (ticketUploadedTemplates[idx]) {
-        const tpl = ticketUploadedTemplates[idx];
+    const tpl = normalizeTicketTemplateEntry(ticketUploadedTemplates[idx], `テンプレート${idx + 1}`);
+    if (tpl) {
         return {
             name: tpl.name || 'デフォルト',
             imageData: tpl.imageData,
@@ -11339,48 +11398,47 @@ function resolveTicketIllustration(templateId) {
             creditUrl: tpl.creditUrl || ''
         };
     }
-    return { name: 'デフォルト', imageData: '1.png', credit: '', creditUrl: '' };
+
+    if (idx < DEFAULT_TICKET_TEMPLATE_IMAGES.length) {
+        return {
+            name: `テンプレート${idx + 1}`,
+            imageData: DEFAULT_TICKET_TEMPLATE_IMAGES[idx],
+            credit: '',
+            creditUrl: ''
+        };
+    }
+
+    return { name: 'デフォルト', imageData: DEFAULT_TICKET_TEMPLATE_IMAGES[0], credit: '', creditUrl: '' };
 }
 
 function updateTicketGridThumbnails() {
     const grid = document.getElementById('ticketTemplateGrid');
     if (!grid) return;
+
+    ticketUploadedTemplates = normalizeTicketTemplates(ticketUploadedTemplates);
+    saveTicketUploadedTemplates();
     
     // 現在のボタンを全て削除
     grid.innerHTML = '';
-    
-    // テンプレートが空の場合でも最低1つのボタンを生成
-    if (!ticketUploadedTemplates || ticketUploadedTemplates.length === 0) {
-        console.log('📋 T\'s券テンプレート未登録 - デフォルトテンプレートを初期化');
-        // 空配列でも最低1つのデフォルトエントリを用意
-        ticketUploadedTemplates = [{
-            name: 'デフォルト',
-            imageData: '1.png',
-            credit: '',
-            creditUrl: '',
-            logoMode: 'logo'
-        }];
-        // localStorageにも保存
-        try {
-            localStorage.setItem('ticketUploadedTemplates', JSON.stringify(ticketUploadedTemplates));
-        } catch(e) {
-            console.warn('ticketUploadedTemplatesの保存に失敗:', e);
-        }
-    }
-    
+
     // 登録済みテンプレートのみボタンを生成
     ticketUploadedTemplates.forEach((tpl, idx) => {
-        if (tpl && tpl.imageData) {
+        const normalizedTemplate = normalizeTicketTemplateEntry(tpl, `テンプレート${idx + 1}`);
+        if (normalizedTemplate) {
             const btn = document.createElement('button');
             btn.className = 'ticket-template-btn';
             btn.dataset.template = String(idx + 1);
             btn.dataset.logomode = 'logo';
             btn.setAttribute('aria-label', `テンプレート${idx + 1}`);
-            btn.style.backgroundImage = `url(${tpl.imageData})`;
+            btn.style.backgroundImage = `url(${normalizedTemplate.imageData})`;
             btn.style.backgroundSize = 'cover';
             btn.style.backgroundPosition = 'center';
             btn.style.backgroundRepeat = 'no-repeat';
             btn.style.backgroundColor = '#fff';
+
+            if (String(idx + 1) === String(selectedTicketTemplate)) {
+                btn.classList.add('selected');
+            }
             
             // クリックイベントを追加
             btn.addEventListener('click', () => {
