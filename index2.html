@@ -36,10 +36,10 @@
     --receipt-form-gap: 0.3rem;
     --receipt-form-bottom-space: calc(82px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: clamp(46px, 8.4vh, 52px);
-    --receipt-keypad-gap: 6px;
-    --receipt-keypad-padding: clamp(8px, 2.2vw, 12px);
-    --receipt-keypad-font-size: clamp(16px, 3.6vw, 20px);
-    --receipt-keypad-min-height: clamp(36px, 6.4vh, 46px);
+    --receipt-keypad-gap: 4px;
+    --receipt-keypad-padding: clamp(5px, 1.5vw, 8px);
+    --receipt-keypad-font-size: clamp(13px, 2.8vw, 16px);
+    --receipt-keypad-min-height: clamp(29px, 5.2vh, 36px);
     --receipt-button-gap: clamp(0.42rem, 1.7vw, 0.8rem);
     --receipt-button-font-size: clamp(0.86rem, 2vw, 0.94rem);
     --receipt-option-font-size: clamp(0.76rem, 1.9vw, 0.84rem);
@@ -804,6 +804,29 @@ main.receipt-mode {
         calc(var(--bottom-nav-height) + 22px)
     );
 }
+
+main.image-mode,
+main.text-mode,
+main.signature-mode,
+main.stamp-mode {
+    justify-content: flex-start;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+main:not(.menu-mode):not(.receipt-mode) #modeSectionsWrapper {
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 8px);
+}
+
+#imageForm,
+#textSection,
+#signatureSection,
+#stampSection {
+    width: 100%;
+    box-sizing: border-box;
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 6px);
+}
 @media (max-width: 600px) {
     :root {
         --receipt-main-bottom-space: 70px;
@@ -904,6 +927,15 @@ main.receipt-mode {
     display: inline-block;
     vertical-align: middle;
 }
+
+#imagePrintOptions,
+#textPrintOptions,
+#signaturePrintOptions,
+#ticketPrintOptions {
+    margin-top: 0.75rem;
+    margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.65rem);
+}
+
 #printButton, #textPrintButton, #signaturePrintButton, #ticketPrintButton {
     padding: clamp(0.35rem, 1vw, 0.4rem) clamp(1rem, 3vw, 1.3rem);
     border-radius: 18px;
@@ -1030,8 +1062,8 @@ main.receipt-mode {
     width: 100%;
     margin: 0 auto;
     text-align: center;
-    overflow: hidden; /* スクロール無効化 */
-    max-height: 100vh;
+    overflow: visible;
+    max-height: none;
 }
 .signature-pad-container {
     margin: 1.2rem auto 0.7rem auto;
@@ -1141,13 +1173,13 @@ main.receipt-mode {
     background: var(--input-bg);
     width: auto;
     height: auto;
-    max-width: min(450px, 88vw);
-    max-height: min(360px, 60vh);
+    max-width: min(420px, 86vw);
+    max-height: min(300px, calc(var(--app-vh, 100dvh) - var(--header-height) - var(--bottom-nav-height) - 210px));
 }
 #textInput {
     width: 100%;
     max-width: min(450px, 90vw);
-    height: clamp(250px, 40vh, 300px);
+    height: clamp(190px, 32vh, 260px);
     margin-top: 1rem;
     padding: 0.6rem;
     border: 2.5px solid rgb(102, 178, 242);
@@ -1419,7 +1451,7 @@ main.receipt-mode {
 
 #receiptKeypad {
     width: 100%;
-    max-width: min(332px, 86vw);
+    max-width: min(302px, 82vw);
     margin-top: 0.3mm !important; /* テンキーの上部マージンを縮小 */
     gap: var(--receipt-keypad-gap) !important;
 }
@@ -1428,10 +1460,10 @@ html[data-receipt-profile="compact"] {
     --receipt-form-gap: 0.18rem;
     --receipt-form-bottom-space: calc(58px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: 46px;
-    --receipt-keypad-gap: 4px;
-    --receipt-keypad-padding: 6px;
-    --receipt-keypad-font-size: 16px;
-    --receipt-keypad-min-height: 35px;
+    --receipt-keypad-gap: 3px;
+    --receipt-keypad-padding: 5px;
+    --receipt-keypad-font-size: 14px;
+    --receipt-keypad-min-height: 30px;
     --receipt-button-gap: 0.3rem;
     --receipt-button-font-size: 0.8rem;
     --receipt-option-font-size: 0.72rem;
@@ -1449,10 +1481,10 @@ html[data-receipt-profile="ultra-compact"] {
     --receipt-form-gap: 0.14rem;
     --receipt-form-bottom-space: calc(52px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: 42px;
-    --receipt-keypad-gap: 4px;
-    --receipt-keypad-padding: 4px;
-    --receipt-keypad-font-size: 15px;
-    --receipt-keypad-min-height: 32px;
+    --receipt-keypad-gap: 3px;
+    --receipt-keypad-padding: 3px;
+    --receipt-keypad-font-size: 13px;
+    --receipt-keypad-min-height: 28px;
     --receipt-button-gap: 0.28rem;
     --receipt-button-font-size: 0.74rem;
     --receipt-option-font-size: 0.66rem;
@@ -1471,10 +1503,10 @@ html[data-receipt-profile="iphone-se3"] {
     --receipt-form-gap: 0.1rem;
     --receipt-form-bottom-space: calc(42px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: 35px;
-    --receipt-keypad-gap: 2px;
-    --receipt-keypad-padding: 3px;
-    --receipt-keypad-font-size: 13px;
-    --receipt-keypad-min-height: 27px;
+    --receipt-keypad-gap: 1px;
+    --receipt-keypad-padding: 2px;
+    --receipt-keypad-font-size: 12px;
+    --receipt-keypad-min-height: 24px;
     --receipt-button-gap: 0.18rem;
     --receipt-button-font-size: 0.64rem;
     --receipt-option-font-size: 0.58rem;
@@ -1492,10 +1524,10 @@ html[data-receipt-profile="iphone-16e"] {
     --receipt-form-gap: 0.2rem;
     --receipt-form-bottom-space: calc(64px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: 44px;
-    --receipt-keypad-gap: 3px;
-    --receipt-keypad-padding: 5px;
-    --receipt-keypad-font-size: 16px;
-    --receipt-keypad-min-height: 35px;
+    --receipt-keypad-gap: 2px;
+    --receipt-keypad-padding: 4px;
+    --receipt-keypad-font-size: 14px;
+    --receipt-keypad-min-height: 30px;
     --receipt-button-gap: 0.28rem;
     --receipt-button-font-size: 0.78rem;
     --receipt-option-font-size: 0.7rem;
@@ -1511,26 +1543,26 @@ html[data-receipt-profile="iphone-16e"] {
 
 html[data-receipt-profile="compact"] #receiptKeypad,
 html[data-receipt-profile="ultra-compact"] #receiptKeypad {
-    max-width: min(330px, 86vw);
+    max-width: min(300px, 82vw);
 }
 
 html[data-receipt-profile="iphone-se"] #receiptKeypad,
 html[data-receipt-profile="iphone-se3"] #receiptKeypad {
-    max-width: min(288px, 78vw);
+    max-width: min(260px, 74vw);
 }
 
 html[data-receipt-profile="iphone-16e"] #receiptKeypad {
-    max-width: min(320px, 84vw);
+    max-width: min(288px, 80vw);
 }
 
 html[data-receipt-profile="compact"] .keypad-btn,
 html[data-receipt-profile="ultra-compact"] .keypad-btn {
-    aspect-ratio: 1.35 / 1;
+    aspect-ratio: 1.55 / 1;
     border-radius: 14px;
 }
 
 html[data-receipt-profile="ultra-compact"] .keypad-btn {
-    aspect-ratio: 1.45 / 1;
+    aspect-ratio: 1.7 / 1;
     border-radius: 12px;
 }
 
@@ -1541,7 +1573,7 @@ html[data-receipt-profile="iphone-se3"] .keypad-btn {
 }
 
 html[data-receipt-profile="iphone-16e"] .keypad-btn {
-    aspect-ratio: 1.45 / 1;
+    aspect-ratio: 1.6 / 1;
     border-radius: 12px;
 }
 
@@ -1857,14 +1889,15 @@ html[data-ticket-profile="iphone-large"] .ticket-preview img {
     justify-content: flex-start;
     width: 100%;
     height: 100%;
-    gap: 0; /* ギャップを完全に削除 */
+    gap: 0.18rem;
     max-width: min(500px, 100vw);
     margin: 0;
-    padding: 0;
+    padding: 0.2rem 0 0;
     overflow-y: auto;
     background: transparent;
     position: relative;
-    top: 6mm; /* 旧位置から10mm下へ移動 */
+    top: 0;
+    padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 8px);
 }
 
 .stamp-preview-header {
@@ -1888,7 +1921,7 @@ html[data-ticket-profile="iphone-large"] .ticket-preview img {
 
 .stamp-preview-frame {
     width: 100%;
-    max-height: 80vh;
+    max-height: min(56vh, calc(var(--app-vh, 100dvh) - var(--header-height) - var(--bottom-nav-height) - 170px));
     background: transparent;
     border-radius: 0;
     display: flex;
@@ -1915,8 +1948,11 @@ html[data-ticket-profile="iphone-large"] .ticket-preview img {
     gap: 0.8rem;
     justify-content: center;
     width: 100%;
-    margin: 0.2rem 0 0; /* 画像との重なりを防ぐ最小限の余白 */
-    padding: 0;
+    margin: 0.1rem 0 0;
+    padding: 0.2rem 0.2rem 0;
+    position: sticky;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+    z-index: 3;
 }
 
 .back-btn, .execute-btn {
@@ -2439,15 +2475,18 @@ html[data-ticket-profile="iphone-large"] .ticket-preview img {
     line-height: 1.15;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
     pointer-events: none;
+    min-width: 8.8em;
+    text-align: center;
+    white-space: nowrap;
 }
 
 #dateDisplay {
-    top: calc(var(--header-height) + 0.35rem);
+    top: calc(var(--header-height) + 0.15rem);
     font-size: clamp(0.7rem, 1.8vw, 0.82rem);
 }
 
 #timeDisplay {
-    top: calc(var(--header-height) + 1.95rem);
+    top: calc(var(--header-height) + 1.55rem);
     font-size: clamp(0.66rem, 1.7vw, 0.78rem);
 }
 
@@ -3417,7 +3456,7 @@ let selectedTextChip = '';
 let selectedSignatureChip = '';
 let lastPreviewImageNaturalWidth = 0;
 let lastPreviewImageNaturalHeight = 0;
-const STAMP_PREVIEW_SCALE = 0.92; /* STAMPプレビュー画像の縮小率 */
+const STAMP_PREVIEW_SCALE = 0.82; /* STAMPプレビュー画像の縮小率 */
 
 // QRコード関連の変数
 let qrScanner = null;
@@ -5777,18 +5816,7 @@ function loadHistoryList() {
                     const img = new Image();
                     img.src = safeRestoreData;
                     img.onload = function() {
-                        let containerW = Math.min(window.innerWidth * 0.98, 480);
-                        let containerH = 360;
-                        let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-                        ratio *= STAMP_PREVIEW_SCALE;
-                        let displayW = Math.round(img.naturalWidth * ratio);
-                        let displayH = Math.round(img.naturalHeight * ratio);
-                        img.style.width = displayW + "px";
-                        img.style.height = displayH + "px";
-                        img.style.maxWidth = "100%";
-                        img.style.maxHeight = "360px";
-                        img.style.display = "block";
-                        img.style.margin = "0 auto";
+                        applyImagePreviewSizing(img);
                     };
                     previewContainer.appendChild(img);
                     document.getElementById('dateTimeChoice').style.display = 'flex';
@@ -6124,20 +6152,8 @@ function loadHistoryList() {
                         const img = new Image();
                         img.src = safeStampData;
                         img.onload = function() {
-                            // 1月上旬版と同じ拡大率で表示（履歴でも通常プレビューと揃える）
-                            let containerW = window.innerWidth * 0.995;
-                            let containerH = window.innerHeight * 0.75;
-                            let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-                            let displayW = Math.round(img.naturalWidth * ratio);
-                            let displayH = Math.round(img.naturalHeight * ratio);
-                            
-                            img.style.width = displayW + "px";
-                            img.style.height = displayH + "px";
-                            img.style.maxWidth = "100%";
-                            img.style.display = "block";
-                            img.style.margin = "0";
-                            
-                            console.log(`📐 STAMP履歴プレビュー(旧レイアウト): 元画像=${img.naturalWidth}x${img.naturalHeight}, 表示=${displayW}x${displayH}, ratio=${ratio.toFixed(3)}`);
+                            applyStampPreviewSizing(img);
+                            console.log(`📐 STAMP履歴プレビュー調整: 元画像=${img.naturalWidth}x${img.naturalHeight}`);
                         };
                         previewFrame.appendChild(img);
                         
@@ -6820,7 +6836,7 @@ function showSection(mode, options = {}) {
     if (mainElement) {
         mainElement.classList.toggle('menu-mode', isMenu);
         if (isMenu) {
-            mainElement.classList.remove('receipt-mode', 'ticket-select-mode', 'ticket-detail-mode', 'stamp-select-mode');
+            mainElement.classList.remove('receipt-mode', 'ticket-select-mode', 'ticket-detail-mode', 'stamp-select-mode', 'image-mode', 'text-mode', 'signature-mode', 'stamp-mode');
             // メインメニュー表示時にmain要素のスクロール位置をリセット
             mainElement.scrollTop = 0;
             console.log('🔄 メインメニュー: main要素のスクロール位置をリセット');
@@ -6860,6 +6876,12 @@ function showSection(mode, options = {}) {
         mainElement.classList.add('receipt-mode');
     } else {
         mainElement.classList.remove('receipt-mode');
+    }
+    if (mainElement) {
+        mainElement.classList.toggle('image-mode', mode === 'image');
+        mainElement.classList.toggle('text-mode', mode === 'text');
+        mainElement.classList.toggle('signature-mode', mode === 'signature');
+        mainElement.classList.toggle('stamp-mode', mode === 'stamp');
     }
     if (mode === 'ticket') {
         // T's券モードに切り替わった際は必ず選択画面にリセット
@@ -6973,6 +6995,69 @@ function updateStampLayoutMode() {
         mainElement.classList.remove('stamp-select-mode');
     }
 }
+
+function getAppViewportHeightPx() {
+    const cssValue = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--app-vh'));
+    if (Number.isFinite(cssValue) && cssValue > 0) {
+        return cssValue;
+    }
+    return window.innerHeight || document.documentElement.clientHeight || 700;
+}
+
+function getBottomNavigationHeightPx() {
+    const cssValue = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bottom-nav-height'));
+    if (Number.isFinite(cssValue) && cssValue > 0) {
+        return cssValue;
+    }
+    const navElement = document.getElementById('bottomNavigationBar');
+    return navElement ? navElement.getBoundingClientRect().height : 78;
+}
+
+function getImagePreviewMaxHeightPx() {
+    const availableHeight = getAppViewportHeightPx() - getBottomNavigationHeightPx() - 240;
+    return Math.max(170, Math.min(300, Math.round(availableHeight)));
+}
+
+function applyImagePreviewSizing(img) {
+    if (!img || !img.naturalWidth || !img.naturalHeight) {
+        return;
+    }
+    const containerW = Math.min(window.innerWidth * 0.92, 420);
+    const containerH = getImagePreviewMaxHeightPx();
+    const ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
+    const displayW = Math.round(img.naturalWidth * ratio);
+    const displayH = Math.round(img.naturalHeight * ratio);
+    img.style.width = `${displayW}px`;
+    img.style.height = `${displayH}px`;
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = `${containerH}px`;
+    img.style.display = 'block';
+    img.style.margin = '0 auto';
+}
+
+function getStampPreviewMaxHeightPx() {
+    const availableHeight = getAppViewportHeightPx() - getBottomNavigationHeightPx() - 270;
+    return Math.max(180, Math.min(320, Math.round(availableHeight)));
+}
+
+function applyStampPreviewSizing(img) {
+    if (!img || !img.naturalWidth || !img.naturalHeight) {
+        return;
+    }
+    const containerW = Math.min(window.innerWidth * 0.92, 420);
+    const containerH = getStampPreviewMaxHeightPx();
+    let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
+    ratio *= STAMP_PREVIEW_SCALE;
+    const displayW = Math.round(img.naturalWidth * ratio);
+    const displayH = Math.round(img.naturalHeight * ratio);
+    img.style.width = `${displayW}px`;
+    img.style.height = `${displayH}px`;
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = `${containerH}px`;
+    img.style.display = 'block';
+    img.style.margin = '0 auto';
+}
+
 function toggleMode(mode, options = {}) {
     showSection(mode, options);
 }
@@ -6985,17 +7070,7 @@ function previewImage(event) {
         const img = new Image();
         img.src = reader.result;
         img.onload = function() {
-            let containerW = Math.min(window.innerWidth * 0.98, 480);
-            let containerH = 360;
-            let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-            let displayW = Math.round(img.naturalWidth * ratio);
-            let displayH = Math.round(img.naturalHeight * ratio);
-            img.style.width = displayW + "px";
-            img.style.height = displayH + "px";
-            img.style.maxWidth = "100%";
-            img.style.maxHeight = "360px";
-            img.style.display = "block";
-            img.style.margin = "0 auto";
+            applyImagePreviewSizing(img);
             lastPreviewImageNaturalWidth = img.naturalWidth;
             lastPreviewImageNaturalHeight = img.naturalHeight;
         };
@@ -7949,16 +8024,16 @@ async function executeReceiptPrint(withMemo) {
     // QRコード・日付用のスペースを追加（適切なサイズに調整）
     const dateLineHeight = receiptDateFontSizePx * 1.2;
     const qrSize = scalePx(140); // QRサイズをさらに縮小
-    const qrTopGap = receiptNoNameEnabled ? 0 : scalePx(20);
+    const qrTopGap = receiptNoNameEnabled ? 0 : scalePx(12);
     const qrLeftPx = scalePx(10); // QRの左位置をさらに左端に
-    const qrPadding = receiptNoNameEnabled ? 0 : scalePx(6);
-    const dateTopGap = receiptNoNameEnabled ? 0 : scalePx(10);
-    const dateQrVerticalShift = receiptNoNameEnabled ? 0 : scalePx(15); // 日付の縦位置調整
-    const dateBottomGap = receiptNoNameEnabled ? scalePx(12) : scalePx(30);
-    const dateRightShift = scalePx(70); // 日付位置をさらに左寄りに調整
+    const qrPadding = receiptNoNameEnabled ? 0 : scalePx(4);
+    const dateTopGap = receiptNoNameEnabled ? 0 : scalePx(6);
+    const dateQrVerticalShift = receiptNoNameEnabled ? 0 : scalePx(8); // 日付の縦位置調整
+    const dateBottomGap = receiptNoNameEnabled ? scalePx(8) : scalePx(14);
+    const dateRightShift = scalePx(64); // 日付位置をさらに左寄りに調整
     const qrBlockHeight = qrTopGap + qrSize;
     const dateBlockHeight = dateTopGap + dateQrVerticalShift + (dateLineHeight * 2) + dateBottomGap;
-    const bottomSafetyGap = receiptNoNameEnabled ? 0 : scalePx(12);
+    const bottomSafetyGap = receiptNoNameEnabled ? 0 : scalePx(4);
     const bottomBlockHeight = Math.max(qrBlockHeight, dateBlockHeight) + bottomSafetyGap;
     textHeight += bottomBlockHeight;
 
@@ -7966,17 +8041,17 @@ async function executeReceiptPrint(withMemo) {
     const receiptDateTimeEnabled = true; // 領収書は常に日付・時刻を印字
     const receiptQrEnabled = true; // 領収書は常にQRコードを印字
     const baseBottomMargin = calculateSharedBottomMargin(receiptDateTimeEnabled, receiptQrEnabled, mmToPx);
-    const noNameTailMarginPx = Math.round(mmToPx * 12); // ✔️記入不可は指定どおり12mmの巻き取りを確保
-    const normalTailGuardPx = Math.round(mmToPx * 2); // 通常領収書は+2mmの余裕を常に確保
-    const minimalBottomMarginPx = receiptNoNameEnabled ? noNameTailMarginPx : Math.round(mmToPx * 5);
+    const noNameTailMarginPx = Math.round(mmToPx * 6); // ✔️記入不可の巻き取り余白を抑制
+    const normalTailGuardPx = Math.round(mmToPx * 1); // 通常領収書は+1mmの余裕を確保
+    const minimalBottomMarginPx = receiptNoNameEnabled ? noNameTailMarginPx : Math.round(mmToPx * 4);
     const standardTailMarginPx = receiptNoNameEnabled
         ? noNameTailMarginPx
-        : Math.min(baseBottomMargin, Math.round(mmToPx * 9));
+        : Math.min(baseBottomMargin, Math.round(mmToPx * 7));
     let bottomMargin = receiptNoNameEnabled
         ? minimalBottomMarginPx
         : Math.max(minimalBottomMarginPx, standardTailMarginPx) + normalTailGuardPx;
     
-    const topMargin = scalePx(24); // 上余白3mm
+    const topMargin = scalePx(18); // 上余白を圧縮
     const canvasHeight = Math.round(topMargin + textHeight + bottomMargin);
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
@@ -8731,12 +8806,12 @@ function sendToPrintAssist(event) {
                     const overlayGapWithoutDateQr = Math.max(20, Math.round(40 * overlayScale));
                     const overlayDateBottomGap = Math.max(24, Math.round(50 * overlayScale));
                     const imageBottomMarginReference = (isDateTimeEnabled && qrPrintEnabled)
-                        ? 204
+                        ? 150
                         : (!isDateTimeEnabled && qrPrintEnabled)
-                            ? 230
+                            ? 168
                             : (isDateTimeEnabled && !qrPrintEnabled)
-                                ? 200
-                                : 190;
+                                ? 138
+                                : 124;
                     
                     // 日付・時刻の高さを計算
                     let dateTimeHeight = 0;
@@ -8775,7 +8850,7 @@ function sendToPrintAssist(event) {
                     console.log('  finalImgHeight:', finalImgHeight);
                     
                     // 全体の高さを計算（画像用の余白設定）
-                    const imageTopMargin = 30; // 画像用上余白（約2.5mm = 30px）
+                    const imageTopMargin = 20; // 画像用上余白を圧縮
                     
                     // 下部余白（テキスト/手書きの4パターンに合わせて統一）
                     let imageBottomMargin = Math.max(
@@ -9302,16 +9377,16 @@ function printText() {
         // 下部余白（4パターン固定値）
         let bottomMargin;
         if (isDateTimeEnabled && qrPrintEnabled) {
-            bottomMargin = 204; // 日付あり + QRあり
+            bottomMargin = 170; // 日付あり + QRあり
         } else if (!isDateTimeEnabled && qrPrintEnabled) {
-            bottomMargin = 350; // 日付なし + QRあり
+            bottomMargin = 230; // 日付なし + QRあり
         } else if (isDateTimeEnabled && !qrPrintEnabled) {
-            bottomMargin = 200; // 日付あり + QRなし
+            bottomMargin = 150; // 日付あり + QRなし
         } else {
-            bottomMargin = 190; // 日付なし + QRなし
+            bottomMargin = 130; // 日付なし + QRなし
         }
         
-        const topMargin = 24; // 上余白3mm
+        const topMargin = 18; // 上余白を圧縮
         const canvasHeight = Math.round(topMargin + textHeight + bottomMargin);
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
@@ -9329,8 +9404,8 @@ function printText() {
         // 真ん中の位置を正確に計算（中央揃え）
         const exactCenterX = Math.round(canvasWidth / 2); // 完全中央揃え
         
-        // テキストを描画（上部余白3mm）
-        let yPos = 24; // 上余白3mm
+        // テキストを描画（上部余白）
+        let yPos = topMargin;
         for (let i = 0; i < lines.length; i++) {
             ctx.fillText(lines[i], exactCenterX, yPos); // 真ん中に配置
             yPos += lineHeight;
@@ -10548,18 +10623,8 @@ function restoreContentFromHistory(item) {
             const img = new Image();
             img.src = item.data;
             img.onload = function() {
-                let containerW = Math.min(window.innerWidth * 0.98, 480);
-                let containerH = 360;
-            let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-            let displayW = Math.round(img.naturalWidth * ratio);
-            let displayH = Math.round(img.naturalHeight * ratio);
-            img.style.width = displayW + "px";
-            img.style.height = displayH + "px";
-            img.style.maxWidth = "100%";
-            img.style.maxHeight = "360px";
-            img.style.display = "block";
-            img.style.margin = "0 auto";
-        };
+                applyImagePreviewSizing(img);
+            };
         previewContainer.appendChild(img);
         
         // 設定を復元
@@ -12262,20 +12327,8 @@ function showStampPreview(title) {
                 const img = new Image();
                 img.src = 'data:image/png;base64,' + imageData;
                 img.onload = function() {
-                    // 以前のレイアウト（1月上旬版）と同じスケール計算に戻す
-                    let containerW = window.innerWidth * 0.995;
-                    let containerH = window.innerHeight * 0.75;
-                    let ratio = Math.min(containerW / img.naturalWidth, containerH / img.naturalHeight, 1);
-                    ratio *= STAMP_PREVIEW_SCALE;
-                    let displayW = Math.round(img.naturalWidth * ratio);
-                    let displayH = Math.round(img.naturalHeight * ratio);
-                    img.style.width = displayW + "px";
-                    img.style.height = displayH + "px";
-                    img.style.maxWidth = "100%";
-                    img.style.display = "block";
-                    img.style.margin = "0";
-                    
-                    console.log(`📐 プレビューサイズ計算(旧レイアウト): 元画像=${img.naturalWidth}x${img.naturalHeight}, 表示=${displayW}x${displayH}, ratio=${ratio.toFixed(3)}`);
+                    applyStampPreviewSizing(img);
+                    console.log(`📐 プレビューサイズ調整: 元画像=${img.naturalWidth}x${img.naturalHeight}`);
                 };
                 previewFrame.appendChild(img);
                 console.log(`📄 プレビュー表示完了: ${title}`);

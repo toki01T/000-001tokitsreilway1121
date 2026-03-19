@@ -1,0 +1,12 @@
+.venv/
+venv/
+
+.vscode/
+.specstory/
+
+.DS_Store
+._*
+
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcuserdatad/
