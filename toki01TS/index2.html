@@ -11066,36 +11066,94 @@ let selectedTicketTemplate = '1';
 let ticketLogoMode = 'logo'; // 'logo' or 'text'
 let ticketUploadedTemplates = [];
 let selectedTicketIllustration = null;
+const DEFAULT_TICKET_TEMPLATE_IMAGES = ['1.png', '2.png', '3.png', '4.png'];
+
+function getDefaultTicketTemplateEntry(index) {
+    const safeIndex = Number.isFinite(index) ? index : 0;
+    const imageIndex = ((safeIndex % DEFAULT_TICKET_TEMPLATE_IMAGES.length) + DEFAULT_TICKET_TEMPLATE_IMAGES.length) % DEFAULT_TICKET_TEMPLATE_IMAGES.length;
+    return {
+        name: `テンプレート${safeIndex + 1}`,
+        imageData: DEFAULT_TICKET_TEMPLATE_IMAGES[imageIndex],
+        credit: '',
+        creditUrl: '',
+        logoMode: 'logo'
+    };
+}
+
+function normalizeTicketTemplateEntry(entry, fallbackName = 'デフォルト') {
+    if (!entry || typeof entry !== 'object') {
+        return null;
+    }
+
+    const imageData = typeof entry.imageData === 'string' ? entry.imageData.trim() : '';
+    if (!imageData) {
+        return null;
+    }
+
+    const name = limitTicketText(entry.name || fallbackName, 30) || fallbackName;
+    const credit = limitTicketText(entry.credit || '', 23);
+    const creditUrl = toHalfWidthUrl(entry.creditUrl || '').trim().slice(0, 120);
+
+    return {
+        name,
+        imageData,
+        credit,
+        creditUrl,
+        logoMode: entry.logoMode === 'text' ? 'text' : 'logo'
+    };
+}
+
+function normalizeTicketTemplates(rawTemplates) {
+    const raw = Array.isArray(rawTemplates) ? rawTemplates : [];
+    const length = Math.max(raw.length, DEFAULT_TICKET_TEMPLATE_IMAGES.length);
+    const normalized = new Array(length).fill(null);
+
+    for (let index = 0; index < length; index += 1) {
+        const normalizedEntry = normalizeTicketTemplateEntry(raw[index], `テンプレート${index + 1}`);
+        if (normalizedEntry) {
+            normalized[index] = normalizedEntry;
+        } else if (index < DEFAULT_TICKET_TEMPLATE_IMAGES.length) {
+            normalized[index] = getDefaultTicketTemplateEntry(index);
+        }
+    }
+
+    return normalized;
+}
+
+function saveTicketUploadedTemplates() {
+    try {
+        localStorage.setItem('ticketUploadedTemplates', JSON.stringify(ticketUploadedTemplates));
+    } catch (error) {
+        console.warn('ticketUploadedTemplatesの保存に失敗:', error);
+    }
+}
 
 // T's券テンプレートをlocalStorageから再読み込みする関数
 function reloadTicketTemplates() {
     try {
+        let parsed = [];
         const nativeTemplates = Array.isArray(window.__nativeTicketTemplates) ? window.__nativeTicketTemplates : null;
         if (nativeTemplates && nativeTemplates.length > 0) {
-            ticketUploadedTemplates = nativeTemplates;
-            console.log('✅ T\'s券テンプレートをNativeメモリから再読み込みしました:', ticketUploadedTemplates.length, '件');
-            updateTicketGridThumbnails();
-            selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
-            updateTicketSerialPreview();
-            return;
+            parsed = nativeTemplates;
+            console.log('✅ T\'s券テンプレートをNativeメモリから再読み込みしました:', parsed.length, '件');
+        } else {
+            const stored = localStorage.getItem('ticketUploadedTemplates');
+            parsed = stored ? JSON.parse(stored) : [];
+            console.log('✅ T\'s券テンプレートを再読み込みしました:', Array.isArray(parsed) ? parsed.length : 0, '件');
         }
 
-        const stored = localStorage.getItem('ticketUploadedTemplates');
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            if (Array.isArray(parsed)) {
-                ticketUploadedTemplates = parsed;
-                console.log('✅ T\'s券テンプレートを再読み込みしました:', ticketUploadedTemplates.length, '件');
-                // グリッドを更新
-                updateTicketGridThumbnails();
-                // イラストを再解決
-                selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
-                // シリアルプレビューを更新
-                updateTicketSerialPreview();
-            }
-        }
+        ticketUploadedTemplates = normalizeTicketTemplates(parsed);
+        saveTicketUploadedTemplates();
+        updateTicketGridThumbnails();
+        selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
+        updateTicketSerialPreview();
     } catch (e) {
         console.warn('⚠️ T\'s券テンプレートの再読み込みに失敗:', e);
+        ticketUploadedTemplates = normalizeTicketTemplates([]);
+        saveTicketUploadedTemplates();
+        updateTicketGridThumbnails();
+        selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
+        updateTicketSerialPreview();
     }
 }
 
@@ -11301,7 +11359,8 @@ function initTicketTemplateSelector() {
             console.warn('ticketUploadedTemplatesの読み込みに失敗:', e);
         }
     }
-    ticketUploadedTemplates = Array.isArray(parsed) ? parsed : [];
+    ticketUploadedTemplates = normalizeTicketTemplates(parsed);
+    saveTicketUploadedTemplates();
     // 現在のテンプレートに合わせてイラストを再解決
     selectedTicketIllustration = resolveTicketIllustration(selectedTicketTemplate);
     updateTicketGridThumbnails();
@@ -11327,8 +11386,8 @@ function updateTicketSerialPreview() {
 
 function resolveTicketIllustration(templateId) {
     const idx = Math.max(0, (parseInt(templateId, 10) || 1) - 1);
-    if (ticketUploadedTemplates[idx]) {
-        const tpl = ticketUploadedTemplates[idx];
+    const tpl = normalizeTicketTemplateEntry(ticketUploadedTemplates[idx], `テンプレート${idx + 1}`);
+    if (tpl) {
         return {
             name: tpl.name || 'デフォルト',
             imageData: tpl.imageData,
@@ -11336,48 +11395,47 @@ function resolveTicketIllustration(templateId) {
             creditUrl: tpl.creditUrl || ''
         };
     }
-    return { name: 'デフォルト', imageData: '1.png', credit: '', creditUrl: '' };
+
+    if (idx < DEFAULT_TICKET_TEMPLATE_IMAGES.length) {
+        return {
+            name: `テンプレート${idx + 1}`,
+            imageData: DEFAULT_TICKET_TEMPLATE_IMAGES[idx],
+            credit: '',
+            creditUrl: ''
+        };
+    }
+
+    return { name: 'デフォルト', imageData: DEFAULT_TICKET_TEMPLATE_IMAGES[0], credit: '', creditUrl: '' };
 }
 
 function updateTicketGridThumbnails() {
     const grid = document.getElementById('ticketTemplateGrid');
     if (!grid) return;
+
+    ticketUploadedTemplates = normalizeTicketTemplates(ticketUploadedTemplates);
+    saveTicketUploadedTemplates();
     
     // 現在のボタンを全て削除
     grid.innerHTML = '';
-    
-    // テンプレートが空の場合でも最低1つのボタンを生成
-    if (!ticketUploadedTemplates || ticketUploadedTemplates.length === 0) {
-        console.log('📋 T\'s券テンプレート未登録 - デフォルトテンプレートを初期化');
-        // 空配列でも最低1つのデフォルトエントリを用意
-        ticketUploadedTemplates = [{
-            name: 'デフォルト',
-            imageData: '1.png',
-            credit: '',
-            creditUrl: '',
-            logoMode: 'logo'
-        }];
-        // localStorageにも保存
-        try {
-            localStorage.setItem('ticketUploadedTemplates', JSON.stringify(ticketUploadedTemplates));
-        } catch(e) {
-            console.warn('ticketUploadedTemplatesの保存に失敗:', e);
-        }
-    }
-    
+
     // 登録済みテンプレートのみボタンを生成
     ticketUploadedTemplates.forEach((tpl, idx) => {
-        if (tpl && tpl.imageData) {
+        const normalizedTemplate = normalizeTicketTemplateEntry(tpl, `テンプレート${idx + 1}`);
+        if (normalizedTemplate) {
             const btn = document.createElement('button');
             btn.className = 'ticket-template-btn';
             btn.dataset.template = String(idx + 1);
             btn.dataset.logomode = 'logo';
             btn.setAttribute('aria-label', `テンプレート${idx + 1}`);
-            btn.style.backgroundImage = `url(${tpl.imageData})`;
+            btn.style.backgroundImage = `url(${normalizedTemplate.imageData})`;
             btn.style.backgroundSize = 'cover';
             btn.style.backgroundPosition = 'center';
             btn.style.backgroundRepeat = 'no-repeat';
             btn.style.backgroundColor = '#fff';
+
+            if (String(idx + 1) === String(selectedTicketTemplate)) {
+                btn.classList.add('selected');
+            }
             
             // クリックイベントを追加
             btn.addEventListener('click', () => {
