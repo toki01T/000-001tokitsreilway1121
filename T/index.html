@@ -3991,6 +3991,18 @@ function resolvePrintCallbackUrl(candidateUrl) {
             return fallbackCallback;
         }
 
+        const host = (parsed.hostname || '').toLowerCase();
+        const isPrivateHost = host === 'localhost'
+            || host.endsWith('.local')
+            || /^127\./.test(host)
+            || /^10\./.test(host)
+            || /^192\.168\./.test(host)
+            || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host);
+        if (parsed.protocol === 'https:' && isPrivateHost) {
+            console.warn('⚠️ ローカルHTTPS callbackはCode=-60になりやすいためHTTPへ切替:', parsed.href);
+            parsed.protocol = 'http:';
+        }
+
         // 印刷アプリへの入力を安定化するため、戻りURLのquery/hashは除去する。
         parsed.search = '';
         parsed.hash = '';
@@ -4001,27 +4013,76 @@ function resolvePrintCallbackUrl(candidateUrl) {
     }
 }
 
+function normalizePrintDataBase64(pdfBase64) {
+    if (typeof pdfBase64 !== 'string') {
+        return '';
+    }
+
+    let normalized = pdfBase64.trim();
+    if (normalized.startsWith('data:')) {
+        const markerIndex = normalized.indexOf('base64,');
+        if (markerIndex !== -1) {
+            normalized = normalized.slice(markerIndex + 'base64,'.length);
+        }
+    }
+
+    return normalized.replace(/\s+/g, '');
+}
+
+function getUrlPrnDataSizeLimit() {
+    const ua = (navigator.userAgent || '').toLowerCase();
+    if (ua.indexOf('android') !== -1) {
+        return { limitBytes: 200 * 1024, platformLabel: 'Android' };
+    }
+
+    return { limitBytes: 750 * 1024, platformLabel: 'iOS' };
+}
+
 function generatePrintUrl(pdfBase64, thisPage) {
-    console.log('📊 PDF Base64長（元データ）:', pdfBase64.length, '文字');
+    const normalizedPdfBase64 = normalizePrintDataBase64(pdfBase64);
+    console.log('📊 PDF Base64長（正規化後）:', normalizedPdfBase64.length, '文字');
+
+    if (!normalizedPdfBase64) {
+        console.error('❌ 印刷データが空です。URLスキーム生成を中止します。');
+        alert('印刷データの生成に失敗しました。\n再度お試しください。');
+        return '';
+    }
+
+    const { limitBytes, platformLabel } = getUrlPrnDataSizeLimit();
+    if (normalizedPdfBase64.length > limitBytes) {
+        const currentKb = Math.round(normalizedPdfBase64.length / 1024);
+        const limitKb = Math.round(limitBytes / 1024);
+        console.error(`❌ Dataサイズ超過: ${platformLabel}上限${limitKb}KB / 現在${currentKb}KB`);
+        alert(
+            `URLPRNAgentデータ上限を超えています。\n\n` +
+            `対象: ${platformLabel}\n` +
+            `上限目安: ${limitKb}KB\n` +
+            `現在: ${currentKb}KB\n\n` +
+            `画像サイズや印刷内容を調整して再実行してください。`
+        );
+        return '';
+    }
+
     const callbackUrl = resolvePrintCallbackUrl(thisPage);
     console.log('📞 Callback URL:', callbackUrl);
     const profile = typeof getThermalPrinterProfile === 'function' ? getThermalPrinterProfile() : null;
-    const printableWidthMm = profile && (profile.printableWidthMm || profile.widthMm)
-        ? profile.printableWidthMm || profile.widthMm
-        : 58;
-    const paperWidthValue = Math.round(printableWidthMm);
-    console.log('🧾 URL用用紙幅設定:', `${paperWidthValue}mm`);
+    // SII Print AgentのPaperWidthは実質58mm/80mm指定が前提のため正規化する。
+    const nominalPaperWidthMm = profile && profile.widthMm ? profile.widthMm : 58;
+    const paperWidthValue = nominalPaperWidthMm >= 76 ? 80 : 58;
+    console.log('🧾 URL用用紙幅設定:', `${paperWidthValue}mm`, `(profile:${Math.round(nominalPaperWidthMm)}mm)`);
     
     // test.htmlと完全に同じ方式でURL構築（AndroidもiOSも同じ）
     const url = 'siiprintagent://1.0/print?' +
                 'CallbackSuccess=' + encodeURIComponent(callbackUrl) + '&' +
                 'CallbackFail=' + encodeURIComponent(callbackUrl) + '&' +
+                'BtKeepConnect=' + 'always' + '&' +
                 'Format=' + 'pdf' + '&' +
-                'Data=' + encodeURIComponent(pdfBase64) + '&' +
-                'SelectOnError=' + 'yes' + '&' +
+                'Data=' + encodeURIComponent(normalizedPdfBase64) + '&' +
+                'ErrorDialog=' + 'no' + '&' +
+                'SelectOnError=' + 'no' + '&' +
                 'CutType=' + 'full' + '&' +
                 'CutFeed=' + 'yes' + '&' +
-                'FitToWidth=' + 'no' + '&' +
+                'FitToWidth=' + 'yes' + '&' +
                 'PaperWidth=' + encodeURIComponent(paperWidthValue.toString());
     
     console.log('📊 最終URL長:', url.length, '文字');
@@ -4039,6 +4100,11 @@ function generatePrintUrl(pdfBase64, thisPage) {
 // 印刷実行関数（ネイティブアプリ対応版）
 function executePrint(pdfBase64OrUrl, printType = 'pdf', options = {}) {
     try {
+        if (typeof pdfBase64OrUrl !== 'string' || pdfBase64OrUrl.trim() === '') {
+            console.warn('⚠️ 印刷データが空のため印刷処理を中断しました。');
+            return;
+        }
+
         // 印刷音を再生
         console.log('🔊 印刷音を再生します');
         if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.playSound) {
@@ -7535,8 +7601,8 @@ function executeSignaturePrint() {
                 compositeCtx.fillText(timeText, dateTimeX, yPos);
             }
             
-            // 合成キャンバスをJPEGに変換（高品質90%）
-            const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.90);
+            // 合成キャンバスをJPEGに変換（URLPRNAgent制限対策で圧縮率を上げる）
+            const jpegDataUrl = compositeCanvas.toDataURL('image/jpeg', 0.72);
             
             // jsPDFを使用してPDFを生成
             const { jsPDF } = window.jspdf;
@@ -9458,8 +9524,8 @@ function printText() {
             ctx.fillText(timeText, dateTimeX, yPos);
         }
         
-        // キャンバスをJPEGに変換（高品質90%）
-        const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.90);
+        // キャンバスをJPEGに変換（URLPRNAgent制限対策で圧縮率を上げる）
+        const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.72);
         
         // jsPDFを使用してPDFを生成
         const { jsPDF } = window.jspdf;
