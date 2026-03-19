@@ -36,10 +36,10 @@
     --receipt-form-gap: 0.3rem;
     --receipt-form-bottom-space: calc(82px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: clamp(46px, 8.4vh, 52px);
-    --receipt-keypad-gap: 8px;
-    --receipt-keypad-padding: clamp(12px, 3vw, 16px);
-    --receipt-keypad-font-size: clamp(21px, 4.6vw, 25px);
-    --receipt-keypad-min-height: clamp(46px, 8vh, 60px);
+    --receipt-keypad-gap: 7px;
+    --receipt-keypad-padding: clamp(10px, 2.6vw, 14px);
+    --receipt-keypad-font-size: clamp(19px, 4.2vw, 23px);
+    --receipt-keypad-min-height: clamp(42px, 7.2vh, 54px);
     --receipt-button-gap: clamp(0.42rem, 1.7vw, 0.8rem);
     --receipt-button-font-size: clamp(0.86rem, 2vw, 0.94rem);
     --receipt-option-font-size: clamp(0.76rem, 1.9vw, 0.84rem);
@@ -799,7 +799,10 @@ main.receipt-mode {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
-    padding-bottom: calc(var(--receipt-main-bottom-space) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: max(
+        calc(var(--receipt-main-bottom-space) + env(safe-area-inset-bottom, 0px)),
+        calc(var(--bottom-nav-height) + 22px)
+    );
 }
 @media (max-width: 600px) {
     :root {
@@ -1208,7 +1211,7 @@ main.receipt-mode {
     gap: var(--receipt-form-gap);
     width: 100%;
     max-width: min(450px, 92vw);
-    padding: 0 0.5rem var(--receipt-form-bottom-space);
+    padding: 0 0.5rem max(var(--receipt-form-bottom-space), calc(var(--bottom-nav-height) + 14px));
     box-sizing: border-box;
     touch-action: pan-y;
 }
@@ -1425,10 +1428,10 @@ html[data-receipt-profile="compact"] {
     --receipt-form-gap: 0.18rem;
     --receipt-form-bottom-space: calc(58px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: 46px;
-    --receipt-keypad-gap: 5px;
-    --receipt-keypad-padding: 8px;
-    --receipt-keypad-font-size: 19px;
-    --receipt-keypad-min-height: 40px;
+    --receipt-keypad-gap: 4px;
+    --receipt-keypad-padding: 7px;
+    --receipt-keypad-font-size: 18px;
+    --receipt-keypad-min-height: 38px;
     --receipt-button-gap: 0.3rem;
     --receipt-button-font-size: 0.8rem;
     --receipt-option-font-size: 0.72rem;
@@ -1447,9 +1450,9 @@ html[data-receipt-profile="ultra-compact"] {
     --receipt-form-bottom-space: calc(52px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: 42px;
     --receipt-keypad-gap: 4px;
-    --receipt-keypad-padding: 6px;
-    --receipt-keypad-font-size: 17px;
-    --receipt-keypad-min-height: 36px;
+    --receipt-keypad-padding: 5px;
+    --receipt-keypad-font-size: 16px;
+    --receipt-keypad-min-height: 34px;
     --receipt-button-gap: 0.28rem;
     --receipt-button-font-size: 0.74rem;
     --receipt-option-font-size: 0.66rem;
@@ -1489,10 +1492,10 @@ html[data-receipt-profile="iphone-16e"] {
     --receipt-form-gap: 0.2rem;
     --receipt-form-bottom-space: calc(64px + env(safe-area-inset-bottom, 0px));
     --receipt-input-height: 44px;
-    --receipt-keypad-gap: 5px;
-    --receipt-keypad-padding: 7px;
-    --receipt-keypad-font-size: 18px;
-    --receipt-keypad-min-height: 39px;
+    --receipt-keypad-gap: 4px;
+    --receipt-keypad-padding: 6px;
+    --receipt-keypad-font-size: 17px;
+    --receipt-keypad-min-height: 37px;
     --receipt-button-gap: 0.28rem;
     --receipt-button-font-size: 0.78rem;
     --receipt-option-font-size: 0.7rem;
